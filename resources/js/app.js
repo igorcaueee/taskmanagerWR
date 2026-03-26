@@ -9,7 +9,16 @@ window.jQuery = $;
 
 window.openModal = function (url) {
 	$.get(url, function (html) {
-		document.getElementById('modalContent').innerHTML = html;
+		const container = document.getElementById('modalContent');
+		container.innerHTML = html;
+		container.querySelectorAll('script').forEach(function (oldScript) {
+			const newScript = document.createElement('script');
+			[...oldScript.attributes].forEach(function (attr) {
+				newScript.setAttribute(attr.name, attr.value);
+			});
+			newScript.textContent = oldScript.textContent;
+			oldScript.parentNode.replaceChild(newScript, oldScript);
+		});
 		document.getElementById('globalModal').classList.remove('hidden');
 	});
 };
