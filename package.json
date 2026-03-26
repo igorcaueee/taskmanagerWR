@@ -16,6 +16,8 @@
         "vite": "^8.0.0"
     },
     "dependencies": {
-        "bootstrap": "^5.3.8"
+        "bootstrap": "^5.3.8",
+        "jquery": "^4.0.0",
+        "sweetalert2": "^11.26.24"
     }
 }

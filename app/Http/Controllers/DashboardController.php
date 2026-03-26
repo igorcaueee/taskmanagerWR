@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Usuario;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -11,6 +12,8 @@ class DashboardController extends Controller
      */
     public function showDashboard(): View
     {
-        return view('dashboard');
+        $totalUsuariosAtivos = Usuario::query()->where('status', true)->count();
+
+        return view('dashboard', compact('totalUsuariosAtivos'));
     }
 }

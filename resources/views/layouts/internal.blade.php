@@ -9,19 +9,12 @@
         @include('partials.head')
 
         <style>
-            /* Sidebar show/hide behavior for mobile and desktop */
-            .sidebar { transition: transform .2s ease-in-out; }
-
-            /* Desktop: reserve space for sidebar, collapse by toggling body class */
-            @media (min-width: 768px) {
-                .main-content { transition: margin-left .2s ease-in-out; margin-left: 16rem; }
-                body.sidebar-collapsed .sidebar { transform: translateX(-100%); }
-                body.sidebar-collapsed .main-content { margin-left: 0; }
-            }
+            /* Sidebar always visible */
+            .sidebar { width: 16rem; }
 
             /* Mobile: sidebar slides over content; use .open to show */
             @media (max-width: 767px) {
-                .sidebar { transform: translateX(-100%); position: fixed; z-index: 40; top: 0; left: 0; height: 100vh; }
+                .sidebar { transform: translateX(-100%); position: fixed; z-index: 40; top: 0; left: 0; height: 100vh; transition: transform .2s ease-in-out; }
                 .sidebar.open { transform: translateX(0); }
             }
         </style>
@@ -42,5 +35,14 @@
                 @yield('content')
             </div>
         </div>
+
+        {{-- Global modal --}}
+        <div id="globalModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+                <div id="modalContent" class="p-6"></div>
+            </div>
+        </div>
+
+        @stack('scripts')
     </body>
 </html>

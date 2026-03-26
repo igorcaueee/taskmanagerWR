@@ -3,7 +3,7 @@
         <a href="/">
             <div class="flex items-center space-x-3">
                 <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
-                    <img src="/images/logo7.png" alt="WR Assessoria" class="w-8 h-8" >
+                    <img src="/images/logo7.png" alt="WR Assessoria" class="w-12 h-12" >
                 </div>
                 <div>
                     <h1 class="font-bold text-xl text-gray-900"><a href="/">WR Assessoria</a></h1>
