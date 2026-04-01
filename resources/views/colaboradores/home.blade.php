@@ -18,6 +18,39 @@
         </div>
 
         <div class="bg-white rounded shadow overflow-x-auto">
+            {{-- Filters --}}
+            <form method="GET" action="{{ route('colaboradores') }}" id="form-filtros-colabs"
+                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Pesquisar</label>
+                    <input type="text" name="busca" value="{{ request('busca') }}"
+                           placeholder="Buscar por nome ou e-mail..."
+                           onchange="document.getElementById('form-filtros-colabs').submit()"
+                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand w-56">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Cargo</label>
+                    <select name="cargo" onchange="document.getElementById('form-filtros-colabs').submit()"
+                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="diretor"    @selected(request('cargo') === 'diretor')>Diretor</option>
+                        <option value="supervisor" @selected(request('cargo') === 'supervisor')>Supervisor</option>
+                        <option value="analista"   @selected(request('cargo') === 'analista')>Analista</option>
+                        <option value="assistente" @selected(request('cargo') === 'assistente')>Assistente</option>
+                        <option value="auxiliar"   @selected(request('cargo') === 'auxiliar')>Auxiliar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Status</label>
+                    <select name="status" onchange="document.getElementById('form-filtros-colabs').submit()"
+                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="1" @selected(request('status') === '1')>Ativo</option>
+                        <option value="0" @selected(request('status') === '0')>Inativo</option>
+                    </select>
+                </div>
+            </form>
+
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>

@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="description" content="WR Assessoria - Área Interna">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>@yield('title', 'Painel — WR Assessoria')</title>
         @include('partials.head')
@@ -38,7 +39,7 @@
 
         {{-- Global modal --}}
         <div id="globalModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                 <div id="modalContent" class="p-6"></div>
             </div>
         </div>

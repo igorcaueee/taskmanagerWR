@@ -10,6 +10,7 @@ class Cliente extends Model
 
     protected $fillable = [
         'nome',
+        'descricao',
         'cpfcnpj',
         'regime_tributario',
         'cidade',

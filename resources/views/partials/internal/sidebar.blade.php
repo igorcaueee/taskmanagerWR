@@ -1,6 +1,7 @@
 <div class="p-4">
     <nav class="space-y-2">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+        <a href="{{ route('tarefas.list')}}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
         <a href="{{ route('agenda') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-calendar-days"></i> Agenda</a>
         <!-- Example collapsible submenu: Cadastros -->
         <div>

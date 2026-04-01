@@ -104,6 +104,13 @@
         </div>
 
         <div>
+            <label class="block text-sm font-medium text-gray-700">Descrição</label>
+            <textarea name="descricao" rows="3"
+                      class="mt-1 block w-full border rounded px-3 py-2"
+                      placeholder="Observações sobre o cliente...">{{ old('descricao', $isEditing ? $cliente->descricao : '') }}</textarea>
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700">Status</label>
             <select name="status" class="mt-1 block w-full border rounded px-3 py-2">
                 <option value="ativo" {{ old('status', $isEditing ? $cliente->status : 'ativo') === 'ativo' ? 'selected' : '' }}>Ativo</option>

@@ -22,6 +22,47 @@
         @endif
 
         <div class="bg-white rounded shadow overflow-x-auto">
+            {{-- Filters --}}
+            <form method="GET" action="{{ route('clientes') }}" id="form-filtros-clientes"
+                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Pesquisar</label>
+                    <input type="text" name="busca" value="{{ request('busca') }}"
+                           placeholder="Buscar por nome..."
+                           onchange="document.getElementById('form-filtros-clientes').submit()"
+                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Tipo</label>
+                    <select name="tipo" onchange="document.getElementById('form-filtros-clientes').submit()"
+                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="1" @selected(request('tipo') === '1')>Pessoa Jurídica (PJ)</option>
+                        <option value="0" @selected(request('tipo') === '0')>Pessoa Física (PF)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Status</label>
+                    <select name="status" onchange="document.getElementById('form-filtros-clientes').submit()"
+                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="ativo"   @selected(request('status') === 'ativo')>Ativo</option>
+                        <option value="inativo" @selected(request('status') === 'inativo')>Inativo</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Regime Tributário</label>
+                    <select name="regime_tributario" onchange="document.getElementById('form-filtros-clientes').submit()"
+                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="Simples Nacional" @selected(request('regime_tributario') === 'Simples Nacional')>Simples Nacional</option>
+                        <option value="Lucro Presumido"  @selected(request('regime_tributario') === 'Lucro Presumido')>Lucro Presumido</option>
+                        <option value="Lucro Real"       @selected(request('regime_tributario') === 'Lucro Real')>Lucro Real</option>
+                        <option value="MEI"              @selected(request('regime_tributario') === 'MEI')>MEI</option>
+                    </select>
+                </div>
+            </form>
+
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>

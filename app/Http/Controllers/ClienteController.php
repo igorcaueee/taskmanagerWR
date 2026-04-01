@@ -11,9 +11,34 @@ use Illuminate\View\View;
 
 class ClienteController extends Controller
 {
-    public function showClientes(): View
+    public function showClientes(Request $request): View
     {
-        $clientes = Cliente::orderBy('nome')->get();
+        $query = Cliente::orderBy('nome');
+
+        if ($request->filled('busca')) {
+            $busca = '%'.$request->string('busca').'%';
+            $query->where(function ($q) use ($busca) {
+                $q->where('nome', 'like', $busca)
+                    ->orWhere('cpfcnpj', 'like', $busca)
+                    ->orWhere('cidade', 'like', $busca)
+                    ->orWhere('estado', 'like', $busca)
+                    ->orWhere('regime_tributario', 'like', $busca);
+            });
+        }
+
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->input('tipo'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('regime_tributario')) {
+            $query->where('regime_tributario', $request->input('regime_tributario'));
+        }
+
+        $clientes = $query->get();
 
         return view('clientes.home', compact('clientes'));
     }
@@ -32,10 +57,11 @@ class ClienteController extends Controller
 
     public function saveCliente(Request $request): RedirectResponse
     {
-        $data = $request->only(['nome', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'cliente_desde', 'dataabertura']);
+        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'cliente_desde', 'dataabertura']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255'],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:255'],
@@ -58,10 +84,11 @@ class ClienteController extends Controller
     {
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'cliente_desde', 'dataabertura']);
+        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'cliente_desde', 'dataabertura']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255'],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:255'],

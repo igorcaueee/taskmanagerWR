@@ -8,22 +8,41 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\View\View;
 
 class UsuarioController extends Controller
 {
     public function showColaboradores(Request $request)
     {
-        $colaboradores = Usuario::orderBy('nome')->get();
+        $query = Usuario::orderBy('nome');
+
+        if ($request->filled('busca')) {
+            $busca = '%'.$request->string('busca').'%';
+            $query->where(function ($q) use ($busca) {
+                $q->where('nome', 'like', $busca)
+                    ->orWhere('email', 'like', $busca);
+            });
+        }
+
+        if ($request->filled('cargo')) {
+            $query->where('cargo', $request->input('cargo'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->boolean('status'));
+        }
+
+        $colaboradores = $query->get();
 
         return view('colaboradores.home', compact('colaboradores'));
     }
 
-    public function formColabCreate(): \Illuminate\View\View
+    public function formColabCreate(): View
     {
         return view('colaboradores.partials.formUsuario', ['colab' => null]);
     }
 
-    public function formColabEdit(int $id): \Illuminate\View\View
+    public function formColabEdit(int $id): View
     {
         $colab = Usuario::findOrFail($id);
 
