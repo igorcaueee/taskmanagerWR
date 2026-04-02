@@ -20,6 +20,12 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Colabs routes (use GET for page views so they load in browser)
 Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard')->middleware('auth');
 Route::get('/agenda', [AgendaController::class, 'showAgenda'])->name('agenda')->middleware('auth');
+Route::get('/agenda/compromisso/form', [AgendaController::class, 'formCompromisso'])->name('agenda.compromisso.form')->middleware('auth');
+Route::post('/agenda/compromisso', [AgendaController::class, 'storeCompromisso'])->name('agenda.compromisso.store')->middleware('auth');
+Route::put('/agenda/compromisso/{id}', [AgendaController::class, 'updateCompromisso'])->name('agenda.compromisso.update')->middleware('auth');
+Route::delete('/agenda/compromisso/{id}', [AgendaController::class, 'destroyCompromisso'])->name('agenda.compromisso.destroy')->middleware('auth');
+Route::get('/agenda/compromisso/{id}/detalhe', [AgendaController::class, 'detalheCompromisso'])->name('agenda.compromisso.detalhe')->middleware('auth');
+Route::get('/agenda/tarefa/{id}/detalhe', [AgendaController::class, 'detalheTarefa'])->name('agenda.tarefa.detalhe')->middleware('auth');
 // Clientes routes
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');

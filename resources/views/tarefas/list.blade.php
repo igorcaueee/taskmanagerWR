@@ -159,6 +159,10 @@
                             <p id="dp-responsavel" class="text-xs text-gray-700"></p>
                         </div>
                         <div>
+                            <p class="text-xs text-gray-400 mb-0.5">Supervisor</p>
+                            <p id="dp-supervisor" class="text-xs text-gray-700"></p>
+                        </div>
+                        <div>
                             <p class="text-xs text-gray-400 mb-0.5">Vencimento</p>
                             <p id="dp-vencimento" class="text-xs font-medium"></p>
                         </div>
@@ -393,6 +397,7 @@
         document.getElementById('dp-cliente').textContent      = t.cliente      ?? '—';
         document.getElementById('dp-departamento').textContent = t.departamento ?? '—';
         document.getElementById('dp-responsavel').textContent  = t.responsavel  ?? '—';
+        document.getElementById('dp-supervisor').textContent   = t.supervisor   ?? '—';
 
         // Vencimento
         const vencEl = document.getElementById('dp-vencimento');

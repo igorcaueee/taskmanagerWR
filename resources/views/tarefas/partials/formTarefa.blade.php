@@ -96,6 +96,19 @@
             </div>
         </div>
 
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Supervisor</label>
+            <select name="supervisor_id" class="mt-1 block w-full border rounded px-3 py-2">
+                <option value="">— Sem supervisor —</option>
+                @foreach($usuarios as $usuario)
+                    <option value="{{ $usuario->id }}"
+                        {{ old('supervisor_id', $isEditing ? $tarefa->supervisor_id : '') == $usuario->id ? 'selected' : '' }}>
+                        {{ $usuario->nome }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Data de Vencimento</label>

@@ -62,7 +62,7 @@ class TarefaController extends Controller
         $tarefas = $query->get();
 
         $clientes = Cliente::orderBy('nome')->get();
-        $etapas = Etapa::orderBy('ordem')->get();
+        $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
         $usuarios = $podeVerTodas ? Usuario::orderBy('nome')->get() : collect();
 
         return view('tarefas.home', compact('tarefas', 'clientes', 'etapas', 'usuarios', 'podeVerTodas'));
@@ -73,7 +73,7 @@ class TarefaController extends Controller
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'supervisor']);
 
-        $etapas = Etapa::orderBy('ordem')->get();
+        $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
 
         // Determina o ciclo selecionado (usa o ciclo atual se não informado)
         $cicloSelecionado = $request->filled('ciclo_id')
@@ -132,7 +132,7 @@ class TarefaController extends Controller
     {
         $clientes = Cliente::orderBy('nome')->get();
         $departamentos = Departamento::orderBy('nome')->get();
-        $etapas = Etapa::orderBy('ordem')->get();
+        $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
         $usuarios = Usuario::orderBy('nome')->get();
         $etapaDefault = $etapas->first(fn ($e) => strtolower(trim($e->nome)) === 'a fazer')?->id
             ?? $etapas->first()?->id;
@@ -157,7 +157,7 @@ class TarefaController extends Controller
 
         $clientes = Cliente::orderBy('nome')->get();
         $departamentos = Departamento::orderBy('nome')->get();
-        $etapas = Etapa::orderBy('ordem')->get();
+        $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
         $usuarios = Usuario::orderBy('nome')->get();
 
         return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'departamentos', 'etapas', 'usuarios'));
@@ -167,7 +167,7 @@ class TarefaController extends Controller
     {
         $data = $request->only([
             'titulo', 'descricao', 'cliente_id', 'departamento_id',
-            'etapa_id', 'responsavel_id', 'data_vencimento', 'prioridade', 'frequencia',
+            'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
         ]);
 
         $validator = Validator::make($data, [
@@ -177,6 +177,7 @@ class TarefaController extends Controller
             'departamento_id' => ['required', 'exists:departamentos,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
+            'supervisor_id' => ['nullable', 'exists:usuarios,id'],
             'data_vencimento' => ['required', 'date'],
             'prioridade' => ['required', 'integer', 'min:1', 'max:5'],
             'frequencia' => ['nullable', 'in:nenhuma,semanal,mensal,trimestral,semestral,anual'],
@@ -195,6 +196,7 @@ class TarefaController extends Controller
             'departamento_id' => $data['departamento_id'],
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $data['responsavel_id'] ?? null,
+            'supervisor_id' => $data['supervisor_id'] ?? null,
             'criado_por' => Auth::id(),
             'data_vencimento' => $data['data_vencimento'],
             'prioridade' => $data['prioridade'],
@@ -212,7 +214,7 @@ class TarefaController extends Controller
 
         $data = $request->only([
             'titulo', 'descricao', 'cliente_id', 'departamento_id',
-            'etapa_id', 'responsavel_id', 'data_vencimento', 'prioridade', 'frequencia',
+            'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
         ]);
 
         $validator = Validator::make($data, [
@@ -222,6 +224,7 @@ class TarefaController extends Controller
             'departamento_id' => ['required', 'exists:departamentos,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
+            'supervisor_id' => ['nullable', 'exists:usuarios,id'],
             'data_vencimento' => ['required', 'date'],
             'prioridade' => ['required', 'integer', 'min:1', 'max:5'],
             'frequencia' => ['nullable', 'in:nenhuma,semanal,mensal,trimestral,semestral,anual'],
@@ -235,6 +238,8 @@ class TarefaController extends Controller
         $novaEtapaForm = Etapa::findOrFail((int) $data['etapa_id']);
         $isFinalizadoForm = strtolower(trim($novaEtapaForm->nome)) === 'finalizado';
 
+        $etapaAnteriorId = $tarefa->etapa_id;
+
         $tarefa->update([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
@@ -242,6 +247,7 @@ class TarefaController extends Controller
             'departamento_id' => $data['departamento_id'],
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $data['responsavel_id'] ?? null,
+            'supervisor_id' => $data['supervisor_id'] ?? null,
             'data_vencimento' => $data['data_vencimento'],
             'prioridade' => $data['prioridade'],
             'ciclo_id' => Ciclo::findOrCreateForDate(Carbon::parse($data['data_vencimento']))->id,
@@ -252,6 +258,15 @@ class TarefaController extends Controller
                 ? ($tarefa->data_conclusao ?? now())
                 : null,
         ]);
+
+        if ((int) $etapaAnteriorId !== (int) $data['etapa_id']) {
+            RelTarefa::create([
+                'tarefa_id' => $tarefa->id,
+                'etapa_anterior_id' => $etapaAnteriorId,
+                'etapa_nova_id' => $data['etapa_id'],
+                'alterado_por' => Auth::id(),
+            ]);
+        }
 
         if ($isFinalizadoForm && $frequencia !== 'nenhuma') {
             $this->criarProximaOcorrencia($tarefa);
@@ -330,6 +345,7 @@ class TarefaController extends Controller
             'departamento_id' => $tarefa->departamento_id,
             'etapa_id' => $etapaInicial->id,
             'responsavel_id' => $tarefa->responsavel_id,
+            'supervisor_id' => $tarefa->supervisor_id,
             'criado_por' => $tarefa->criado_por,
             'data_vencimento' => $novaData->toDateString(),
             'prioridade' => $tarefa->prioridade,
@@ -344,6 +360,10 @@ class TarefaController extends Controller
     {
         $tarefa = Tarefa::findOrFail($id);
 
+        $etapaAnteriorId = $tarefa->etapa_id;
+
+        $etapaTransferido = Etapa::where('nome', 'Transferido para o próximo ciclo')->first();
+
         $proximoCiclo = Ciclo::findOrCreateForDate(
             Carbon::parse($tarefa->data_vencimento)->addWeek()->startOfWeek(Carbon::MONDAY)
         );
@@ -351,8 +371,16 @@ class TarefaController extends Controller
         $tarefa->update([
             'ciclo_id' => $proximoCiclo->id,
             'data_vencimento' => $proximoCiclo->data_inicio,
-            'passou_ciclo' => true,
-        ]);
+            'passou_ciclo' => true,            'prioridade' => 5,        ]);
+
+        if ($etapaTransferido) {
+            RelTarefa::create([
+                'tarefa_id' => $tarefa->id,
+                'etapa_anterior_id' => $etapaAnteriorId,
+                'etapa_nova_id' => $etapaTransferido->id,
+                'alterado_por' => Auth::id(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -367,6 +395,7 @@ class TarefaController extends Controller
             'departamento',
             'etapa',
             'responsavel',
+            'supervisor',
             'historico.etapaAnterior',
             'historico.etapaNova',
             'historico.alteradoPor',
@@ -382,6 +411,7 @@ class TarefaController extends Controller
             'departamento' => $tarefa->departamento?->nome,
             'etapa' => ['nome' => $tarefa->etapa?->nome, 'cor' => $tarefa->etapa?->cor ?? '#6b7280'],
             'responsavel' => $tarefa->responsavel?->nome,
+            'supervisor' => $tarefa->supervisor?->nome,
             'data_vencimento' => $tarefa->data_vencimento?->format('d/m/Y'),
             'atrasada' => (bool) $tarefa->atrasada,
             'prioridade' => $prioridadeLabels[$tarefa->prioridade] ?? $tarefa->prioridade,

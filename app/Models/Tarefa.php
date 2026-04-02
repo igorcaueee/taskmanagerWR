@@ -17,6 +17,7 @@ class Tarefa extends Model
         'departamento_id',
         'etapa_id',
         'responsavel_id',
+        'supervisor_id',
         'criado_por',
         'data_vencimento',
         'data_conclusao',
@@ -58,6 +59,11 @@ class Tarefa extends Model
     public function responsavel(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'responsavel_id');
+    }
+
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'supervisor_id');
     }
 
     public function criadoPor(): BelongsTo
