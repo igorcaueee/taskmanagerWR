@@ -20,5 +20,18 @@
                 @endif
             </div>
         </div>
+        <div>
+            <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-relatorios">
+                <span class="text-sm text-gray-700"><i class="fa-solid fa-chart-bar"></i> Relatórios</span>
+                <svg class="w-4 h-4 text-gray-500 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+            <div id="submenu-relatorios" class="hidden pl-3 mt-1 space-y-1">
+                <a href="{{ route('relatorios') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
+                <a href="{{ route('relatorios.clientes') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-building"></i> Clientes</a>
+                <a href="{{ route('relatorios.colaboradores') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
+            </div>
+        </div>
     </nav>
 </div>
