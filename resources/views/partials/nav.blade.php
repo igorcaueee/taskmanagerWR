@@ -15,7 +15,6 @@
             <li><a href="/login#services" class="text-gray-700 hover:text-blue-600 font-medium transition">Serviços</a></li>
             <li><a href="/login#about" class="text-gray-700 hover:text-blue-600 font-medium transition">Sobre</a></li>
             <li><a href="/login#contact" class="text-gray-700 hover:text-blue-600 font-medium transition">Contato</a></li>
-            <li><a href="/login" class="text-gray-700 hover:text-blue-600 font-medium transition">Login</a></li>
         </ul>
     </nav>
 </header>
