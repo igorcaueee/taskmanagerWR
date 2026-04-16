@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\Departamento;
 use App\Models\Etapa;
+use App\Models\Produto;
 use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
@@ -317,6 +318,33 @@ class RelatorioController extends Controller
             'vencidasPorColab',
             'topColabs',
             'evolucaoColabs',
+        ));
+    }
+
+    public function produtos(Request $request): View
+    {
+        $produtos = Produto::withCount('clientes')->orderBy('nome')->get();
+
+        $produtoFiltro = $request->filled('produto_id')
+            ? Produto::find($request->integer('produto_id'))
+            : null;
+
+        $clientesDoProduto = collect();
+        if ($produtoFiltro) {
+            $clientesDoProduto = $produtoFiltro->clientes()->orderBy('nome')->get();
+        }
+
+        $clientesSemProdutos = Cliente::query()
+            ->whereDoesntHave('produtos')
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get();
+
+        return view('relatorios.produtos', compact(
+            'produtos',
+            'produtoFiltro',
+            'clientesDoProduto',
+            'clientesSemProdutos',
         ));
     }
 

@@ -117,6 +117,34 @@
                 <option value="inativo" {{ old('status', $isEditing ? $cliente->status : 'ativo') === 'inativo' ? 'selected' : '' }}>Inativo</option>
             </select>
         </div>
+
+        <div>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input name="fator_r" type="checkbox" class="rounded border-gray-300"
+                       {{ old('fator_r', $isEditing ? $cliente->fator_r : false) ? 'checked' : '' }}>
+                Fator R
+            </label>
+        </div>
+
+        @if(isset($produtos) && $produtos->isNotEmpty())
+            @php
+                $produtosSelecionados = old('produtos', $isEditing ? $cliente->produtos->pluck('id')->toArray() : []);
+            @endphp
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Produtos / Serviços</label>
+                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded p-3">
+                    @foreach($produtos as $produto)
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" name="produtos[]" value="{{ $produto->id }}"
+                                   class="rounded border-gray-300"
+                                   {{ in_array($produto->id, $produtosSelecionados) ? 'checked' : '' }}>
+                            {{ $produto->nome }}
+                        </label>
+                    @endforeach
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Selecione os produtos/serviços que este cliente contrata ou pode contratar.</p>
+            </div>
+        @endif
     </div>
 
     <div class="flex justify-end gap-2 mt-6">

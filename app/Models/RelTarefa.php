@@ -13,6 +13,8 @@ class RelTarefa extends Model
         'tarefa_id',
         'etapa_anterior_id',
         'etapa_nova_id',
+        'responsavel_anterior_id',
+        'responsavel_novo_id',
         'alterado_por',
     ];
 
@@ -29,6 +31,16 @@ class RelTarefa extends Model
     public function etapaNova(): BelongsTo
     {
         return $this->belongsTo(Etapa::class, 'etapa_nova_id');
+    }
+
+    public function responsavelAnterior(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'responsavel_anterior_id');
+    }
+
+    public function responsavelNovo(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'responsavel_novo_id');
     }
 
     public function alteradoPor(): BelongsTo

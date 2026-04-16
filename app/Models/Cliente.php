@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Cliente extends Model
 {
@@ -16,7 +17,13 @@ class Cliente extends Model
         'cidade',
         'estado',
         'status',
+        'fator_r',
         'cliente_desde',
         'dataabertura',
     ];
+
+    public function produtos(): BelongsToMany
+    {
+        return $this->belongsToMany(Produto::class, 'cliente_produto');
+    }
 }

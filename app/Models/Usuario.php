@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -27,6 +28,7 @@ class Usuario extends Authenticatable
         'data_nascimento',
         'data_registro',
         'status',
+        'departamento_id',
     ];
 
     /**
@@ -61,4 +63,9 @@ class Usuario extends Authenticatable
     protected $hidden = [
         'senha',
     ];
+
+    public function departamento(): BelongsTo
+    {
+        return $this->belongsTo(Departamento::class);
+    }
 }

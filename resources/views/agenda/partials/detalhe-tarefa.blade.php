@@ -94,18 +94,28 @@
 
     {{-- History --}}
     <div class="border-t border-gray-100 pt-3">
-        <p class="text-xs text-gray-400 mb-2"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Histórico de etapas</p>
+        <p class="text-xs text-gray-400 mb-2"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Histórico</p>
         @if ($tarefa->historico->isNotEmpty())
             <ol reversed class="relative border-l border-gray-200 ml-2 space-y-3 text-xs">
                 @foreach ($tarefa->historico->sortByDesc('created_at') as $reg)
                     <li class="ml-4">
                         <span class="absolute -left-1.5 mt-0.5 w-3 h-3 rounded-full border border-white"
                               style="background-color: {{ $reg->etapaNova->cor ?? '#9ca3af' }};"></span>
-                        <p class="text-gray-700">
-                            <span class="font-medium">{{ $reg->etapaAnterior->nome ?? '—' }}</span>
-                            <i class="fa-solid fa-arrow-right mx-1 text-gray-400"></i>
-                            <span class="font-medium">{{ $reg->etapaNova->nome ?? '—' }}</span>
-                        </p>
+                        @if ($reg->etapa_nova_id)
+                            <p class="text-gray-700">
+                                <span class="font-medium">{{ $reg->etapaAnterior->nome ?? '—' }}</span>
+                                <i class="fa-solid fa-arrow-right mx-1 text-gray-400"></i>
+                                <span class="font-medium">{{ $reg->etapaNova->nome ?? '—' }}</span>
+                            </p>
+                        @endif
+                        @if ($reg->responsavel_novo_id)
+                            <p class="text-gray-700">
+                                <i class="fa-solid fa-user-pen mr-1 text-gray-400"></i>
+                                <span class="font-medium">{{ $reg->responsavelAnterior->nome ?? 'Nenhum' }}</span>
+                                <i class="fa-solid fa-arrow-right mx-1 text-gray-400"></i>
+                                <span class="font-medium">{{ $reg->responsavelNovo->nome ?? 'Nenhum' }}</span>
+                            </p>
+                        @endif
                         <p class="text-gray-400 mt-0.5">
                             {{ $reg->alteradoPor->nome ?? '—' }} · {{ $reg->created_at->format('d/m/Y H:i') }}
                         </p>

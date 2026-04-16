@@ -14,6 +14,7 @@
 
             <div id="submenu-cadastros" class="hidden pl-3 mt-1 space-y-1">
                 <a href="/clientes" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-building"></i> Clientes</a>
+                <a href="/produtos" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
                 <a href="/tarefas" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
                 @if (auth()->user()?->cargo === 'diretor')
                     <a href="/colaboradores" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
@@ -31,6 +32,7 @@
                 <a href="{{ route('relatorios') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
                 <a href="{{ route('relatorios.clientes') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-building"></i> Clientes</a>
                 <a href="{{ route('relatorios.colaboradores') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
+                <a href="{{ route('relatorios.produtos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
             </div>
         </div>
     </nav>

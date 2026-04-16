@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Produto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -45,19 +46,22 @@ class ClienteController extends Controller
 
     public function formClienteCreate(): View
     {
-        return view('clientes.partials.formCliente', ['cliente' => null]);
+        $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+
+        return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos]);
     }
 
     public function formClienteEdit(int $id): View
     {
-        $cliente = Cliente::findOrFail($id);
+        $cliente = Cliente::with('produtos')->findOrFail($id);
+        $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
 
-        return view('clientes.partials.formCliente', compact('cliente'));
+        return view('clientes.partials.formCliente', compact('cliente', 'produtos'));
     }
 
     public function saveCliente(Request $request): RedirectResponse
     {
-        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'cliente_desde', 'dataabertura']);
+        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -67,6 +71,7 @@ class ClienteController extends Controller
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
             'status' => ['nullable', 'string', 'max:255'],
+            'fator_r' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
         ]);
@@ -75,7 +80,12 @@ class ClienteController extends Controller
             return Redirect::back()->withErrors($validator)->withInput();
         }
 
+        $data['fator_r'] = isset($data['fator_r']);
+
         Cliente::create($data);
+
+        $cliente = Cliente::query()->latest()->first();
+        $cliente->produtos()->sync($request->input('produtos', []));
 
         return Redirect::route('clientes')->with('success', 'Cliente criado com sucesso.');
     }
@@ -84,7 +94,7 @@ class ClienteController extends Controller
     {
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'cliente_desde', 'dataabertura']);
+        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -94,6 +104,7 @@ class ClienteController extends Controller
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
             'status' => ['nullable', 'string', 'max:255'],
+            'fator_r' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
         ]);
@@ -102,7 +113,11 @@ class ClienteController extends Controller
             return Redirect::back()->withErrors($validator)->withInput();
         }
 
+        $data['fator_r'] = isset($data['fator_r']);
+
         $cliente->update($data);
+
+        $cliente->produtos()->sync($request->input('produtos', []));
 
         return Redirect::route('clientes')->with('success', 'Cliente atualizado com sucesso.');
     }

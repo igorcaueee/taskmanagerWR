@@ -443,14 +443,28 @@
             t.historico.forEach(h => {
                 const li = document.createElement('li');
                 li.className = 'ml-4';
-                li.innerHTML = `
-                    <span style="position:absolute;left:-5px;margin-top:6px;width:10px;height:10px;border-radius:50%;background:${h.etapa_nova_cor};border:2px solid white;display:block"></span>
-                    <p style="font-size:0.7rem;color:#374151">
+
+                let content = `<span style="position:absolute;left:-5px;margin-top:6px;width:10px;height:10px;border-radius:50%;background:${h.etapa_nova_cor ?? '#9ca3af'};border:2px solid white;display:block"></span>`;
+
+                if (h.etapa_nova) {
+                    content += `<p style="font-size:0.7rem;color:#374151">
                         ${h.etapa_anterior ? `<span style="font-weight:600">${h.etapa_anterior}</span> <i class="fa-solid fa-arrow-right" style="color:#9ca3af;font-size:0.6rem"></i> ` : ''}
                         <span style="font-weight:600;color:${h.etapa_nova_cor}">${h.etapa_nova}</span>
-                    </p>
-                    <p style="font-size:0.65rem;color:#9ca3af;margin-top:1px">${h.data}${h.alterado_por ? ' · ' + h.alterado_por : ''}</p>
-                `;
+                    </p>`;
+                }
+
+                if (h.responsavel_novo) {
+                    content += `<p style="font-size:0.7rem;color:#374151">
+                        <i class="fa-solid fa-user-pen" style="color:#9ca3af;font-size:0.6rem;margin-right:3px"></i>
+                        <span style="font-weight:600">${h.responsavel_anterior ?? 'Nenhum'}</span>
+                        <i class="fa-solid fa-arrow-right" style="color:#9ca3af;font-size:0.6rem"></i>
+                        <span style="font-weight:600">${h.responsavel_novo}</span>
+                    </p>`;
+                }
+
+                content += `<p style="font-size:0.65rem;color:#9ca3af;margin-top:1px">${h.data}${h.alterado_por ? ' · ' + h.alterado_por : ''}</p>`;
+
+                li.innerHTML = content;
                 histList.appendChild(li);
             });
         }

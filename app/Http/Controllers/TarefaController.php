@@ -152,6 +152,8 @@ class TarefaController extends Controller
         $tarefa = Tarefa::with([
             'historico.etapaAnterior',
             'historico.etapaNova',
+            'historico.responsavelAnterior',
+            'historico.responsavelNovo',
             'historico.alteradoPor',
         ])->findOrFail($id);
 
@@ -160,7 +162,9 @@ class TarefaController extends Controller
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
         $usuarios = Usuario::orderBy('nome')->get();
 
-        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'departamentos', 'etapas', 'usuarios'));
+        $podeMudarResponsavel = (int) Auth::id() === (int) $tarefa->supervisor_id;
+
+        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'departamentos', 'etapas', 'usuarios', 'podeMudarResponsavel'));
     }
 
     public function save(Request $request): RedirectResponse
@@ -239,6 +243,13 @@ class TarefaController extends Controller
         $isFinalizadoForm = strtolower(trim($novaEtapaForm->nome)) === 'finalizado';
 
         $etapaAnteriorId = $tarefa->etapa_id;
+        $responsavelAnteriorId = $tarefa->responsavel_id;
+
+        $podeMudarResponsavel = (int) Auth::id() === (int) $tarefa->supervisor_id;
+
+        $novoResponsavelId = $podeMudarResponsavel
+            ? ($data['responsavel_id'] ?? null)
+            : $tarefa->responsavel_id;
 
         $tarefa->update([
             'titulo' => $data['titulo'],
@@ -246,8 +257,10 @@ class TarefaController extends Controller
             'cliente_id' => $data['cliente_id'],
             'departamento_id' => $data['departamento_id'],
             'etapa_id' => $data['etapa_id'],
-            'responsavel_id' => $data['responsavel_id'] ?? null,
-            'supervisor_id' => $data['supervisor_id'] ?? null,
+            'responsavel_id' => $novoResponsavelId,
+            'supervisor_id' => $podeMudarResponsavel
+                ? ($data['supervisor_id'] ?? null)
+                : $tarefa->supervisor_id,
             'data_vencimento' => $data['data_vencimento'],
             'prioridade' => $data['prioridade'],
             'ciclo_id' => Ciclo::findOrCreateForDate(Carbon::parse($data['data_vencimento']))->id,
@@ -259,11 +272,16 @@ class TarefaController extends Controller
                 : null,
         ]);
 
-        if ((int) $etapaAnteriorId !== (int) $data['etapa_id']) {
+        $etapaMudou = (int) $etapaAnteriorId !== (int) $data['etapa_id'];
+        $responsavelMudou = (int) ($responsavelAnteriorId ?? 0) !== (int) ($novoResponsavelId ?? 0);
+
+        if ($etapaMudou || $responsavelMudou) {
             RelTarefa::create([
                 'tarefa_id' => $tarefa->id,
-                'etapa_anterior_id' => $etapaAnteriorId,
-                'etapa_nova_id' => $data['etapa_id'],
+                'etapa_anterior_id' => $etapaMudou ? $etapaAnteriorId : null,
+                'etapa_nova_id' => $etapaMudou ? $data['etapa_id'] : null,
+                'responsavel_anterior_id' => $responsavelMudou ? $responsavelAnteriorId : null,
+                'responsavel_novo_id' => $responsavelMudou ? $novoResponsavelId : null,
                 'alterado_por' => Auth::id(),
             ]);
         }
@@ -398,6 +416,8 @@ class TarefaController extends Controller
             'supervisor',
             'historico.etapaAnterior',
             'historico.etapaNova',
+            'historico.responsavelAnterior',
+            'historico.responsavelNovo',
             'historico.alteradoPor',
         ])->findOrFail($id);
 
@@ -422,6 +442,8 @@ class TarefaController extends Controller
                 'etapa_anterior' => $r->etapaAnterior?->nome,
                 'etapa_nova' => $r->etapaNova?->nome,
                 'etapa_nova_cor' => $r->etapaNova?->cor ?? '#6b7280',
+                'responsavel_anterior' => $r->responsavelAnterior?->nome,
+                'responsavel_novo' => $r->responsavelNovo?->nome,
                 'alterado_por' => $r->alteradoPor?->nome,
                 'data' => $r->created_at->format('d/m/Y H:i'),
             ])->values(),

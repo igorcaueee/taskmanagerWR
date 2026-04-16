@@ -73,6 +73,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade/UF</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente Desde</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fator R</th>
                         <th class="px-6 py-3"></th>
                     </tr>
                 </thead>
@@ -104,6 +105,13 @@
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Inativo</span>
                                 @endif
                             </td>
+                            <td class="px-6 py-4 text-sm text-center">
+                                @if($cliente->fator_r)
+                                    <i class="fa-solid fa-check text-green-600"></i>
+                                @else
+                                    <i class="fa-solid fa-xmark text-gray-300"></i>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 text-sm text-right">
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
@@ -122,7 +130,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum cliente encontrado.</td>
+                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum cliente encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>

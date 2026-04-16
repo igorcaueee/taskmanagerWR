@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Departamento;
 use App\Models\Usuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class UsuarioController extends Controller
 {
     public function showColaboradores(Request $request)
     {
-        $query = Usuario::orderBy('nome');
+        $query = Usuario::with('departamento')->orderBy('nome');
 
         if ($request->filled('busca')) {
             $busca = '%'.$request->string('busca').'%';
@@ -39,14 +40,17 @@ class UsuarioController extends Controller
 
     public function formColabCreate(): View
     {
-        return view('colaboradores.partials.formUsuario', ['colab' => null]);
+        $departamentos = Departamento::orderBy('nome')->get();
+
+        return view('colaboradores.partials.formUsuario', ['colab' => null, 'departamentos' => $departamentos]);
     }
 
     public function formColabEdit(int $id): View
     {
         $colab = Usuario::findOrFail($id);
+        $departamentos = Departamento::orderBy('nome')->get();
 
-        return view('colaboradores.partials.formUsuario', compact('colab'));
+        return view('colaboradores.partials.formUsuario', compact('colab', 'departamentos'));
     }
 
     /**
@@ -54,7 +58,7 @@ class UsuarioController extends Controller
      */
     public function saveColab(Request $request)
     {
-        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status']);
+        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -66,6 +70,7 @@ class UsuarioController extends Controller
             'data_nascimento' => ['nullable', 'date'],
             'data_registro' => ['nullable', 'date'],
             'status' => ['nullable', 'boolean'],
+            'departamento_id' => ['nullable', 'exists:departamentos,id'],
         ]);
 
         if ($validator->fails()) {
@@ -82,6 +87,7 @@ class UsuarioController extends Controller
             'data_nascimento' => $data['data_nascimento'] ?? null,
             'data_registro' => $data['data_registro'] ?? null,
             'status' => isset($data['status']) ? (bool) $data['status'] : true,
+            'departamento_id' => $data['departamento_id'] ?? null,
         ]);
 
         return Redirect::back()->with('success', 'Colaborador criado com sucesso.');
@@ -94,7 +100,7 @@ class UsuarioController extends Controller
     {
         $usuario = Usuario::findOrFail($id);
 
-        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status']);
+        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -106,6 +112,7 @@ class UsuarioController extends Controller
             'data_nascimento' => ['nullable', 'date'],
             'data_registro' => ['nullable', 'date'],
             'status' => ['nullable', 'boolean'],
+            'departamento_id' => ['nullable', 'exists:departamentos,id'],
         ]);
 
         if ($validator->fails()) {
@@ -121,6 +128,7 @@ class UsuarioController extends Controller
             'data_nascimento' => $data['data_nascimento'] ?? null,
             'data_registro' => $data['data_registro'] ?? null,
             'status' => isset($data['status']) ? (bool) $data['status'] : false,
+            'departamento_id' => $data['departamento_id'] ?? null,
         ];
 
         if (! empty($data['senha'])) {

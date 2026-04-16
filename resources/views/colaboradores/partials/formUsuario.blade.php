@@ -104,6 +104,19 @@
         </div>
 
         <div>
+            <label class="block text-sm font-medium text-gray-700">Departamento</label>
+            <select name="departamento_id" class="mt-1 block w-full border rounded px-3 py-2">
+                <option value="">— Selecione —</option>
+                @foreach($departamentos as $dep)
+                    <option value="{{ $dep->id }}"
+                        {{ old('departamento_id', $isEditing ? $colab->departamento_id : '') == $dep->id ? 'selected' : '' }}>
+                        {{ $dep->nome }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700">Status</label>
             <select name="status" class="mt-1 block w-full border rounded px-3 py-2">
                 <option value="1" {{ old('status', $isEditing ? (int) $colab->status : 1) == 1 ? 'selected' : '' }}>Ativo</option>

@@ -59,6 +59,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nascimento</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registro</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3"></th>
@@ -72,6 +73,7 @@
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->telefone ?? '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->data_nascimento ? \Illuminate\Support\Carbon::parse($colab->data_nascimento)->format('d/m/Y') : '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->data_registro ? \Illuminate\Support\Carbon::parse($colab->data_registro)->format('d/m/Y') : '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->departamento?->nome ?? '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 capitalize whitespace-nowrap">{{ $colab->cargo }}</td>
                             <td class="px-6 py-4 text-sm">
                                 @if($colab->status)
@@ -98,7 +100,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum colaborador encontrado.</td>
+                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum colaborador encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>
