@@ -42,25 +42,33 @@ class FileExplorerController extends Controller
             abort(404);
         }
 
-        $directories = collect($disk->directories($path))->map(function (string $dir) {
-            return [
-                'name' => basename($dir),
-                'path' => $dir,
-                'type' => 'folder',
-                'size' => null,
-                'lastModified' => $this->disk()->lastModified($dir),
-            ];
-        })->sortBy('name');
+        $directories = collect($disk->directories($path))->map(function (string $dir): ?array {
+            try {
+                return [
+                    'name' => basename($dir),
+                    'path' => $dir,
+                    'type' => 'folder',
+                    'size' => null,
+                    'lastModified' => $this->disk()->lastModified($dir),
+                ];
+            } catch (\Throwable) {
+                return null;
+            }
+        })->filter()->sortBy('name');
 
-        $files = collect($disk->files($path))->map(function (string $file) {
-            return [
-                'name' => basename($file),
-                'path' => $file,
-                'type' => 'file',
-                'size' => $this->disk()->size($file),
-                'lastModified' => $this->disk()->lastModified($file),
-            ];
-        })->sortBy('name');
+        $files = collect($disk->files($path))->map(function (string $file): ?array {
+            try {
+                return [
+                    'name' => basename($file),
+                    'path' => $file,
+                    'type' => 'file',
+                    'size' => $this->disk()->size($file),
+                    'lastModified' => $this->disk()->lastModified($file),
+                ];
+            } catch (\Throwable) {
+                return null;
+            }
+        })->filter()->sortBy('name');
 
         $items = $directories->merge($files)->values();
 
