@@ -4,6 +4,7 @@ use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FileExplorerController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\TarefaController;
@@ -64,3 +65,10 @@ Route::get('/colaboradores/{id}/form', [UsuarioController::class, 'formColabEdit
 Route::post('/colaboradores/save', [UsuarioController::class, 'saveColab'])->name('colaboradores.save')->middleware('auth');
 Route::put('/colaboradores/{id}', [UsuarioController::class, 'updateColab'])->name('colaboradores.update')->middleware('auth');
 Route::delete('/colaboradores/{id}', [UsuarioController::class, 'deleteColab'])->name('colaboradores.delete')->middleware('auth');
+// Arquivos routes
+Route::get('/arquivos', [FileExplorerController::class, 'index'])->name('arquivos')->middleware('auth');
+Route::get('/arquivos/download', [FileExplorerController::class, 'download'])->name('arquivos.download')->middleware('auth');
+Route::post('/arquivos/upload', [FileExplorerController::class, 'upload'])->name('arquivos.upload')->middleware('auth');
+Route::post('/arquivos/folder', [FileExplorerController::class, 'createFolder'])->name('arquivos.createFolder')->middleware('auth');
+Route::put('/arquivos/rename', [FileExplorerController::class, 'rename'])->name('arquivos.rename')->middleware('auth');
+Route::delete('/arquivos/delete', [FileExplorerController::class, 'delete'])->name('arquivos.delete')->middleware('auth');

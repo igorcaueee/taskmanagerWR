@@ -3,6 +3,7 @@
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
         <a href="{{ route('tarefas.list')}}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
         <a href="{{ route('agenda') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-calendar-days"></i> Agenda</a>
+        <a href="{{ route('arquivos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-folder-open"></i> Arquivos</a>
         <!-- Example collapsible submenu: Cadastros -->
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-cadastros">

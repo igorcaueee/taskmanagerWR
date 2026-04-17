@@ -19,6 +19,7 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - '.:/var/www/html'
+            - '${SHARED_FOLDER_HOST_PATH:-/mnt/shared}:/mnt/shared'
         networks:
             - sail
         depends_on:
