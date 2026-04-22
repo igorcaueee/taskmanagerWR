@@ -21,10 +21,18 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
-            <div class="relative">
+            <form method="GET" action="{{ route('arquivos') }}" class="relative">
+                @if(request('path'))
+                    <input type="hidden" name="path" value="{{ request('path') }}">
+                @endif
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                <input type="text" id="searchInput" placeholder="Buscar arquivos e pastas..." class="pl-8 pr-3 py-2 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-56 transition">
-            </div>
+                <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Buscar arquivos e pastas..." class="pl-8 pr-3 py-2 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-56 transition">
+            </form>
+            @if(request('busca'))
+                <a href="{{ route('arquivos', array_filter(['path' => request('path')])) }}" class="text-sm text-gray-400 hover:text-gray-600 no-underline" title="Limpar busca">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            @endif
             <button onclick="document.getElementById('newFolderModal').classList.remove('hidden')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded border border-gray-300 transition">
                 <i class="fa-solid fa-folder-plus"></i> Nova Pasta
             </button>
@@ -332,29 +340,6 @@
         } else {
             const data = await res.json();
             alert(data.error || 'Erro ao renomear.');
-        }
-    });
-
-    // ─── Search Filter ───
-    document.getElementById('searchInput').addEventListener('input', function () {
-        const query = this.value.trim().toLowerCase();
-        const rows = document.querySelectorAll('tbody tr[data-name]');
-
-        rows.forEach(row => {
-            const name = row.getAttribute('data-name').toLowerCase();
-            row.style.display = (!query || name.includes(query)) ? '' : 'none';
-        });
-
-        const empty = document.getElementById('emptySearchMessage');
-        if (empty) { empty.remove(); }
-
-        const visible = Array.from(rows).filter(r => r.style.display !== 'none');
-        if (query && visible.length === 0) {
-            const tbody = document.querySelector('tbody');
-            const tr = document.createElement('tr');
-            tr.id = 'emptySearchMessage';
-            tr.innerHTML = `<td colspan="4" class="px-4 py-8 text-center text-gray-400"><i class="fa-solid fa-magnifying-glass text-2xl mb-2"></i><p class="mt-2">Nenhum resultado para "<strong>${this.value.trim()}</strong>"</p></td>`;
-            tbody.appendChild(tr);
         }
     });
 

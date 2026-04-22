@@ -73,6 +73,14 @@ class FileExplorerController extends Controller
 
         $items = $directories->merge($files)->values();
 
+        // Search filter (applied before pagination so it covers all pages)
+        $search = trim((string) $request->query('busca', ''));
+        if ($search !== '') {
+            $items = $items->filter(function (array $item) use ($search): bool {
+                return str_contains(mb_strtolower($item['name']), mb_strtolower($search));
+            })->values();
+        }
+
         // Pagination
         $perPage = 30;
         $currentPage = max(1, (int) $request->query('page', 1));
@@ -81,7 +89,7 @@ class FileExplorerController extends Controller
             $items->count(),
             $perPage,
             $currentPage,
-            ['query' => array_filter(['path' => $path ?: null])]
+            ['query' => array_filter(['path' => $path ?: null, 'busca' => $search ?: null])]
         );
         $paginatedItems->setPath(route('arquivos'));
 
@@ -144,7 +152,11 @@ class FileExplorerController extends Controller
             return response()->json(['error' => 'Pasta já existe.'], 422);
         }
 
-        $this->disk()->makeDirectory($fullPath);
+        try {
+            $this->disk()->makeDirectory($fullPath);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Não foi possível criar a pasta: '.$e->getMessage()], 500);
+        }
 
         return response()->json(['success' => true]);
     }
