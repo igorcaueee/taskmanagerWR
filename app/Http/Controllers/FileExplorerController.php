@@ -6,6 +6,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -120,6 +121,12 @@ class FileExplorerController extends Controller
 
     public function upload(Request $request): JsonResponse
     {
+        Log::info('[Arquivos] Upload iniciado', [
+            'path' => $request->input('path'),
+            'disk_root' => config('filesystems.disks.shared.root'),
+            'files' => collect($request->file('files') ?? [])->map(fn ($f) => $f?->getClientOriginalName())->toArray(),
+        ]);
+
         $request->validate([
             'path' => ['nullable', 'string'],
             'files' => ['required', 'array'],
@@ -130,7 +137,14 @@ class FileExplorerController extends Controller
 
         foreach ($request->file('files') as $file) {
             $filename = $file->getClientOriginalName();
-            $this->disk()->putFileAs($path, $file, $filename);
+            try {
+                $result = $this->disk()->putFileAs($path, $file, $filename);
+                Log::info('[Arquivos] Upload concluído', ['file' => $filename, 'result' => $result]);
+            } catch (\Throwable $e) {
+                Log::error('[Arquivos] Erro no upload', ['file' => $filename, 'error' => $e->getMessage()]);
+
+                return response()->json(['error' => 'Erro ao enviar '.$filename.': '.$e->getMessage()], 500);
+            }
         }
 
         return response()->json(['success' => true]);
@@ -138,6 +152,12 @@ class FileExplorerController extends Controller
 
     public function createFolder(Request $request): JsonResponse
     {
+        Log::info('[Arquivos] Criar pasta iniciado', [
+            'path' => $request->input('path'),
+            'name' => $request->input('name'),
+            'disk_root' => config('filesystems.disks.shared.root'),
+        ]);
+
         $request->validate([
             'path' => ['nullable', 'string'],
             'name' => ['required', 'string', 'max:255'],
@@ -147,14 +167,20 @@ class FileExplorerController extends Controller
         $name = str_replace(['/', '\\', '..'], '', $request->input('name'));
 
         $fullPath = $path === '' ? $name : $path.'/'.$name;
+        Log::info('[Arquivos] fullPath resolvido', ['fullPath' => $fullPath]);
 
         if ($this->disk()->directoryExists($fullPath)) {
+            Log::warning('[Arquivos] Pasta já existe', ['fullPath' => $fullPath]);
+
             return response()->json(['error' => 'Pasta já existe.'], 422);
         }
 
         try {
             $this->disk()->makeDirectory($fullPath);
+            Log::info('[Arquivos] Pasta criada com sucesso', ['fullPath' => $fullPath]);
         } catch (\Throwable $e) {
+            Log::error('[Arquivos] Erro ao criar pasta', ['fullPath' => $fullPath, 'error' => $e->getMessage()]);
+
             return response()->json(['error' => 'Não foi possível criar a pasta: '.$e->getMessage()], 500);
         }
 
