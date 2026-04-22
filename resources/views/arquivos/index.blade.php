@@ -84,7 +84,7 @@
                             {{ \Carbon\Carbon::createFromTimestamp($item['lastModified'])->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <div class="inline-flex items-center gap-1">
                                 @if($item['type'] === 'file')
                                     <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="Baixar">
                                         <i class="fa-solid fa-download text-xs"></i>

@@ -3,7 +3,7 @@
 @section('title', 'Clientes — WR Assessoria')
 
 @section('content')
-    <div class="max-w-7xl mx-auto py-6 px-4">
+    <div class="w-full mx-auto py-6 px-4">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-users"></i> Clientes</h1>
@@ -21,7 +21,7 @@
             <div class="mb-4 px-4 py-3 bg-green-100 text-green-800 rounded">{{ session('success') }}</div>
         @endif
 
-        <div class="bg-white rounded shadow overflow-x-auto">
+        <div class="bg-white rounded shadow">
             {{-- Filters --}}
             <form method="GET" action="{{ route('clientes') }}" id="form-filtros-clientes"
                   class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
@@ -80,7 +80,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($clientes as $cliente)
                         <tr>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                            <td class="px-6 py-4 text-sm text-gray-700">
                                 @if((string) $cliente->tipo === '1')
                                     <i class="fa-solid fa-building-user"></i>
                                 @elseif((string) $cliente->tipo === '0')
@@ -89,13 +89,13 @@
                                     —
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->nome }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $cliente->nome }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $cliente->cpfcnpj ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $cliente->regime_tributario ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">
                                 {{ $cliente->cidade ?? '—' }}{{ $cliente->estado ? '/' . $cliente->estado : '' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                            <td class="px-6 py-4 text-sm text-gray-700">
                                 {{ $cliente->cliente_desde ? \Illuminate\Support\Carbon::parse($cliente->cliente_desde)->format('d/m/Y') : '—' }}
                             </td>
                             <td class="px-6 py-4 text-sm">
