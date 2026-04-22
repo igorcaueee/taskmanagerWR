@@ -176,7 +176,12 @@ class FileExplorerController extends Controller
         }
 
         try {
-            $this->disk()->makeDirectory($fullPath);
+            $result = $this->disk()->makeDirectory($fullPath);
+            if (! $result) {
+                Log::error('[Arquivos] makeDirectory retornou false', ['fullPath' => $fullPath, 'disk_root' => config('filesystems.disks.shared.root')]);
+
+                return response()->json(['error' => 'Não foi possível criar a pasta. Verifique permissões no servidor.'], 500);
+            }
             Log::info('[Arquivos] Pasta criada com sucesso', ['fullPath' => $fullPath]);
         } catch (\Throwable $e) {
             Log::error('[Arquivos] Erro ao criar pasta', ['fullPath' => $fullPath, 'error' => $e->getMessage()]);
