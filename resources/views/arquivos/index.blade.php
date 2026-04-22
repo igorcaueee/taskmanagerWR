@@ -20,7 +20,11 @@
             </nav>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                <input type="text" id="searchInput" placeholder="Buscar arquivos e pastas..." class="pl-8 pr-3 py-2 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-56 transition">
+            </div>
             <button onclick="document.getElementById('newFolderModal').classList.remove('hidden')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded border border-gray-300 transition">
                 <i class="fa-solid fa-folder-plus"></i> Nova Pasta
             </button>
@@ -80,7 +84,7 @@
                             {{ \Carbon\Carbon::createFromTimestamp($item['lastModified'])->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <div class="inline-flex items-center gap-1">
                                 @if($item['type'] === 'file')
                                     <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="Baixar">
                                         <i class="fa-solid fa-download text-xs"></i>
@@ -290,6 +294,29 @@
         } else {
             const data = await res.json();
             alert(data.error || 'Erro ao renomear.');
+        }
+    });
+
+    // ─── Search Filter ───
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const query = this.value.trim().toLowerCase();
+        const rows = document.querySelectorAll('tbody tr[data-name]');
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name').toLowerCase();
+            row.style.display = (!query || name.includes(query)) ? '' : 'none';
+        });
+
+        const empty = document.getElementById('emptySearchMessage');
+        if (empty) { empty.remove(); }
+
+        const visible = Array.from(rows).filter(r => r.style.display !== 'none');
+        if (query && visible.length === 0) {
+            const tbody = document.querySelector('tbody');
+            const tr = document.createElement('tr');
+            tr.id = 'emptySearchMessage';
+            tr.innerHTML = `<td colspan="4" class="px-4 py-8 text-center text-gray-400"><i class="fa-solid fa-magnifying-glass text-2xl mb-2"></i><p class="mt-2">Nenhum resultado para "<strong>${this.value.trim()}</strong>"</p></td>`;
+            tbody.appendChild(tr);
         }
     });
 
