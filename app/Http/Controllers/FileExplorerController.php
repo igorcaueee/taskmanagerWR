@@ -83,6 +83,7 @@ class FileExplorerController extends Controller
             $currentPage,
             ['query' => array_filter(['path' => $path ?: null])]
         );
+        $paginatedItems->setPath(route('arquivos'));
 
         // Build breadcrumbs
         $breadcrumbs = [];
