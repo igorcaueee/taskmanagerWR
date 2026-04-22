@@ -6,6 +6,7 @@ services:
             args:
                 WWWGROUP: '${WWWGROUP}'
         image: 'sail-8.5/app'
+        container_name: taskmanager
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -26,6 +27,7 @@ services:
             - mysql
     mysql:
         image: 'mysql:8.4'
+        container_name: taskmanagermysql
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         environment:
