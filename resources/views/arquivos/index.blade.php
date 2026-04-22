@@ -43,13 +43,54 @@
     </div>
 
     {{-- File Table --}}
+    @php
+        function sortUrl(string $col, string $currentSort, string $currentDir, string $path, string $busca): string {
+            $dir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
+            return route('arquivos', array_filter(['path' => $path ?: null, 'busca' => $busca ?: null, 'sort' => $col !== 'name' ? $col : null, 'dir' => $dir !== 'asc' ? $dir : null]));
+        }
+        function sortIcon(string $col, string $currentSort, string $currentDir): string {
+            if ($currentSort !== $col) return '<i class="fa-solid fa-sort text-gray-300 text-xs ml-1"></i>';
+            return $currentDir === 'asc'
+                ? '<i class="fa-solid fa-sort-up text-blue-500 text-xs ml-1"></i>'
+                : '<i class="fa-solid fa-sort-down text-blue-500 text-xs ml-1"></i>';
+        }
+        function fileIcon(string $name): string {
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            return match(true) {
+                in_array($ext, ['pdf'])                          => '<i class="fa-regular fa-file-pdf text-red-500"></i>',
+                in_array($ext, ['doc', 'docx'])                  => '<i class="fa-regular fa-file-word text-blue-600"></i>',
+                in_array($ext, ['xls', 'xlsx', 'csv'])           => '<i class="fa-regular fa-file-excel text-green-600"></i>',
+                in_array($ext, ['ppt', 'pptx'])                  => '<i class="fa-regular fa-file-powerpoint text-orange-500"></i>',
+                in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']) => '<i class="fa-regular fa-file-image text-purple-500"></i>',
+                in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz']) => '<i class="fa-regular fa-file-zipper text-yellow-600"></i>',
+                in_array($ext, ['mp4', 'avi', 'mov', 'mkv', 'wmv']) => '<i class="fa-regular fa-file-video text-pink-500"></i>',
+                in_array($ext, ['mp3', 'wav', 'ogg', 'flac'])    => '<i class="fa-regular fa-file-audio text-indigo-500"></i>',
+                in_array($ext, ['txt'])                           => '<i class="fa-regular fa-file-lines text-gray-500"></i>',
+                in_array($ext, ['json', 'xml', 'yaml', 'yml'])   => '<i class="fa-regular fa-file-code text-teal-500"></i>',
+                in_array($ext, ['php', 'js', 'ts', 'html', 'css', 'py', 'java']) => '<i class="fa-regular fa-file-code text-teal-500"></i>',
+                default                                           => '<i class="fa-regular fa-file text-gray-400"></i>',
+            };
+        }
+    @endphp
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                    <th class="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
-                    <th class="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Tamanho</th>
-                    <th class="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Modificado</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-600">
+                        <a href="{{ sortUrl('name', $sortBy, $sortDir, $path, request('busca','')) }}" class="inline-flex items-center no-underline text-gray-600 hover:text-blue-600">
+                            Nome {!! sortIcon('name', $sortBy, $sortDir) !!}
+                        </a>
+                    </th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">
+                        <a href="{{ sortUrl('size', $sortBy, $sortDir, $path, request('busca','')) }}" class="inline-flex items-center no-underline text-gray-600 hover:text-blue-600">
+                            Tamanho {!! sortIcon('size', $sortBy, $sortDir) !!}
+                        </a>
+                    </th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">
+                        <a href="{{ sortUrl('lastModified', $sortBy, $sortDir, $path, request('busca','')) }}" class="inline-flex items-center no-underline text-gray-600 hover:text-blue-600">
+                            Modificado {!! sortIcon('lastModified', $sortBy, $sortDir) !!}
+                        </a>
+                    </th>
                     <th class="text-right px-4 py-3 font-medium text-gray-600 w-24">Ações</th>
                 </tr>
             </thead>
@@ -76,7 +117,7 @@
                                 </a>
                             @else
                                 <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="inline-flex items-center gap-2 text-gray-800 hover:text-blue-600 no-underline">
-                                    <i class="fa-regular fa-file text-gray-400"></i>
+                                    {!! fileIcon($item['name']) !!}
                                     {{ $item['name'] }}
                                 </a>
                             @endif

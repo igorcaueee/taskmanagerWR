@@ -56,7 +56,7 @@ class FileExplorerController extends Controller
             } catch (\Throwable) {
                 return null;
             }
-        })->filter()->sortBy('name');
+        })->filter();
 
         $files = collect($disk->files($path))->map(function (string $file): ?array {
             try {
@@ -70,9 +70,17 @@ class FileExplorerController extends Controller
             } catch (\Throwable) {
                 return null;
             }
-        })->filter()->sortBy('name');
+        })->filter();
 
-        $items = $directories->merge($files)->values();
+        // Sorting — folders always on top, then files
+        $sortBy = in_array($request->query('sort'), ['name', 'lastModified', 'size']) ? $request->query('sort') : 'name';
+        $sortDir = $request->query('dir') === 'desc' ? 'desc' : 'asc';
+
+        $sort = fn ($collection) => $sortDir === 'asc'
+            ? $collection->sortBy($sortBy, SORT_NATURAL | SORT_FLAG_CASE)
+            : $collection->sortByDesc($sortBy, SORT_NATURAL | SORT_FLAG_CASE);
+
+        $items = $sort($directories)->values()->merge($sort($files)->values())->values();
 
         // Search filter (applied before pagination so it covers all pages)
         $search = trim((string) $request->query('busca', ''));
@@ -90,7 +98,7 @@ class FileExplorerController extends Controller
             $items->count(),
             $perPage,
             $currentPage,
-            ['query' => array_filter(['path' => $path ?: null, 'busca' => $search ?: null])]
+            ['query' => array_filter(['path' => $path ?: null, 'busca' => $search ?: null, 'sort' => $sortBy !== 'name' ? $sortBy : null, 'dir' => $sortDir !== 'asc' ? $sortDir : null])]
         );
         $paginatedItems->setPath(route('arquivos'));
 
@@ -105,7 +113,7 @@ class FileExplorerController extends Controller
             }
         }
 
-        return view('arquivos.index', compact('paginatedItems', 'path', 'breadcrumbs'));
+        return view('arquivos.index', compact('paginatedItems', 'path', 'breadcrumbs', 'sortBy', 'sortDir'));
     }
 
     public function download(Request $request): StreamedResponse
