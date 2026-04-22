@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -72,6 +73,17 @@ class FileExplorerController extends Controller
 
         $items = $directories->merge($files)->values();
 
+        // Pagination
+        $perPage = 30;
+        $currentPage = max(1, (int) $request->query('page', 1));
+        $paginatedItems = new LengthAwarePaginator(
+            $items->forPage($currentPage, $perPage),
+            $items->count(),
+            $perPage,
+            $currentPage,
+            ['query' => array_filter(['path' => $path ?: null])]
+        );
+
         // Build breadcrumbs
         $breadcrumbs = [];
         if ($path !== '') {
@@ -83,7 +95,7 @@ class FileExplorerController extends Controller
             }
         }
 
-        return view('arquivos.index', compact('items', 'path', 'breadcrumbs'));
+        return view('arquivos.index', compact('paginatedItems', 'path', 'breadcrumbs'));
     }
 
     public function download(Request $request): StreamedResponse

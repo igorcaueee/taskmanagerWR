@@ -58,7 +58,7 @@
                     </tr>
                 @endif
 
-                @forelse($items as $item)
+                @forelse($paginatedItems as $item)
                     <tr class="hover:bg-gray-50 group" data-path="{{ $item['path'] }}" data-type="{{ $item['type'] }}" data-name="{{ $item['name'] }}">
                         <td class="px-4 py-3">
                             @if($item['type'] === 'folder')
@@ -110,6 +110,44 @@
             </tbody>
         </table>
     </div>
+
+    {{-- Pagination --}}
+    @if($paginatedItems->hasPages())
+        <div class="flex items-center justify-between mt-4 text-sm text-gray-600">
+            <span>
+                Exibindo {{ $paginatedItems->firstItem() }}–{{ $paginatedItems->lastItem() }} de {{ $paginatedItems->total() }} itens
+            </span>
+            <div class="flex items-center gap-1">
+                @if($paginatedItems->onFirstPage())
+                    <span class="px-3 py-1.5 rounded border border-gray-200 text-gray-300 cursor-not-allowed bg-white">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </span>
+                @else
+                    <a href="{{ $paginatedItems->previousPageUrl() }}" class="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 text-gray-600 no-underline bg-white">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </a>
+                @endif
+
+                @foreach($paginatedItems->getUrlRange(max(1, $paginatedItems->currentPage() - 2), min($paginatedItems->lastPage(), $paginatedItems->currentPage() + 2)) as $page => $url)
+                    @if($page === $paginatedItems->currentPage())
+                        <span class="px-3 py-1.5 rounded border border-blue-500 bg-blue-600 text-white font-medium">{{ $page }}</span>
+                    @else
+                        <a href="{{ $url }}" class="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 text-gray-600 no-underline bg-white">{{ $page }}</a>
+                    @endif
+                @endforeach
+
+                @if($paginatedItems->hasMorePages())
+                    <a href="{{ $paginatedItems->nextPageUrl() }}" class="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 text-gray-600 no-underline bg-white">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </a>
+                @else
+                    <span class="px-3 py-1.5 rounded border border-gray-200 text-gray-300 cursor-not-allowed bg-white">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </span>
+                @endif
+            </div>
+        </div>
+    @endif
 </div>
 
 {{-- Upload Modal --}}
