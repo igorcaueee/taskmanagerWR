@@ -12,8 +12,9 @@
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
+        @stack('styles')
     </head>
-    <body class="bg-white text-gray-900 antialiased">
+    <body class="bg-black text-gray-100 antialiased">
         @include('partials.nav')
 
         <main>

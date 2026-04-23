@@ -2,7 +2,7 @@
     <div class="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div class="flex items-center gap-4">
             <div class="flex items-center gap-3">
-                <img src="/images/logo7.png" alt="WR" class="w-16 h-16">
+                <img src="/images/torresemfundo.png" alt="WR" class="w-16 h-16">
             </div>
         </div>
 
