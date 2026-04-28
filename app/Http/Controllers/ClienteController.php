@@ -61,7 +61,7 @@ class ClienteController extends Controller
 
     public function saveCliente(Request $request): RedirectResponse
     {
-        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura']);
+        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -74,6 +74,10 @@ class ClienteController extends Controller
             'fator_r' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
+            'faturamento' => ['nullable', 'numeric', 'min:0'],
+            'servico' => ['nullable', 'string', 'max:255'],
+            'honorario' => ['nullable', 'numeric', 'min:0'],
+            'possibilidade' => ['nullable', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -94,7 +98,7 @@ class ClienteController extends Controller
     {
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura']);
+        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -107,6 +111,10 @@ class ClienteController extends Controller
             'fator_r' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
+            'faturamento' => ['nullable', 'numeric', 'min:0'],
+            'servico' => ['nullable', 'string', 'max:255'],
+            'honorario' => ['nullable', 'numeric', 'min:0'],
+            'possibilidade' => ['nullable', 'string'],
         ]);
 
         if ($validator->fails()) {

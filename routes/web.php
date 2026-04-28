@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileExplorerController;
+use App\Http\Controllers\FunilController;
+use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\TarefaController;
@@ -20,6 +22,10 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Public lead capture form (no auth required)
+Route::get('/funil/captura', [LeadCapturaController::class, 'showForm'])->name('funil.captura');
+Route::post('/funil/captura', [LeadCapturaController::class, 'store'])->name('funil.captura.store');
+
 // Colabs routes (use GET for page views so they load in browser)
 Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard')->middleware('auth');
 Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios')->middleware('auth');
@@ -33,6 +39,17 @@ Route::put('/agenda/compromisso/{id}', [AgendaController::class, 'updateCompromi
 Route::delete('/agenda/compromisso/{id}', [AgendaController::class, 'destroyCompromisso'])->name('agenda.compromisso.destroy')->middleware('auth');
 Route::get('/agenda/compromisso/{id}/detalhe', [AgendaController::class, 'detalheCompromisso'])->name('agenda.compromisso.detalhe')->middleware('auth');
 Route::get('/agenda/tarefa/{id}/detalhe', [AgendaController::class, 'detalheTarefa'])->name('agenda.tarefa.detalhe')->middleware('auth');
+// Funil de Vendas (CRM) routes
+Route::get('/funil', [FunilController::class, 'showFunil'])->name('funil')->middleware(['auth', 'diretor']);
+Route::get('/leads/form', [FunilController::class, 'formCreate'])->name('leads.form.create')->middleware(['auth', 'diretor']);
+Route::get('/leads/{id}/form', [FunilController::class, 'formEdit'])->name('leads.form.edit')->middleware(['auth', 'diretor']);
+Route::post('/leads/save', [FunilController::class, 'save'])->name('leads.save')->middleware(['auth', 'diretor']);
+Route::put('/leads/{id}', [FunilController::class, 'update'])->name('leads.update')->middleware(['auth', 'diretor']);
+Route::patch('/leads/{id}/etapa', [FunilController::class, 'updateEtapa'])->name('leads.update.etapa')->middleware(['auth', 'diretor']);
+Route::get('/leads/{id}/detalhe', [FunilController::class, 'detalhe'])->name('leads.detalhe')->middleware(['auth', 'diretor']);
+Route::get('/leads/{id}/form-conversao', [FunilController::class, 'formConversao'])->name('leads.form.conversao')->middleware(['auth', 'diretor']);
+Route::post('/leads/{id}/converter', [FunilController::class, 'converterParaCliente'])->name('leads.converter')->middleware(['auth', 'diretor']);
+Route::delete('/leads/{id}', [FunilController::class, 'delete'])->name('leads.delete')->middleware(['auth', 'diretor']);
 // Clientes routes
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');

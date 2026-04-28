@@ -13,6 +13,7 @@ class Cliente extends Model
         'nome',
         'descricao',
         'cpfcnpj',
+        'tipo',
         'regime_tributario',
         'cidade',
         'estado',
@@ -20,6 +21,10 @@ class Cliente extends Model
         'fator_r',
         'cliente_desde',
         'dataabertura',
+        'faturamento',
+        'servico',
+        'honorario',
+        'possibilidade',
     ];
 
     public function produtos(): BelongsToMany

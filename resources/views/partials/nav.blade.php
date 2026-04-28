@@ -15,7 +15,7 @@
             <a href="#services" class="text-sm font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 hover:text-white no-underline" style="color:rgba(255,255,255,.8);">Serviços</a>
             <a href="#about"    class="text-sm font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 hover:text-white no-underline" style="color:rgba(255,255,255,.8);">Sobre</a>
             <a href="#location" class="text-sm font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 hover:text-white no-underline" style="color:rgba(255,255,255,.8);">Localização</a>
-            <a href="#contact" class="ml-4 inline-flex items-center gap-2 shrink-0 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(0,132,170,.5)] hover:scale-[1.02] no-underline" style="background:#0084aa;">
+            <a href="{{ route('funil.captura') }}" class="ml-4 inline-flex items-center gap-2 shrink-0 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(0,132,170,.5)] hover:scale-[1.02] no-underline" style="background:#0084aa;">
                 <i class="far fa-calendar-check text-sm"></i>
                 Fale com um especialista
             </a>
@@ -32,8 +32,8 @@
         <a href="#services" class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Serviços</a>
         <a href="#about"    class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Sobre</a>
         <a href="#location" class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Localização</a>
-        <a href="#contact"  class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Contato</a>
-        <a href="#contact"  class="mt-3 inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-3 rounded-xl no-underline" style="background:#0084aa;">
+        <a href="{{ route('funil.captura') }}"  class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Contato</a>
+        <a href="{{ route('funil.captura') }}"  class="mt-3 inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-3 rounded-xl no-underline" style="background:#0084aa;">
             <i class="far fa-calendar-check"></i> Fale com um especialista
         </a>
     </div>

@@ -254,7 +254,7 @@
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 reveal reveal-delay-3">
-                <a href="#contact"
+                <a href="{{ route('funil.captura') }}"
                    class="group inline-flex items-center gap-3 bg-brand text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_0_40px_rgba(0,132,170,.5)] hover:scale-[1.02] no-underline">
                     Quero ser cliente
                     <i class="fas fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
@@ -270,7 +270,7 @@
         <div class="hidden lg:flex absolute right-8 bottom-20 flex-col gap-3 reveal reveal-delay-4">
             <div class="flex items-center gap-3 bg-black/50 backdrop-blur-sm border border-white/10 rounded-xl px-5 py-3">
                 <span class="text-brand font-bold text-2xl">500<span class="text-lg">+</span></span>
-                <span class="text-white/50 text-sm leading-tight">Clientes<br>atendidos</span>
+                <span class="text-white/50 text-sm leading-tight">Clientes<br +>atendidos</span>
             </div>
             <div class="flex items-center gap-3 bg-black/50 backdrop-blur-sm border border-white/10 rounded-xl px-5 py-3">
                 <span class="text-brand font-bold text-2xl">17<span class="text-lg">+</span></span>
@@ -302,7 +302,7 @@
             <div class="blue-line w-16"></div>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 [&>*:last-child:nth-child(3n+1)]:lg:col-start-2">
             @php
             $services = [
                 ['icon' => 'fa-calculator',      'title' => 'WR Contabilidade',         'desc' => 'Gestão contábil eficiente para garantir conformidade fiscal e maximizar os resultados da sua empresa.'],
@@ -417,7 +417,7 @@
         <p class="text-white/50 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
             As Soluções WR reúnem tudo que sua empresa precisa para crescer com segurança, conformidade e inteligência estratégica.
         </p>
-        <a href="#contact"
+        <a href="{{ route('funil.captura') }}"
            class="group inline-flex items-center gap-3 bg-brand text-white px-10 py-4 rounded-xl font-bold transition-all duration-300 hover:shadow-[0_0_50px_rgba(0,132,170,.6)] hover:scale-[1.03] no-underline text-base">
             Falar com um Especialista
             <i class="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
@@ -507,115 +507,15 @@
     </div>
 </section>
 
-{{-- ═══════════════════════════════════════════════════════════
-     CONTACT
-═══════════════════════════════════════════════════════════ --}}
-<section id="contact" class="py-28 px-4" style="background:#080808;">
-    <div class="max-w-6xl mx-auto">
-        <div class="grid md:grid-cols-2 gap-16 items-start">
-
-            <!-- Info -->
-            <div class="reveal reveal-left">
-                <span class="text-xs font-semibold tracking-[.2em] uppercase" style="color:#0084aa;">Fale conosco</span>
-                <h2 class="text-4xl md:text-5xl font-bold text-white mt-3 mb-4 leading-tight">Entre em<br>Contato</h2>
-                <div class="blue-line w-16 mb-8"></div>
-                <p class="text-white/45 mb-10 leading-relaxed">
-                    Pronto para transformar a gestão contábil da sua empresa? Fale com nossos especialistas e descubra como podemos ajudar.
-                </p>
-
-                <div class="space-y-5">
-                    <a href="tel:+555137628117" class="flex items-center gap-4 group no-underline">
-                        <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:shadow-[0_0_20px_rgba(0,132,170,.4)]" style="background:rgba(0,132,170,.12); border:1px solid rgba(0,132,170,.25);">
-                            <i class="fas fa-phone text-brand text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-[11px] text-white/35 uppercase tracking-wider mb-0.5">Telefone</p>
-                            <p class="text-white font-medium group-hover:text-brand transition-colors">(51) 3762-8117</p>
-                        </div>
-                    </a>
-
-                    <div class="flex items-start gap-4">
-                        <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(0,132,170,.12); border:1px solid rgba(0,132,170,.25);">
-                            <i class="fas fa-map-marker-alt text-brand text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-[11px] text-white/35 uppercase tracking-wider mb-0.5">Endereço</p>
-                            <p class="text-white font-medium">R. Carlos Arnt, 2215 — Sala 201</p>
-                            <p class="text-white/40 text-sm">Canabarro, Teutônia — RS, 95890-000</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-4">
-                        <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style="background:rgba(0,132,170,.12); border:1px solid rgba(0,132,170,.25);">
-                            <i class="fas fa-clock text-brand text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-[11px] text-white/35 uppercase tracking-wider mb-2">Horário</p>
-                            <div class="space-y-1 text-sm">
-                                <div class="flex justify-between gap-8">
-                                    <span class="text-white/40">Segunda a Sexta</span>
-                                    <span class="text-white font-medium"> 08:00 – 17:30</span>
-                                </div>
-                                <div class="flex justify-between gap-8">
-                                    <span class="text-white/40">Sábado e Domingo</span>
-                                    <span class="text-red-400/80 font-medium">Fechado</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-4">
-                        <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(0,132,170,.12); border:1px solid rgba(0,132,170,.25);">
-                            <i class="fas fa-star text-brand text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-[11px] text-white/35 uppercase tracking-wider mb-1">Avaliação Google</p>
-                            <div class="flex items-center gap-2">
-                                <span class="text-white font-bold text-lg">5,0</span>
-                                <div class="flex gap-0.5">
-                                    @for ($i = 0; $i < 5; $i++)
-                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
-                                    @endfor
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form -->
-            <div class="reveal reveal-right">
-                <form id="contact-form" onsubmit="enviarWhatsApp(event)" class="glass-form">
-                    <h3 class="text-white font-bold text-xl mb-6">Envie sua mensagem</h3>
-                    <div class="grid sm:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label>Nome *</label>
-                            <input id="campo-nome" type="text" required placeholder="Seu nome completo">
-                        </div>
-                        <div>
-                            <label>E-mail</label>
-                            <input id="campo-email" type="email" placeholder="seu@email.com">
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label>Empresa</label>
-                        <input id="campo-empresa" type="text" placeholder="Nome da sua empresa">
-                    </div>
-                    <div class="mb-6">
-                        <label>Mensagem *</label>
-                        <textarea id="campo-mensagem" required placeholder="Como podemos ajudar?" rows="5" style="resize:none;"></textarea>
-                    </div>
-                    <button type="submit"
-                            class="w-full flex items-center justify-center gap-3 text-white py-4 rounded-xl font-bold transition-all duration-300 hover:shadow-[0_0_40px_rgba(0,132,170,.5)] hover:scale-[1.01]"
-                            style="background:#0084aa;">
-                        <i class="fab fa-whatsapp text-xl"></i>
-                        Enviar pelo WhatsApp
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</section>
+{{-- ══ WhatsApp floating button ══ --}}
+<a href="https://wa.me/555137628117" target="_blank" rel="noopener noreferrer"
+   title="Fale pelo WhatsApp"
+   style="position:fixed; bottom:1.75rem; right:1.75rem; z-index:9999; width:56px; height:56px; border-radius:50%; background:#25D366; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 24px rgba(37,211,102,.5); transition:transform .25s, box-shadow .25s; text-decoration:none;"
+   onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 8px 32px rgba(37,211,102,.65)';"
+   onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 24px rgba(37,211,102,.5)';"
+>
+    <i class="fab fa-whatsapp" style="color:#fff; font-size:1.6rem;"></i>
+</a>
 
 {{-- ══ Scripts ══ --}}
 <script>
@@ -661,21 +561,6 @@
     }, { threshold: 0.5 });
     counters.forEach(c => counterObserver.observe(c));
 
-    /* ── WhatsApp ── */
-    window.enviarWhatsApp = function (e) {
-        e.preventDefault();
-        const nome     = document.getElementById('campo-nome').value.trim();
-        const email    = document.getElementById('campo-email').value.trim();
-        const empresa  = document.getElementById('campo-empresa').value.trim();
-        const mensagem = document.getElementById('campo-mensagem').value.trim();
-        let texto = 'Olá! Gostaria de entrar em contato.\n\n';
-        texto += '*Nome:* ' + nome + '\n';
-        if (email)   { texto += '*E-mail:* ' + email + '\n'; }
-        if (empresa) { texto += '*Empresa:* ' + empresa + '\n'; }
-        texto += '\n*Mensagem:*\n' + mensagem;
-        const numero = '55513762' + '8117';
-        window.open('https://wa.me/' + numero + '?text=' + encodeURIComponent(texto), '_blank');
-    };
 }());
 </script>
 @endsection

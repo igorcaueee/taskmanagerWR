@@ -439,6 +439,7 @@ class TarefaController extends Controller
             'frequencia' => $tarefa->frequencia,
             'criado_em' => $tarefa->created_at?->format('d/m/Y H:i'),
             'historico' => $tarefa->historico->sortByDesc('created_at')->map(fn ($r) => [
+                'etapa_anterior_id' => $r->etapaAnterior?->id,
                 'etapa_anterior' => $r->etapaAnterior?->nome,
                 'etapa_nova' => $r->etapaNova?->nome,
                 'etapa_nova_cor' => $r->etapaNova?->cor ?? '#6b7280',

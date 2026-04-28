@@ -86,11 +86,8 @@
             @endif
         </form>
 
-        {{-- Kanban Board + Detail Panel --}}
-        <div class="flex flex-1 overflow-hidden gap-0">
-
-            {{-- Kanban Board --}}
-            <div class="flex gap-4 overflow-x-auto pb-4 flex-1 min-w-0" id="kanban-board">
+        {{-- Kanban Board --}}
+        <div class="flex gap-4 overflow-x-auto pb-4 flex-1" id="kanban-board">
             @foreach ($etapas as $etapa)
                 <div class="flex-shrink-0 w-64 flex flex-col bg-gray-100 rounded-xl">
                     {{-- Column header --}}
@@ -117,88 +114,6 @@
             @endforeach
             </div>
             {{-- /Kanban Board --}}
-
-            {{-- Detail Panel --}}
-            <div id="detail-panel"
-                 class="hidden w-120 flex-shrink-0 bg-white border-l border-gray-200 flex flex-col overflow-y-auto">
-
-                {{-- Panel header --}}
-                <div class="flex items-start justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h2 id="dp-titulo" class="text-sm font-semibold text-gray-900 leading-snug pr-2"></h2>
-                    <button type="button" onclick="closeDetailPanel()"
-                            class="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 flex-shrink-0">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-
-                {{-- Panel body --}}
-                <div class="p-4 space-y-4 flex-1">
-
-                    {{-- Meta grid --}}
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Etapa</p>
-                            <span id="dp-etapa"
-                                  class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                            </span>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Prioridade</p>
-                            <span id="dp-prioridade" class="text-xs font-medium text-gray-700"></span>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Cliente</p>
-                            <p id="dp-cliente" class="text-xs text-gray-700"></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Departamento</p>
-                            <p id="dp-departamento" class="text-xs text-gray-700"></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Responsável</p>
-                            <p id="dp-responsavel" class="text-xs text-gray-700"></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Supervisor</p>
-                            <p id="dp-supervisor" class="text-xs text-gray-700"></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Vencimento</p>
-                            <p id="dp-vencimento" class="text-xs font-medium"></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 mb-0.5">Recorrência</p>
-                            <p id="dp-recorrencia" class="text-xs text-gray-700"></p>
-                        </div>
-                    </div>
-
-                    {{-- Description --}}
-                    <div id="dp-descricao-block" class="hidden">
-                        <p class="text-xs text-gray-400 mb-1">Descrição</p>
-                        <p id="dp-descricao" class="text-xs text-gray-700 whitespace-pre-line leading-relaxed"></p>
-                    </div>
-
-                    {{-- History --}}
-                    <div>
-                        <p class="text-xs text-gray-400 mb-2"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Histórico de etapas</p>
-                        <ol id="dp-historico" reversed class="relative border-l border-gray-200 ml-2 space-y-3 text-xs">
-                            <li class="ml-4 text-gray-400 italic" id="dp-historico-empty">Nenhuma movimentação registrada.</li>
-                        </ol>
-                    </div>
-
-                    {{-- Actions --}}
-                    <div class="pt-2 border-t border-gray-100 flex gap-2">
-                        <button type="button" id="dp-btn-editar"
-                                class="flex-1 text-xs px-3 py-1.5 bg-brand text-white rounded border-0 hover:bg-brand/80">
-                            <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
-                        </button>
-                    </div>
-                </div>
-            </div>
-            {{-- /Detail Panel --}}
-
-        </div>
-        {{-- /Board + Panel --}}
     </div>
 
     {{-- Toast notification --}}
@@ -248,14 +163,15 @@
 
         const tarefaId = event.dataTransfer.getData('tarefaId');
         const etapaOrigem = parseInt(event.dataTransfer.getData('etapaOrigem'));
+        const cardToMove = draggedCard; // capture before handleDragEnd nulls it
 
         if (!tarefaId || novaEtapaId === etapaOrigem) {
             return;
         }
 
         // Optimistic UI: move card
-        if (draggedCard) {
-            col.appendChild(draggedCard);
+        if (cardToMove) {
+            col.appendChild(cardToMove);
         }
 
         updateCount(etapaOrigem, -1);
@@ -279,16 +195,16 @@
             const result = await response.json();
 
             // Update the card's data attribute and visual state
-            if (draggedCard) {
-                draggedCard.dataset.etapaId = novaEtapaId;
+            if (cardToMove) {
+                cardToMove.dataset.etapaId = novaEtapaId;
 
                 // Apply/remove green concluded style
                 if (result.finalizado) {
-                    draggedCard.classList.remove('bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4');
-                    draggedCard.classList.add('bg-green-50', 'border-green-300');
+                    cardToMove.classList.remove('bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4');
+                    cardToMove.classList.add('bg-green-50', 'border-green-300');
                 } else {
-                    draggedCard.classList.remove('bg-green-50', 'border-green-300');
-                    draggedCard.classList.add('bg-white', 'border-gray-200');
+                    cardToMove.classList.remove('bg-green-50', 'border-green-300');
+                    cardToMove.classList.add('bg-white', 'border-gray-200');
                 }
             }
 
@@ -296,8 +212,8 @@
         } catch (err) {
             // Rollback: move card back
             const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
-            if (originalCol && draggedCard) {
-                originalCol.appendChild(draggedCard);
+            if (originalCol && cardToMove) {
+                originalCol.appendChild(cardToMove);
             }
             updateCount(novaEtapaId, -1);
             updateCount(etapaOrigem, 1);
@@ -331,7 +247,7 @@
         col.addEventListener('dragleave', handleDragLeave);
     });
 
-    // ── Detail Panel ──────────────────────────────────────────────────────────
+    // ── Detail Modal (Swal) ───────────────────────────────────────────────────
     let wasDragged = false;
     let activeTarefaId = null;
 
@@ -349,26 +265,24 @@
         const card = e.target.closest('.kanban-card');
         if (!card) { return; }
 
-        // Ignore clicks on action buttons inside the card
         if (e.target.closest('button, a, form')) { return; }
 
         const tarefaId = card.dataset.tarefaId;
         if (!tarefaId) { return; }
 
-        // Highlight selected card
-        document.querySelectorAll('.kanban-card').forEach(c => c.classList.remove('ring-2', 'ring-brand'));
-        card.classList.add('ring-2', 'ring-brand');
-
         activeTarefaId = tarefaId;
-        await openDetailPanel(tarefaId);
+        await openDetailModal(tarefaId);
     });
 
-    async function openDetailPanel(tarefaId) {
-        const panel = document.getElementById('detail-panel');
-        panel.classList.remove('hidden');
-
-        // Show loading state
-        document.getElementById('dp-titulo').textContent = 'Carregando…';
+    async function openDetailModal(tarefaId) {
+        Swal.fire({
+            title: '<span style="font-size:1rem;font-weight:600">Carregando...</span>',
+            html: '<div class="flex justify-center py-6"><i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i></div>',
+            showConfirmButton: false,
+            width: 640,
+            padding: '1.5rem',
+            customClass: { popup: 'text-left' },
+        });
 
         try {
             const res = await fetch(`/tarefas/${tarefaId}/detalhe`, {
@@ -376,109 +290,186 @@
             });
             if (!res.ok) { throw new Error(); }
             const t = await res.json();
-            renderDetailPanel(t);
+            renderDetailModal(t);
         } catch {
-            document.getElementById('dp-titulo').textContent = 'Erro ao carregar.';
+            Swal.fire({ title: 'Erro', text: 'Não foi possível carregar os dados da tarefa.', icon: 'error' });
         }
     }
 
-    function renderDetailPanel(t) {
-        document.getElementById('dp-titulo').textContent = t.titulo;
+    function tfield(label, value, extra = '') {
+        return `<div>
+            <p class="text-xs text-gray-400 mb-0.5">${label}</p>
+            <p class="text-sm text-gray-800 font-medium ${extra}">${value || '—'}</p>
+        </div>`;
+    }
 
-        // Etapa
-        const etapaEl = document.getElementById('dp-etapa');
-        etapaEl.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${t.etapa.cor};display:inline-block;flex-shrink:0"></span>${t.etapa.nome}`;
-
-        // Prioridade
-        const prioEl = document.getElementById('dp-prioridade');
-        prioEl.textContent = t.prioridade;
-        prioEl.className = `text-xs font-medium ${prioridadeColors[t.prioridade] ?? 'text-gray-700'}`;
-
-        document.getElementById('dp-cliente').textContent      = t.cliente      ?? '—';
-        document.getElementById('dp-departamento').textContent = t.departamento ?? '—';
-        document.getElementById('dp-responsavel').textContent  = t.responsavel  ?? '—';
-        document.getElementById('dp-supervisor').textContent   = t.supervisor   ?? '—';
-
-        // Vencimento
-        const vencEl = document.getElementById('dp-vencimento');
-        vencEl.textContent = t.data_vencimento ?? '—';
-        vencEl.className   = `text-xs font-medium ${t.atrasada ? 'text-red-600' : 'text-gray-700'}`;
-
-        const recEl = document.getElementById('dp-recorrencia');
+    function renderDetailModal(t) {
         const frequenciaLabels = {
-            'nenhuma':    'Não se repete',
-            'semanal':    'Semanal',
-            'mensal':     'Mensal',
-            'trimestral': 'Trimestral',
-            'semestral':  'Semestral (6 meses)',
-            'anual':      'Anual',
+            nenhuma: 'Não se repete', semanal: 'Semanal', mensal: 'Mensal',
+            trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
         };
-        if (t.recorrente && t.frequencia && t.frequencia !== 'nenhuma') {
-            recEl.innerHTML = `<i class="fa-solid fa-rotate mr-1 text-blue-500"></i>${frequenciaLabels[t.frequencia] ?? t.frequencia}`;
-            recEl.className = 'text-xs font-medium text-blue-600';
-        } else {
-            recEl.textContent = 'Não se repete';
-            recEl.className = 'text-xs text-gray-400';
-        }
 
-        // Description
-        const descBlock = document.getElementById('dp-descricao-block');
-        if (t.descricao) {
-            document.getElementById('dp-descricao').textContent = t.descricao;
-            descBlock.classList.remove('hidden');
-        } else {
-            descBlock.classList.add('hidden');
-        }
+        const etapaHtml = `<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style="background:${t.etapa.cor}22;color:${t.etapa.cor}">
+            <span style="width:7px;height:7px;border-radius:50%;background:${t.etapa.cor};display:inline-block;flex-shrink:0"></span>
+            ${t.etapa.nome}
+        </span>`;
 
-        // History
-        const histList  = document.getElementById('dp-historico');
-        const histEmpty = document.getElementById('dp-historico-empty');
-        // Remove old items except the empty placeholder
-        histList.querySelectorAll('li:not(#dp-historico-empty)').forEach(el => el.remove());
+        const prioClass = prioridadeColors[t.prioridade] ?? 'text-gray-700';
+        const prioHtml = `<span class="text-sm font-semibold ${prioClass}">${t.prioridade}</span>`;
 
+        const recHtml = (t.recorrente && t.frequencia && t.frequencia !== 'nenhuma')
+            ? `<span class="text-sm font-medium text-blue-600"><i class="fa-solid fa-rotate mr-1"></i>${frequenciaLabels[t.frequencia] ?? t.frequencia}</span>`
+            : `<span class="text-sm text-gray-400">Não se repete</span>`;
+
+        const vencClass = t.atrasada ? 'text-red-600' : '';
+        const vencIcon = t.atrasada ? '<i class="fa-solid fa-triangle-exclamation mr-1 text-red-500"></i>' : '<i class="fa-regular fa-calendar mr-1 text-gray-400"></i>';
+
+        // Histórico
+        let historicoHtml = '';
         if (t.historico.length === 0) {
-            histEmpty.classList.remove('hidden');
+            historicoHtml = '<p class="text-xs text-gray-400 italic ml-4">Nenhuma movimentação registrada.</p>';
         } else {
-            histEmpty.classList.add('hidden');
+            historicoHtml = '<ol class="relative border-l border-gray-200 ml-2 space-y-3">';
             t.historico.forEach(h => {
-                const li = document.createElement('li');
-                li.className = 'ml-4';
-
-                let content = `<span style="position:absolute;left:-5px;margin-top:6px;width:10px;height:10px;border-radius:50%;background:${h.etapa_nova_cor ?? '#9ca3af'};border:2px solid white;display:block"></span>`;
+                let item = `<li class="ml-4 relative">
+                    <span style="position:absolute;left:-1.15rem;top:4px;width:10px;height:10px;border-radius:50%;background:${h.etapa_nova_cor ?? '#9ca3af'};border:2px solid white;display:block"></span>`;
 
                 if (h.etapa_nova) {
-                    content += `<p style="font-size:0.7rem;color:#374151">
-                        ${h.etapa_anterior ? `<span style="font-weight:600">${h.etapa_anterior}</span> <i class="fa-solid fa-arrow-right" style="color:#9ca3af;font-size:0.6rem"></i> ` : ''}
-                        <span style="font-weight:600;color:${h.etapa_nova_cor}">${h.etapa_nova}</span>
+                    item += `<p class="text-xs text-gray-700">
+                        ${h.etapa_anterior ? `<span class="font-semibold">${h.etapa_anterior}</span> <i class="fa-solid fa-arrow-right text-gray-400" style="font-size:0.6rem"></i> ` : ''}
+                        <span class="font-semibold" style="color:${h.etapa_nova_cor}">${h.etapa_nova}</span>
                     </p>`;
                 }
-
                 if (h.responsavel_novo) {
-                    content += `<p style="font-size:0.7rem;color:#374151">
-                        <i class="fa-solid fa-user-pen" style="color:#9ca3af;font-size:0.6rem;margin-right:3px"></i>
-                        <span style="font-weight:600">${h.responsavel_anterior ?? 'Nenhum'}</span>
-                        <i class="fa-solid fa-arrow-right" style="color:#9ca3af;font-size:0.6rem"></i>
-                        <span style="font-weight:600">${h.responsavel_novo}</span>
+                    item += `<p class="text-xs text-gray-700 mt-0.5">
+                        <i class="fa-solid fa-user-pen text-gray-400 mr-1" style="font-size:0.6rem"></i>
+                        <span class="font-semibold">${h.responsavel_anterior ?? 'Nenhum'}</span>
+                        <i class="fa-solid fa-arrow-right text-gray-400" style="font-size:0.6rem"></i>
+                        <span class="font-semibold">${h.responsavel_novo}</span>
                     </p>`;
                 }
-
-                content += `<p style="font-size:0.65rem;color:#9ca3af;margin-top:1px">${h.data}${h.alterado_por ? ' · ' + h.alterado_por : ''}</p>`;
-
-                li.innerHTML = content;
-                histList.appendChild(li);
+                item += `<p class="text-[11px] text-gray-400 mt-0.5">${h.data}${h.alterado_por ? ' · ' + h.alterado_por : ''}</p></li>`;
+                historicoHtml += item;
             });
+            historicoHtml += '</ol>';
         }
 
-        // Edit button
-        document.getElementById('dp-btn-editar').onclick = () => {
-            window.openModal(`/tarefas/${t.id}/form`);
-        };
+        const descricaoHtml = t.descricao
+            ? `<div class="col-span-2"><p class="text-xs text-gray-400 mb-0.5">Descrição</p><p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">${t.descricao}</p></div>`
+            : '';
+
+        const html = `
+            <div class="space-y-4 text-left">
+                {{-- Etapa + Prioridade --}}
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    ${etapaHtml}
+                    ${prioHtml}
+                </div>
+
+                {{-- Fields grid --}}
+                <div class="grid grid-cols-2 gap-x-6 gap-y-3 bg-gray-50 rounded-xl p-4">
+                    ${tfield('Cliente', t.cliente)}
+                    ${tfield('Departamento', t.departamento)}
+                    ${tfield('Responsável', t.responsavel)}
+                    ${tfield('Supervisor', t.supervisor)}
+                    <div>
+                        <p class="text-xs text-gray-400 mb-0.5">Vencimento</p>
+                        <p class="text-sm font-medium ${vencClass}">${vencIcon}${t.data_vencimento ?? '—'}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 mb-0.5">Recorrência</p>
+                        ${recHtml}
+                    </div>
+                    ${descricaoHtml}
+                </div>
+
+                {{-- Histórico --}}
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                        <i class="fa-solid fa-clock-rotate-left mr-1"></i> Histórico de etapas
+                    </p>
+                    ${historicoHtml}
+                </div>
+
+                {{-- Actions --}}
+                <div class="flex gap-2 pt-2 border-t border-gray-100">
+                    ${(() => {
+                        const uh = t.historico[0] ?? null;
+                        return (uh && uh.etapa_anterior_id)
+                            ? `<button onclick="voltarEtapaTarefa(${t.id}, ${uh.etapa_anterior_id}, '${(uh.etapa_anterior ?? '').replace(/'/g, "\\'")}')" title="Voltar para: ${uh.etapa_anterior ?? ''}" class="text-sm px-3 py-2 bg-amber-100 text-amber-700 rounded-lg border-0 hover:bg-amber-200 cursor-pointer"><i class="fa-solid fa-rotate-left"></i></button>`
+                            : '';
+                    })()}
+                    <button onclick="window.openModal('/tarefas/${t.id}/form'); Swal.close();" class="flex-1 text-sm px-4 py-2 bg-brand text-white rounded-lg border-0 hover:bg-brand/80 cursor-pointer">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
+                    </button>
+                </div>
+            </div>`;
+
+        Swal.fire({
+            title: `<span style="font-size:1.05rem;font-weight:700">${t.titulo}</span>`,
+            html: html,
+            showConfirmButton: false,
+            showCloseButton: true,
+            width: 640,
+            padding: '1.5rem',
+            customClass: { popup: 'text-left' },
+        });
     }
 
-    function closeDetailPanel() {
-        document.getElementById('detail-panel').classList.add('hidden');
-        document.querySelectorAll('.kanban-card').forEach(c => c.classList.remove('ring-2', 'ring-brand'));
-        activeTarefaId = null;
+    async function voltarEtapaTarefa(tarefaId, etapaAnteriorId, etapaAnteriorNome) {
+        Swal.close();
+        await new Promise(r => setTimeout(r, 200));
+
+        const result = await Swal.fire({
+            title: 'Voltar etapa?',
+            text: `A tarefa será movida de volta para "${etapaAnteriorNome}".`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, voltar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#d97706',
+        });
+
+        if (!result.isConfirmed) { return; }
+
+        try {
+            const res = await fetch(updateEtapaUrl(tarefaId), {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ etapa_id: etapaAnteriorId }),
+            });
+
+            if (!res.ok) { throw new Error(); }
+
+            const result2 = await res.json();
+
+            // Move card visually
+            const card = document.querySelector(`.kanban-card[data-tarefa-id="${tarefaId}"]`);
+            const novaCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaAnteriorId}"]`);
+            if (card && novaCol) {
+                const oldEtapaId = parseInt(card.dataset.etapaId);
+                novaCol.appendChild(card);
+                card.dataset.etapaId = etapaAnteriorId;
+                updateCount(oldEtapaId, -1);
+                updateCount(etapaAnteriorId, 1);
+
+                if (result2.finalizado) {
+                    card.classList.remove('bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4');
+                    card.classList.add('bg-green-50', 'border-green-300');
+                } else {
+                    card.classList.remove('bg-green-50', 'border-green-300');
+                    card.classList.add('bg-white', 'border-gray-200');
+                }
+            }
+
+            showToast(`Voltou para "${etapaAnteriorNome}"`, 'amber');
+        } catch {
+            showToast('Erro ao voltar etapa. Tente novamente.', 'red');
+        }
     }
 
     // ── Excluir tarefa (kanban) ───────────────────────────────────────────────
