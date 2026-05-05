@@ -437,7 +437,7 @@
 {{-- ═══════════════════════════════════════════════════════════
      CLIENTS TICKER
 ═══════════════════════════════════════════════════════════ --}}
-<section style="background:#060606; border-top:1px solid rgba(255,255,255,.05); border-bottom:1px solid rgba(255,255,255,.05); padding: 3rem 0;">
+{{-- <section style="background:#060606; border-top:1px solid rgba(255,255,255,.05); border-bottom:1px solid rgba(255,255,255,.05); padding: 3rem 0;">
     <div class="max-w-7xl mx-auto px-6 mb-6 reveal">
         <span class="text-xs font-semibold tracking-[.2em] uppercase" style="color:#0084aa;">Nossos Clientes</span>
         <h2 class="text-2xl md:text-3xl font-bold text-white mt-2 leading-tight">Quem confia na WR Assessoria</h2>
@@ -476,7 +476,6 @@
 
     <div class="clients-ticker-wrap py-2">
         <div class="clients-ticker-track gap-3">
-            {{-- duplicate for seamless loop --}}
             @foreach([$clients, $clients] as $group)
                 @foreach($group as $c)
                     <div class="client-chip mx-1">
@@ -489,7 +488,7 @@
             @endforeach
         </div>
     </div>
-</section>
+</section> --}}
 
 {{-- ═══════════════════════════════════════════════════════════
      ABOUT
