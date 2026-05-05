@@ -146,10 +146,10 @@
     new Chart(document.getElementById('chartConcluidas'), {
         type: 'bar',
         data: {
-            labels: {!! $concluidasPorColab->pluck('nome')->toJson() !!},
+            labels: @json($concluidasPorColab->pluck('nome')),
             datasets: [{
                 label: 'Concluídas',
-                data: {!! $concluidasPorColab->pluck('total')->toJson() !!},
+                data: @json($concluidasPorColab->pluck('total')),
                 backgroundColor: palette.slice(0, {{ $concluidasPorColab->count() }}),
                 borderRadius: 4,
             }],
@@ -172,10 +172,10 @@
     new Chart(document.getElementById('chartAbertas'), {
         type: 'bar',
         data: {
-            labels: {!! $abertasPorColab->pluck('nome')->toJson() !!},
+            labels: @json($abertasPorColab->pluck('nome')),
             datasets: [{
                 label: 'Em aberto',
-                data: {!! $abertasPorColab->pluck('total')->toJson() !!},
+                data: @json($abertasPorColab->pluck('total')),
                 backgroundColor: '#f59e0b',
                 borderRadius: 4,
             }],
@@ -198,10 +198,10 @@
     new Chart(document.getElementById('chartVencidas'), {
         type: 'bar',
         data: {
-            labels: {!! $vencidasPorColab->pluck('nome')->toJson() !!},
+            labels: @json($vencidasPorColab->pluck('nome')),
             datasets: [{
                 label: 'Vencidas',
-                data: {!! $vencidasPorColab->pluck('total')->toJson() !!},
+                data: @json($vencidasPorColab->pluck('total')),
                 backgroundColor: '#ef4444',
                 borderRadius: 4,
             }],
@@ -221,13 +221,13 @@
     @endif
 
     @if($topColabs->isNotEmpty())
-    const meses = {!! $evolucaoColabs->pluck('mes')->toJson() !!};
-    const nomes = {!! $topColabs->map(fn($c) => $c->responsavel->nome ?? 'N/A')->toJson() !!};
+    const meses = @json($evolucaoColabs->pluck('mes'));
+    const nomes = @json($topColabs->map(fn($c) => $c->responsavel->nome ?? 'N/A'));
     const cores = palette.slice(0, nomes.length);
 
     const datasets = nomes.map((nome, i) => ({
         label: nome,
-        data: {!! $evolucaoColabs->toJson() !!}.map(entry => entry[nome] ?? 0),
+        data: @json($evolucaoColabs).map(entry => entry[nome] ?? 0),
         borderColor: cores[i],
         backgroundColor: cores[i] + '22',
         tension: 0.3,

@@ -141,6 +141,15 @@ class FileExplorerController extends Controller
             'files.*' => ['required', 'file', 'max:102400'], // 100 MB max
         ]);
 
+        $blockedExtensions = ['php', 'php3', 'php4', 'php5', 'phtml', 'phar', 'sh', 'bash', 'exe', 'bat', 'cmd', 'ps1', 'py', 'rb', 'pl', 'cgi', 'htaccess'];
+
+        foreach ($request->file('files') as $file) {
+            $ext = strtolower($file->getClientOriginalExtension());
+            if (in_array($ext, $blockedExtensions, true)) {
+                return response()->json(['error' => "Tipo de arquivo não permitido: .{$ext}"], 422);
+            }
+        }
+
         $path = $this->safePath($request->input('path'));
 
         foreach ($request->file('files') as $file) {

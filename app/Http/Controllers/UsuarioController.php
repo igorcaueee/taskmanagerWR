@@ -63,7 +63,7 @@ class UsuarioController extends Controller
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:usuarios,email'],
-            'senha' => ['required', 'string', 'min:6'],
+            'senha' => ['required', 'string', 'min:8'],
             'cargo' => ['required', 'in:diretor,supervisor,analista,assistente,auxiliar'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'sexo' => ['nullable', 'in:masculino,feminino,outro'],
@@ -105,7 +105,7 @@ class UsuarioController extends Controller
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:usuarios,email,'.$id],
-            'senha' => ['nullable', 'string', 'min:6'],
+            'senha' => ['nullable', 'string', 'min:8'],
             'cargo' => ['required', 'in:diretor,supervisor,analista,assistente,auxiliar'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'sexo' => ['nullable', 'in:masculino,feminino,outro'],

@@ -19,12 +19,12 @@ Route::get('/', function () {
 
 // Authentication routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Public lead capture form (no auth required)
 Route::get('/funil/captura', [LeadCapturaController::class, 'showForm'])->name('funil.captura');
-Route::post('/funil/captura', [LeadCapturaController::class, 'store'])->name('funil.captura.store');
+Route::post('/funil/captura', [LeadCapturaController::class, 'store'])->name('funil.captura.store')->middleware('throttle:10,1');
 
 // Colabs routes (use GET for page views so they load in browser)
 Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard')->middleware('auth');

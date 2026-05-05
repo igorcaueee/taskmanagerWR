@@ -150,10 +150,10 @@
     new Chart(document.getElementById('chartMaisTarefas'), {
         type: 'bar',
         data: {
-            labels: {!! $clientesComMaisTarefas->pluck('nome')->toJson() !!},
+            labels: @json($clientesComMaisTarefas->pluck('nome')),
             datasets: [{
                 label: 'Tarefas',
-                data: {!! $clientesComMaisTarefas->pluck('total')->toJson() !!},
+                data: @json($clientesComMaisTarefas->pluck('total')),
                 backgroundColor: palette.slice(0, {{ $clientesComMaisTarefas->count() }}),
                 borderRadius: 4,
             }],
@@ -176,10 +176,10 @@
     new Chart(document.getElementById('chartMaisConcluidas'), {
         type: 'bar',
         data: {
-            labels: {!! $clientesComMaisConcluidas->pluck('nome')->toJson() !!},
+            labels: @json($clientesComMaisConcluidas->pluck('nome')),
             datasets: [{
                 label: 'Concluídas',
-                data: {!! $clientesComMaisConcluidas->pluck('total')->toJson() !!},
+                data: @json($clientesComMaisConcluidas->pluck('total')),
                 backgroundColor: '#10b981',
                 borderRadius: 4,
             }],
@@ -202,10 +202,10 @@
     new Chart(document.getElementById('chartVencidas'), {
         type: 'bar',
         data: {
-            labels: {!! $clientesComVencidas->pluck('nome')->toJson() !!},
+            labels: @json($clientesComVencidas->pluck('nome')),
             datasets: [{
                 label: 'Vencidas',
-                data: {!! $clientesComVencidas->pluck('total')->toJson() !!},
+                data: @json($clientesComVencidas->pluck('total')),
                 backgroundColor: '#ef4444',
                 borderRadius: 4,
             }],
@@ -227,10 +227,10 @@
     new Chart(document.getElementById('chartNovosPorMes'), {
         type: 'bar',
         data: {
-            labels: {!! $novosPorMes->pluck('mes')->toJson() !!},
+            labels: @json($novosPorMes->pluck('mes')),
             datasets: [{
                 label: 'Novos clientes',
-                data: {!! $novosPorMes->pluck('total')->toJson() !!},
+                data: @json($novosPorMes->pluck('total')),
                 backgroundColor: '#3b82f6',
                 borderRadius: 4,
             }],

@@ -226,10 +226,10 @@
     new Chart(document.getElementById('chartResponsavel'), {
         type: 'bar',
         data: {
-            labels: {!! $porResponsavel->pluck('nome')->toJson() !!},
+            labels: @json($porResponsavel->pluck('nome')),
             datasets: [{
                 label: 'Concluídas',
-                data: {!! $porResponsavel->pluck('total')->toJson() !!},
+                data: @json($porResponsavel->pluck('total')),
                 backgroundColor: palette.slice(0, {{ $porResponsavel->count() }}),
                 borderRadius: 4,
             }],
@@ -252,11 +252,11 @@
     new Chart(document.getElementById('chartEvolucao'), {
         type: 'line',
         data: {
-            labels: {!! $evolucaoMensal->pluck('mes')->toJson() !!},
+            labels: @json($evolucaoMensal->pluck('mes')),
             datasets: [
                 {
                     label: 'Total',
-                    data: {!! $evolucaoMensal->pluck('total')->toJson() !!},
+                    data: @json($evolucaoMensal->pluck('total')),
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59,130,246,0.1)',
                     tension: 0.3,
@@ -265,7 +265,7 @@
                 },
                 {
                     label: 'Concluídas',
-                    data: {!! $evolucaoMensal->pluck('concluidas')->toJson() !!},
+                    data: @json($evolucaoMensal->pluck('concluidas')),
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16,185,129,0.1)',
                     tension: 0.3,
@@ -290,10 +290,10 @@
     new Chart(document.getElementById('chartEtapa'), {
         type: 'doughnut',
         data: {
-            labels: {!! $porEtapa->pluck('nome')->toJson() !!},
+            labels: @json($porEtapa->pluck('nome')),
             datasets: [{
-                data: {!! $porEtapa->pluck('total')->toJson() !!},
-                backgroundColor: {!! $porEtapa->pluck('cor')->toJson() !!},
+                data: @json($porEtapa->pluck('total')),
+                backgroundColor: @json($porEtapa->pluck('cor')),
                 borderWidth: 2,
                 borderColor: '#fff',
             }],
@@ -313,10 +313,10 @@
     new Chart(document.getElementById('chartCliente'), {
         type: 'bar',
         data: {
-            labels: {!! $porCliente->pluck('nome')->toJson() !!},
+            labels: @json($porCliente->pluck('nome')),
             datasets: [{
                 label: 'Tarefas',
-                data: {!! $porCliente->pluck('total')->toJson() !!},
+                data: @json($porCliente->pluck('total')),
                 backgroundColor: palette.slice(0, {{ $porCliente->count() }}),
                 borderRadius: 4,
             }],
@@ -340,9 +340,9 @@
     new Chart(document.getElementById('chartDepartamento'), {
         type: 'pie',
         data: {
-            labels: {!! $porDepartamento->pluck('nome')->toJson() !!},
+            labels: @json($porDepartamento->pluck('nome')),
             datasets: [{
-                data: {!! $porDepartamento->pluck('total')->toJson() !!},
+                data: @json($porDepartamento->pluck('total')),
                 backgroundColor: palette.slice(0, {{ $porDepartamento->count() }}),
                 borderWidth: 2,
                 borderColor: '#fff',
@@ -383,10 +383,10 @@
     new Chart(document.getElementById('chartRecorrencia'), {
         type: 'bar',
         data: {
-            labels: {!! $porRecorrencia->pluck('nome')->toJson() !!},
+            labels: @json($porRecorrencia->pluck('nome')),
             datasets: [{
                 label: 'Tarefas',
-                data: {!! $porRecorrencia->pluck('total')->toJson() !!},
+                data: @json($porRecorrencia->pluck('total')),
                 backgroundColor: palette.slice(0, {{ $porRecorrencia->count() }}),
                 borderRadius: 4,
             }],
