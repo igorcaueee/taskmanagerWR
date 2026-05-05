@@ -224,6 +224,82 @@
 
     /* ── Number counter ── */
     .counter { font-variant-numeric: tabular-nums; }
+
+    /* ── Clients ticker ── */
+    .clients-ticker-wrap {
+        overflow: hidden;
+        position: relative;
+    }
+    .clients-ticker-wrap::before,
+    .clients-ticker-wrap::after {
+        content: '';
+        position: absolute; top: 0; bottom: 0;
+        width: 100px;
+        z-index: 2;
+        pointer-events: none;
+    }
+    .clients-ticker-wrap::before { left: 0; background: linear-gradient(90deg, #060606 0%, transparent 100%); }
+    .clients-ticker-wrap::after  { right: 0; background: linear-gradient(-90deg, #060606 0%, transparent 100%); }
+
+    @keyframes ticker {
+        0%   { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+    .clients-ticker-track {
+        display: flex;
+        align-items: center;
+        width: max-content;
+        animation: ticker 55s linear infinite;
+    }
+    .clients-ticker-track:hover { animation-play-state: paused; }
+
+    .client-chip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .55rem;
+        padding: .5rem .75rem;
+        cursor: default;
+        transition: transform .3s;
+        flex-shrink: 0;
+    }
+    .client-chip:hover { transform: translateY(-3px); }
+
+    .client-logo-circle {
+        width: 96px; height: 96px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,.1);
+        background: rgba(255,255,255,.06);
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+        transition: border-color .3s, background .3s, box-shadow .3s;
+    }
+    .client-chip:hover .client-logo-circle {
+        border-color: rgba(0,132,170,.4);
+        background: rgba(255,255,255,.1);
+        box-shadow: 0 0 18px rgba(0,132,170,.2);
+    }
+    .client-logo-circle img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        filter: grayscale(30%) brightness(1.05);
+        transition: filter .3s;
+    }
+    .client-chip:hover .client-logo-circle img { filter: grayscale(0%) brightness(1.1); }
+
+    .client-name {
+        font-size: .65rem;
+        font-weight: 500;
+        color: rgba(255,255,255,.35);
+        text-align: center;
+        white-space: nowrap;
+        letter-spacing: .02em;
+        transition: color .3s;
+        max-width: 90px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .client-chip:hover .client-name { color: rgba(255,255,255,.65); }
 </style>
 @endpush
 
@@ -359,6 +435,63 @@
 </section>
 
 {{-- ═══════════════════════════════════════════════════════════
+     CLIENTS TICKER
+═══════════════════════════════════════════════════════════ --}}
+<section style="background:#060606; border-top:1px solid rgba(255,255,255,.05); border-bottom:1px solid rgba(255,255,255,.05); padding: 3rem 0;">
+    <div class="max-w-7xl mx-auto px-6 mb-6 reveal">
+        <span class="text-xs font-semibold tracking-[.2em] uppercase" style="color:#0084aa;">Nossos Clientes</span>
+        <h2 class="text-2xl md:text-3xl font-bold text-white mt-2 leading-tight">Quem confia na WR Assessoria</h2>
+    </div>
+
+    @php
+    $clients = [
+        ['name' => 'RM Automotive',        'img' => 'rm-automotive.png'],
+        ['name' => 'Sabores',              'img' => 'sabores.png'],
+        ['name' => 'Nalu',                 'img' => 'nalu.png'],
+        ['name' => 'New Tintas',           'img' => 'new-tintas.png'],
+        ['name' => 'Marquinho Moto Peças', 'img' => 'marquinho.png'],
+        ['name' => 'Plasul',               'img' => 'plasul.png'],
+        ['name' => 'Ludwig Distribuidora', 'img' => 'ludwig.png'],
+        ['name' => 'MilkParts',            'img' => 'milkparts.png'],
+        ['name' => 'Austral',              'img' => 'austral.png'],
+        ['name' => 'Usina Móveis',         'img' => 'usina-moveis.png'],
+        ['name' => 'TeutoAgro',            'img' => 'teutoagro.png'],
+        ['name' => 'Conexão Automóveis',   'img' => 'conexao.png'],
+        ['name' => 'Paulão Automóveis',    'img' => 'paulao.png'],
+        ['name' => 'Entresons',            'img' => 'entresons.png'],
+        ['name' => 'JC Prime',             'img' => 'jc-prime.png'],
+        ['name' => 'Momento Fitness',      'img' => 'momento-fitness.png'],
+        ['name' => 'Brandão',              'img' => 'brandao.png'],
+        ['name' => 'Andaê',               'img' => 'andae.png'],
+        ['name' => 'DME Motos',            'img' => 'dme.png'],
+        ['name' => 'Fell Esquadrias',      'img' => 'fell.png'],
+        ['name' => 'Frei Pastelaria',      'img' => 'frei.png'],
+        ['name' => 'Impressos Mania',      'img' => 'impressos-mania.png'],
+        ['name' => 'Mercado Maninho',      'img' => 'maninho.png'],
+        ['name' => 'Maori Beach Club',     'img' => 'maori.png'],
+        ['name' => 'Pão e Cia',            'img' => 'pao-e-cia.png'],
+        ['name' => 'WA Elétrica',          'img' => 'wa-eletrica.png'],
+    ];
+    @endphp
+
+    <div class="clients-ticker-wrap py-2">
+        <div class="clients-ticker-track gap-3">
+            {{-- duplicate for seamless loop --}}
+            @foreach([$clients, $clients] as $group)
+                @foreach($group as $c)
+                    <div class="client-chip mx-1">
+                        <div class="client-logo-circle">
+                            <img src="/images/clientes/{{ $c['img'] }}" alt="{{ $c['name'] }}" loading="lazy">
+                        </div>
+                        <span class="client-name">{{ $c['name'] }}</span>
+                    </div>
+                @endforeach
+            @endforeach
+        </div>
+    </div>
+</section>
+
+{{-- ═══════════════════════════════════════════════════════════
      ABOUT
 ═══════════════════════════════════════════════════════════ --}}
 <section id="about" class="py-28 px-4" style="background:#080808;">
@@ -393,7 +526,7 @@
                 <ul class="space-y-3">
                     @foreach(['Atendimento Personalizado e Exclusivo', '25 Especialistas Multidisciplinares', 'Presença em 4 Estados do Brasil', 'Soluções Integradas para o seu Negócio'] as $idx => $item)
                         <li class="flex items-center gap-3 reveal reveal-delay-{{ $idx + 1 }}">
-                            <span class="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center" style="background:rgba(0,132,170,.2); border:1px solid rgba(0,132,170,.4);">
+                            <span class="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center" style="background:rgba(0,132,170,.2); border:1px solid rgba(0,132,170,.4);">
                                 <i class="fas fa-check text-brand text-[10px]"></i>
                             </span>
                             <span class="text-white/70 font-medium text-sm">{{ $item }}</span>
