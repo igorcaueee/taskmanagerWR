@@ -53,8 +53,11 @@ Route::delete('/leads/{id}', [FunilController::class, 'delete'])->name('leads.de
 // Clientes routes
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');
-Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
+Route::get('/clientes/import/form', [ClienteController::class, 'formImportClientes'])->name('clientes.import.form')->middleware('auth');
+Route::get('/clientes/import/template', [ClienteController::class, 'templateClientes'])->name('clientes.import.template')->middleware('auth');
+Route::post('/clientes/import', [ClienteController::class, 'importClientes'])->name('clientes.import')->middleware('auth');
 Route::post('/clientes/save', [ClienteController::class, 'saveCliente'])->name('clientes.save')->middleware('auth');
+Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
 Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name('clientes.update')->middleware('auth');
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
 // Produtos routes
