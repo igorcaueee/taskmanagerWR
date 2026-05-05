@@ -9,7 +9,12 @@
                 <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-users"></i> Clientes</h1>
                 <p class="text-gray-700">Aqui você pode visualizar e gerenciar seus clientes.</p>
             </div>
-            <div>
+            <div class="flex gap-2">
+                <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded focus:outline-none hover:bg-gray-50 text-sm"
+                        data-modal-url="{{ route('clientes.import.form') }}">
+                    <i class="fa-solid fa-file-import"></i>
+                    Importar
+                </button>
                 <button type="button" class="inline-flex items-center px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80"
                         data-modal-url="{{ route('clientes.form.create') }}">
                     <i class="fa-solid fa-plus"></i>
@@ -19,6 +24,9 @@
 
         @if(session('success'))
             <div class="mb-4 px-4 py-3 bg-green-100 text-green-800 rounded">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="mb-4 px-4 py-3 bg-red-100 text-red-800 rounded">{{ session('error') }}</div>
         @endif
 
         <div class="bg-white rounded shadow">

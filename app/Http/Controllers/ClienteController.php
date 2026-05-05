@@ -6,9 +6,16 @@ use App\Models\Cliente;
 use App\Models\Produto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ClienteController extends Controller
 {
@@ -135,5 +142,141 @@ class ClienteController extends Controller
         Cliente::findOrFail($id)->delete();
 
         return Redirect::route('clientes')->with('success', 'Cliente excluído com sucesso.');
+    }
+
+    public function formImportClientes(): View
+    {
+        return view('clientes.partials.formImport');
+    }
+
+    public function importClientes(Request $request): RedirectResponse
+    {
+        $request->validate(['arquivo' => ['required', 'file', 'mimes:xlsx,xls', 'max:5120']]);
+
+        $spreadsheet = IOFactory::load($request->file('arquivo')->getRealPath());
+        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+
+        if (empty($rows)) {
+            return Redirect::route('clientes')->with('error', 'Arquivo vazio.');
+        }
+
+        $header = array_map(fn($v) => mb_strtolower(trim((string) $v)), $rows[0]);
+        $colIndex = array_flip($header);
+
+        $get = fn($row, $col) => isset($colIndex[$col]) ? trim((string) ($row[$colIndex[$col]] ?? '')) : '';
+
+        $importados = 0;
+        $ignorados  = 0;
+
+        foreach (array_slice($rows, 1) as $row) {
+            $nome = $get($row, 'nome');
+            if ($nome === '') {
+                continue;
+            }
+
+            $cpfcnpj = $get($row, 'cpfcnpj') ?: null;
+
+            if ($cpfcnpj && Cliente::where('cpfcnpj', $cpfcnpj)->exists()) {
+                $ignorados++;
+                continue;
+            }
+
+            $tipoRaw = mb_strtoupper($get($row, 'tipo'));
+            $tipo = match ($tipoRaw) {
+                'PJ'    => 1,
+                'PF'    => 0,
+                default => null,
+            };
+
+            $fatorR = in_array(mb_strtolower($get($row, 'fator_r')), ['sim', 'yes', '1', 'true']);
+
+            $status = in_array(mb_strtolower($get($row, 'status')), ['ativo', 'active', '1']) ? 'ativo' : 'inativo';
+
+            $parseDate = function (string $value): ?string {
+                if ($value === '') return null;
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value)) {
+                    return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
+                }
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                    return $value;
+                }
+                return null;
+            };
+
+            Cliente::create([
+                'nome'              => $nome,
+                'cpfcnpj'           => $cpfcnpj,
+                'tipo'              => $tipo,
+                'regime_tributario' => $get($row, 'regime_tributario') ?: null,
+                'cidade'            => $get($row, 'cidade') ?: null,
+                'estado'            => mb_strtoupper($get($row, 'estado')) ?: null,
+                'status'            => $status,
+                'fator_r'           => $fatorR,
+                'cliente_desde'     => $parseDate($get($row, 'cliente_desde')),
+                'dataabertura'      => $parseDate($get($row, 'dataabertura')),
+                'faturamento'       => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
+                'servico'           => $get($row, 'servico') ?: null,
+                'honorario'         => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
+            ]);
+
+            $importados++;
+        }
+
+        $msg = "Importação concluída: {$importados} cliente(s) importado(s)";
+        if ($ignorados > 0) {
+            $msg .= ", {$ignorados} ignorado(s) por CPF/CNPJ duplicado";
+        }
+
+        return Redirect::route('clientes')->with('success', $msg . '.');
+    }
+
+    public function templateClientes(): Response
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Clientes');
+
+        $columns = [
+            'nome', 'cpfcnpj', 'tipo', 'regime_tributario',
+            'cidade', 'estado', 'status', 'cliente_desde',
+            'dataabertura', 'faturamento', 'servico', 'honorario', 'fator_r',
+        ];
+
+        foreach ($columns as $i => $col) {
+            $cell = chr(65 + $i) . '1';
+            $sheet->setCellValue($cell, $col);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->getColumnDimensionByColumn($i + 1)->setAutoSize(true);
+        }
+
+        $examples = [
+            'Empresa Exemplo Ltda', '12.345.678/0001-99', 'PJ', 'Simples Nacional',
+            'São Paulo', 'SP', 'ativo', '01/01/2024',
+            '15/03/2010', '50000', 'Contabilidade', '800', 'Não',
+        ];
+
+        foreach ($examples as $i => $val) {
+            $cell = chr(65 + $i) . '2';
+            $sheet->setCellValue($cell, $val);
+            $sheet->getStyle($cell)->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F0F4FF']],
+                'font' => ['italic' => true, 'color' => ['rgb' => '6B7280']],
+            ]);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="modelo-importacao-clientes.xlsx"',
+        ]);
     }
 }
