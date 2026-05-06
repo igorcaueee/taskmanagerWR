@@ -131,19 +131,22 @@ class TarefaController extends Controller
     public function formCreate(): View
     {
         $clientes = Cliente::orderBy('nome')->get();
-        $departamentos = Departamento::orderBy('nome')->get();
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
-        $usuarios = Usuario::orderBy('nome')->get();
+        $usuarios = Usuario::with('departamento')->orderBy('nome')->get();
         $etapaDefault = $etapas->first(fn ($e) => strtolower(trim($e->nome)) === 'a fazer')?->id
             ?? $etapas->first()?->id;
+
+        $usuariosDepartamentos = $usuarios->mapWithKeys(fn ($u) => [
+            $u->id => ['id' => $u->departamento_id, 'nome' => $u->departamento?->nome ?? '—'],
+        ]);
 
         return view('tarefas.partials.formTarefa', [
             'tarefa' => null,
             'clientes' => $clientes,
-            'departamentos' => $departamentos,
             'etapas' => $etapas,
             'usuarios' => $usuarios,
             'etapaDefault' => $etapaDefault,
+            'usuariosDepartamentos' => $usuariosDepartamentos,
         ]);
     }
 
@@ -158,19 +161,22 @@ class TarefaController extends Controller
         ])->findOrFail($id);
 
         $clientes = Cliente::orderBy('nome')->get();
-        $departamentos = Departamento::orderBy('nome')->get();
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
-        $usuarios = Usuario::orderBy('nome')->get();
+        $usuarios = Usuario::with('departamento')->orderBy('nome')->get();
+
+        $usuariosDepartamentos = $usuarios->mapWithKeys(fn ($u) => [
+            $u->id => ['id' => $u->departamento_id, 'nome' => $u->departamento?->nome ?? '—'],
+        ]);
 
         $podeMudarResponsavel = (int) Auth::id() === (int) $tarefa->supervisor_id;
 
-        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'departamentos', 'etapas', 'usuarios', 'podeMudarResponsavel'));
+        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel'));
     }
 
     public function save(Request $request): RedirectResponse
     {
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_id', 'departamento_id',
+            'titulo', 'descricao', 'cliente_id',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
         ]);
 
@@ -178,7 +184,6 @@ class TarefaController extends Controller
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
             'cliente_id' => ['required', 'exists:clientes,id'],
-            'departamento_id' => ['required', 'exists:departamentos,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -193,11 +198,14 @@ class TarefaController extends Controller
 
         $frequencia = $data['frequencia'] ?? 'nenhuma';
 
+        $departamentoId = Usuario::find($data['responsavel_id'] ?? null)?->departamento_id
+            ?? Departamento::orderBy('id')->value('id');
+
         Tarefa::create([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
             'cliente_id' => $data['cliente_id'],
-            'departamento_id' => $data['departamento_id'],
+            'departamento_id' => $departamentoId,
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $data['responsavel_id'] ?? null,
             'supervisor_id' => $data['supervisor_id'] ?? null,
@@ -222,7 +230,7 @@ class TarefaController extends Controller
         }
 
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_id', 'departamento_id',
+            'titulo', 'descricao', 'cliente_id',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
         ]);
 
@@ -230,7 +238,6 @@ class TarefaController extends Controller
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
             'cliente_id' => ['required', 'exists:clientes,id'],
-            'departamento_id' => ['required', 'exists:departamentos,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -256,11 +263,15 @@ class TarefaController extends Controller
             ? ($data['responsavel_id'] ?? null)
             : $tarefa->responsavel_id;
 
+        $departamentoId = Usuario::find($novoResponsavelId)?->departamento_id
+            ?? $tarefa->departamento_id
+            ?? Departamento::orderBy('id')->value('id');
+
         $tarefa->update([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
             'cliente_id' => $data['cliente_id'],
-            'departamento_id' => $data['departamento_id'],
+            'departamento_id' => $departamentoId,
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $novoResponsavelId,
             'supervisor_id' => $podeMudarResponsavel

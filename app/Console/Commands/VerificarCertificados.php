@@ -36,7 +36,8 @@ class VerificarCertificados extends Command
         }
 
         $departamentoId = $silvia->departamento_id
-            ?? Departamento::orderBy('id')->value('id');
+            ?? Departamento::where('nome', 'Recepção')->value('id')
+            ?? Departamento::orderBy('nome')->value('id');
 
         if (! $departamentoId) {
             $this->error('Nenhum departamento cadastrado.');
@@ -63,7 +64,7 @@ class VerificarCertificados extends Command
 
             $jaExiste = Tarefa::where('cliente_id', $cliente->id)
                 ->where('titulo', $titulo)
-                ->whereDate('data_vencimento', $cliente->vencimento_certificado)
+                ->whereNull('data_conclusao')
                 ->exists();
 
             if ($jaExiste) {

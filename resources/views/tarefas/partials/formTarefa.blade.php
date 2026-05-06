@@ -56,15 +56,10 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700">Departamento</label>
-                <select name="departamento_id" class="mt-1 block w-full border rounded px-3 py-2" required>
-                    <option value="">— Selecione —</option>
-                    @foreach($departamentos as $dep)
-                        <option value="{{ $dep->id }}"
-                            {{ old('departamento_id', $isEditing ? $tarefa->departamento_id : '') == $dep->id ? 'selected' : '' }}>
-                            {{ $dep->nome }}
-                        </option>
-                    @endforeach
-                </select>
+                <p id="display-departamento"
+                   class="mt-1 block w-full border border-gray-200 bg-gray-50 rounded px-3 py-2 text-sm text-gray-500 italic">
+                    {{ $isEditing ? ($tarefa->departamento?->nome ?? '—') : '—' }}
+                </p>
             </div>
         </div>
 
@@ -182,6 +177,24 @@
         </button>
     </div>
 </form>
+
+<script>
+(function () {
+    const depMap = @json($usuariosDepartamentos ?? []);
+    const selectResponsavel = document.querySelector('[name="responsavel_id"]');
+    const displayDep = document.getElementById('display-departamento');
+
+    function atualizarDepartamento() {
+        const dep = depMap[selectResponsavel.value];
+        displayDep.textContent = dep?.nome ?? '—';
+    }
+
+    if (selectResponsavel) {
+        selectResponsavel.addEventListener('change', atualizarDepartamento);
+        atualizarDepartamento();
+    }
+})();
+</script>
 
 @if($isEditing && $tarefa->historico->isNotEmpty())
     <div class="mt-6 pt-5 border-t border-gray-200">
