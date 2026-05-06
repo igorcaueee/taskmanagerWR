@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Ciclo;
 use App\Models\Cliente;
+use App\Models\Departamento;
 use App\Models\Etapa;
 use App\Models\Tarefa;
 use App\Models\Usuario;
@@ -30,6 +31,15 @@ class VerificarCertificados extends Command
 
         if (! $etapa) {
             $this->error('Nenhuma etapa cadastrada.');
+
+            return self::FAILURE;
+        }
+
+        $departamentoId = $silvia->departamento_id
+            ?? Departamento::orderBy('id')->value('id');
+
+        if (! $departamentoId) {
+            $this->error('Nenhum departamento cadastrado.');
 
             return self::FAILURE;
         }
@@ -61,17 +71,19 @@ class VerificarCertificados extends Command
             }
 
             $vencimento = Carbon::parse($cliente->vencimento_certificado);
-            $ciclo = Ciclo::findOrCreateForDate($vencimento->copy());
+            $dataTarefa = $vencimento->copy()->subDays(30);
+            $ciclo = Ciclo::findOrCreateForDate($dataTarefa->copy());
 
             Tarefa::create([
                 'titulo'          => $titulo,
                 'descricao'       => "Certificado digital do cliente {$cliente->nome} vence em {$vencimento->format('d/m/Y')}. Providenciar renovação.",
                 'cliente_id'      => $cliente->id,
+                'departamento_id' => $departamentoId,
                 'etapa_id'        => $etapa->id,
                 'responsavel_id'  => $silvia->id,
                 'criado_por'      => $silvia->id,
-                'data_vencimento' => $cliente->vencimento_certificado,
-                'prioridade'      => 'alta',
+                'data_vencimento' => $vencimento->copy()->subDays(30),
+                'prioridade'      => 4,
                 'recorrente'      => false,
                 'frequencia'      => 'nenhuma',
                 'ciclo_id'        => $ciclo->id,
