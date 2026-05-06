@@ -61,6 +61,7 @@
 
     {{-- Quick actions --}}
     <div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 items-center">
+        @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
         <button type="button"
                 class="text-xs text-gray-400 hover:text-brand border-0 bg-transparent p-0 cursor-pointer"
                 data-modal-url="{{ route('tarefas.form.edit', $tarefa->id) }}"
@@ -78,6 +79,7 @@
                 <i class="fa-solid fa-trash"></i>
             </button>
         </form>
+        @endif
 
         <button type="button"
                 class="ml-auto text-xs text-gray-400 hover:text-amber-600 border-0 bg-transparent p-0 cursor-pointer btn-proximo-ciclo"

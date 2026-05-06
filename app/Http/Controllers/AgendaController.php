@@ -26,7 +26,7 @@ class AgendaController extends Controller
         $ultimoDia = $primeiroDia->copy()->endOfMonth();
 
         $usuario = Auth::user();
-        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'supervisor']);
+        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
 
         $tarefasQuery = Tarefa::with(['etapa', 'cliente', 'responsavel'])
             ->whereBetween('data_vencimento', [$primeiroDia->toDateString(), $ultimoDia->toDateString()]);

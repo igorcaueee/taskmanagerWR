@@ -2,7 +2,7 @@
     <nav class="space-y-2">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
         <a href="{{ route('tarefas.list')}}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
-        @if (auth()->user()?->cargo === 'diretor')
+        @if (auth()->user()?->canVerFunil())
             <a href="{{ route('funil') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-filter"></i> Funil de Vendas</a>
         @endif
         <a href="{{ route('agenda') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-calendar-days"></i> Agenda</a>
@@ -20,7 +20,7 @@
                 <a href="/clientes" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-building"></i> Clientes</a>
                 <a href="/produtos" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
                 <a href="/tarefas" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
-                @if (auth()->user()?->cargo === 'diretor')
+                @if (auth()->user()?->canVerColaboradores())
                     <a href="/colaboradores" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
                 @endif
             </div>
@@ -35,7 +35,9 @@
             <div id="submenu-relatorios" class="hidden pl-3 mt-1 space-y-1">
                 <a href="{{ route('relatorios') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
                 <a href="{{ route('relatorios.clientes') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-building"></i> Clientes</a>
-                <a href="{{ route('relatorios.colaboradores') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
+                @if (auth()->user()?->canVerColaboradores())
+                    <a href="{{ route('relatorios.colaboradores') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
+                @endif
                 <a href="{{ route('relatorios.produtos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
             </div>
         </div>

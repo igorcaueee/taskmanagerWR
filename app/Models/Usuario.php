@@ -68,4 +68,46 @@ class Usuario extends Authenticatable
     {
         return $this->belongsTo(Departamento::class);
     }
+
+    // Diretor e TI têm acesso total ao sistema
+    public function canVerFunil(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
+
+    // Diretor, TI e Supervisor podem ver colaboradores
+    public function canVerColaboradores(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti', 'supervisor']);
+    }
+
+    // Apenas Diretor vê o campo honorário (dados financeiros sensíveis)
+    public function canVerHonorario(): bool
+    {
+        return $this->cargo === 'diretor';
+    }
+
+    // TI, Assistente e Auxiliar não veem faturamento
+    public function canVerFaturamento(): bool
+    {
+        return ! in_array($this->cargo, ['ti', 'assistente', 'auxiliar']);
+    }
+
+    // Assistente e Auxiliar não podem criar/editar/excluir clientes
+    public function canEditarClientes(): bool
+    {
+        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+    }
+
+    // Apenas Diretor gerencia produtos
+    public function canGerenciarProdutos(): bool
+    {
+        return $this->cargo === 'diretor';
+    }
+
+    // Assistente e Auxiliar só editam/deletam tarefas onde são responsáveis
+    public function canEditarQualquerTarefa(): bool
+    {
+        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+    }
 }

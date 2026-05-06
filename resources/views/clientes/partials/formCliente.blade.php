@@ -118,22 +118,27 @@
         {{-- CRM Fields --}}
         <div class="border-t border-gray-100 pt-4">
             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Informações Comerciais</p>
+            @php $canVerFat = auth()->user()?->canVerFaturamento(); $canVerHon = auth()->user()?->canVerHonorario(); @endphp
+            @if ($canVerFat || $canVerHon)
             <div class="grid grid-cols-2 gap-4">
+                @if ($canVerFat)
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Faturamento (R$)</label>
                     <input name="faturamento" type="number" step="0.01" min="0"
                            class="mt-1 block w-full border rounded px-3 py-2"
-                           required
                            value="{{ old('faturamento', $isEditing ? $cliente->faturamento : ($prefill['faturamento'] ?? '')) }}">
                 </div>
+                @endif
+                @if ($canVerHon)
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Honorário (R$)</label>
                     <input name="honorario" type="number" step="0.01" min="0"
                            class="mt-1 block w-full border rounded px-3 py-2"
-                           required
                            value="{{ old('honorario', $isEditing ? $cliente->honorario : ($prefill['honorario'] ?? '')) }}">
                 </div>
+                @endif
             </div>
+            @endif
             <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700">Possibilidade</label>
                 <textarea name="possibilidade" rows="2"

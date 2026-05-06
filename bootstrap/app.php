@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureColaboradoresAccess;
 use App\Http\Middleware\EnsureDiretor;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -16,7 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->append(SecurityHeaders::class);
         $middleware->alias([
-            'diretor' => EnsureDiretor::class,
+            'diretor'        => EnsureDiretor::class,
+            'colaboradores'  => EnsureColaboradoresAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $e): void {

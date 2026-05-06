@@ -6,10 +6,10 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureDiretor
+class EnsureColaboradoresAccess
 {
     /**
-     * Handle an incoming request.
+     * Permite acesso apenas para Diretor, TI e Supervisor.
      *
      * @param  Closure(Request): (Response)  $next
      */
@@ -17,7 +17,7 @@ class EnsureDiretor
     {
         $usuario = $request->user();
 
-        if (! $usuario || ! $usuario->canVerFunil()) {
+        if (! $usuario || ! $usuario->canVerColaboradores()) {
             abort(403);
         }
 

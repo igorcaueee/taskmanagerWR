@@ -136,6 +136,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-right whitespace-nowrap">
+                                @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none border-0 bg-transparent p-0"
                                         data-modal-url="{{ route('tarefas.form.edit', $tarefa->id) }}">
@@ -151,6 +152,7 @@
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

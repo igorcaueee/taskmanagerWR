@@ -392,8 +392,8 @@
                     ${field('Responsável', l.responsavel)}
                     ${field('E-mail', l.email)}
                     ${field('Telefone', l.telefone)}
-                    ${field('Faturamento', fmt(l.faturamento))}
-                    ${field('Honorário estimado', fmt(l.honorario), 'text-green-700')}
+                    @if (auth()->user()?->canVerFaturamento()) ${field('Faturamento', fmt(l.faturamento))} @endif
+                    @if (auth()->user()?->canVerHonorario()) ${field('Honorário estimado', fmt(l.honorario), 'text-green-700')} @endif
                     ${optionals}
                 </div>
 

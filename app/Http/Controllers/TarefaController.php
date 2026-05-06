@@ -23,7 +23,7 @@ class TarefaController extends Controller
     public function showTarefas(Request $request): View
     {
         $usuario = Auth::user();
-        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'supervisor']);
+        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
 
         $query = Tarefa::with(['cliente', 'departamento', 'etapa', 'responsavel'])
             ->orderBy('data_vencimento');
@@ -71,7 +71,7 @@ class TarefaController extends Controller
     public function showTarefasList(Request $request): View
     {
         $usuario = Auth::user();
-        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'supervisor']);
+        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
 
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
 
@@ -216,6 +216,11 @@ class TarefaController extends Controller
     {
         $tarefa = Tarefa::findOrFail($id);
 
+        $usuario = Auth::user();
+        if (! $usuario->canEditarQualquerTarefa() && (int) $tarefa->responsavel_id !== (int) $usuario->id) {
+            abort(403);
+        }
+
         $data = $request->only([
             'titulo', 'descricao', 'cliente_id', 'departamento_id',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
@@ -296,6 +301,12 @@ class TarefaController extends Controller
     public function delete(int $id): RedirectResponse
     {
         $tarefa = Tarefa::findOrFail($id);
+
+        $usuario = Auth::user();
+        if (! $usuario->canEditarQualquerTarefa() && (int) $tarefa->responsavel_id !== (int) $usuario->id) {
+            abort(403);
+        }
+
         $tarefa->delete();
 
         return Redirect::back()->with('success', 'Tarefa excluída com sucesso.');

@@ -40,7 +40,7 @@ class FunilController extends Controller
         $leads = $query->get()->groupBy('etapa_funil_id');
 
         $usuario = Auth::user();
-        $podeVerTodos = in_array($usuario->cargo, ['diretor', 'supervisor']);
+        $podeVerTodos = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
         $usuarios = $podeVerTodos ? Usuario::orderBy('nome')->get() : collect();
 
         return view('funil.kanban', compact('etapas', 'leads', 'usuarios', 'podeVerTodos'));

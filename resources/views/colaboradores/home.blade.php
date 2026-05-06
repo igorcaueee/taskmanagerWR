@@ -2,6 +2,17 @@
 
 @section('title', 'Painel — WR Assessoria')
 
+@php
+    $labelCargos = [
+        'diretor'    => 'Diretor',
+        'ti'         => 'TI',
+        'supervisor' => 'Supervisor',
+        'analista'   => 'Analista',
+        'assistente' => 'Assistente',
+        'auxiliar'   => 'Auxiliar',
+    ];
+@endphp
+
 @section('content')
     <div class="max-w-7xl mx-auto py-6 px-4">
         <div class="flex items-center justify-between mb-6">
@@ -34,6 +45,7 @@
                             class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         <option value="diretor"    @selected(request('cargo') === 'diretor')>Diretor</option>
+                        <option value="ti"         @selected(request('cargo') === 'ti')>TI</option>
                         <option value="supervisor" @selected(request('cargo') === 'supervisor')>Supervisor</option>
                         <option value="analista"   @selected(request('cargo') === 'analista')>Analista</option>
                         <option value="assistente" @selected(request('cargo') === 'assistente')>Assistente</option>
@@ -74,7 +86,7 @@
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->data_nascimento ? \Illuminate\Support\Carbon::parse($colab->data_nascimento)->format('d/m/Y') : '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->data_registro ? \Illuminate\Support\Carbon::parse($colab->data_registro)->format('d/m/Y') : '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $colab->departamento?->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 capitalize whitespace-nowrap">{{ $colab->cargo }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $labelCargos[$colab->cargo] ?? ucfirst($colab->cargo) }}</td>
                             <td class="px-6 py-4 text-sm">
                                 @if($colab->status)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Ativo</span>

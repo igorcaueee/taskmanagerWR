@@ -37,7 +37,7 @@
             <span></span>
         @endif
 
-        @if ($lead->honorario)
+        @if ($lead->honorario && auth()->user()?->canVerHonorario())
             <span class="text-xs text-green-700 font-medium">
                 R$ {{ number_format($lead->honorario, 2, ',', '.') }}
             </span>

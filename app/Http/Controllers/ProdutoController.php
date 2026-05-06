@@ -31,11 +31,15 @@ class ProdutoController extends Controller
 
     public function formCreate(): View
     {
+        abort_if(! auth()->user()?->canGerenciarProdutos(), 403);
+
         return view('produtos.partials.formProduto', ['produto' => null]);
     }
 
     public function formEdit(int $id): View
     {
+        abort_if(! auth()->user()?->canGerenciarProdutos(), 403);
+
         $produto = Produto::findOrFail($id);
 
         return view('produtos.partials.formProduto', compact('produto'));
@@ -43,6 +47,7 @@ class ProdutoController extends Controller
 
     public function save(Request $request): RedirectResponse
     {
+        abort_if(! auth()->user()?->canGerenciarProdutos(), 403);
         $data = $request->only(['nome', 'descricao', 'ativo']);
 
         $validator = Validator::make($data, [
@@ -64,6 +69,8 @@ class ProdutoController extends Controller
 
     public function update(Request $request, int $id): RedirectResponse
     {
+        abort_if(! auth()->user()?->canGerenciarProdutos(), 403);
+
         $produto = Produto::findOrFail($id);
 
         $data = $request->only(['nome', 'descricao', 'ativo']);
@@ -87,6 +94,8 @@ class ProdutoController extends Controller
 
     public function delete(int $id): RedirectResponse
     {
+        abort_if(! auth()->user()?->canGerenciarProdutos(), 403);
+
         Produto::findOrFail($id)->delete();
 
         return Redirect::route('produtos')->with('success', 'Produto excluído com sucesso.');

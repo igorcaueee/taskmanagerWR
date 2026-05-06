@@ -53,6 +53,8 @@ class ClienteController extends Controller
 
     public function formClienteCreate(): View
     {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
 
         return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos]);
@@ -60,6 +62,8 @@ class ClienteController extends Controller
 
     public function formClienteEdit(int $id): View
     {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
         $cliente = Cliente::with('produtos')->findOrFail($id);
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
 
@@ -68,6 +72,8 @@ class ClienteController extends Controller
 
     public function saveCliente(Request $request): RedirectResponse
     {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
         $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
@@ -103,6 +109,8 @@ class ClienteController extends Controller
 
     public function updateCliente(Request $request, int $id): RedirectResponse
     {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
         $cliente = Cliente::findOrFail($id);
 
         $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'faturamento', 'servico', 'honorario', 'possibilidade']);
@@ -139,6 +147,8 @@ class ClienteController extends Controller
 
     public function deleteCliente(int $id): RedirectResponse
     {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
         Cliente::findOrFail($id)->delete();
 
         return Redirect::route('clientes')->with('success', 'Cliente excluído com sucesso.');

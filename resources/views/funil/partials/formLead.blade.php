@@ -105,20 +105,26 @@
             </div>
         </div>
 
+        @if (auth()->user()?->canVerFaturamento() || auth()->user()?->canVerHonorario())
         <div class="grid grid-cols-2 gap-4">
+            @if (auth()->user()?->canVerFaturamento())
             <div>
                 <label class="block text-sm font-medium text-gray-700">Faturamento (R$)</label>
                 <input name="faturamento" type="number" step="0.01" min="0"
                        class="mt-1 block w-full border rounded px-3 py-2"
                        value="{{ old('faturamento', $isEditing ? $lead->faturamento : '') }}">
             </div>
+            @endif
+            @if (auth()->user()?->canVerHonorario())
             <div>
                 <label class="block text-sm font-medium text-gray-700">Honorário (R$)</label>
                 <input name="honorario" type="number" step="0.01" min="0"
                        class="mt-1 block w-full border rounded px-3 py-2"
                        value="{{ old('honorario', $isEditing ? $lead->honorario : '') }}">
             </div>
+            @endif
         </div>
+        @endif
 
         @if(isset($produtos) && $produtos->isNotEmpty())
             @php

@@ -9,6 +9,7 @@
                 <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-users"></i> Clientes</h1>
                 <p class="text-gray-700">Aqui você pode visualizar e gerenciar seus clientes.</p>
             </div>
+            @if (auth()->user()?->canEditarClientes())
             <div class="flex gap-2">
                 <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded focus:outline-none hover:bg-gray-50 text-sm"
                         data-modal-url="{{ route('clientes.import.form') }}">
@@ -20,6 +21,7 @@
                     <i class="fa-solid fa-plus"></i>
                 </button>
             </div>
+            @endif
         </div>
 
         @if(session('success'))
@@ -121,6 +123,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-right">
+                                @if (auth()->user()?->canEditarClientes())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
                                         data-modal-url="{{ route('clientes.form.edit', $cliente->id) }}">
@@ -134,6 +137,7 @@
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
