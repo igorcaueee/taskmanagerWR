@@ -33,11 +33,6 @@
                     <label class="block text-sm font-medium text-gray-700">Senha</label>
                     <input type="password" name="password" required class="mt-1 block w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600">
                 </div>
-                <div class="flex items-center justify-between">
-                    <label class="flex items-center text-sm">
-                        <input type="checkbox" name="remember" class="mr-2"> Lembrar-me
-                    </label>
-                </div>
                 <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:from-blue-700 hover:to-blue-800 transition">Entrar</button>
             </form>
         </div>

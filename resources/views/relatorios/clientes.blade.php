@@ -103,6 +103,52 @@
             </div>
         </div>
 
+        {{-- Certificados a Vencer --}}
+        <div class="bg-white rounded-xl shadow-sm border border-amber-200 p-5 mb-6">
+            <h2 class="text-sm font-semibold text-gray-700 mb-4">
+                <i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>
+                Certificados a vencer nos próximos 30 dias
+                @if($certificadosAVencer->isNotEmpty())
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        {{ $certificadosAVencer->count() }}
+                    </span>
+                @endif
+            </h2>
+            @if($certificadosAVencer->isEmpty())
+                <p class="text-sm text-gray-400 italic">Nenhum certificado vencendo nos próximos 30 dias.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-100">
+                                <th class="text-left py-2 pr-4 font-medium text-gray-500">Cliente</th>
+                                <th class="text-left py-2 pr-4 font-medium text-gray-500">Vencimento</th>
+                                <th class="text-left py-2 font-medium text-gray-500">Dias restantes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            @foreach($certificadosAVencer as $c)
+                                @php
+                                    $diasRestantes = (int) now()->startOfDay()->diffInDays($c->vencimento_certificado, false);
+                                    $urgente = $diasRestantes <= 7;
+                                @endphp
+                                <tr class="hover:bg-gray-50">
+                                    <td class="py-2 pr-4 font-medium text-gray-800">{{ $c->nome }}</td>
+                                    <td class="py-2 pr-4 text-gray-600">{{ $c->vencimento_certificado->format('d/m/Y') }}</td>
+                                    <td class="py-2">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                            {{ $urgente ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">
+                                            {{ $diasRestantes }} {{ $diasRestantes === 1 ? 'dia' : 'dias' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+
         {{-- Linha 2: Clientes com vencidas + Novos clientes por mês --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 

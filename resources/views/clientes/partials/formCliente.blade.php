@@ -97,14 +97,26 @@
                 <label class="block text-sm font-medium text-gray-700">Data de Abertura</label>
                 <input name="dataabertura" type="date"
                        class="mt-1 block w-full border rounded px-3 py-2"
-                       value="{{ old('dataabertura', $isEditing ? $cliente->dataabertura : ($prefill['dataabertura'] ?? '')) }}">
+                       value="{{ old('dataabertura', $isEditing ? $cliente->dataabertura?->format('Y-m-d') : ($prefill['dataabertura'] ?? '')) }}">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700">Cliente Desde</label>
                 <input name="cliente_desde" type="date"
                        class="mt-1 block w-full border rounded px-3 py-2"
-                       value="{{ old('cliente_desde', $isEditing ? $cliente->cliente_desde : ($prefill['cliente_desde'] ?? now()->toDateString())) }}">
+                       value="{{ old('cliente_desde', $isEditing ? $cliente->cliente_desde?->format('Y-m-d') : ($prefill['cliente_desde'] ?? now()->toDateString())) }}">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    <i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i> Vencimento do Certificado
+                </label>
+                <input name="vencimento_certificado" type="date"
+                       class="mt-1 block w-full border rounded px-3 py-2"
+                       value="{{ old('vencimento_certificado', $isEditing ? $cliente->vencimento_certificado?->format('Y-m-d') : ($prefill['vencimento_certificado'] ?? '')) }}">
+                <p class="text-xs text-gray-400 mt-1">Uma tarefa será criada automaticamente 30 dias antes do vencimento.</p>
             </div>
         </div>
 

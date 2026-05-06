@@ -218,6 +218,15 @@ class RelatorioController extends Controller
             ]);
         }
 
+        // Certificados a vencer nos próximos 30 dias
+        $certificadosAVencer = Cliente::query()
+            ->whereNotNull('vencimento_certificado')
+            ->whereDate('vencimento_certificado', '>=', now()->toDateString())
+            ->whereDate('vencimento_certificado', '<=', now()->addDays(30)->toDateString())
+            ->where('status', 'ativo')
+            ->orderBy('vencimento_certificado')
+            ->get(['id', 'nome', 'vencimento_certificado']);
+
         return view('relatorios.clientes', compact(
             'dataInicio',
             'dataFim',
@@ -230,6 +239,7 @@ class RelatorioController extends Controller
             'clientesComMaisConcluidas',
             'clientesComVencidas',
             'novosPorMes',
+            'certificadosAVencer',
         ));
     }
 

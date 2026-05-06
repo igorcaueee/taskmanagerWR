@@ -21,10 +21,17 @@ class Cliente extends Model
         'fator_r',
         'cliente_desde',
         'dataabertura',
+        'vencimento_certificado',
         'faturamento',
         'servico',
         'honorario',
         'possibilidade',
+    ];
+
+    protected $casts = [
+        'vencimento_certificado' => 'date',
+        'cliente_desde' => 'date',
+        'dataabertura' => 'date',
     ];
 
     public function produtos(): BelongsToMany
