@@ -130,6 +130,15 @@
                                     <i class="fa-solid fa-pencil"></i>
                                 </button>
 
+                                @if($cliente->status === 'ativo')
+                                <button type="button"
+                                        class="text-orange-500 hover:text-orange-600 ml-3 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
+                                        data-modal-url="{{ route('clientes.form.encerrar', $cliente->id) }}"
+                                        title="Encerrar cliente">
+                                    <i class="fa-solid fa-building-circle-xmark"></i>
+                                </button>
+                                @endif
+
                                 <form method="POST" action="{{ route('clientes.delete', $cliente->id) }}" class="inline">
                                     @csrf
                                     @method('DELETE')

@@ -156,6 +156,38 @@ class ClienteController extends Controller
         return Redirect::route('clientes')->with('success', 'Cliente excluído com sucesso.');
     }
 
+    public function formEncerrarCliente(int $id): View
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        return view('clientes.partials.formEncerrarCliente', compact('cliente'));
+    }
+
+    public function encerrarCliente(Request $request, int $id): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'motivo_encerramento' => ['required', 'string', 'max:1000'],
+        ]);
+
+        if ($validator->fails()) {
+            return Redirect::back()->withErrors($validator)->withInput();
+        }
+
+        $cliente->update([
+            'status' => 'inativo',
+            'motivo_encerramento' => $request->input('motivo_encerramento'),
+            'data_encerramento' => Carbon::today(),
+        ]);
+
+        return Redirect::route('clientes')->with('success', 'Cliente encerrado com sucesso.');
+    }
+
     public function formImportClientes(): View
     {
         return view('clientes.partials.formImport');
@@ -172,13 +204,13 @@ class ClienteController extends Controller
             return Redirect::route('clientes')->with('error', 'Arquivo vazio.');
         }
 
-        $header = array_map(fn($v) => mb_strtolower(trim((string) $v)), $rows[0]);
+        $header = array_map(fn ($v) => mb_strtolower(trim((string) $v)), $rows[0]);
         $colIndex = array_flip($header);
 
-        $get = fn($row, $col) => isset($colIndex[$col]) ? trim((string) ($row[$colIndex[$col]] ?? '')) : '';
+        $get = fn ($row, $col) => isset($colIndex[$col]) ? trim((string) ($row[$colIndex[$col]] ?? '')) : '';
 
         $importados = 0;
-        $ignorados  = 0;
+        $ignorados = 0;
 
         foreach (array_slice($rows, 1) as $row) {
             $nome = $get($row, 'nome');
@@ -190,13 +222,14 @@ class ClienteController extends Controller
 
             if ($cpfcnpj && Cliente::where('cpfcnpj', $cpfcnpj)->exists()) {
                 $ignorados++;
+
                 continue;
             }
 
             $tipoRaw = mb_strtoupper($get($row, 'tipo'));
             $tipo = match ($tipoRaw) {
-                'PJ'    => 1,
-                'PF'    => 0,
+                'PJ' => 1,
+                'PF' => 0,
                 default => null,
             };
 
@@ -205,30 +238,33 @@ class ClienteController extends Controller
             $status = in_array(mb_strtolower($get($row, 'status')), ['ativo', 'active', '1']) ? 'ativo' : 'inativo';
 
             $parseDate = function (string $value): ?string {
-                if ($value === '') return null;
+                if ($value === '') {
+                    return null;
+                }
                 if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value)) {
                     return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
                 }
                 if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
                     return $value;
                 }
+
                 return null;
             };
 
             Cliente::create([
-                'nome'              => $nome,
-                'cpfcnpj'           => $cpfcnpj,
-                'tipo'              => $tipo,
+                'nome' => $nome,
+                'cpfcnpj' => $cpfcnpj,
+                'tipo' => $tipo,
                 'regime_tributario' => $get($row, 'regime_tributario') ?: null,
-                'cidade'            => $get($row, 'cidade') ?: null,
-                'estado'            => mb_strtoupper($get($row, 'estado')) ?: null,
-                'status'            => $status,
-                'fator_r'           => $fatorR,
-                'cliente_desde'     => $parseDate($get($row, 'cliente_desde')),
-                'dataabertura'      => $parseDate($get($row, 'dataabertura')),
-                'faturamento'       => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
-                'servico'           => $get($row, 'servico') ?: null,
-                'honorario'         => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
+                'cidade' => $get($row, 'cidade') ?: null,
+                'estado' => mb_strtoupper($get($row, 'estado')) ?: null,
+                'status' => $status,
+                'fator_r' => $fatorR,
+                'cliente_desde' => $parseDate($get($row, 'cliente_desde')),
+                'dataabertura' => $parseDate($get($row, 'dataabertura')),
+                'faturamento' => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
+                'servico' => $get($row, 'servico') ?: null,
+                'honorario' => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
             ]);
 
             $importados++;
@@ -239,12 +275,12 @@ class ClienteController extends Controller
             $msg .= ", {$ignorados} ignorado(s) por CPF/CNPJ duplicado";
         }
 
-        return Redirect::route('clientes')->with('success', $msg . '.');
+        return Redirect::route('clientes')->with('success', $msg.'.');
     }
 
     public function templateClientes(): Response
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Clientes');
 
@@ -255,11 +291,11 @@ class ClienteController extends Controller
         ];
 
         foreach ($columns as $i => $col) {
-            $cell = chr(65 + $i) . '1';
+            $cell = chr(65 + $i).'1';
             $sheet->setCellValue($cell, $col);
             $sheet->getStyle($cell)->applyFromArray([
-                'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
             $sheet->getColumnDimensionByColumn($i + 1)->setAutoSize(true);
@@ -272,7 +308,7 @@ class ClienteController extends Controller
         ];
 
         foreach ($examples as $i => $val) {
-            $cell = chr(65 + $i) . '2';
+            $cell = chr(65 + $i).'2';
             $sheet->setCellValue($cell, $val);
             $sheet->getStyle($cell)->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F0F4FF']],
@@ -287,7 +323,7 @@ class ClienteController extends Controller
         $content = ob_get_clean();
 
         return response($content, 200, [
-            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="modelo-importacao-clientes.xlsx"',
         ]);
     }

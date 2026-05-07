@@ -18,6 +18,8 @@ class Cliente extends Model
         'cidade',
         'estado',
         'status',
+        'motivo_encerramento',
+        'data_encerramento',
         'fator_r',
         'cliente_desde',
         'dataabertura',
@@ -32,6 +34,7 @@ class Cliente extends Model
         'vencimento_certificado' => 'date',
         'cliente_desde' => 'date',
         'dataabertura' => 'date',
+        'data_encerramento' => 'date',
     ];
 
     public function produtos(): BelongsToMany

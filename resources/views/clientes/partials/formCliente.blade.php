@@ -194,6 +194,24 @@
                 <p class="text-xs text-gray-400 mt-1">Selecione os produtos/serviços que este cliente contrata ou pode contratar.</p>
             </div>
         @endif
+
+        @if($isEditing && $cliente->status === 'inativo' && $cliente->motivo_encerramento)
+        <div class="border-t border-gray-100 pt-4">
+            <h3 class="text-sm font-semibold text-red-700 mb-3"><i class="fa-solid fa-building-circle-xmark mr-1"></i> Informações de Encerramento</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-500">Data de Encerramento</label>
+                    <p class="text-sm text-gray-700 mt-1">
+                        {{ $cliente->data_encerramento ? $cliente->data_encerramento->format('d/m/Y') : '—' }}
+                    </p>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs text-gray-500">Motivo do Encerramento</label>
+                    <p class="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{{ $cliente->motivo_encerramento }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     @unless(isset($hideShell) && $hideShell)

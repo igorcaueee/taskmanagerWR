@@ -57,6 +57,8 @@ Route::get('/clientes/import/form', [ClienteController::class, 'formImportClient
 Route::get('/clientes/import/template', [ClienteController::class, 'templateClientes'])->name('clientes.import.template')->middleware('auth');
 Route::post('/clientes/import', [ClienteController::class, 'importClientes'])->name('clientes.import')->middleware('auth');
 Route::post('/clientes/save', [ClienteController::class, 'saveCliente'])->name('clientes.save')->middleware('auth');
+Route::get('/clientes/{id}/encerrar', [ClienteController::class, 'formEncerrarCliente'])->name('clientes.form.encerrar')->middleware('auth');
+Route::post('/clientes/{id}/encerrar', [ClienteController::class, 'encerrarCliente'])->name('clientes.encerrar')->middleware('auth');
 Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
 Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name('clientes.update')->middleware('auth');
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
