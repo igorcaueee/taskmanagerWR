@@ -16,6 +16,7 @@ echo -e "${GREEN}         DEPLOY - Task Manager          ${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 step "Atualizando código (git pull)"
+sudo chown -R "$USER":"$USER" storage bootstrap/cache 2>/dev/null || true
 git fetch origin master || fail "git fetch falhou"
 git reset --hard origin/master || fail "git reset falhou"
 git clean -fd || fail "git clean falhou"
@@ -41,6 +42,11 @@ ok "Cache de config, rotas e views gerado"
 step "Reiniciando filas"
 php artisan queue:restart
 ok "Filas reiniciadas"
+
+step "Ajustando permissões do storage"
+sudo chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || \
+    chmod -R 775 storage bootstrap/cache
+ok "Permissões ajustadas"
 
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN}      Deploy concluído com sucesso!      ${NC}"
