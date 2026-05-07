@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\ContatoCliente;
 use App\Models\Produto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,7 +65,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $cliente = Cliente::with('produtos')->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'contatos'])->findOrFail($id);
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
 
         return view('clientes.partials.formCliente', compact('cliente', 'produtos'));
@@ -326,5 +327,85 @@ class ClienteController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="modelo-importacao-clientes.xlsx"',
         ]);
+    }
+
+    public function contatosModal(int $id): View
+    {
+        $cliente = Cliente::with('contatos')->findOrFail($id);
+
+        return view('clientes.partials.contatosModal', compact('cliente'));
+    }
+
+    public function formContatoCreate(int $clienteId): View
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($clienteId);
+
+        return view('clientes.partials.formContato', ['contato' => null, 'cliente' => $cliente]);
+    }
+
+    public function formContatoEdit(int $id): View
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $contato = ContatoCliente::findOrFail($id);
+
+        return view('clientes.partials.formContato', ['contato' => $contato, 'cliente' => $contato->cliente]);
+    }
+
+    public function saveContato(Request $request, int $clienteId): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($clienteId);
+
+        $validator = Validator::make($request->only(['nome', 'tipo', 'telefone', 'gmail']), [
+            'nome' => ['required', 'string', 'max:255'],
+            'tipo' => ['required', 'in:Dono,Sócio'],
+            'telefone' => ['nullable', 'string', 'max:20'],
+            'gmail' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return Redirect::back()->withErrors($validator)->withInput();
+        }
+
+        $cliente->contatos()->create($request->only(['nome', 'tipo', 'telefone', 'gmail']));
+
+        return Redirect::route('clientes.contatos.modal', $clienteId)->with('success', 'Contato adicionado com sucesso.');
+    }
+
+    public function updateContato(Request $request, int $id): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $contato = ContatoCliente::findOrFail($id);
+
+        $validator = Validator::make($request->only(['nome', 'tipo', 'telefone', 'gmail']), [
+            'nome' => ['required', 'string', 'max:255'],
+            'tipo' => ['required', 'in:Dono,Sócio'],
+            'telefone' => ['nullable', 'string', 'max:20'],
+            'gmail' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return Redirect::back()->withErrors($validator)->withInput();
+        }
+
+        $contato->update($request->only(['nome', 'tipo', 'telefone', 'gmail']));
+
+        return Redirect::route('clientes.contatos.modal', $contato->cliente_id)->with('success', 'Contato atualizado com sucesso.');
+    }
+
+    public function deleteContato(int $id): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $contato = ContatoCliente::findOrFail($id);
+        $clienteId = $contato->cliente_id;
+        $contato->delete();
+
+        return Redirect::route('clientes.contatos.modal', $clienteId)->with('success', 'Contato removido com sucesso.');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cliente extends Model
 {
@@ -40,5 +41,10 @@ class Cliente extends Model
     public function produtos(): BelongsToMany
     {
         return $this->belongsToMany(Produto::class, 'cliente_produto');
+    }
+
+    public function contatos(): HasMany
+    {
+        return $this->hasMany(ContatoCliente::class);
     }
 }

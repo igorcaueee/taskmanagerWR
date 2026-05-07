@@ -17,9 +17,28 @@
         @endif
         {{ $title }}
     </h5>
-    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0">
-        <i class="fa-solid fa-xmark text-lg"></i>
-    </button>
+    <div class="flex items-center gap-2">
+        @if($isEditing)
+            <button type="button"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50 bg-transparent"
+                    data-modal-url="{{ route('clientes.contatos.modal', $cliente->id) }}">
+                <i class="fa-solid fa-address-card"></i> Contatos
+                @if($cliente->contatos->isNotEmpty())
+                    <span class="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-brand text-white">{{ $cliente->contatos->count() }}</span>
+                @endif
+            </button>
+            @if(auth()->user()?->canEditarClientes() && $cliente->status === 'ativo')
+            <button type="button"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-red-200 rounded text-red-600 hover:bg-red-50 bg-transparent"
+                    data-modal-url="{{ route('clientes.form.encerrar', $cliente->id) }}">
+                <i class="fa-solid fa-building-circle-xmark"></i> Encerrar
+            </button>
+            @endif
+        @endif
+        <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 ml-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+    </div>
 </div>
 @endunless
 
@@ -72,6 +91,15 @@
                     @endforeach
                 </select>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    <i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i> Vencimento do Certificado
+                </label>
+                <input name="vencimento_certificado" type="date"
+                       class="mt-1 block w-full border rounded px-3 py-2"
+                       value="{{ old('vencimento_certificado', $isEditing ? $cliente->vencimento_certificado?->format('Y-m-d') : ($prefill['vencimento_certificado'] ?? '')) }}">
+                <p class="text-xs text-gray-400 mt-1">Tarefa criada 30 dias antes do vencimento.</p>
+            </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -105,18 +133,6 @@
                 <input name="cliente_desde" type="date"
                        class="mt-1 block w-full border rounded px-3 py-2"
                        value="{{ old('cliente_desde', $isEditing ? $cliente->cliente_desde?->format('Y-m-d') : ($prefill['cliente_desde'] ?? now()->toDateString())) }}">
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">
-                    <i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i> Vencimento do Certificado
-                </label>
-                <input name="vencimento_certificado" type="date"
-                       class="mt-1 block w-full border rounded px-3 py-2"
-                       value="{{ old('vencimento_certificado', $isEditing ? $cliente->vencimento_certificado?->format('Y-m-d') : ($prefill['vencimento_certificado'] ?? '')) }}">
-                <p class="text-xs text-gray-400 mt-1">Uma tarefa será criada automaticamente 30 dias antes do vencimento.</p>
             </div>
         </div>
 
@@ -196,20 +212,12 @@
         @endif
 
         @if($isEditing && $cliente->status === 'inativo' && $cliente->motivo_encerramento)
-        <div class="border-t border-gray-100 pt-4">
-            <h3 class="text-sm font-semibold text-red-700 mb-3"><i class="fa-solid fa-building-circle-xmark mr-1"></i> Informações de Encerramento</h3>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs text-gray-500">Data de Encerramento</label>
-                    <p class="text-sm text-gray-700 mt-1">
-                        {{ $cliente->data_encerramento ? $cliente->data_encerramento->format('d/m/Y') : '—' }}
-                    </p>
-                </div>
-                <div class="col-span-2">
-                    <label class="block text-xs text-gray-500">Motivo do Encerramento</label>
-                    <p class="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{{ $cliente->motivo_encerramento }}</p>
-                </div>
-            </div>
+        <div class="p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
+            <i class="fa-solid fa-building-circle-xmark mr-1"></i>
+            Encerrado em {{ $cliente->data_encerramento?->format('d/m/Y') ?? '—' }}
+            @if($cliente->motivo_encerramento)
+                — <span class="italic">{{ Str::limit($cliente->motivo_encerramento, 80) }}</span>
+            @endif
         </div>
         @endif
     </div>
