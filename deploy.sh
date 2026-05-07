@@ -16,7 +16,9 @@ echo -e "${GREEN}         DEPLOY - Task Manager          ${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 step "Atualizando código (git pull)"
-git pull origin master || fail "git pull falhou"
+git fetch origin master || fail "git fetch falhou"
+git reset --hard origin/master || fail "git reset falhou"
+git clean -fd || fail "git clean falhou"
 ok "Código atualizado"
 
 step "Instalando dependências PHP"
