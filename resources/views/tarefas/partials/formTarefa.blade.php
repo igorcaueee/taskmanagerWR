@@ -40,27 +40,65 @@
                       class="mt-1 block w-full border rounded px-3 py-2">{{ old('descricao', $isEditing ? $tarefa->descricao : '') }}</textarea>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Cliente</label>
-                <select name="cliente_id" class="mt-1 block w-full border rounded px-3 py-2" required>
+        @php
+            $selectedClienteId = old('cliente_id', $isEditing ? $tarefa->cliente_id : '');
+            $selectedClienteNome = $isEditing && $tarefa->cliente ? $tarefa->cliente->nome : '';
+        @endphp
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Cliente</label>
+            <div class="relative mt-1" id="cliente-dropdown-wrapper">
+                {{-- Hidden select for form submission --}}
+                <select name="cliente_id" id="cliente_id_hidden" class="hidden" required>
                     <option value="">— Selecione —</option>
                     @foreach($clientes as $cliente)
                         <option value="{{ $cliente->id }}"
-                            {{ old('cliente_id', $isEditing ? $tarefa->cliente_id : '') == $cliente->id ? 'selected' : '' }}>
+                            {{ $selectedClienteId == $cliente->id ? 'selected' : '' }}>
                             {{ $cliente->nome }}
                         </option>
                     @endforeach
                 </select>
-            </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Departamento</label>
-                <p id="display-departamento"
-                   class="mt-1 block w-full border border-gray-200 bg-gray-50 rounded px-3 py-2 text-sm text-gray-500 italic">
-                    {{ $isEditing ? ($tarefa->departamento?->nome ?? '—') : '—' }}
-                </p>
+                {{-- Visible trigger --}}
+                <button type="button" id="cliente-trigger"
+                    class="w-full flex items-center justify-between border rounded px-3 py-2 bg-white text-left text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+                    onclick="toggleClienteDropdown()">
+                    <span id="cliente-display-text" class="{{ $selectedClienteId ? 'text-gray-900' : 'text-gray-400' }}">
+                        {{ $selectedClienteId ? $selectedClienteNome : '— Selecione —' }}
+                    </span>
+                    <i class="fa-solid fa-chevron-down text-gray-400 text-xs ml-2"></i>
+                </button>
+
+                {{-- Dropdown --}}
+                <div id="cliente-dropdown"
+                    class="absolute z-50 mt-1 w-full bg-white border rounded shadow-lg hidden"
+                    style="max-height: 260px;">
+                    <div class="p-2 border-b">
+                        <input type="text" id="cliente-search"
+                            placeholder="Buscar cliente..."
+                            class="w-full px-3 py-1.5 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-brand/50"
+                            oninput="filtrarClientes(this.value)">
+                    </div>
+                    <ul id="cliente-list" class="overflow-y-auto" style="max-height: 200px;">
+                        <li data-value="" data-label="— Selecione —"
+                            class="cliente-option px-3 py-2 text-sm text-gray-400 cursor-pointer hover:bg-gray-100"
+                            onclick="selecionarCliente('', '— Selecione —')">
+                            — Selecione —
+                        </li>
+                        @foreach($clientes as $cliente)
+                            <li data-value="{{ $cliente->id }}" data-label="{{ $cliente->nome }}"
+                                class="cliente-option px-3 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-100 {{ $selectedClienteId == $cliente->id ? 'bg-brand/10 font-medium' : '' }}"
+                                onclick="selecionarCliente('{{ $cliente->id }}', '{{ addslashes($cliente->nome) }}')">
+                                {{ $cliente->nome }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
             </div>
+        </div>
+
+        <div class="hidden">
+            <p id="display-departamento">{{ $isEditing ? ($tarefa->departamento?->nome ?? '—') : '—' }}</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -179,6 +217,52 @@
 </form>
 
 <script>
+// --- Searchable cliente dropdown ---
+function toggleClienteDropdown() {
+    const dropdown = document.getElementById('cliente-dropdown');
+    const search = document.getElementById('cliente-search');
+    const isHidden = dropdown.classList.toggle('hidden');
+    if (!isHidden) {
+        search.value = '';
+        filtrarClientes('');
+        search.focus();
+    }
+}
+
+function filtrarClientes(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('#cliente-list .cliente-option').forEach(function (li) {
+        const label = li.dataset.label.toLowerCase();
+        li.style.display = (!q || label.includes(q)) ? '' : 'none';
+    });
+}
+
+function selecionarCliente(value, label) {
+    const hidden = document.getElementById('cliente_id_hidden');
+    const displayText = document.getElementById('cliente-display-text');
+    const dropdown = document.getElementById('cliente-dropdown');
+
+    hidden.value = value;
+    displayText.textContent = label;
+    displayText.className = value ? 'text-gray-900' : 'text-gray-400';
+    dropdown.classList.add('hidden');
+
+    // Highlight selected item
+    document.querySelectorAll('#cliente-list .cliente-option').forEach(function (li) {
+        li.classList.toggle('bg-brand/10', li.dataset.value === value);
+        li.classList.toggle('font-medium', li.dataset.value === value);
+    });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function (e) {
+    const wrapper = document.getElementById('cliente-dropdown-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        document.getElementById('cliente-dropdown').classList.add('hidden');
+    }
+});
+
+// --- Departamento por responsável ---
 (function () {
     const depMap = @json($usuariosDepartamentos ?? []);
     const selectResponsavel = document.querySelector('[name="responsavel_id"]');
