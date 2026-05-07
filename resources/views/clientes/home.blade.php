@@ -78,7 +78,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF/CNPJ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Regime Tributário</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade/UF</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente Desde</th>
@@ -100,7 +100,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-700">{{ $cliente->nome }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ $cliente->cpfcnpj ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ?? '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700">
                                 {{ $cliente->cidade ?? '—' }}{{ $cliente->estado ? '/' . $cliente->estado : '' }}
