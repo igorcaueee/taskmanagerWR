@@ -73,24 +73,24 @@
                 </div>
             </form>
 
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-xs">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Regime Tributário</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade/UF</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente Desde</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fator R</th>
-                        <th class="px-6 py-3"></th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Regime Tributário</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade/UF</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente Desde</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fator R</th>
+                        <th class="px-4 py-2"></th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($clientes as $cliente)
                         <tr>
-                            <td class="px-6 py-4 text-sm text-gray-700">
+                            <td class="px-4 py-2 text-xs text-gray-700">
                                 @if((string) $cliente->tipo === '1')
                                     <i class="fa-solid fa-building-user"></i>
                                 @elseif((string) $cliente->tipo === '0')
@@ -99,30 +99,30 @@
                                     —
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ $cliente->nome }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700">
+                            <td class="px-4 py-2 text-xs text-gray-700">{{ $cliente->nome }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ?? '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700">
                                 {{ $cliente->cidade ?? '—' }}{{ $cliente->estado ? '/' . $cliente->estado : '' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-700">
+                            <td class="px-4 py-2 text-xs text-gray-700">
                                 {{ $cliente->cliente_desde ? \Illuminate\Support\Carbon::parse($cliente->cliente_desde)->format('d/m/Y') : '—' }}
                             </td>
-                            <td class="px-6 py-4 text-sm">
+                            <td class="px-4 py-2 text-xs">
                                 @if($cliente->status === 'ativo')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Ativo</span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Inativo</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-sm text-center">
+                            <td class="px-4 py-2 text-xs text-center">
                                 @if($cliente->fator_r)
                                     <i class="fa-solid fa-check text-green-600"></i>
                                 @else
                                     <i class="fa-solid fa-xmark text-gray-300"></i>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-sm text-right">
+                            <td class="px-4 py-2 text-xs text-right">
                                 @if (auth()->user()?->canEditarClientes())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
