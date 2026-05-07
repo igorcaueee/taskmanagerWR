@@ -28,6 +28,7 @@ class Cliente extends Model
         'faturamento',
         'servico',
         'honorario',
+        'capital_social',
         'possibilidade',
     ];
 
@@ -36,6 +37,7 @@ class Cliente extends Model
         'cliente_desde' => 'date',
         'dataabertura' => 'date',
         'data_encerramento' => 'date',
+        'capital_social' => 'decimal:2',
     ];
 
     public function produtos(): BelongsToMany
@@ -46,5 +48,10 @@ class Cliente extends Model
     public function contatos(): HasMany
     {
         return $this->hasMany(ContatoCliente::class);
+    }
+
+    public function socios(): HasMany
+    {
+        return $this->hasMany(Socio::class)->orderBy('ordem');
     }
 }

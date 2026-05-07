@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\ContatoCliente;
 use App\Models\Produto;
+use App\Models\Socio;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -65,7 +65,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $cliente = Cliente::with(['produtos', 'contatos'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'socios'])->findOrFail($id);
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
 
         return view('clientes.partials.formCliente', compact('cliente', 'produtos'));
@@ -329,83 +329,108 @@ class ClienteController extends Controller
         ]);
     }
 
-    public function contatosModal(int $id): View
-    {
-        $cliente = Cliente::with('contatos')->findOrFail($id);
+    // ── Quadro Societário ──────────────────────────────────────────────
 
-        return view('clientes.partials.contatosModal', compact('cliente'));
+    public function quadroSocietario(int $id): View
+    {
+        $cliente = Cliente::with('socios')->findOrFail($id);
+
+        return view('clientes.partials.quadroSocietario', compact('cliente'));
     }
 
-    public function formContatoCreate(int $clienteId): View
+    public function saveSocio(Request $request, int $id): RedirectResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $cliente = Cliente::findOrFail($clienteId);
+        $cliente = Cliente::findOrFail($id);
 
-        return view('clientes.partials.formContato', ['contato' => null, 'cliente' => $cliente]);
-    }
+        if ($request->filled('capital_social')) {
+            $cliente->update(['capital_social' => $request->input('capital_social')]);
+        }
 
-    public function formContatoEdit(int $id): View
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
+        // Se for só atualização do capital, retorna sem criar sócio
+        if ($request->boolean('_only_capital')) {
+            return Redirect::route('clientes.quadro.modal', $id);
+        }
 
-        $contato = ContatoCliente::findOrFail($id);
-
-        return view('clientes.partials.formContato', ['contato' => $contato, 'cliente' => $contato->cliente]);
-    }
-
-    public function saveContato(Request $request, int $clienteId): RedirectResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $cliente = Cliente::findOrFail($clienteId);
-
-        $validator = Validator::make($request->only(['nome', 'tipo', 'telefone', 'gmail']), [
+        $validator = Validator::make($request->only(['nome', 'telefone', 'gmail', 'participacao']), [
             'nome' => ['required', 'string', 'max:255'],
-            'tipo' => ['required', 'in:Dono,Sócio'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'gmail' => ['nullable', 'email', 'max:255'],
+            'participacao' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         if ($validator->fails()) {
             return Redirect::back()->withErrors($validator)->withInput();
         }
 
-        $cliente->contatos()->create($request->only(['nome', 'tipo', 'telefone', 'gmail']));
+        $ordem = $cliente->socios()->max('ordem') + 1;
+        $participacao = (float) $request->input('participacao');
+        $cliente->refresh();
+        $quotas = $cliente->capital_social ? round($cliente->capital_social * $participacao / 100, 2) : 0;
 
-        return Redirect::route('clientes.contatos.modal', $clienteId)->with('success', 'Contato adicionado com sucesso.');
+        $cliente->socios()->create([
+            'ordem' => $ordem,
+            'nome' => $request->input('nome'),
+            'telefone' => $request->input('telefone'),
+            'gmail' => $request->input('gmail'),
+            'participacao' => $participacao,
+            'quotas_integralizadas' => $quotas,
+        ]);
+
+        return Redirect::route('clientes.quadro.modal', $id)->with('success', 'Sócio adicionado com sucesso.');
     }
 
-    public function updateContato(Request $request, int $id): RedirectResponse
+    public function updateSocio(Request $request, int $id): RedirectResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $contato = ContatoCliente::findOrFail($id);
+        $socio = Socio::findOrFail($id);
 
-        $validator = Validator::make($request->only(['nome', 'tipo', 'telefone', 'gmail']), [
+        $validator = Validator::make($request->only(['nome', 'telefone', 'gmail', 'participacao']), [
             'nome' => ['required', 'string', 'max:255'],
-            'tipo' => ['required', 'in:Dono,Sócio'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'gmail' => ['nullable', 'email', 'max:255'],
+            'participacao' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         if ($validator->fails()) {
             return Redirect::back()->withErrors($validator)->withInput();
         }
 
-        $contato->update($request->only(['nome', 'tipo', 'telefone', 'gmail']));
+        $cliente = $socio->cliente;
 
-        return Redirect::route('clientes.contatos.modal', $contato->cliente_id)->with('success', 'Contato atualizado com sucesso.');
+        if ($request->filled('capital_social')) {
+            $cliente->update(['capital_social' => $request->input('capital_social')]);
+            $cliente->refresh();
+        }
+
+        $participacao = (float) $request->input('participacao');
+        $quotas = $cliente->capital_social ? round($cliente->capital_social * $participacao / 100, 2) : 0;
+
+        $socio->update([
+            'nome' => $request->input('nome'),
+            'telefone' => $request->input('telefone'),
+            'gmail' => $request->input('gmail'),
+            'participacao' => $participacao,
+            'quotas_integralizadas' => $quotas,
+        ]);
+
+        return Redirect::route('clientes.quadro.modal', $socio->cliente_id)->with('success', 'Sócio atualizado com sucesso.');
     }
 
-    public function deleteContato(int $id): RedirectResponse
+    public function deleteSocio(int $id): RedirectResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $contato = ContatoCliente::findOrFail($id);
-        $clienteId = $contato->cliente_id;
-        $contato->delete();
+        $socio = Socio::findOrFail($id);
+        $clienteId = $socio->cliente_id;
+        $socio->delete();
 
-        return Redirect::route('clientes.contatos.modal', $clienteId)->with('success', 'Contato removido com sucesso.');
+        // Renumerar ordem
+        Socio::where('cliente_id', $clienteId)->orderBy('ordem')->get()
+            ->each(fn ($s, $i) => $s->update(['ordem' => $i + 1]));
+
+        return Redirect::route('clientes.quadro.modal', $clienteId)->with('success', 'Sócio removido com sucesso.');
     }
 }

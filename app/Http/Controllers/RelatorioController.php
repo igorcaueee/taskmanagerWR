@@ -358,6 +358,67 @@ class RelatorioController extends Controller
         ));
     }
 
+    public function geolocalizacao(Request $request): View
+    {
+        $estadoFiltro = $request->input('estado');
+        $cidadeFiltro = $request->input('cidade');
+        $statusFiltro = $request->input('status', 'ativo');
+
+        // Totais gerais
+        $totalClientes = Cliente::query()->count();
+        $totalComLocalizacao = Cliente::query()
+            ->whereNotNull('estado')
+            ->where('estado', '!=', '')
+            ->count();
+        $totalSemLocalizacao = $totalClientes - $totalComLocalizacao;
+
+        // Clientes por estado (para gráfico e tabela)
+        $porEstado = Cliente::query()
+            ->whereNotNull('estado')
+            ->where('estado', '!=', '')
+            ->when($statusFiltro, fn ($q) => $q->where('status', $statusFiltro))
+            ->selectRaw('estado, count(*) as total')
+            ->groupBy('estado')
+            ->orderByDesc('total')
+            ->get();
+
+        // Cidades do estado filtrado (para o select de cidade)
+        $cidadesDoEstado = collect();
+        if ($estadoFiltro) {
+            $cidadesDoEstado = Cliente::query()
+                ->where('estado', $estadoFiltro)
+                ->whereNotNull('cidade')
+                ->where('cidade', '!=', '')
+                ->when($statusFiltro, fn ($q) => $q->where('status', $statusFiltro))
+                ->selectRaw('cidade, count(*) as total')
+                ->groupBy('cidade')
+                ->orderBy('cidade')
+                ->get();
+        }
+
+        // Clientes filtrados para a tabela
+        $clientesFiltrados = Cliente::query()
+            ->when($estadoFiltro, fn ($q) => $q->where('estado', $estadoFiltro))
+            ->when($cidadeFiltro, fn ($q) => $q->where('cidade', $cidadeFiltro))
+            ->when($statusFiltro, fn ($q) => $q->where('status', $statusFiltro))
+            ->orderBy('estado')
+            ->orderBy('cidade')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'cidade', 'estado', 'tipo', 'status', 'regime_tributario']);
+
+        return view('relatorios.geolocalizacao', compact(
+            'porEstado',
+            'cidadesDoEstado',
+            'clientesFiltrados',
+            'totalClientes',
+            'totalComLocalizacao',
+            'totalSemLocalizacao',
+            'estadoFiltro',
+            'cidadeFiltro',
+            'statusFiltro',
+        ));
+    }
+
     /** @return array{Carbon, Carbon} */
     private function resolverPeriodo(Request $request): array
     {

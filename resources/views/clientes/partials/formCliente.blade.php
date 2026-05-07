@@ -21,10 +21,10 @@
         @if($isEditing)
             <button type="button"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50 bg-transparent"
-                    data-modal-url="{{ route('clientes.contatos.modal', $cliente->id) }}">
-                <i class="fa-solid fa-address-card"></i> Contatos
-                @if($cliente->contatos->isNotEmpty())
-                    <span class="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-brand text-white">{{ $cliente->contatos->count() }}</span>
+                    data-modal-url="{{ route('clientes.quadro.modal', $cliente->id) }}">
+                <i class="fa-solid fa-scale-balanced"></i> Quadro Societário
+                @if($cliente->socios->isNotEmpty())
+                    <span class="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-brand text-white">{{ $cliente->socios->count() }}</span>
                 @endif
             </button>
             @if(auth()->user()?->canEditarClientes() && $cliente->status === 'ativo')
@@ -41,6 +41,16 @@
     </div>
 </div>
 @endunless
+
+@if($isEditing && $cliente->status === 'inativo' && $cliente->motivo_encerramento)
+<div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start gap-2">
+    <i class="fa-solid fa-building-circle-xmark mt-0.5 flex-shrink-0"></i>
+    <span>
+        <span class="font-semibold">Empresa encerrada</span> em {{ $cliente->data_encerramento?->format('d/m/Y') ?? '—' }}
+        — <span class="italic">{{ Str::limit($cliente->motivo_encerramento, 100) }}</span>
+    </span>
+</div>
+@endif
 
 <form @if(isset($formId)) id="{{ $formId }}" @endif method="POST" action="{{ $action }}">
     @csrf
@@ -211,15 +221,6 @@
             </div>
         @endif
 
-        @if($isEditing && $cliente->status === 'inativo' && $cliente->motivo_encerramento)
-        <div class="p-3 bg-red-50 border border-red-100 rounded text-sm text-red-700">
-            <i class="fa-solid fa-building-circle-xmark mr-1"></i>
-            Encerrado em {{ $cliente->data_encerramento?->format('d/m/Y') ?? '—' }}
-            @if($cliente->motivo_encerramento)
-                — <span class="italic">{{ Str::limit($cliente->motivo_encerramento, 80) }}</span>
-            @endif
-        </div>
-        @endif
     </div>
 
     @unless(isset($hideShell) && $hideShell)

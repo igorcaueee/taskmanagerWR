@@ -32,6 +32,7 @@ Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatori
 Route::get('/relatorios/clientes', [RelatorioController::class, 'clientes'])->name('relatorios.clientes')->middleware('auth');
 Route::get('/relatorios/colaboradores', [RelatorioController::class, 'colaboradores'])->name('relatorios.colaboradores')->middleware(['auth', 'colaboradores']);
 Route::get('/relatorios/produtos', [RelatorioController::class, 'produtos'])->name('relatorios.produtos')->middleware('auth');
+Route::get('/relatorios/geolocalizacao', [RelatorioController::class, 'geolocalizacao'])->name('relatorios.geolocalizacao')->middleware('auth');
 Route::get('/agenda', [AgendaController::class, 'showAgenda'])->name('agenda')->middleware('auth');
 Route::get('/agenda/compromisso/form', [AgendaController::class, 'formCompromisso'])->name('agenda.compromisso.form')->middleware('auth');
 Route::post('/agenda/compromisso', [AgendaController::class, 'storeCompromisso'])->name('agenda.compromisso.store')->middleware('auth');
@@ -62,13 +63,11 @@ Route::post('/clientes/{id}/encerrar', [ClienteController::class, 'encerrarClien
 Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
 Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name('clientes.update')->middleware('auth');
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
-// Contatos de clientes routes
-Route::get('/clientes/{id}/contatos', [ClienteController::class, 'contatosModal'])->name('clientes.contatos.modal')->middleware('auth');
-Route::get('/clientes/{clienteId}/contatos/form', [ClienteController::class, 'formContatoCreate'])->name('clientes.contatos.form.create')->middleware('auth');
-Route::get('/clientes/contatos/{id}/form', [ClienteController::class, 'formContatoEdit'])->name('clientes.contatos.form.edit')->middleware('auth');
-Route::post('/clientes/{clienteId}/contatos', [ClienteController::class, 'saveContato'])->name('clientes.contatos.save')->middleware('auth');
-Route::put('/clientes/contatos/{id}', [ClienteController::class, 'updateContato'])->name('clientes.contatos.update')->middleware('auth');
-Route::delete('/clientes/contatos/{id}', [ClienteController::class, 'deleteContato'])->name('clientes.contatos.delete')->middleware('auth');
+// Quadro societário routes
+Route::get('/clientes/{id}/quadro-societario', [ClienteController::class, 'quadroSocietario'])->name('clientes.quadro.modal')->middleware('auth');
+Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->name('clientes.socios.save')->middleware('auth');
+Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
+Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
 // Produtos routes
 Route::get('/produtos', [ProdutoController::class, 'showProdutos'])->name('produtos')->middleware('auth');
 Route::get('/produtos/form', [ProdutoController::class, 'formCreate'])->name('produtos.form.create')->middleware('auth');

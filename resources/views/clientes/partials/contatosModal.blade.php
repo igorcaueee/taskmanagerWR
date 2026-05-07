@@ -33,7 +33,7 @@
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-800 truncate">{{ $contato->nome }}</p>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-                    <span class="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">{{ $contato->tipo }}</span>
+
                     @if($contato->telefone)
                         <span class="text-xs text-gray-500"><i class="fa-solid fa-phone mr-1"></i>{{ $contato->telefone }}</span>
                     @endif
@@ -51,7 +51,8 @@
                     <i class="fa-solid fa-pencil text-xs"></i>
                 </button>
                 <form method="POST" action="{{ route('clientes.contatos.delete', $contato->id) }}"
-                      onsubmit="return confirm('Remover este contato?')">
+                      data-delete-contato="{{ $cliente->id }}"
+                      onsubmit="handleDeleteContato(event, this)">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 bg-transparent border-0" title="Remover">
@@ -64,3 +65,24 @@
         @endforeach
     </div>
 @endif
+
+<script>
+async function handleDeleteContato(e, form) {
+    e.preventDefault();
+    const confirmed = await Swal.fire({
+        title: 'Remover contato?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, remover',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#ef4444',
+    });
+    if (!confirmed.isConfirmed) { return; }
+
+    const data = new FormData(form);
+    await fetch(form.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+    const clienteId = form.dataset.deleteContato;
+    window.openModal('{{ url('clientes') }}/' + clienteId + '/contatos');
+}
+</script>

@@ -17,7 +17,7 @@
 
 <p class="text-sm text-gray-500 mb-4">Cliente: <span class="font-medium text-gray-700">{{ $cliente->nome }}</span></p>
 
-<form method="POST" action="{{ $action }}">
+<form id="form-contato" method="POST" action="{{ $action }}">
     @csrf
     @if($isEditing)
         @method('PUT')
@@ -31,22 +31,6 @@
                    value="{{ old('nome', $isEditing ? $contato->nome : '') }}"
                    required>
             @error('nome')
-                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700">Tipo</label>
-            <select name="tipo" class="mt-1 block w-full border rounded px-3 py-2" required>
-                <option value="">— Selecione —</option>
-                @foreach(['Dono', 'Sócio'] as $tipoOpcao)
-                    <option value="{{ $tipoOpcao }}"
-                        {{ old('tipo', $isEditing ? $contato->tipo : '') === $tipoOpcao ? 'selected' : '' }}>
-                        {{ $tipoOpcao }}
-                    </option>
-                @endforeach
-            </select>
-            @error('tipo')
                 <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
             @enderror
         </div>
@@ -86,3 +70,38 @@
         </div>
     </div>
 </form>
+
+<script>
+(function () {
+    const form = document.querySelector('#form-contato');
+    if (!form) { return; }
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('[type="submit"]');
+        submitBtn.disabled = true;
+
+        const data = new FormData(form);
+        const resp = await fetch(form.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+        // Servidor sempre redireciona para clientes.contatos.modal após salvar
+        // fetch segue o redirect automaticamente — se chegou aqui, foi sucesso
+        if (resp.ok || resp.redirected) {
+            const contatosUrl = '{{ route('clientes.contatos.modal', $cliente->id) }}';
+            window.openModal(contatosUrl);
+        } else {
+            // Erro de validação: recarrega o conteúdo do form com os erros
+            const html = await resp.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newForm = doc.querySelector('#form-contato')?.closest('form')?.parentElement;
+            if (newForm) {
+                document.getElementById('modalContent').innerHTML = newForm.innerHTML;
+            } else {
+                submitBtn.disabled = false;
+            }
+        }
+    });
+})();
+</script>

@@ -39,6 +39,7 @@
                     <a href="{{ route('relatorios.colaboradores') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-regular fa-user"></i> Colaboradores</a>
                 @endif
                 <a href="{{ route('relatorios.produtos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
+                <a href="{{ route('relatorios.geolocalizacao') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 text-sm text-gray-700 no-underline"><i class="fa-solid fa-map-location-dot"></i> Geolocalização</a>
             </div>
         </div>
     </nav>
