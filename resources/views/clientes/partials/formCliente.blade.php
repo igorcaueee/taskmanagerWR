@@ -93,9 +93,10 @@
                 <select name="regime_tributario" id="select-regime" class="mt-1 block w-full border rounded px-3 py-2"
                         {{ $isPJ ? 'required' : '' }}>
                     <option value="">— Selecione —</option>
+                    @php $regimeAtual = mb_strtolower(old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? ''))); @endphp
                     @foreach(['Simples Nacional' => 'Simples Nacional', 'Lucro Presumido' => 'Lucro Presumido', 'Lucro Real' => 'Lucro Real', 'MEI' => 'MEI'] as $value => $label)
                         <option value="{{ $value }}"
-                            {{ old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? '')) === $value ? 'selected' : '' }}>
+                            {{ $regimeAtual === mb_strtolower($value) ? 'selected' : '' }}>
                             {{ $label }}
                         </option>
                     @endforeach
