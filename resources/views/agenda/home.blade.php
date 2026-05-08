@@ -11,12 +11,58 @@
             <h1 class="text-2xl font-bold text-gray-900"><i class="fa-solid fa-calendar-days"></i> Agenda</h1>
             <p class="text-sm text-gray-500">Visualize tarefas e compromissos do mês.</p>
         </div>
-        <button type="button"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80 text-sm"
-                data-modal-url="{{ route('agenda.compromisso.form') }}">
-            <i class="fa-solid fa-plus"></i> Novo Compromisso
-        </button>
+        <div class="flex items-center gap-2 flex-wrap">
+            {{-- Google Calendar integration --}}
+            @if (auth()->user()->isGoogleConnected())
+                <form method="POST" action="{{ route('google.calendar.sync') }}">
+                    @csrf
+                    <button type="submit"
+                            title="Sincronizar com Google Calendar"
+                            class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 focus:outline-none">
+                        <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_16dp.png"
+                             alt="Google Calendar" class="w-4 h-4">
+                        Sincronizar
+                    </button>
+                </form>
+                <form method="POST" action="{{ route('google.calendar.disconnect') }}">
+                    @csrf
+                    <button type="submit"
+                            title="Desconectar Google Calendar"
+                            onclick="return confirm('Desconectar o Google Calendar?')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 text-red-600 rounded text-sm hover:bg-red-50 focus:outline-none">
+                        <i class="fa-brands fa-google text-xs"></i> Desconectar
+                    </button>
+                </form>
+            @else
+                <a href="{{ route('google.calendar.redirect') }}"
+                   class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 no-underline focus:outline-none">
+                    <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_16dp.png"
+                         alt="Google Calendar" class="w-4 h-4">
+                    Conectar Google Calendar
+                </a>
+            @endif
+
+            <button type="button"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80 text-sm"
+                    data-modal-url="{{ route('agenda.compromisso.form') }}">
+                <i class="fa-solid fa-plus"></i> Novo Compromisso
+            </button>
+        </div>
     </div>
+
+    {{-- Flash messages --}}
+    @if (session('success'))
+        <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-green-500"></i>
+            {{ session('success') }}
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm flex items-center gap-2">
+            <i class="fa-solid fa-circle-exclamation text-red-500"></i>
+            {{ session('error') }}
+        </div>
+    @endif
 
     {{-- Month navigation --}}
     <div class="flex items-center justify-between mb-4 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
@@ -40,7 +86,7 @@
     {{-- Legend --}}
     <div class="flex items-center gap-4 mb-4 text-xs text-gray-500">
         <span class="flex items-center gap-1.5">
-            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> Compromisso
+            <span class="w-3 h-3 rounded-full bg-gray-400 inline-block"></span> Compromisso
         </span>
         <span class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-sm bg-gray-400 inline-block"></span> Tarefa

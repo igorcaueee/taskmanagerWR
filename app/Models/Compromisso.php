@@ -21,6 +21,7 @@ class Compromisso extends Model
         'hora',
         'cor',
         'criado_por',
+        'google_event_id',
     ];
 
     protected $casts = [

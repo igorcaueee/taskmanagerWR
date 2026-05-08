@@ -45,14 +45,17 @@
             <div class="flex flex-wrap gap-2">
                 @php
                     $cores = [
-                        '#3b82f6' => 'Azul',
-                        '#10b981' => 'Verde',
-                        '#f59e0b' => 'Amarelo',
                         '#ef4444' => 'Vermelho',
-                        '#8b5cf6' => 'Roxo',
-                        '#ec4899' => 'Rosa',
+                        '#f87171' => 'Salmão',
                         '#f97316' => 'Laranja',
-                        '#6b7280' => 'Cinza',
+                        '#f59e0b' => 'Amarelo',
+                        '#16a34a' => 'Verde Escuro',
+                        '#10b981' => 'Verde',
+                        '#14b8a6' => 'Teal',
+                        '#3b82f6' => 'Azul',
+                        '#8b5cf6' => 'Roxo',
+                        '#6366f1' => 'Índigo',
+                        '#a855f7' => 'Violeta',
                     ];
                     $corAtual = $compromisso?->cor ?? '#3b82f6';
                 @endphp

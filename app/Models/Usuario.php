@@ -29,6 +29,19 @@ class Usuario extends Authenticatable
         'data_registro',
         'status',
         'departamento_id',
+        'google_access_token',
+        'google_refresh_token',
+        'google_token_expires_at',
+        'google_calendar_id',
+        'google_last_synced_at',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'google_token_expires_at' => 'datetime',
+        'google_last_synced_at' => 'datetime',
     ];
 
     /**
@@ -62,7 +75,14 @@ class Usuario extends Authenticatable
      */
     protected $hidden = [
         'senha',
+        'google_access_token',
+        'google_refresh_token',
     ];
+
+    public function isGoogleConnected(): bool
+    {
+        return ! empty($this->google_access_token);
+    }
 
     public function departamento(): BelongsTo
     {

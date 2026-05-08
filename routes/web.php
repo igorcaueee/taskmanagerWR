@@ -7,6 +7,7 @@ use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileExplorerController;
 use App\Http\Controllers\FunilController;
+use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
@@ -41,6 +42,12 @@ Route::put('/agenda/compromisso/{id}', [AgendaController::class, 'updateCompromi
 Route::delete('/agenda/compromisso/{id}', [AgendaController::class, 'destroyCompromisso'])->name('agenda.compromisso.destroy')->middleware('auth');
 Route::get('/agenda/compromisso/{id}/detalhe', [AgendaController::class, 'detalheCompromisso'])->name('agenda.compromisso.detalhe')->middleware('auth');
 Route::get('/agenda/tarefa/{id}/detalhe', [AgendaController::class, 'detalheTarefa'])->name('agenda.tarefa.detalhe')->middleware('auth');
+
+// Google Calendar OAuth & sync
+Route::get('/google/connect', [GoogleCalendarController::class, 'redirect'])->name('google.calendar.redirect')->middleware('auth');
+Route::get('/google/callback', [GoogleCalendarController::class, 'callback'])->name('google.calendar.callback')->middleware('auth');
+Route::post('/google/disconnect', [GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect')->middleware('auth');
+Route::post('/google/sync', [GoogleCalendarController::class, 'sync'])->name('google.calendar.sync')->middleware('auth');
 // Funil de Vendas (CRM) routes
 Route::get('/funil', [FunilController::class, 'showFunil'])->name('funil')->middleware(['auth', 'diretor']);
 Route::get('/leads/form', [FunilController::class, 'formCreate'])->name('leads.form.create')->middleware(['auth', 'diretor']);

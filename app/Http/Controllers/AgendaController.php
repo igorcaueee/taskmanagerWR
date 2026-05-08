@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Compromisso;
 use App\Models\Tarefa;
+use App\Services\GoogleCalendarService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,8 @@ use Illuminate\View\View;
 
 class AgendaController extends Controller
 {
+    public function __construct(private readonly GoogleCalendarService $googleCalendar) {}
+
     public function showAgenda(Request $request): View
     {
         $mes = $request->integer('mes', now()->month);
@@ -27,6 +30,19 @@ class AgendaController extends Controller
 
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
+
+        // Sincroniza automaticamente com Google Calendar a cada carregamento da página
+        if ($usuario->isGoogleConnected()) {
+            try {
+                $this->googleCalendar->pullEvents(
+                    $usuario,
+                    $primeiroDia->copy()->subMonth(),
+                    $primeiroDia->copy()->addMonths(2)->endOfMonth()
+                );
+            } catch (\Exception) {
+                // Falha silenciosa: exibe dados locais normalmente
+            }
+        }
 
         $tarefasQuery = Tarefa::with(['etapa', 'cliente', 'responsavel'])
             ->whereBetween('data_vencimento', [$primeiroDia->toDateString(), $ultimoDia->toDateString()]);
@@ -98,7 +114,17 @@ class AgendaController extends Controller
 
         $validated['criado_por'] = Auth::id();
 
-        Compromisso::create($validated);
+        $compromisso = Compromisso::create($validated);
+
+        $usuario = Auth::user();
+        if ($usuario->isGoogleConnected()) {
+            try {
+                $googleEventId = $this->googleCalendar->createEvent($usuario, $compromisso);
+                $compromisso->updateQuietly(['google_event_id' => $googleEventId]);
+            } catch (\Exception) {
+                // Falha silenciosa: compromisso já foi criado localmente
+            }
+        }
 
         $data = Carbon::parse($validated['data']);
 
@@ -119,6 +145,15 @@ class AgendaController extends Controller
 
         $compromisso->update($validated);
 
+        $usuario = Auth::user();
+        if ($usuario->isGoogleConnected()) {
+            try {
+                $this->googleCalendar->updateEvent($usuario, $compromisso);
+            } catch (\Exception) {
+                // Falha silenciosa: compromisso já foi atualizado localmente
+            }
+        }
+
         $data = Carbon::parse($validated['data']);
 
         return redirect()->route('agenda', ['mes' => $data->month, 'ano' => $data->year]);
@@ -129,8 +164,18 @@ class AgendaController extends Controller
         $compromisso = Compromisso::findOrFail($id);
         $mes = $compromisso->data->month;
         $ano = $compromisso->data->year;
+        $googleEventId = $compromisso->google_event_id;
 
         $compromisso->delete();
+
+        $usuario = Auth::user();
+        if ($usuario->isGoogleConnected() && $googleEventId) {
+            try {
+                $this->googleCalendar->deleteEvent($usuario, $googleEventId);
+            } catch (\Exception) {
+                // Falha silenciosa: compromisso já foi removido localmente
+            }
+        }
 
         return redirect()->route('agenda', ['mes' => $mes, 'ano' => $ano]);
     }
