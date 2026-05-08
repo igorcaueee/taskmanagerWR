@@ -122,7 +122,7 @@
                                     <i class="fa-solid fa-xmark text-gray-300"></i>
                                 @endif
                             </td>
-                            <td class="px-4 py-2 text-xs text-right">
+                            <td class="px-4 py-2 text-xs text-right whitespace-nowrap">
                                 @if (auth()->user()?->canEditarClientes())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
