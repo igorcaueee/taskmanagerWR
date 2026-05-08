@@ -28,6 +28,19 @@
             </div>
         </div>
 
+        @if(session('success') || session('error'))
+        @push('scripts')
+        <script type="module">
+        @if(session('success'))
+        Swal.fire({ icon: 'success', title: 'Sucesso', text: '{{ session('success') }}', confirmButtonColor: '#2563eb' });
+        @endif
+        @if(session('error'))
+        Swal.fire({ icon: 'error', title: 'Erro', text: '{{ session('error') }}', confirmButtonColor: '#dc2626' });
+        @endif
+        </script>
+        @endpush
+        @endif
+
         <div class="bg-white rounded shadow overflow-x-auto">
             {{-- Filters --}}
             <form method="GET" action="{{ route('colaboradores') }}" id="form-filtros-colabs"

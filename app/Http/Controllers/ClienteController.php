@@ -80,7 +80,7 @@ class ClienteController extends Controller
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'cpfcnpj' => ['nullable', 'string', 'max:255'],
+            'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj'],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
@@ -93,10 +93,12 @@ class ClienteController extends Controller
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
             'possibilidade' => ['nullable', 'string'],
+        ], [
+            'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
 
         if ($validator->fails()) {
-            return Redirect::back()->withErrors($validator)->withInput();
+            return Redirect::back()->with('error', $validator->errors()->first())->withInput();
         }
 
         $data['fator_r'] = isset($data['fator_r']);
@@ -120,7 +122,7 @@ class ClienteController extends Controller
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'cpfcnpj' => ['nullable', 'string', 'max:255'],
+            'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj,'.$id],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
@@ -133,10 +135,12 @@ class ClienteController extends Controller
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
             'possibilidade' => ['nullable', 'string'],
+        ], [
+            'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
 
         if ($validator->fails()) {
-            return Redirect::back()->withErrors($validator)->withInput();
+            return Redirect::back()->with('error', $validator->errors()->first())->withInput();
         }
 
         $data['fator_r'] = isset($data['fator_r']);

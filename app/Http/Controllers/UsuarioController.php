@@ -71,10 +71,12 @@ class UsuarioController extends Controller
             'data_registro' => ['nullable', 'date'],
             'status' => ['nullable', 'boolean'],
             'departamento_id' => ['nullable', 'exists:departamentos,id'],
+        ], [
+            'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
         ]);
 
         if ($validator->fails()) {
-            return Redirect::back()->withErrors($validator)->withInput();
+            return Redirect::back()->with('error', $validator->errors()->first())->withInput();
         }
 
         Usuario::create([
@@ -113,10 +115,12 @@ class UsuarioController extends Controller
             'data_registro' => ['nullable', 'date'],
             'status' => ['nullable', 'boolean'],
             'departamento_id' => ['nullable', 'exists:departamentos,id'],
+        ], [
+            'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
         ]);
 
         if ($validator->fails()) {
-            return Redirect::back()->withErrors($validator)->withInput();
+            return Redirect::back()->with('error', $validator->errors()->first())->withInput();
         }
 
         $update = [

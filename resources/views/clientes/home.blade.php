@@ -24,11 +24,17 @@
             @endif
         </div>
 
+        @if(session('success') || session('error'))
+        @push('scripts')
+        <script type="module">
         @if(session('success'))
-            <div class="mb-4 px-4 py-3 bg-green-100 text-green-800 rounded">{{ session('success') }}</div>
+        Swal.fire({ icon: 'success', title: 'Sucesso', text: '{{ session('success') }}', confirmButtonColor: '#2563eb' });
         @endif
         @if(session('error'))
-            <div class="mb-4 px-4 py-3 bg-red-100 text-red-800 rounded">{{ session('error') }}</div>
+        Swal.fire({ icon: 'error', title: 'Erro', text: '{{ session('error') }}', confirmButtonColor: '#dc2626' });
+        @endif
+        </script>
+        @endpush
         @endif
 
         <div class="bg-white rounded shadow">
