@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr checkout -b fixImportDatas)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr add app/Http/Controllers/ClienteController.php)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr commit -m ' *)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr push origin fixImportDatas)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr merge fixImportDatas --no-ff -m \"Merge branch 'fixImportDatas'\")",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr checkout -b fixImportDatasERegime)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr add app/Http/Controllers/ClienteController.php resources/views/clientes/partials/formCliente.blade.php)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr push origin fixImportDatasERegime)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr merge fixImportDatasERegime --no-ff -m \"Merge branch 'fixImportDatasERegime'\")",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr checkout -b ajusteRegimeTributario)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr add resources/views/clientes/home.blade.php resources/views/clientes/partials/formCliente.blade.php resources/views/relatorios/geolocalizacao.blade.php)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr push origin ajusteRegimeTributario)",
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr merge ajusteRegimeTributario --no-ff -m \"Merge branch 'ajusteRegimeTributario'\")"
     ]
   }
 }

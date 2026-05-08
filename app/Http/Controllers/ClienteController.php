@@ -236,8 +236,22 @@ class ClienteController extends Controller
             'mei'              => 'MEI',
         ];
 
+        $parseDate = function (string $value): ?string {
+            if ($value === '') {
+                return null;
+            }
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                return $value;
+            }
+            if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $value)) {
+                return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
+            }
+
+            return null;
+        };
+
         $importados = 0;
-        $ignorados = 0;
+        $atualizados = 0;
 
         foreach (array_slice($rows, 1) as $row) {
             $nome = $get($row, 'nome');
@@ -247,12 +261,6 @@ class ClienteController extends Controller
 
             $cpfcnpj = $get($row, 'cpfcnpj') ?: null;
 
-            if ($cpfcnpj && Cliente::where('cpfcnpj', $cpfcnpj)->exists()) {
-                $ignorados++;
-
-                continue;
-            }
-
             $tipoRaw = mb_strtoupper($get($row, 'tipo'));
             $tipo = match ($tipoRaw) {
                 'PJ' => 1,
@@ -261,50 +269,46 @@ class ClienteController extends Controller
             };
 
             $fatorR = in_array(mb_strtolower($get($row, 'fator_r')), ['sim', 'yes', '1', 'true']);
-
             $status = in_array(mb_strtolower($get($row, 'status')), ['ativo', 'active', '1']) ? 'ativo' : 'inativo';
-
-            $parseDate = function (string $value): ?string {
-                if ($value === '') {
-                    return null;
-                }
-                // Y-m-d (já convertido pelo iterator para células de data)
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-                    return $value;
-                }
-                // DD/MM/AAAA (texto digitado)
-                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $value)) {
-                    return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
-                }
-
-                return null;
-            };
 
             $regimeRaw = mb_strtolower($get($row, 'regime_tributario'));
             $regime = $regimeMap[$regimeRaw] ?? ($get($row, 'regime_tributario') ?: null);
 
-            Cliente::create([
-                'nome' => $nome,
-                'cpfcnpj' => $cpfcnpj,
-                'tipo' => $tipo,
+            $dados = [
+                'tipo'              => $tipo,
                 'regime_tributario' => $regime,
-                'cidade' => $get($row, 'cidade') ?: null,
-                'estado' => mb_strtoupper($get($row, 'estado')) ?: null,
-                'status' => $status,
-                'fator_r' => $fatorR,
-                'cliente_desde' => $parseDate($get($row, 'cliente_desde')),
-                'dataabertura' => $parseDate($get($row, 'dataabertura')),
-                'faturamento' => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
-                'servico' => $get($row, 'servico') ?: null,
-                'honorario' => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
-            ]);
+                'cidade'            => $get($row, 'cidade') ?: null,
+                'estado'            => mb_strtoupper($get($row, 'estado')) ?: null,
+                'status'            => $status,
+                'fator_r'           => $fatorR,
+                'cliente_desde'     => $parseDate($get($row, 'cliente_desde')),
+                'dataabertura'      => $parseDate($get($row, 'dataabertura')),
+                'faturamento'       => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
+                'servico'           => $get($row, 'servico') ?: null,
+                'honorario'         => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
+            ];
 
-            $importados++;
+            $existente = $cpfcnpj ? Cliente::where('cpfcnpj', $cpfcnpj)->first() : null;
+
+            if ($existente) {
+                // Atualiza apenas campos que estão nulos/vazios no cadastro atual
+                $atualizar = array_filter($dados, fn ($val) => $val !== null && $val !== '');
+                $atualizar = array_filter($atualizar, fn ($val, $col) => is_null($existente->$col) || $existente->$col === '', ARRAY_FILTER_USE_BOTH);
+
+                if (! empty($atualizar)) {
+                    $existente->update($atualizar);
+                }
+
+                $atualizados++;
+            } else {
+                Cliente::create(array_merge(['nome' => $nome, 'cpfcnpj' => $cpfcnpj], $dados));
+                $importados++;
+            }
         }
 
-        $msg = "Importação concluída: {$importados} cliente(s) importado(s)";
-        if ($ignorados > 0) {
-            $msg .= ", {$ignorados} ignorado(s) por CPF/CNPJ duplicado";
+        $msg = "Importação concluída: {$importados} cliente(s) novo(s) importado(s)";
+        if ($atualizados > 0) {
+            $msg .= ", {$atualizados} cliente(s) existente(s) atualizado(s) com campos faltantes";
         }
 
         return Redirect::route('clientes')->with('success', $msg.'.');
