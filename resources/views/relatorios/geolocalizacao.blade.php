@@ -239,7 +239,7 @@
                                             —
                                         @endif
                                     </td>
-                                    <td class="py-2 pr-4 text-gray-600 text-xs">{{ $cliente->regime_tributario ?: '—' }}</td>
+                                    <td class="py-2 pr-4 text-gray-600 text-xs">{{ $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '—' }}</td>
                                     <td class="py-2 pr-4 text-gray-600">{{ $cliente->cidade ?: '—' }}</td>
                                     <td class="py-2 pr-4 text-gray-600 font-semibold">{{ $cliente->estado ?: '—' }}</td>
                                     <td class="py-2">
