@@ -94,7 +94,7 @@
                         {{ $isPJ ? 'required' : '' }}>
                     <option value="">— Selecione —</option>
                     @php $regimeAtual = mb_strtolower(old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? ''))); @endphp
-                    @foreach(['Simples Nacional' => 'Simples Nacional', 'Lucro Presumido' => 'Lucro Presumido', 'Lucro Real' => 'Lucro Real', 'MEI' => 'MEI'] as $value => $label)
+                    @foreach(['Simples Nacional' => 'SIMPLES NACIONAL', 'Lucro Presumido' => 'LUCRO PRESUMIDO', 'Lucro Real' => 'LUCRO REAL', 'MEI' => 'MEI'] as $value => $label)
                         <option value="{{ $value }}"
                             {{ $regimeAtual === mb_strtolower($value) ? 'selected' : '' }}>
                             {{ $label }}

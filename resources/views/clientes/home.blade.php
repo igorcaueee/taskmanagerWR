@@ -71,9 +71,9 @@
                     <select name="regime_tributario" onchange="document.getElementById('form-filtros-clientes').submit()"
                             class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
-                        <option value="Simples Nacional" @selected(request('regime_tributario') === 'Simples Nacional')>Simples Nacional</option>
-                        <option value="Lucro Presumido"  @selected(request('regime_tributario') === 'Lucro Presumido')>Lucro Presumido</option>
-                        <option value="Lucro Real"       @selected(request('regime_tributario') === 'Lucro Real')>Lucro Real</option>
+                        <option value="Simples Nacional" @selected(request('regime_tributario') === 'Simples Nacional')>SIMPLES NACIONAL</option>
+                        <option value="Lucro Presumido"  @selected(request('regime_tributario') === 'Lucro Presumido')>LUCRO PRESUMIDO</option>
+                        <option value="Lucro Real"       @selected(request('regime_tributario') === 'Lucro Real')>LUCRO REAL</option>
                         <option value="MEI"              @selected(request('regime_tributario') === 'MEI')>MEI</option>
                     </select>
                 </div>
@@ -107,7 +107,7 @@
                             </td>
                             <td class="px-4 py-2 text-xs text-gray-700">{{ $cliente->nome }}</td>
                             <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
-                            <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ?? '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '—' }}</td>
                             <td class="px-4 py-2 text-xs text-gray-700">
                                 {{ $cliente->cidade ?? '—' }}{{ $cliente->estado ? '/' . $cliente->estado : '' }}
                             </td>
