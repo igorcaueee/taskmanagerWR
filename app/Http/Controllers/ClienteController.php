@@ -203,7 +203,7 @@ class ClienteController extends Controller
         $request->validate(['arquivo' => ['required', 'file', 'mimes:xlsx,xls', 'max:5120']]);
 
         $spreadsheet = IOFactory::load($request->file('arquivo')->getRealPath());
-        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, false, false);
 
         if (empty($rows)) {
             return Redirect::route('clientes')->with('error', 'Arquivo vazio.');
@@ -246,9 +246,18 @@ class ClienteController extends Controller
                 if ($value === '') {
                     return null;
                 }
-                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value)) {
+                // Serial numérico do Excel (ex: 45292)
+                if (is_numeric($value) && (float) $value > 1) {
+                    try {
+                        return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)
+                            ->format('Y-m-d');
+                    } catch (\Exception $e) {}
+                }
+                // DD/MM/AAAA
+                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $value)) {
                     return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
                 }
+                // AAAA-MM-DD
                 if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
                     return $value;
                 }
