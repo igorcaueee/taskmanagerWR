@@ -203,7 +203,22 @@ class ClienteController extends Controller
         $request->validate(['arquivo' => ['required', 'file', 'mimes:xlsx,xls', 'max:5120']]);
 
         $spreadsheet = IOFactory::load($request->file('arquivo')->getRealPath());
-        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, false, false);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $rows = [];
+        foreach ($sheet->getRowIterator() as $row) {
+            $rowData = [];
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+            foreach ($cellIterator as $cell) {
+                $value = $cell->getValue();
+                if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cell) && is_numeric($value)) {
+                    $value = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
+                }
+                $rowData[] = $value;
+            }
+            $rows[] = $rowData;
+        }
 
         if (empty($rows)) {
             return Redirect::route('clientes')->with('error', 'Arquivo vazio.');
@@ -213,6 +228,13 @@ class ClienteController extends Controller
         $colIndex = array_flip($header);
 
         $get = fn ($row, $col) => isset($colIndex[$col]) ? trim((string) ($row[$colIndex[$col]] ?? '')) : '';
+
+        $regimeMap = [
+            'simples nacional' => 'Simples Nacional',
+            'lucro presumido'  => 'Lucro Presumido',
+            'lucro real'       => 'Lucro Real',
+            'mei'              => 'MEI',
+        ];
 
         $importados = 0;
         $ignorados = 0;
@@ -246,30 +268,26 @@ class ClienteController extends Controller
                 if ($value === '') {
                     return null;
                 }
-                // Serial numérico do Excel (ex: 45292)
-                if (is_numeric($value) && (float) $value > 1) {
-                    try {
-                        return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)
-                            ->format('Y-m-d');
-                    } catch (\Exception $e) {}
-                }
-                // DD/MM/AAAA
-                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $value)) {
-                    return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
-                }
-                // AAAA-MM-DD
+                // Y-m-d (já convertido pelo iterator para células de data)
                 if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
                     return $value;
+                }
+                // DD/MM/AAAA (texto digitado)
+                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $value)) {
+                    return Carbon::createFromFormat('d/m/Y', $value)->toDateString();
                 }
 
                 return null;
             };
 
+            $regimeRaw = mb_strtolower($get($row, 'regime_tributario'));
+            $regime = $regimeMap[$regimeRaw] ?? ($get($row, 'regime_tributario') ?: null);
+
             Cliente::create([
                 'nome' => $nome,
                 'cpfcnpj' => $cpfcnpj,
                 'tipo' => $tipo,
-                'regime_tributario' => $get($row, 'regime_tributario') ?: null,
+                'regime_tributario' => $regime,
                 'cidade' => $get($row, 'cidade') ?: null,
                 'estado' => mb_strtoupper($get($row, 'estado')) ?: null,
                 'status' => $status,
