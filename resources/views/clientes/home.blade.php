@@ -105,7 +105,8 @@
                                     —
                                 @endif
                             </td>
-                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300">{{ $cliente->nome }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none"
+                                onclick="window.location='{{ route('clientes.show', $cliente->id) }}'">{{ $cliente->nome }}</td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '—' }}</td>
                             <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300">
@@ -131,14 +132,7 @@
                             <td class="px-4 py-2 text-xs text-right whitespace-nowrap">
                                 @if (auth()->user()?->canEditarClientes())
                                 <button type="button"
-                                        class="text-purple-500 hover:text-purple-700 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
-                                        data-modal-url="{{ route('clientes.conhecimentos.modal', $cliente->id) }}"
-                                        title="Conhecimento IA">
-                                    <i class="fa-solid fa-brain"></i>
-                                </button>
-
-                                <button type="button"
-                                        class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0 ml-3"
+                                        class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
                                         data-modal-url="{{ route('clientes.form.edit', $cliente->id) }}">
                                     <i class="fa-solid fa-pencil"></i>
                                 </button>

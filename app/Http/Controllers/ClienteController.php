@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\Socio;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -22,6 +23,34 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ClienteController extends Controller
 {
+    public function busca(Request $request): JsonResponse
+    {
+        $busca = $request->string('q')->trim();
+
+        if ($busca->isEmpty() || $busca->length() < 2) {
+            return response()->json([]);
+        }
+
+        $like = '%'.$busca.'%';
+
+        $clientes = Cliente::where(function ($q) use ($like) {
+            $q->where('nome', 'like', $like)
+                ->orWhere('cpfcnpj', 'like', $like);
+        })
+            ->orderBy('nome')
+            ->limit(8)
+            ->get(['id', 'nome', 'cpfcnpj', 'status', 'tipo']);
+
+        return response()->json($clientes->map(fn (Cliente $c) => [
+            'id' => $c->id,
+            'nome' => $c->nome,
+            'cpfcnpj' => $c->cpfcnpj,
+            'status' => $c->status,
+            'tipo' => $c->tipo,
+            'url' => route('clientes.show', $c->id),
+        ]));
+    }
+
     public function showClientes(Request $request): View
     {
         $query = Cliente::orderBy('nome');
@@ -62,6 +91,13 @@ class ClienteController extends Controller
         $segmentacoes = Segmentacao::orderBy('nome')->get();
 
         return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos, 'segmentacoes' => $segmentacoes]);
+    }
+
+    public function showCliente(int $id): View
+    {
+        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'contatos'])->findOrFail($id);
+
+        return view('clientes.show', compact('cliente'));
     }
 
     public function formClienteEdit(int $id): View

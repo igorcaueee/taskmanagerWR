@@ -18,7 +18,10 @@
 
         <style>
             /* Sidebar */
-            .sidebar { width: 16rem; flex-shrink: 0; transition: transform .2s ease-in-out; }
+            .sidebar { width: 16rem; flex-shrink: 0; transition: width .2s ease-in-out, transform .2s ease-in-out; overflow: hidden; }
+
+            /* Desktop: recolhe a sidebar */
+            body.sidebar-collapsed .sidebar { width: 0; }
 
             /* Mobile: sidebar desliza sobre o conteúdo */
             @media (max-width: 767px) {

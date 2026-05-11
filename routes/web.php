@@ -3,7 +3,6 @@
 use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotController;
-use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileExplorerController;
@@ -64,6 +63,8 @@ Route::delete('/leads/{id}', [FunilController::class, 'delete'])->name('leads.de
 // Clientes routes
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');
+Route::get('/clientes/busca', [ClienteController::class, 'busca'])->name('clientes.busca')->middleware('auth');
+Route::get('/clientes/{id}/detalhe', [ClienteController::class, 'showCliente'])->name('clientes.show')->middleware('auth');
 Route::get('/clientes/import/form', [ClienteController::class, 'formImportClientes'])->name('clientes.import.form')->middleware('auth');
 Route::get('/clientes/import/template', [ClienteController::class, 'templateClientes'])->name('clientes.import.template')->middleware('auth');
 Route::post('/clientes/import', [ClienteController::class, 'importClientes'])->name('clientes.import')->middleware('auth');
@@ -76,13 +77,6 @@ Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name(
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
 // Quadro societário routes
 Route::get('/clientes/{id}/quadro-societario', [ClienteController::class, 'quadroSocietario'])->name('clientes.quadro.modal')->middleware('auth');
-// Conhecimentos IA por cliente
-Route::get('/clientes/{id}/conhecimentos', [ClienteConhecimentoController::class, 'modal'])->name('clientes.conhecimentos.modal')->middleware('auth');
-Route::get('/clientes/{id}/conhecimentos/form', [ClienteConhecimentoController::class, 'formCreate'])->name('clientes.conhecimentos.form.create')->middleware('auth');
-Route::post('/clientes/{id}/conhecimentos', [ClienteConhecimentoController::class, 'store'])->name('clientes.conhecimentos.store')->middleware('auth');
-Route::get('/conhecimentos/{id}/form', [ClienteConhecimentoController::class, 'formEdit'])->name('conhecimentos.form.edit')->middleware('auth');
-Route::put('/conhecimentos/{id}', [ClienteConhecimentoController::class, 'update'])->name('conhecimentos.update')->middleware('auth');
-Route::delete('/conhecimentos/{id}', [ClienteConhecimentoController::class, 'destroy'])->name('conhecimentos.destroy')->middleware('auth');
 Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->name('clientes.socios.save')->middleware('auth');
 Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
 Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
