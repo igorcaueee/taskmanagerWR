@@ -11,6 +11,7 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
+use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
@@ -76,6 +77,8 @@ Route::get('/clientes/{id}/quadro-societario', [ClienteController::class, 'quadr
 Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->name('clientes.socios.save')->middleware('auth');
 Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
 Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
+// Segmentações routes
+Route::post('/segmentacoes', [SegmentacaoController::class, 'store'])->name('segmentacoes.store')->middleware('auth');
 // Produtos routes
 Route::get('/produtos', [ProdutoController::class, 'showProdutos'])->name('produtos')->middleware('auth');
 Route::get('/produtos/form', [ProdutoController::class, 'formCreate'])->name('produtos.form.create')->middleware('auth');

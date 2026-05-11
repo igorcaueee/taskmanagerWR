@@ -67,6 +67,28 @@
                    required>
         </div>
 
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Segmentação</label>
+            <div class="mt-1 flex gap-2">
+                <select name="segmentacao_id" id="select-segmentacao" class="block w-full border rounded px-3 py-2">
+                    <option value="">— Selecione —</option>
+                    @foreach($segmentacoes ?? [] as $segmentacao)
+                        <option value="{{ $segmentacao->id }}"
+                            {{ old('segmentacao_id', $isEditing ? $cliente->segmentacao_id : ($prefill['segmentacao_id'] ?? '')) == $segmentacao->id ? 'selected' : '' }}>
+                            {{ $segmentacao->nome }}
+                        </option>
+                    @endforeach
+                </select>
+                @if(auth()->user()?->canEditarClientes())
+                <button type="button" id="btn-nova-segmentacao"
+                        title="Nova segmentação"
+                        class="flex-shrink-0 inline-flex items-center justify-center self-stretch px-3 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 bg-white">
+                    <i class="fa-solid fa-plus text-sm"></i>
+                </button>
+                @endif
+            </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Tipo</label>
@@ -235,6 +257,56 @@
     </div>
     @endunless
 </form>
+
+<script>
+(function () {
+    const btnNovaSegmentacao = document.getElementById('btn-nova-segmentacao');
+    if (btnNovaSegmentacao) {
+        btnNovaSegmentacao.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Nova Segmentação',
+                input: 'text',
+                inputLabel: 'Nome da segmentação',
+                inputPlaceholder: 'Ex: Indústria, Comércio, Serviços...',
+                showCancelButton: true,
+                confirmButtonText: 'Salvar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                inputValidator: function (value) {
+                    if (!value || !value.trim()) {
+                        return 'O nome é obrigatório.';
+                    }
+                },
+            }).then(function (result) {
+                if (!result.isConfirmed) { return; }
+
+                $.ajax({
+                    url: '{{ route('segmentacoes.store') }}',
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    data: { nome: result.value.trim() },
+                    success: function (data) {
+                        const select = document.getElementById('select-segmentacao');
+                        const option = document.createElement('option');
+                        option.value = data.id;
+                        option.textContent = data.nome;
+                        option.selected = true;
+                        select.appendChild(option);
+                        Swal.fire({ icon: 'success', title: 'Segmentação criada!', timer: 1500, showConfirmButton: false });
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON?.error ?? 'Erro ao criar segmentação.';
+                        Swal.fire({ icon: 'error', title: 'Erro', text: msg, confirmButtonColor: '#dc2626' });
+                    },
+                });
+            });
+        });
+    }
+})();
+</script>
 
 <script>
 (function () {

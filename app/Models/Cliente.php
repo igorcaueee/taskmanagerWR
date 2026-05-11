@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,6 +13,7 @@ class Cliente extends Model
 
     protected $fillable = [
         'nome',
+        'segmentacao_id',
         'descricao',
         'cpfcnpj',
         'tipo',
@@ -39,6 +41,11 @@ class Cliente extends Model
         'data_encerramento' => 'date',
         'capital_social' => 'decimal:2',
     ];
+
+    public function segmentacao(): BelongsTo
+    {
+        return $this->belongsTo(Segmentacao::class);
+    }
 
     public function produtos(): BelongsToMany
     {

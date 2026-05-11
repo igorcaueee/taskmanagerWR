@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Produto;
+use App\Models\Segmentacao;
 use App\Models\Socio;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -57,8 +59,9 @@ class ClienteController extends Controller
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $segmentacoes = Segmentacao::orderBy('nome')->get();
 
-        return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos]);
+        return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos, 'segmentacoes' => $segmentacoes]);
     }
 
     public function formClienteEdit(int $id): View
@@ -67,18 +70,20 @@ class ClienteController extends Controller
 
         $cliente = Cliente::with(['produtos', 'socios'])->findOrFail($id);
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $segmentacoes = Segmentacao::orderBy('nome')->get();
 
-        return view('clientes.partials.formCliente', compact('cliente', 'produtos'));
+        return view('clientes.partials.formCliente', compact('cliente', 'produtos', 'segmentacoes'));
     }
 
     public function saveCliente(Request $request): RedirectResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
+            'segmentacao_id' => ['nullable', 'integer', 'exists:segmentacoes,id'],
             'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj'],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
@@ -117,10 +122,11 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
+            'segmentacao_id' => ['nullable', 'integer', 'exists:segmentacoes,id'],
             'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj,'.$id],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
@@ -212,8 +218,8 @@ class ClienteController extends Controller
             $cellIterator->setIterateOnlyExistingCells(false);
             foreach ($cellIterator as $cell) {
                 $value = $cell->getValue();
-                if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cell) && is_numeric($value)) {
-                    $value = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
+                if (Date::isDateTime($cell) && is_numeric($value)) {
+                    $value = Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
                 }
                 $rowData[] = $value;
             }
@@ -231,9 +237,9 @@ class ClienteController extends Controller
 
         $regimeMap = [
             'simples nacional' => 'Simples Nacional',
-            'lucro presumido'  => 'Lucro Presumido',
-            'lucro real'       => 'Lucro Real',
-            'mei'              => 'MEI',
+            'lucro presumido' => 'Lucro Presumido',
+            'lucro real' => 'Lucro Real',
+            'mei' => 'MEI',
         ];
 
         $parseDate = function (string $value): ?string {
@@ -275,17 +281,17 @@ class ClienteController extends Controller
             $regime = $regimeMap[$regimeRaw] ?? ($get($row, 'regime_tributario') ?: null);
 
             $dados = [
-                'tipo'              => $tipo,
+                'tipo' => $tipo,
                 'regime_tributario' => $regime,
-                'cidade'            => $get($row, 'cidade') ?: null,
-                'estado'            => mb_strtoupper($get($row, 'estado')) ?: null,
-                'status'            => $status,
-                'fator_r'           => $fatorR,
-                'cliente_desde'     => $parseDate($get($row, 'cliente_desde')),
-                'dataabertura'      => $parseDate($get($row, 'dataabertura')),
-                'faturamento'       => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
-                'servico'           => $get($row, 'servico') ?: null,
-                'honorario'         => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
+                'cidade' => $get($row, 'cidade') ?: null,
+                'estado' => mb_strtoupper($get($row, 'estado')) ?: null,
+                'status' => $status,
+                'fator_r' => $fatorR,
+                'cliente_desde' => $parseDate($get($row, 'cliente_desde')),
+                'dataabertura' => $parseDate($get($row, 'dataabertura')),
+                'faturamento' => is_numeric($get($row, 'faturamento')) ? (float) $get($row, 'faturamento') : null,
+                'servico' => $get($row, 'servico') ?: null,
+                'honorario' => is_numeric($get($row, 'honorario')) ? (float) $get($row, 'honorario') : null,
             ];
 
             $existente = $cpfcnpj ? Cliente::where('cpfcnpj', $cpfcnpj)->first() : null;
