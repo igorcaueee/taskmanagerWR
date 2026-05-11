@@ -6,8 +6,8 @@
     <div class="py-6 px-6">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-list-check"></i> Tarefas</h1>
-                <p class="text-gray-700">Aqui você pode visualizar e gerenciar suas tarefas.</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-list-check"></i> Tarefas</h1>
+                <p class="text-gray-700 dark:text-gray-300">Aqui você pode visualizar e gerenciar suas tarefas.</p>
             </div>
             <div>
                 <button type="button"
@@ -18,21 +18,21 @@
             </div>
         </div>
 
-        <div class="bg-white rounded shadow">
+        <div class="bg-white dark:bg-slate-800 rounded shadow">
             {{-- Filters --}}
             <form method="GET" action="{{ route('tarefas') }}" id="form-filtros-home"
-                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
+                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Pesquisar</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pesquisar</label>
                     <input type="text" name="busca" value="{{ request('busca') }}"
                            placeholder="Buscar por título..."
                            onchange="document.getElementById('form-filtros-home').submit()"
-                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Cliente</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
                     <select name="cliente_id" onchange="document.getElementById('form-filtros-home').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         @foreach($clientes as $cliente)
                             <option value="{{ $cliente->id }}" @selected(request('cliente_id') == $cliente->id)>{{ $cliente->nome }}</option>
@@ -40,9 +40,9 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Etapa</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Etapa</label>
                     <select name="etapa_id" onchange="document.getElementById('form-filtros-home').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todas</option>
                         @foreach($etapas as $etapa)
                             <option value="{{ $etapa->id }}" @selected(request('etapa_id') == $etapa->id)>{{ $etapa->nome }}</option>
@@ -50,9 +50,9 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Recorrência</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Recorrência</label>
                     <select name="frequencia" onchange="document.getElementById('form-filtros-home').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todas</option>
                         <option value="nenhuma"   @selected(request('frequencia') === 'nenhuma')>Não se repete</option>
                         <option value="semanal"   @selected(request('frequencia') === 'semanal')>Semanal</option>
@@ -64,9 +64,9 @@
                 </div>
                 @if($podeVerTodas)
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Responsável</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
                     <select name="responsavel_id" onchange="document.getElementById('form-filtros-home').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         @foreach($usuarios as $usr)
                             <option value="{{ $usr->id }}" @selected(request('responsavel_id') == $usr->id)>{{ $usr->nome }}</option>
@@ -76,29 +76,29 @@
                 @endif
             </form>
 
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                <thead class="bg-gray-50 dark:bg-slate-900">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Etapa</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsável</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vencimento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioridade</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recorrência</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Título</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Departamento</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Etapa</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Responsável</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vencimento</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prioridade</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recorrência</th>
                         <th class="px-6 py-3"></th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse($tarefas as $tarefa)
                         <tr>
-                            <td class="px-6 py-4 text-sm text-gray-900 font-medium whitespace-nowrap">{{ $tarefa->titulo }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $tarefa->cliente->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $tarefa->departamento->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $tarefa->etapa->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">{{ $tarefa->responsavel->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm whitespace-nowrap {{ (is_null($tarefa->data_conclusao) && $tarefa->data_vencimento->lt(now()->startOfDay())) ? 'text-red-600 font-semibold' : 'text-gray-700' }}">
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-slate-100 font-medium whitespace-nowrap">{{ $tarefa->titulo }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->cliente->nome ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->departamento->nome ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->etapa->nome ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->responsavel->nome ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm whitespace-nowrap {{ (is_null($tarefa->data_conclusao) && $tarefa->data_vencimento->lt(now()->startOfDay())) ? 'text-red-600 font-semibold' : 'text-gray-700 dark:text-gray-300' }}">
                                 {{ $tarefa->data_vencimento->format('d/m/Y') }}
                             </td>
                             <td class="px-6 py-4 text-sm whitespace-nowrap">

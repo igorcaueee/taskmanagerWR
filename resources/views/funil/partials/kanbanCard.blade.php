@@ -1,5 +1,5 @@
-<div class="kanban-card rounded-lg shadow-sm border border-gray-200 bg-white p-3 cursor-grab active:cursor-grabbing select-none
-    {{ $lead->convertido_cliente_id ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200' }}"
+<div class="kanban-card rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 cursor-grab active:cursor-grabbing select-none
+    {{ $lead->convertido_cliente_id ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700' }}"
      draggable="true"
      data-lead-id="{{ $lead->id }}"
      data-etapa-id="{{ $lead->etapa_funil_id }}"
@@ -14,7 +14,7 @@
     @endif
 
     <div class="flex items-start justify-between gap-1 mb-1">
-        <p class="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{{ $lead->nome }}</p>
+        <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 leading-tight line-clamp-2">{{ $lead->nome }}</p>
         @if ($lead->origem === 'formulario')
             <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 bg-purple-100 text-purple-700" title="Veio do formulário público">
                 <i class="fa-solid fa-globe"></i>
@@ -23,16 +23,16 @@
     </div>
 
     @if ($lead->empresa)
-        <p class="text-xs text-gray-500 mb-1"><i class="fa-regular fa-building w-3"></i> {{ $lead->empresa }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1"><i class="fa-regular fa-building w-3"></i> {{ $lead->empresa }}</p>
     @endif
 
     @if ($lead->servico)
-        <p class="text-xs text-gray-400 mb-1 truncate"><i class="fa-solid fa-briefcase w-3"></i> {{ $lead->servico }}</p>
+        <p class="text-xs text-gray-400 dark:text-slate-500 mb-1 truncate"><i class="fa-solid fa-briefcase w-3"></i> {{ $lead->servico }}</p>
     @endif
 
     <div class="flex items-center justify-between mt-2">
         @if ($lead->responsavel)
-            <span class="text-xs text-gray-500"><i class="fa-regular fa-user w-3"></i> {{ $lead->responsavel->nome }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400"><i class="fa-regular fa-user w-3"></i> {{ $lead->responsavel->nome }}</span>
         @else
             <span></span>
         @endif
@@ -45,9 +45,9 @@
     </div>
 
     {{-- Quick actions --}}
-    <div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 items-center">
+    <div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-slate-700 items-center">
         <button type="button"
-                class="text-xs text-gray-400 hover:text-brand border-0 bg-transparent p-0 cursor-pointer"
+                class="text-xs text-gray-400 dark:text-slate-500 hover:text-brand border-0 bg-transparent p-0 cursor-pointer"
                 data-modal-url="{{ route('leads.form.edit', $lead->id) }}"
                 ondragstart="event.stopPropagation()">
             <i class="fa-solid fa-pen-to-square"></i>
@@ -57,7 +57,7 @@
             @csrf
             @method('DELETE')
             <button type="button"
-                    class="text-xs text-gray-400 hover:text-red-500 border-0 bg-transparent p-0 cursor-pointer btn-delete-lead"
+                    class="text-xs text-gray-400 dark:text-slate-500 hover:text-red-500 border-0 bg-transparent p-0 cursor-pointer btn-delete-lead"
                     data-lead-nome="{{ $lead->nome }}"
                     ondragstart="event.stopPropagation()">
                 <i class="fa-solid fa-trash"></i>
@@ -66,7 +66,7 @@
 
         @if (!$lead->convertido_cliente_id)
             <button type="button"
-                    class="ml-auto text-xs text-gray-400 hover:text-green-600 border-0 bg-transparent p-0 cursor-pointer btn-converter-lead"
+                    class="ml-auto text-xs text-gray-400 dark:text-slate-500 hover:text-green-600 border-0 bg-transparent p-0 cursor-pointer btn-converter-lead"
                     title="Converter em cliente"
                     data-lead-id="{{ $lead->id }}"
                     data-lead-nome="{{ $lead->nome }}"

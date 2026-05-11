@@ -7,18 +7,18 @@
 
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900"><i class="fa-regular fa-user"></i> Relatório de Colaboradores</h1>
-                <p class="text-gray-700">Produtividade e desempenho da equipe.</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-regular fa-user"></i> Relatório de Colaboradores</h1>
+                <p class="text-gray-700 dark:text-gray-300">Produtividade e desempenho da equipe.</p>
             </div>
         </div>
 
         {{-- Filtro de período --}}
         <form method="GET" action="{{ route('relatorios.colaboradores') }}" id="form-relatorio"
-              class="bg-white rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
+              class="bg-white dark:bg-slate-800 rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Período</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Período</label>
                 <select name="periodo" id="select-periodo"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="hoje"       @selected(request('periodo') === 'hoje')>Hoje</option>
                     <option value="semana"     @selected(request('periodo') === 'semana')>Esta semana</option>
                     <option value="mes"        @selected(request('periodo', 'mes') === 'mes')>Este mês</option>
@@ -30,37 +30,37 @@
             </div>
             <div id="datas-personalizadas" class="{{ request('periodo') === 'personalizado' ? 'flex' : 'hidden' }} gap-3">
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">De</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">De</label>
                     <input type="date" name="data_inicio" value="{{ request('data_inicio') }}"
-                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Até</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Até</label>
                     <input type="date" name="data_fim" value="{{ request('data_fim') }}"
-                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
             </div>
             <button type="submit"
                     class="inline-flex items-center gap-2 px-4 py-1.5 bg-brand text-white rounded border-0 text-sm focus:outline-none hover:bg-brand/80">
                 <i class="fa-solid fa-magnifying-glass"></i> Aplicar
             </button>
-            <p class="text-xs text-gray-400 self-center ml-auto">
+            <p class="text-xs text-gray-400 dark:text-slate-500 self-center ml-auto">
                 {{ $dataInicio->format('d/m/Y') }} — {{ $dataFim->format('d/m/Y') }}
             </p>
         </form>
 
         {{-- KPI Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total de colaboradores</p>
-                <p class="mt-1 text-3xl font-bold text-gray-900">{{ $totalColaboradores }}</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total de colaboradores</p>
+                <p class="mt-1 text-3xl font-bold text-gray-900 dark:text-slate-100">{{ $totalColaboradores }}</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ativos</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Ativos</p>
                 <p class="mt-1 text-3xl font-bold text-green-600">{{ $totalAtivos }}</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Inativos</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Inativos</p>
                 <p class="mt-1 text-3xl font-bold text-gray-400">{{ $totalInativos }}</p>
             </div>
         </div>
@@ -68,12 +68,12 @@
         {{-- Linha 1: Concluídas + Abertas --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-circle-check mr-1 text-brand"></i> Tarefas concluídas por colaborador no período
                 </h2>
                 @if($concluidasPorColab->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:240px">
                         <canvas id="chartConcluidas"></canvas>
@@ -81,12 +81,12 @@
                 @endif
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-hourglass-half mr-1 text-brand"></i> Tarefas em aberto por colaborador
                 </h2>
                 @if($abertasPorColab->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:240px">
                         <canvas id="chartAbertas"></canvas>
@@ -98,12 +98,12 @@
         {{-- Linha 2: Vencidas + Evolução dos top 5 --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-circle-exclamation mr-1 text-red-500"></i> Tarefas vencidas por colaborador
                 </h2>
                 @if($vencidasPorColab->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum colaborador com tarefas vencidas.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum colaborador com tarefas vencidas.</p>
                 @else
                     <div style="position:relative;height:240px">
                         <canvas id="chartVencidas"></canvas>
@@ -111,12 +111,12 @@
                 @endif
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-chart-line mr-1 text-brand"></i> Evolução mensal — top 5 colaboradores
                 </h2>
                 @if($topColabs->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:240px">
                         <canvas id="chartEvolucao"></canvas>

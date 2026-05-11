@@ -14,9 +14,9 @@
 @endphp
 
 <div class="kanban-card rounded-lg shadow-sm border p-3 cursor-grab active:cursor-grabbing select-none
-    {{ $estaConcluida ? 'bg-green-50 border-green-300' : 'bg-white' }}
+    {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800' }}
     {{ $tarefa->passou_ciclo && ! $estaConcluida ? 'border-amber-400 border-l-4' : '' }}
-    {{ ! $estaConcluida && ! $tarefa->passou_ciclo ? 'border-gray-200' : '' }}"
+    {{ ! $estaConcluida && ! $tarefa->passou_ciclo ? 'border-gray-200 dark:border-slate-700' : '' }}"
      draggable="true"
      data-tarefa-id="{{ $tarefa->id }}"
      data-etapa-id="{{ $tarefa->etapa_id }}"
@@ -38,17 +38,17 @@
     @endif
 
     <div class="flex items-start justify-between gap-1 mb-2">
-        <p class="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{{ $tarefa->titulo }}</p>
+        <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 leading-tight line-clamp-2">{{ $tarefa->titulo }}</p>
         <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 {{ $colorClass }}">{{ $prioridadeLabel }}</span>
     </div>
 
     @if ($tarefa->cliente)
-        <p class="text-xs text-gray-500 mb-1"><i class="fa-regular fa-building w-3"></i> {{ $tarefa->cliente->nome }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1"><i class="fa-regular fa-building w-3"></i> {{ $tarefa->cliente->nome }}</p>
     @endif
 
     <div class="flex items-center justify-between mt-2">
         @if ($tarefa->responsavel)
-            <span class="text-xs text-gray-500"><i class="fa-regular fa-user w-3"></i> {{ $tarefa->responsavel->nome }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400"><i class="fa-regular fa-user w-3"></i> {{ $tarefa->responsavel->nome }}</span>
         @else
             <span></span>
         @endif
@@ -60,10 +60,10 @@
     </div>
 
     {{-- Quick actions --}}
-    <div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 items-center">
+    <div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-slate-700 items-center">
         @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
         <button type="button"
-                class="text-xs text-gray-400 hover:text-brand border-0 bg-transparent p-0 cursor-pointer"
+                class="text-xs text-gray-400 dark:text-slate-500 hover:text-brand border-0 bg-transparent p-0 cursor-pointer"
                 data-modal-url="{{ route('tarefas.form.edit', $tarefa->id) }}"
                 ondragstart="event.stopPropagation()">
             <i class="fa-solid fa-pen-to-square"></i>
@@ -73,7 +73,7 @@
             @csrf
             @method('DELETE')
             <button type="button"
-                    class="text-xs text-gray-400 hover:text-red-500 border-0 bg-transparent p-0 cursor-pointer btn-delete-kanban"
+                    class="text-xs text-gray-400 dark:text-slate-500 hover:text-red-500 border-0 bg-transparent p-0 cursor-pointer btn-delete-kanban"
                     data-tarefa-titulo="{{ $tarefa->titulo }}"
                     ondragstart="event.stopPropagation()">
                 <i class="fa-solid fa-trash"></i>
@@ -82,7 +82,7 @@
         @endif
 
         <button type="button"
-                class="ml-auto text-xs text-gray-400 hover:text-amber-600 border-0 bg-transparent p-0 cursor-pointer btn-proximo-ciclo"
+                class="ml-auto text-xs text-gray-400 dark:text-slate-500 hover:text-amber-600 border-0 bg-transparent p-0 cursor-pointer btn-proximo-ciclo"
                 title="Passar para o próximo ciclo"
                 data-tarefa-id="{{ $tarefa->id }}"
                 data-tarefa-titulo="{{ $tarefa->titulo }}"

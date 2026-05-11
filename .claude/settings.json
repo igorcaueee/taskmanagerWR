@@ -15,7 +15,10 @@
       "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr add resources/views/clientes/home.blade.php resources/views/clientes/partials/formCliente.blade.php resources/views/relatorios/geolocalizacao.blade.php)",
       "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr push origin ajusteRegimeTributario)",
       "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr merge ajusteRegimeTributario --no-ff -m \"Merge branch 'ajusteRegimeTributario'\")",
-      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr diff app/Http/Controllers/AgendaController.php)"
+      "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr diff app/Http/Controllers/AgendaController.php)",
+      "Bash(sudo chown -R igorcaueee:igorcaueee /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)",
+      "Bash(npm run *)",
+      "Bash(chmod -R u+w /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)"
     ]
   }
 }

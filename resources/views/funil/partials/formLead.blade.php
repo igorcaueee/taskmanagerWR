@@ -6,7 +6,7 @@
 @endphp
 
 <div class="flex items-center justify-between mb-4">
-    <h5 class="text-lg font-semibold text-gray-900">
+    <h5 class="text-lg font-semibold text-gray-900 dark:text-slate-100">
         @if($isEditing)
             <i class="fa-solid fa-pen-to-square mr-2"></i>
         @else
@@ -14,7 +14,7 @@
         @endif
         {{ $title }}
     </h5>
-    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0">
+    <button type="button" onclick="closeModal()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 bg-transparent border-0 p-0">
         <i class="fa-solid fa-xmark text-lg"></i>
     </button>
 </div>
@@ -28,32 +28,32 @@
     <div class="space-y-4">
         {{-- Nome --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700">Nome <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome <span class="text-red-500">*</span></label>
             <input name="nome" type="text"
-                   class="mt-1 block w-full border rounded px-3 py-2"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    value="{{ old('nome', $isEditing ? $lead->nome : '') }}"
                    required>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700">E-mail</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
                 <input name="email" type="email"
-                       class="mt-1 block w-full border rounded px-3 py-2"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('email', $isEditing ? $lead->email : '') }}">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Telefone</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
                 <input name="telefone" type="text"
-                       class="mt-1 block w-full border rounded px-3 py-2"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('telefone', $isEditing ? $lead->telefone : '') }}">
             </div>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700">Empresa</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Empresa</label>
             <input name="empresa" type="text"
-                   class="mt-1 block w-full border rounded px-3 py-2"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    value="{{ old('empresa', $isEditing ? $lead->empresa : '') }}">
         </div>
 
@@ -63,16 +63,16 @@
         @endphp
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700">Tipo</label>
-                <select name="tipo" id="lead-select-tipo" class="mt-1 block w-full border rounded px-3 py-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
+                <select name="tipo" id="lead-select-tipo" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">
                     <option value="1" {{ $tipoInicialLead === '1' ? 'selected' : '' }}>Pessoa Jurídica (CNPJ)</option>
                     <option value="0" {{ $tipoInicialLead === '0' ? 'selected' : '' }}>Pessoa Física (CPF)</option>
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700" id="lead-label-cpfcnpj">{{ $isPJLead ? 'CNPJ' : 'CPF' }}</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" id="lead-label-cpfcnpj">{{ $isPJLead ? 'CNPJ' : 'CPF' }}</label>
                 <input name="cpfcnpj" id="lead-input-cpfcnpj" type="text"
-                       class="mt-1 block w-full border rounded px-3 py-2"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        placeholder="{{ $isPJLead ? '00.000.000/0000-00' : '000.000.000-00' }}"
                        maxlength="{{ $isPJLead ? 18 : 14 }}"
                        value="{{ old('cpfcnpj', $isEditing ? $lead->cpfcnpj : '') }}">
@@ -81,8 +81,8 @@
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700">Etapa <span class="text-red-500">*</span></label>
-                <select name="etapa_funil_id" class="mt-1 block w-full border rounded px-3 py-2" required>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Etapa <span class="text-red-500">*</span></label>
+                <select name="etapa_funil_id" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200" required>
                     @foreach($etapas as $etapa)
                         <option value="{{ $etapa->id }}"
                             {{ old('etapa_funil_id', $isEditing ? $lead->etapa_funil_id : $etapaDefault) == $etapa->id ? 'selected' : '' }}>
@@ -92,8 +92,8 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Responsável</label>
-                <select name="responsavel_id" class="mt-1 block w-full border rounded px-3 py-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Responsável</label>
+                <select name="responsavel_id" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">
                     <option value="">— Sem responsável —</option>
                     @foreach($usuarios as $usuario)
                         <option value="{{ $usuario->id }}"
@@ -109,17 +109,17 @@
         <div class="grid grid-cols-2 gap-4">
             @if (auth()->user()?->canVerFaturamento())
             <div>
-                <label class="block text-sm font-medium text-gray-700">Faturamento (R$)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Faturamento (R$)</label>
                 <input name="faturamento" type="number" step="0.01" min="0"
-                       class="mt-1 block w-full border rounded px-3 py-2"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('faturamento', $isEditing ? $lead->faturamento : '') }}">
             </div>
             @endif
             @if (auth()->user()?->canVerHonorario())
             <div>
-                <label class="block text-sm font-medium text-gray-700">Honorário (R$)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Honorário (R$)</label>
                 <input name="honorario" type="number" step="0.01" min="0"
-                       class="mt-1 block w-full border rounded px-3 py-2"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('honorario', $isEditing ? $lead->honorario : '') }}">
             </div>
             @endif
@@ -132,9 +132,9 @@
             @endphp
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Serviços / Produtos</label>
-                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded p-3">
+                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border dark:border-slate-600 rounded p-3 bg-white dark:bg-slate-700">
                     @foreach($produtos as $produto)
-                        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                             <input type="checkbox" name="produtos[]" value="{{ $produto->id }}"
                                    class="rounded border-gray-300"
                                    {{ in_array($produto->id, $produtosSelecionados) ? 'checked' : '' }}>
@@ -146,22 +146,22 @@
         @endif
 
         <div>
-            <label class="block text-sm font-medium text-gray-700">Possibilidade</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Possibilidade</label>
             <textarea name="possibilidade" rows="2"
-                      class="mt-1 block w-full border rounded px-3 py-2"
+                      class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                       placeholder="O que você poderia oferecer a este cliente?">{{ old('possibilidade', $isEditing ? $lead->possibilidade : '') }}</textarea>
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700">Observações</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Observações</label>
             <textarea name="observacoes" rows="3"
-                      class="mt-1 block w-full border rounded px-3 py-2"
+                      class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                       placeholder="Notas internas sobre o lead...">{{ old('observacoes', $isEditing ? $lead->observacoes : '') }}</textarea>
         </div>
     </div>
 
     <div class="flex justify-end gap-2 mt-6">
-        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 bg-transparent">
+        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent dark:bg-transparent">
             Cancelar
         </button>
         <button type="submit" class="px-4 py-2 bg-brand text-white rounded border-0 hover:bg-brand/80">

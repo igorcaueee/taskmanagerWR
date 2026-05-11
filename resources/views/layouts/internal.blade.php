@@ -1,5 +1,12 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" id="html-root">
+<script>
+    (function() {
+        if (localStorage.getItem('theme') === 'dark') {
+            document.getElementById('html-root').classList.add('dark');
+        }
+    }());
+</script>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,12 +17,20 @@
         @include('partials.head')
 
         <style>
-            /* Sidebar always visible */
-            .sidebar { width: 16rem; }
+            /* Sidebar */
+            .sidebar { width: 16rem; flex-shrink: 0; transition: transform .2s ease-in-out; }
 
-            /* Mobile: sidebar slides over content; use .open to show */
+            /* Mobile: sidebar desliza sobre o conteúdo */
             @media (max-width: 767px) {
-                .sidebar { transform: translateX(-100%); position: fixed; z-index: 40; top: 0; left: 0; height: 100vh; transition: transform .2s ease-in-out; }
+                .sidebar {
+                    transform: translateX(-100%);
+                    position: fixed;
+                    z-index: 40;
+                    top: 0;
+                    left: 0;
+                    height: 100vh;
+                    overflow-y: auto;
+                }
                 .sidebar.open { transform: translateX(0); }
             }
 
@@ -43,22 +58,22 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="bg-gray-50 text-gray-900 min-h-screen">
+    <body class="bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
         @include('partials.internal.header')
 
-        <div class="flex">
-            <aside id="main-sidebar" class="sidebar w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-64px)] md:static md:block">
+        <div class="flex min-h-[calc(100vh-64px)]">
+            <aside id="main-sidebar" class="sidebar bg-white dark:bg-[#1e293b] border-r border-gray-200 dark:border-[#334155]">
                 @include('partials.internal.sidebar')
             </aside>
 
-            <div class="flex-1 p-6 main-content">
+            <div class="flex-1 p-4 sm:p-6 min-w-0 overflow-x-hidden">
                 @yield('content')
             </div>
         </div>
 
         {{-- Global modal --}}
         <div id="globalModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                 <div id="modalContent" class="p-6"></div>
             </div>
         </div>
@@ -69,7 +84,7 @@
         <div id="chatbot-widget" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
 
             {{-- Painel de chat --}}
-            <div id="chatbot-panel" class="hidden flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden" style="width: 384px; height: 520px; min-width: 280px; min-height: 360px; max-width: 680px; max-height: 85vh; position: relative;">
+            <div id="chatbot-panel" class="hidden flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden" style="width: 384px; height: 520px; min-width: 280px; min-height: 360px; max-width: 680px; max-height: 85vh; position: relative;">
                 {{-- Resize handle --}}
                 <div id="chatbot-resize" title="Redimensionar" style="position:absolute;top:0;left:0;width:18px;height:18px;cursor:nw-resize;z-index:10;" class="flex items-center justify-center">
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35">
@@ -101,24 +116,24 @@
                 </div>
 
                 {{-- Messages --}}
-                <div id="chatbot-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50" style="min-height: 0;">
+                <div id="chatbot-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50 dark:bg-slate-900" style="min-height: 0;">
                     <div class="flex gap-2">
                         <div class="w-7 h-7 rounded-full bg-[#e0f4f9] flex-shrink-0 flex items-center justify-center mt-0.5">
                             <i class="fa-solid fa-robot text-[#0084AA] text-xs"></i>
                         </div>
-                        <div class="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm border border-gray-100 text-sm text-gray-700 max-w-[85%]">
+                        <div class="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm border border-gray-100 dark:border-slate-600 text-sm text-gray-700 dark:text-slate-200 max-w-[85%]">
                             Olá! Sou a Liri, assistente de contabilidade da WR. Pode me perguntar sobre tributos, obrigações fiscais, suas tarefas no sistema e muito mais. Como posso ajudar?
                         </div>
                     </div>
                 </div>
 
                 {{-- Typing indicator (hidden) --}}
-                <div id="chatbot-typing" class="hidden px-4 py-2 bg-gray-50 border-t border-gray-100">
+                <div id="chatbot-typing" class="hidden px-4 py-2 bg-gray-50 dark:bg-slate-900 border-t border-gray-100 dark:border-slate-700">
                     <div class="flex gap-2 items-center">
                         <div class="w-7 h-7 rounded-full bg-[#e0f4f9] flex-shrink-0 flex items-center justify-center">
                             <i class="fa-solid fa-robot text-[#0084AA] text-xs"></i>
                         </div>
-                        <div class="flex gap-1 items-center bg-white rounded-full px-3 py-2 shadow-sm border border-gray-100">
+                        <div class="flex gap-1 items-center bg-white dark:bg-slate-700 rounded-full px-3 py-2 shadow-sm border border-gray-100 dark:border-slate-600">
                             <span class="w-1.5 h-1.5 rounded-full animate-bounce" style="background-color:#0084AA;animation-delay:0ms"></span>
                             <span class="w-1.5 h-1.5 rounded-full animate-bounce" style="background-color:#0084AA;animation-delay:150ms"></span>
                             <span class="w-1.5 h-1.5 rounded-full animate-bounce" style="background-color:#0084AA;animation-delay:300ms"></span>
@@ -127,12 +142,12 @@
                 </div>
 
                 {{-- Input --}}
-                <div class="px-3 py-3 bg-white border-t border-gray-100 flex gap-2 items-end">
+                <div class="px-3 py-3 bg-white dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700 flex gap-2 items-end">
                     <textarea
                         id="chatbot-input"
                         rows="1"
                         placeholder="Digite sua pergunta..."
-                        class="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0084AA] focus:border-transparent max-h-24 overflow-y-auto"
+                        class="flex-1 resize-none rounded-xl border border-gray-200 dark:border-slate-600 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0084AA] focus:border-transparent max-h-24 overflow-y-auto"
                         style="min-height: 38px;"
                     ></textarea>
                     <button
@@ -205,7 +220,7 @@
                                 <div class="w-7 h-7 rounded-full bg-[#e0f4f9] flex-shrink-0 flex items-center justify-center mt-0.5">
                                     <i class="fa-solid fa-robot text-[#0084AA] text-xs"></i>
                                 </div>
-                                <div class="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm border border-gray-100 text-sm text-gray-700 max-w-[85%]">
+                                <div class="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm border border-gray-100 dark:border-slate-600 text-sm text-gray-700 dark:text-slate-200 max-w-[85%]">
                                     Conversa reiniciada. Como posso ajudar?
                                 </div>
                             </div>`;
@@ -232,7 +247,7 @@
                         <div class="w-7 h-7 rounded-full bg-[#e0f4f9] flex-shrink-0 flex items-center justify-center mt-0.5">
                             <i class="fa-solid fa-robot text-[#0084AA] text-xs"></i>
                         </div>
-                        <div class="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm border border-gray-100 text-sm text-gray-700 max-w-[85%] chatbot-prose">${marked.parse(text)}</div>`;
+                        <div class="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm border border-gray-100 dark:border-slate-600 text-sm text-gray-700 dark:text-slate-200 max-w-[85%] chatbot-prose">${marked.parse(text)}</div>`;
                 }
 
                 messagesEl.appendChild(div);

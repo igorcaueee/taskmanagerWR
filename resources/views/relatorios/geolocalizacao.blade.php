@@ -7,19 +7,19 @@
 
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-map-location-dot"></i> Geolocalização de Clientes</h1>
-                <p class="text-gray-700">Distribuição de clientes por estado e cidade.</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-map-location-dot"></i> Geolocalização de Clientes</h1>
+                <p class="text-gray-700 dark:text-gray-300">Distribuição de clientes por estado e cidade.</p>
             </div>
         </div>
 
         {{-- Filtros --}}
         <form method="GET" action="{{ route('relatorios.geolocalizacao') }}" id="form-geo"
-              class="bg-white rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
+              class="bg-white dark:bg-slate-800 rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
 
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Status</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Status</label>
                 <select name="status" onchange="document.getElementById('form-geo').submit()"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="">Todos</option>
                     <option value="ativo"   @selected($statusFiltro === 'ativo')>Ativo</option>
                     <option value="inativo" @selected($statusFiltro === 'inativo')>Inativo</option>
@@ -27,9 +27,9 @@
             </div>
 
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Estado (UF)</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Estado (UF)</label>
                 <select name="estado" id="select-estado" onchange="document.getElementById('form-geo').submit()"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="">Todos os estados</option>
                     @foreach($porEstado as $item)
                         <option value="{{ $item->estado }}" @selected($estadoFiltro === $item->estado)>
@@ -41,9 +41,9 @@
 
             @if($estadoFiltro && $cidadesDoEstado->isNotEmpty())
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Cidade</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cidade</label>
                 <select name="cidade" onchange="document.getElementById('form-geo').submit()"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="">Todas as cidades</option>
                     @foreach($cidadesDoEstado as $cid)
                         <option value="{{ $cid->cidade }}" @selected($cidadeFiltro === $cid->cidade)>
@@ -57,7 +57,7 @@
             @if($estadoFiltro || $cidadeFiltro || ($statusFiltro && $statusFiltro !== 'ativo'))
             <div>
                 <a href="{{ route('relatorios.geolocalizacao') }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded text-gray-600 hover:bg-gray-50 bg-white no-underline">
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800 no-underline">
                     <i class="fa-solid fa-xmark"></i> Limpar filtros
                 </a>
             </div>
@@ -66,20 +66,20 @@
 
         {{-- KPI Cards --}}
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total de clientes</p>
-                <p class="mt-1 text-3xl font-bold text-gray-900">{{ $totalClientes }}</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total de clientes</p>
+                <p class="mt-1 text-3xl font-bold text-gray-900 dark:text-slate-100">{{ $totalClientes }}</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Com localização</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Com localização</p>
                 <p class="mt-1 text-3xl font-bold text-green-600">{{ $totalComLocalizacao }}</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Sem localização</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sem localização</p>
                 <p class="mt-1 text-3xl font-bold text-gray-400">{{ $totalSemLocalizacao }}</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     @if($estadoFiltro || $cidadeFiltro)
                         Resultado do filtro
                     @else
@@ -97,9 +97,9 @@
         </div>
 
         {{-- Mapa do Brasil --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 mb-6">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-sm font-semibold text-gray-700">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     <i class="fa-solid fa-map mr-1 text-brand"></i> Mapa de distribuição
                     @if($estadoFiltro) — {{ $estadoFiltro }} @endif
                 </h2>
@@ -119,12 +119,12 @@
         {{-- Gráfico e tabela de estados --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-chart-bar mr-1 text-brand"></i> Clientes por estado
                 </h2>
                 @if($porEstado->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum cliente com estado cadastrado.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum cliente com estado cadastrado.</p>
                 @else
                     <div style="position:relative;height:280px">
                         <canvas id="chartPorEstado"></canvas>
@@ -132,12 +132,12 @@
                 @endif
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-table mr-1 text-brand"></i> Ranking por estado
                 </h2>
                 @if($porEstado->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
@@ -179,8 +179,8 @@
 
         @if($estadoFiltro && $cidadesDoEstado->isNotEmpty() && !$cidadeFiltro)
         {{-- Gráfico por cidade do estado selecionado --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-            <h2 class="text-sm font-semibold text-gray-700 mb-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 mb-6">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                 <i class="fa-solid fa-city mr-1 text-brand"></i>
                 Clientes por cidade — {{ $estadoFiltro }}
             </h2>
@@ -191,8 +191,8 @@
         @endif
 
         {{-- Tabela de clientes filtrados --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 class="text-sm font-semibold text-gray-700 mb-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                 <i class="fa-solid fa-users mr-1 text-brand"></i>
                 Clientes
                 @if($estadoFiltro || $cidadeFiltro)
@@ -206,7 +206,7 @@
             </h2>
 
             @if($clientesFiltrados->isEmpty())
-                <p class="text-sm text-gray-400 italic">Nenhum cliente encontrado para o filtro selecionado.</p>
+                <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum cliente encontrado para o filtro selecionado.</p>
             @else
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">

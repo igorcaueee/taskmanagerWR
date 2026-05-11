@@ -7,8 +7,8 @@
         {{-- Header --}}
         <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900"><i class="fa-solid fa-chart-gantt"></i> Pipeline</h1>
-                <p class="text-sm text-gray-500">Arraste as tarefas entre as etapas para atualizar o status.</p>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-chart-gantt"></i> Pipeline</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Arraste as tarefas entre as etapas para atualizar o status.</p>
             </div>
             <button type="button"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80 text-sm"
@@ -30,14 +30,14 @@
         <div class="flex items-center justify-between mb-4 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
             {{-- Prev --}}
             <a href="{{ route('tarefas.list', array_merge(request()->except(['ciclo_id', 'page']), ['ciclo_id' => $cicloPrev->id])) }}"
-               class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand no-underline group">
+               class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand no-underline group">
                 <i class="fa-solid fa-chevron-left group-hover:translate-x-[-2px] transition-transform"></i>
                 <span class="hidden sm:inline text-xs truncate max-w-[140px]">{{ $cicloPrev->nome }}</span>
             </a>
 
             {{-- Current selected --}}
             <div class="flex flex-col items-center gap-1">
-                <span class="text-sm font-bold text-gray-900">{{ $cicloSelecionado->nome }}</span>
+                <span class="text-sm font-bold text-gray-900 dark:text-slate-100">{{ $cicloSelecionado->nome }}</span>
                 <div class="flex items-center gap-2">
                     <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $statusColors[$cicloSelecionado->status] }}">
                         {{ $statusLabels[$cicloSelecionado->status] }}
@@ -53,7 +53,7 @@
 
             {{-- Next --}}
             <a href="{{ route('tarefas.list', array_merge(request()->except(['ciclo_id', 'page']), ['ciclo_id' => $cicloNext->id])) }}"
-               class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand no-underline group">
+               class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand no-underline group">
                 <span class="hidden sm:inline text-xs truncate max-w-[140px]">{{ $cicloNext->nome }}</span>
                 <i class="fa-solid fa-chevron-right group-hover:translate-x-[2px] transition-transform"></i>
             </a>
@@ -63,9 +63,9 @@
         <form method="GET" action="{{ route('tarefas.list') }}" id="form-filtros" class="flex flex-wrap gap-3 mb-5">
             <input type="hidden" name="ciclo_id" value="{{ $cicloSelecionado->id }}">
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Departamento</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Departamento</label>
                 <select name="departamento_id" onchange="document.getElementById('form-filtros').submit()"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="">Todos</option>
                     @foreach ($departamentos as $dep)
                         <option value="{{ $dep->id }}" @selected(request('departamento_id') == $dep->id)>{{ $dep->nome }}</option>
@@ -74,9 +74,9 @@
             </div>
             @if ($podeVerTodas)
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Responsável</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
                 <select name="responsavel_id" onchange="document.getElementById('form-filtros').submit()"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="">Todos</option>
                     @foreach ($usuarios as $usr)
                         <option value="{{ $usr->id }}" @selected(request('responsavel_id') == $usr->id)>{{ $usr->nome }}</option>
@@ -89,13 +89,13 @@
         {{-- Kanban Board --}}
         <div class="flex gap-4 overflow-x-auto pb-4 flex-1" id="kanban-board">
             @foreach ($etapas as $etapa)
-                <div class="flex-shrink-0 w-64 flex flex-col bg-gray-100 rounded-xl">
+                <div class="flex-shrink-0 w-64 flex flex-col bg-gray-100 dark:bg-slate-700 rounded-xl">
                     {{-- Column header --}}
                     <div class="flex items-center gap-2 px-3 py-2.5 rounded-t-xl"
                          style="background-color: {{ $etapa->cor ?? '#6b7280' }}1a; border-bottom: 2px solid {{ $etapa->cor ?? '#6b7280' }}">
                         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $etapa->cor ?? '#6b7280' }}"></span>
-                        <span class="font-semibold text-sm text-gray-800">{{ $etapa->nome }}</span>
-                        <span class="ml-auto text-xs font-medium text-gray-500 bg-white rounded-full px-2 py-0.5 kanban-count" data-etapa="{{ $etapa->id }}">
+                        <span class="font-semibold text-sm text-gray-800 dark:text-slate-200">{{ $etapa->nome }}</span>
+                        <span class="ml-auto text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-600 rounded-full px-2 py-0.5 kanban-count" data-etapa="{{ $etapa->id }}">
                             {{ ($tarefas[$etapa->id] ?? collect())->count() }}
                         </span>
                     </div>

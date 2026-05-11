@@ -7,10 +7,10 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900"><i class="fa-regular fa-folder-open mr-2"></i>Meus Documentos</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-regular fa-folder-open mr-2"></i>Meus Documentos</h1>
             {{-- Breadcrumbs --}}
-            <nav class="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                <a href="{{ route('arquivos') }}" class="hover:text-blue-600 no-underline text-gray-600">
+            <nav class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <a href="{{ route('arquivos') }}" class="hover:text-blue-600 no-underline text-gray-600 dark:text-gray-400">
                     <i class="fa-solid fa-house-chimney"></i> Raiz
                 </a>
                 @foreach($breadcrumbs as $crumb)
@@ -26,14 +26,14 @@
                     <input type="hidden" name="path" value="{{ request('path') }}">
                 @endif
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Buscar arquivos e pastas..." class="pl-8 pr-3 py-2 text-sm border border-gray-300 rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-56 transition">
+                <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Buscar arquivos e pastas..." class="pl-8 pr-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-56 transition">
             </form>
             @if(request('busca'))
                 <a href="{{ route('arquivos', array_filter(['path' => request('path')])) }}" class="text-sm text-gray-400 hover:text-gray-600 no-underline" title="Limpar busca">
                     <i class="fa-solid fa-xmark"></i>
                 </a>
             @endif
-            <button onclick="document.getElementById('newFolderModal').classList.remove('hidden')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded border border-gray-300 transition">
+            <button onclick="document.getElementById('newFolderModal').classList.remove('hidden')" class="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 text-sm rounded border border-gray-300 dark:border-slate-600 transition">
                 <i class="fa-solid fa-folder-plus"></i> Nova Pasta
             </button>
             <button onclick="document.getElementById('uploadModal').classList.remove('hidden')" class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition">
@@ -72,12 +72,12 @@
             };
         }
     @endphp
-    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
+            <thead class="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
                 <tr>
-                    <th class="text-left px-4 py-3 font-medium text-gray-600">
-                        <a href="{{ sortUrl('name', $sortBy, $sortDir, $path, request('busca','')) }}" class="inline-flex items-center no-underline text-gray-600 hover:text-blue-600">
+                    <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                        <a href="{{ sortUrl('name', $sortBy, $sortDir, $path, request('busca','')) }}" class="inline-flex items-center no-underline text-gray-600 dark:text-gray-400 hover:text-blue-600">
                             Nome {!! sortIcon('name', $sortBy, $sortDir) !!}
                         </a>
                     </th>
@@ -91,12 +91,12 @@
                             Modificado {!! sortIcon('lastModified', $sortBy, $sortDir) !!}
                         </a>
                     </th>
-                    <th class="text-right px-4 py-3 font-medium text-gray-600 w-24">Ações</th>
+                    <th class="text-right px-4 py-3 font-medium text-gray-600 dark:text-gray-400 w-24">Ações</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
                 @if(count($breadcrumbs) > 0)
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-slate-700">
                         <td class="px-4 py-3" colspan="4">
                             @php $parentPath = count($breadcrumbs) > 1 ? $breadcrumbs[count($breadcrumbs) - 2]['path'] : ''; @endphp
                             <a href="{{ route('arquivos', ['path' => $parentPath]) }}" class="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 no-underline">
@@ -108,41 +108,41 @@
                 @endif
 
                 @forelse($paginatedItems as $item)
-                    <tr class="hover:bg-gray-50 group" data-path="{{ $item['path'] }}" data-type="{{ $item['type'] }}" data-name="{{ $item['name'] }}">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-slate-700 group" data-path="{{ $item['path'] }}" data-type="{{ $item['type'] }}" data-name="{{ $item['name'] }}">
                         <td class="px-4 py-3">
                             @if($item['type'] === 'folder')
-                                <a href="{{ route('arquivos', ['path' => $item['path']]) }}" class="inline-flex items-center gap-2 text-gray-800 hover:text-blue-600 no-underline font-medium">
+                                <a href="{{ route('arquivos', ['path' => $item['path']]) }}" class="inline-flex items-center gap-2 text-gray-800 dark:text-slate-100 hover:text-blue-600 no-underline font-medium">
                                     <i class="fa-solid fa-folder text-yellow-500"></i>
                                     {{ $item['name'] }}
                                 </a>
                             @else
-                                <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="inline-flex items-center gap-2 text-gray-800 hover:text-blue-600 no-underline">
+                                <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="inline-flex items-center gap-2 text-gray-800 dark:text-slate-100 hover:text-blue-600 no-underline">
                                     {!! fileIcon($item['name']) !!}
                                     {{ $item['name'] }}
                                 </a>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
                             @if($item['type'] === 'file')
                                 {{ formatFileSize($item['size']) }}
                             @else
                                 —
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-gray-500 hidden md:table-cell">
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">
                             {{ \Carbon\Carbon::createFromTimestamp($item['lastModified'])->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="inline-flex items-center gap-1">
                                 @if($item['type'] === 'file')
-                                    <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="Baixar">
+                                    <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Baixar">
                                         <i class="fa-solid fa-download text-xs"></i>
                                     </a>
                                 @endif
-                                <button onclick="openRenameModal('{{ addslashes($item['path']) }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 hover:text-amber-600 rounded hover:bg-amber-50 bg-transparent border-0" title="Renomear">
+                                <button onclick="openRenameModal('{{ addslashes($item['path']) }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-amber-600 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 bg-transparent border-0" title="Renomear">
                                     <i class="fa-solid fa-pen text-xs"></i>
                                 </button>
-                                <button onclick="confirmDelete('{{ addslashes($item['path']) }}', '{{ $item['type'] }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 bg-transparent border-0" title="Excluir">
+                                <button onclick="confirmDelete('{{ addslashes($item['path']) }}', '{{ $item['type'] }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/30 bg-transparent border-0" title="Excluir">
                                     <i class="fa-solid fa-trash text-xs"></i>
                                 </button>
                             </div>
@@ -150,7 +150,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="4" class="px-4 py-12 text-center text-gray-400 dark:text-slate-500">
                             <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
                             <p class="mt-2">Esta pasta está vazia</p>
                         </td>
@@ -162,17 +162,17 @@
 
     {{-- Pagination --}}
     @if($paginatedItems->hasPages())
-        <div class="flex items-center justify-between mt-4 text-sm text-gray-600">
+        <div class="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
             <span>
                 Exibindo {{ $paginatedItems->firstItem() }}–{{ $paginatedItems->lastItem() }} de {{ $paginatedItems->total() }} itens
             </span>
             <div class="flex items-center gap-1">
                 @if($paginatedItems->onFirstPage())
-                    <span class="px-3 py-1.5 rounded border border-gray-200 text-gray-300 cursor-not-allowed bg-white">
+                    <span class="px-3 py-1.5 rounded border border-gray-200 dark:border-slate-700 text-gray-300 dark:text-slate-600 cursor-not-allowed bg-white dark:bg-slate-800">
                         <i class="fa-solid fa-chevron-left text-xs"></i>
                     </span>
                 @else
-                    <a href="{{ $paginatedItems->previousPageUrl() }}" class="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 text-gray-600 no-underline bg-white">
+                    <a href="{{ $paginatedItems->previousPageUrl() }}" class="px-3 py-1.5 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-400 no-underline bg-white dark:bg-slate-800">
                         <i class="fa-solid fa-chevron-left text-xs"></i>
                     </a>
                 @endif
@@ -201,28 +201,28 @@
 
 {{-- Upload Modal --}}
 <div id="uploadModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Enviar Arquivos</h3>
-            <button onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 bg-transparent border-0">
+            <h3 class="text-lg font-semibold dark:text-slate-100"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Enviar Arquivos</h3>
+            <button onclick="document.getElementById('uploadModal').classList.add('hidden')" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 bg-transparent border-0">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
         <form id="uploadForm" enctype="multipart/form-data">
-            <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition cursor-pointer">
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-8 text-center hover:border-blue-400 transition cursor-pointer">
                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2"></i>
-                <p class="text-gray-600 text-sm">Arraste arquivos aqui ou clique para selecionar</p>
+                <p class="text-gray-600 dark:text-gray-400 text-sm">Arraste arquivos aqui ou clique para selecionar</p>
                 <input type="file" id="fileInput" multiple class="hidden">
-                <div id="fileList" class="mt-3 text-sm text-gray-700"></div>
+                <div id="fileList" class="mt-3 text-sm text-gray-700 dark:text-gray-300"></div>
             </div>
             <div id="uploadProgress" class="hidden mt-3">
-                <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
                     <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
                 </div>
-                <p id="progressText" class="text-xs text-gray-500 mt-1 text-center">Enviando...</p>
+                <p id="progressText" class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Enviando...</p>
             </div>
             <div class="flex justify-end gap-2 mt-4">
-                <button type="button" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Cancelar</button>
+                <button type="button" onclick="document.getElementById('uploadModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700">Cancelar</button>
                 <button type="submit" class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Enviar</button>
             </div>
         </form>
@@ -231,7 +231,7 @@
 
 {{-- New Folder Modal --}}
 <div id="newFolderModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold"><i class="fa-solid fa-folder-plus mr-2"></i>Nova Pasta</h3>
             <button onclick="document.getElementById('newFolderModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 bg-transparent border-0">
@@ -239,7 +239,7 @@
             </button>
         </div>
         <form id="newFolderForm">
-            <input type="text" id="folderName" name="name" placeholder="Nome da pasta" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <input type="text" id="folderName" name="name" placeholder="Nome da pasta" class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
             <div class="flex justify-end gap-2 mt-4">
                 <button type="button" onclick="document.getElementById('newFolderModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">Cancelar</button>
                 <button type="submit" class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Criar</button>

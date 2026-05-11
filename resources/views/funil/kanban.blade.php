@@ -7,12 +7,12 @@
         {{-- Header --}}
         <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900"><i class="fa-solid fa-filter"></i> Funil de Vendas</h1>
-                <p class="text-sm text-gray-500">Gerencie seus leads e acompanhe a jornada de prospecção até o pós-venda.</p>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-filter"></i> Funil de Vendas</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Gerencie seus leads e acompanhe a jornada de prospecção até o pós-venda.</p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('funil.captura') }}" target="_blank"
-                   class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 text-sm no-underline">
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 text-sm no-underline">
                     <i class="fa-solid fa-globe"></i> Form. Público
                 </a>
                 <button type="button"
@@ -26,17 +26,17 @@
         {{-- Filters --}}
         <form method="GET" action="{{ route('funil') }}" id="form-filtros-funil" class="flex flex-wrap gap-3 mb-5">
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Buscar</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Buscar</label>
                 <input type="text" name="busca" value="{{ request('busca') }}"
                        placeholder="Nome ou empresa..."
                        onchange="document.getElementById('form-filtros-funil').submit()"
-                       class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
+                       class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
             </div>
             @if($podeVerTodos)
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Responsável</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
                     <select name="responsavel_id" onchange="document.getElementById('form-filtros-funil').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         @foreach($usuarios as $usr)
                             <option value="{{ $usr->id }}" @selected(request('responsavel_id') == $usr->id)>{{ $usr->nome }}</option>
@@ -52,13 +52,13 @@
             {{-- Kanban Board --}}
             <div class="flex gap-4 overflow-x-auto pb-4 flex-1" id="kanban-board">
                 @foreach ($etapas as $etapa)
-                    <div class="flex-shrink-0 w-64 flex flex-col bg-gray-100 rounded-xl">
+                    <div class="flex-shrink-0 w-64 flex flex-col bg-gray-100 dark:bg-slate-700 rounded-xl">
                         {{-- Column header --}}
                         <div class="flex items-center gap-2 px-3 py-2.5 rounded-t-xl"
                              style="background-color: {{ $etapa->cor }}1a; border-bottom: 2px solid {{ $etapa->cor }}">
                             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $etapa->cor }}"></span>
-                            <span class="font-semibold text-sm text-gray-800">{{ $etapa->nome }}</span>
-                            <span class="ml-auto text-xs font-medium text-gray-500 bg-white rounded-full px-2 py-0.5 kanban-count" data-etapa="{{ $etapa->id }}">
+                            <span class="font-semibold text-sm text-gray-800 dark:text-slate-200">{{ $etapa->nome }}</span>
+                            <span class="ml-auto text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-600 rounded-full px-2 py-0.5 kanban-count" data-etapa="{{ $etapa->id }}">
                                 {{ ($leads[$etapa->id] ?? collect())->count() }}
                             </span>
                         </div>

@@ -23,9 +23,9 @@
 <div class="space-y-4">
     {{-- Header --}}
     <div class="flex items-start justify-between gap-3">
-        <h2 class="text-sm font-semibold text-gray-900 leading-snug pr-2">{{ $tarefa->titulo }}</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-slate-100 leading-snug pr-2">{{ $tarefa->titulo }}</h2>
         <button type="button" onclick="closeModal()"
-                class="text-gray-400 hover:text-gray-600 border-0 bg-transparent p-0 focus:outline-none flex-shrink-0">
+                class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-0 bg-transparent p-0 focus:outline-none flex-shrink-0">
             <i class="fa-solid fa-xmark text-lg"></i>
         </button>
     </div>
@@ -33,7 +33,7 @@
     {{-- Meta grid --}}
     <div class="grid grid-cols-2 gap-3">
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Etapa</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Etapa</p>
             <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full text-white"
                   style="background-color: {{ $tarefa->etapa->cor ?? '#9ca3af' }};">
                 <span class="w-1.5 h-1.5 rounded-full bg-white/70 inline-block"></span>
@@ -41,29 +41,29 @@
             </span>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Prioridade</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Prioridade</p>
             <p class="text-xs font-medium {{ $prioridadeColors[$tarefa->prioridade] ?? 'text-gray-700' }}">
                 {{ $prioridadeLabels[$tarefa->prioridade] ?? $tarefa->prioridade }}
             </p>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Cliente</p>
-            <p class="text-xs text-gray-700">{{ $tarefa->cliente->nome ?? '—' }}</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Cliente</p>
+            <p class="text-xs text-gray-700 dark:text-gray-300">{{ $tarefa->cliente->nome ?? '—' }}</p>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Departamento</p>
-            <p class="text-xs text-gray-700">{{ $tarefa->departamento->nome ?? '—' }}</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Departamento</p>
+            <p class="text-xs text-gray-700 dark:text-gray-300">{{ $tarefa->departamento->nome ?? '—' }}</p>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Responsável</p>
-            <p class="text-xs text-gray-700">{{ $tarefa->responsavel->nome ?? '—' }}</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Responsável</p>
+            <p class="text-xs text-gray-700 dark:text-gray-300">{{ $tarefa->responsavel->nome ?? '—' }}</p>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Supervisor</p>
-            <p class="text-xs text-gray-700">{{ $tarefa->supervisor->nome ?? '—' }}</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Supervisor</p>
+            <p class="text-xs text-gray-700 dark:text-gray-300">{{ $tarefa->supervisor->nome ?? '—' }}</p>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Vencimento</p>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Vencimento</p>
             <p class="text-xs font-medium {{ $estaAtrasada ? 'text-red-600' : 'text-gray-700' }}">
                 {{ $tarefa->data_vencimento->format('d/m/Y') }}
                 @if ($estaAtrasada)
@@ -75,8 +75,8 @@
         </div>
         @if ($tarefa->recorrente && ($frequenciaLabels[$tarefa->frequencia] ?? null))
             <div class="col-span-2">
-                <p class="text-xs text-gray-400 mb-0.5">Recorrência</p>
-                <p class="text-xs text-gray-700">
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-0.5">Recorrência</p>
+                <p class="text-xs text-gray-700 dark:text-gray-300">
                     <i class="fa-solid fa-rotate text-brand mr-1"></i>
                     {{ $frequenciaLabels[$tarefa->frequencia] }}
                 </p>
@@ -86,14 +86,14 @@
 
     {{-- Description --}}
     @if ($tarefa->descricao)
-        <div class="border-t border-gray-100 pt-3">
+        <div class="border-t border-gray-100 dark:border-slate-700 pt-3">
             <p class="text-xs text-gray-400 mb-1">Descrição</p>
             <p class="text-xs text-gray-700 whitespace-pre-line leading-relaxed">{{ $tarefa->descricao }}</p>
         </div>
     @endif
 
     {{-- History --}}
-    <div class="border-t border-gray-100 pt-3">
+    <div class="border-t border-gray-100 dark:border-slate-700 pt-3">
         <p class="text-xs text-gray-400 mb-2"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Histórico</p>
         @if ($tarefa->historico->isNotEmpty())
             <ol reversed class="relative border-l border-gray-200 ml-2 space-y-3 text-xs">

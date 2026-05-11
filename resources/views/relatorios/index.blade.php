@@ -8,19 +8,19 @@
         {{-- Header --}}
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-chart-bar"></i> Relatórios</h1>
-                <p class="text-gray-700">Análise de desempenho e produtividade das tarefas.</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-chart-bar"></i> Relatórios</h1>
+                <p class="text-gray-700 dark:text-gray-300">Análise de desempenho e produtividade das tarefas.</p>
             </div>
         </div>
 
         {{-- Filtros de período --}}
         <form method="GET" action="{{ route('relatorios') }}" id="form-relatorio"
-              class="bg-white rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
+              class="bg-white dark:bg-slate-800 rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
 
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Período</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Período</label>
                 <select name="periodo" id="select-periodo"
-                        class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="hoje"      @selected(request('periodo') === 'hoje')>Hoje</option>
                     <option value="semana"    @selected(request('periodo') === 'semana')>Esta semana</option>
                     <option value="mes"       @selected(request('periodo', 'mes') === 'mes')>Este mês</option>
@@ -33,14 +33,14 @@
 
             <div id="datas-personalizadas" class="{{ request('periodo') === 'personalizado' ? 'flex' : 'hidden' }} gap-3">
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">De</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">De</label>
                     <input type="date" name="data_inicio" value="{{ request('data_inicio') }}"
-                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Até</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Até</label>
                     <input type="date" name="data_fim" value="{{ request('data_fim') }}"
-                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
             </div>
 
@@ -49,22 +49,22 @@
                 <i class="fa-solid fa-magnifying-glass"></i> Aplicar
             </button>
 
-            <p class="text-xs text-gray-400 self-center ml-auto">
+            <p class="text-xs text-gray-400 dark:text-slate-500 self-center ml-auto">
                 {{ $dataInicio->format('d/m/Y') }} — {{ $dataFim->format('d/m/Y') }}
             </p>
         </form>
 
         {{-- KPI Cards --}}
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total de tarefas</p>
-                <p class="mt-1 text-3xl font-bold text-gray-900">{{ $totalTarefas }}</p>
-                <p class="mt-1 text-xs text-gray-400">no período selecionado</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total de tarefas</p>
+                <p class="mt-1 text-3xl font-bold text-gray-900 dark:text-slate-100">{{ $totalTarefas }}</p>
+                <p class="mt-1 text-xs text-gray-400 dark:text-slate-500">no período selecionado</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Concluídas</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Concluídas</p>
                 <p class="mt-1 text-3xl font-bold text-green-600">{{ $totalConcluidas }}</p>
-                <p class="mt-1 text-xs text-gray-400">
+                <p class="mt-1 text-xs text-gray-400 dark:text-slate-500">
                     @if($totalTarefas > 0)
                         {{ round(($totalConcluidas / $totalTarefas) * 100) }}% do total
                     @else
@@ -72,27 +72,27 @@
                     @endif
                 </p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Vencidas</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Vencidas</p>
                 <p class="mt-1 text-3xl font-bold text-red-600">{{ $totalVencidas }}</p>
-                <p class="mt-1 text-xs text-gray-400">em aberto e atrasadas</p>
+                <p class="mt-1 text-xs text-gray-400 dark:text-slate-500">em aberto e atrasadas</p>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Concluídas esta semana</p>
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Concluídas esta semana</p>
                 <p class="mt-1 text-3xl font-bold text-brand">{{ $concluidasEstaSemana }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ now()->startOfWeek()->format('d/m') }} — {{ now()->endOfWeek()->format('d/m') }}</p>
+                <p class="mt-1 text-xs text-gray-400 dark:text-slate-500">{{ now()->startOfWeek()->format('d/m') }} — {{ now()->endOfWeek()->format('d/m') }}</p>
             </div>
         </div>
 
         {{-- Linha 1: Concluídas por responsável + Evolução mensal --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-user-check mr-1 text-brand"></i> Concluídas por responsável
                 </h2>
                 @if($porResponsavel->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:220px">
                         <canvas id="chartResponsavel"></canvas>
@@ -100,8 +100,8 @@
                 @endif
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-chart-line mr-1 text-brand"></i> Evolução mensal (últimos 12 meses)
                 </h2>
                 <div style="position:relative;height:220px">
@@ -113,12 +113,12 @@
         {{-- Linha 2: Por etapa + Por cliente --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-layer-group mr-1 text-brand"></i> Tarefas por etapa
                 </h2>
                 @if($porEtapa->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div class="flex items-center gap-6">
                         <div style="position:relative;width:176px;height:176px" class="flex-shrink-0">
@@ -128,8 +128,8 @@
                             @foreach($porEtapa as $item)
                                 <li class="flex items-center gap-2 text-sm">
                                     <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: {{ $item['cor'] }}"></span>
-                                    <span class="truncate text-gray-600">{{ $item['nome'] }}</span>
-                                    <span class="ml-auto font-semibold text-gray-900">{{ $item['total'] }}</span>
+                                    <span class="truncate text-gray-600 dark:text-gray-400">{{ $item['nome'] }}</span>
+                                    <span class="ml-auto font-semibold text-gray-900 dark:text-slate-100">{{ $item['total'] }}</span>
                                 </li>
                             @endforeach
                         </ul>
@@ -137,12 +137,12 @@
                 @endif
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-regular fa-building mr-1 text-brand"></i> Tarefas por cliente (top 10)
                 </h2>
                 @if($porCliente->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:220px">
                         <canvas id="chartCliente"></canvas>
@@ -154,12 +154,12 @@
         {{-- Linha 3: Por departamento + Vencidas vs prazo + Por recorrência --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-sitemap mr-1 text-brand"></i> Por departamento
                 </h2>
                 @if($porDepartamento->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:220px">
                         <canvas id="chartDepartamento"></canvas>
@@ -167,8 +167,8 @@
                 @endif
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-clock mr-1 text-brand"></i> Vencidas vs no prazo
                 </h2>
                 <div class="flex items-center gap-4">
@@ -180,7 +180,7 @@
                             <li class="flex items-center gap-2 text-sm">
                                 <span class="w-3 h-3 rounded-full flex-shrink-0
                                     {{ $item['label'] === 'Vencidas' ? 'bg-red-500' : 'bg-green-400' }}"></span>
-                                <span class="text-gray-600">{{ $item['label'] }}</span>
+                                <span class="text-gray-600 dark:text-gray-400">{{ $item['label'] }}</span>
                                 <span class="ml-2 font-semibold text-gray-900">{{ $item['total'] }}</span>
                             </li>
                         @endforeach
@@ -188,12 +188,12 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold text-gray-700 mb-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                     <i class="fa-solid fa-rotate mr-1 text-brand"></i> Por recorrência
                 </h2>
                 @if($porRecorrencia->isEmpty())
-                    <p class="text-sm text-gray-400 italic">Nenhum dado disponível.</p>
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
                 @else
                     <div style="position:relative;height:220px">
                         <canvas id="chartRecorrencia"></canvas>

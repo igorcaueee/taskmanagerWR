@@ -1,9 +1,9 @@
 <div class="space-y-4">
     <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold text-gray-900">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-slate-100">
             {{ $compromisso ? 'Editar Compromisso' : 'Novo Compromisso' }}
         </h2>
-        <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 border-0 bg-transparent p-0 focus:outline-none">
+        <button type="button" onclick="closeModal()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-0 bg-transparent p-0 focus:outline-none">
             <i class="fa-solid fa-xmark text-xl"></i>
         </button>
     </div>
@@ -17,31 +17,31 @@
 
         {{-- Título --}}
         <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Título <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título <span class="text-red-500">*</span></label>
             <input type="text" name="titulo" required maxlength="255"
                    value="{{ $compromisso?->titulo ?? '' }}"
-                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                   class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
         </div>
 
         {{-- Data e hora --}}
         <div class="flex gap-3 mb-4">
             <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Data <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data <span class="text-red-500">*</span></label>
                 <input type="date" name="data" required
                        value="{{ $compromisso ? $compromisso->data->format('Y-m-d') : ($dataInicial ?: '') }}"
-                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                       class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
             </div>
             <div class="w-32">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hora</label>
                 <input type="time" name="hora"
                        value="{{ $compromisso?->hora ? \Illuminate\Support\Carbon::parse($compromisso->hora)->format('H:i') : '' }}"
-                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                       class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
             </div>
         </div>
 
         {{-- Cor --}}
         <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Cor</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cor</label>
             <div class="flex flex-wrap gap-2">
                 @php
                     $cores = [
@@ -73,14 +73,14 @@
 
         {{-- Descrição --}}
         <div class="mb-5">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
             <textarea name="descricao" rows="3"
-                      class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand resize-none">{{ $compromisso?->descricao ?? '' }}</textarea>
+                      class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand resize-none">{{ $compromisso?->descricao ?? '' }}</textarea>
         </div>
 
         <div class="flex justify-end gap-2">
             <button type="button" onclick="closeModal()"
-                    class="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded border-0 hover:bg-gray-200 focus:outline-none">
+                    class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded border-0 hover:bg-gray-200 dark:hover:bg-slate-600 focus:outline-none">
                 Cancelar
             </button>
             <button type="submit"

@@ -6,12 +6,12 @@
     <div class="w-full mx-auto py-6 px-4">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900"><i class="fa-solid fa-users"></i> Clientes</h1>
-                <p class="text-gray-700">Aqui você pode visualizar e gerenciar seus clientes.</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-users"></i> Clientes</h1>
+                <p class="text-gray-700 dark:text-gray-300">Aqui você pode visualizar e gerenciar seus clientes.</p>
             </div>
             @if (auth()->user()?->canEditarClientes())
             <div class="flex gap-2">
-                <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded focus:outline-none hover:bg-gray-50 text-sm"
+                <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded focus:outline-none hover:bg-gray-50 dark:hover:bg-slate-600 text-sm"
                         data-modal-url="{{ route('clientes.import.form') }}">
                     <i class="fa-solid fa-file-import"></i>
                     Importar
@@ -37,39 +37,39 @@
         @endpush
         @endif
 
-        <div class="bg-white rounded shadow">
+        <div class="bg-white dark:bg-slate-800 rounded shadow">
             {{-- Filters --}}
             <form method="GET" action="{{ route('clientes') }}" id="form-filtros-clientes"
-                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100">
+                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Pesquisar</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pesquisar</label>
                     <input type="text" name="busca" value="{{ request('busca') }}"
                            placeholder="Buscar por nome..."
                            onchange="document.getElementById('form-filtros-clientes').submit()"
-                           class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Tipo</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
                     <select name="tipo" onchange="document.getElementById('form-filtros-clientes').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         <option value="1" @selected(request('tipo') === '1')>Pessoa Jurídica (PJ)</option>
                         <option value="0" @selected(request('tipo') === '0')>Pessoa Física (PF)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Status</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Status</label>
                     <select name="status" onchange="document.getElementById('form-filtros-clientes').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         <option value="ativo"   @selected(request('status') === 'ativo')>Ativo</option>
                         <option value="inativo" @selected(request('status') === 'inativo')>Inativo</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Regime Tributário</label>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Regime Tributário</label>
                     <select name="regime_tributario" onchange="document.getElementById('form-filtros-clientes').submit()"
-                            class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                         <option value="">Todos</option>
                         <option value="Simples Nacional" @selected(request('regime_tributario') === 'Simples Nacional')>SIMPLES NACIONAL</option>
                         <option value="Lucro Presumido"  @selected(request('regime_tributario') === 'Lucro Presumido')>LUCRO PRESUMIDO</option>
@@ -79,24 +79,24 @@
                 </div>
             </form>
 
-            <table class="min-w-full divide-y divide-gray-200 text-xs">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs">
+                <thead class="bg-gray-50 dark:bg-slate-900">
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Regime Tributário</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade/UF</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente Desde</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fator R</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">CPF/CNPJ</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Regime Tributário</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cidade/UF</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente Desde</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fator R</th>
                         <th class="px-4 py-2"></th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse($clientes as $cliente)
                         <tr>
-                            <td class="px-4 py-2 text-xs text-gray-700">
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300">
                                 @if((string) $cliente->tipo === '1')
                                     <i class="fa-solid fa-building-user"></i>
                                 @elseif((string) $cliente->tipo === '0')
@@ -105,13 +105,13 @@
                                     —
                                 @endif
                             </td>
-                            <td class="px-4 py-2 text-xs text-gray-700">{{ $cliente->nome }}</td>
-                            <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
-                            <td class="px-4 py-2 text-xs text-gray-700 whitespace-nowrap">{{ $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '—' }}</td>
-                            <td class="px-4 py-2 text-xs text-gray-700">
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300">{{ $cliente->nome }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $cliente->cpfcnpj ?? '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '—' }}</td>
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300">
                                 {{ $cliente->cidade ?? '—' }}{{ $cliente->estado ? '/' . $cliente->estado : '' }}
                             </td>
-                            <td class="px-4 py-2 text-xs text-gray-700">
+                            <td class="px-4 py-2 text-xs text-gray-700 dark:text-gray-300">
                                 {{ $cliente->cliente_desde ? \Illuminate\Support\Carbon::parse($cliente->cliente_desde)->format('d/m/Y') : '—' }}
                             </td>
                             <td class="px-4 py-2 text-xs">

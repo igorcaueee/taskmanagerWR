@@ -1,8 +1,8 @@
 <div class="flex items-center justify-between mb-4">
-    <h5 class="text-lg font-semibold text-gray-900">
+    <h5 class="text-lg font-semibold text-gray-900 dark:text-slate-100">
         <i class="fa-solid fa-scale-balanced mr-2"></i> Quadro Societário — {{ $cliente->nome }}
     </h5>
-    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0">
+    <button type="button" onclick="closeModal()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 bg-transparent border-0 p-0">
         <i class="fa-solid fa-xmark text-lg"></i>
     </button>
 </div>
@@ -13,30 +13,30 @@
 
 {{-- Capital Social --}}
 <form id="form-capital" method="POST" action="{{ route('clientes.socios.save', $cliente->id) }}"
-      class="bg-gray-50 rounded border border-gray-100 px-4 py-3 mb-4 flex flex-wrap items-end gap-4">
+      class="bg-gray-50 dark:bg-slate-700 rounded border border-gray-100 dark:border-slate-600 px-4 py-3 mb-4 flex flex-wrap items-end gap-4">
     @csrf
     {{-- campo dummy para não adicionar sócio ao salvar só o capital --}}
     <input type="hidden" name="_only_capital" value="1">
     <div>
-        <label class="block text-xs text-gray-500 mb-1">Capital Social Total (R$)</label>
+        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Capital Social Total (R$)</label>
         <input type="number" name="capital_social" step="0.01" min="0"
                id="input-capital-social"
                value="{{ number_format((float) $cliente->capital_social, 2, '.', '') }}"
-               class="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
+               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-brand w-48">
     </div>
-    <p class="text-xs text-gray-400 self-end pb-2">
-        Total participação: <span id="total-participacao" class="font-semibold text-gray-700">{{ $cliente->socios->sum('participacao') }}%</span>
+    <p class="text-xs text-gray-400 dark:text-slate-500 self-end pb-2">
+        Total participação: <span id="total-participacao" class="font-semibold text-gray-700 dark:text-gray-300">{{ $cliente->socios->sum('participacao') }}%</span>
     </p>
 </form>
 
 {{-- Tabela de sócios --}}
 @if($cliente->socios->isEmpty())
-    <div class="py-6 text-center text-gray-400 text-sm italic">Nenhum sócio cadastrado.</div>
+    <div class="py-6 text-center text-gray-400 dark:text-slate-500 text-sm italic">Nenhum sócio cadastrado.</div>
 @else
 <div class="overflow-x-auto mb-4">
-    <table class="min-w-full text-sm" id="tabela-socios">
+    <table class="min-w-full text-sm dark:text-slate-200" id="tabela-socios">
         <thead>
-            <tr class="border-b border-gray-100 text-xs text-gray-500 uppercase">
+            <tr class="border-b border-gray-100 dark:border-slate-700 text-xs text-gray-500 dark:text-gray-400 uppercase">
                 <th class="py-2 pr-3 text-left w-10">Ordem</th>
                 <th class="py-2 pr-3 text-left">Nome</th>
                 <th class="py-2 pr-3 text-left">Telefone</th>
@@ -48,28 +48,28 @@
                 @endif
             </tr>
         </thead>
-        <tbody class="divide-y divide-gray-50">
+        <tbody class="divide-y divide-gray-50 dark:divide-slate-700">
             @foreach($cliente->socios as $socio)
-            <tr class="hover:bg-gray-50" id="row-socio-{{ $socio->id }}">
-                <td class="py-2 pr-3 text-gray-400 text-xs font-medium">{{ $socio->ordem }}ª</td>
-                <td class="py-2 pr-3 font-medium text-gray-800">{{ $socio->nome }}</td>
-                <td class="py-2 pr-3 text-gray-600 text-xs">{{ $socio->telefone ?: '—' }}</td>
-                <td class="py-2 pr-3 text-gray-600 text-xs">{{ $socio->gmail ?: '—' }}</td>
-                <td class="py-2 pr-3 text-right text-gray-700">{{ number_format($socio->participacao, 2, ',', '') }}%</td>
-                <td class="py-2 pr-3 text-right text-gray-700">
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-700" id="row-socio-{{ $socio->id }}">
+                <td class="py-2 pr-3 text-gray-400 dark:text-slate-500 text-xs font-medium">{{ $socio->ordem }}ª</td>
+                <td class="py-2 pr-3 font-medium text-gray-800 dark:text-slate-200">{{ $socio->nome }}</td>
+                <td class="py-2 pr-3 text-gray-600 dark:text-gray-400 text-xs">{{ $socio->telefone ?: '—' }}</td>
+                <td class="py-2 pr-3 text-gray-600 dark:text-gray-400 text-xs">{{ $socio->gmail ?: '—' }}</td>
+                <td class="py-2 pr-3 text-right text-gray-700 dark:text-gray-300">{{ number_format($socio->participacao, 2, ',', '') }}%</td>
+                <td class="py-2 pr-3 text-right text-gray-700 dark:text-gray-300">
                     R$ {{ number_format($socio->quotas_integralizadas, 2, ',', '.') }}
                 </td>
                 @if(auth()->user()?->canEditarClientes())
                 <td class="py-2 text-right">
                     <div class="flex justify-end gap-1">
                         <button type="button"
-                                class="p-1.5 text-gray-400 hover:text-blue-600 bg-transparent border-0"
+                                class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 bg-transparent border-0"
                                 onclick="abrirEdicaoSocio({{ $socio->id }})"
                                 title="Editar">
                             <i class="fa-solid fa-pencil text-xs"></i>
                         </button>
                         <button type="button"
-                                class="p-1.5 text-gray-400 hover:text-red-600 bg-transparent border-0"
+                                class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 bg-transparent border-0"
                                 onclick="deletarSocio({{ $socio->id }}, '{{ addslashes($socio->nome) }}')"
                                 title="Remover">
                             <i class="fa-solid fa-trash text-xs"></i>
@@ -79,7 +79,7 @@
                 @endif
             </tr>
             {{-- Linha de edição inline (oculta por padrão) --}}
-            <tr id="edit-row-{{ $socio->id }}" class="hidden bg-blue-50">
+            <tr id="edit-row-{{ $socio->id }}" class="hidden bg-blue-50 dark:bg-slate-700">
                 <td colspan="{{ auth()->user()?->canEditarClientes() ? 7 : 6 }}" class="py-3 px-2">
                     <form id="form-edit-socio-{{ $socio->id }}" method="POST"
                           action="{{ route('clientes.socios.update', $socio->id) }}"
@@ -90,25 +90,25 @@
                                id="hidden-capital-{{ $socio->id }}"
                                value="{{ number_format((float) $cliente->capital_social, 2, '.', '') }}">
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Nome *</label>
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nome *</label>
                             <input type="text" name="nome" value="{{ $socio->nome }}" required
-                                   class="border border-gray-300 rounded px-2 py-1 text-sm w-48">
+                                   class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm w-48 bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Telefone</label>
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telefone</label>
                             <input type="text" name="telefone" value="{{ $socio->telefone }}"
-                                   class="border border-gray-300 rounded px-2 py-1 text-sm w-32">
+                                   class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm w-32 bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">E-mail</label>
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">E-mail</label>
                             <input type="email" name="gmail" value="{{ $socio->gmail }}"
                                    class="border border-gray-300 rounded px-2 py-1 text-sm w-44">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Participação % *</label>
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Participação % *</label>
                             <input type="number" name="participacao" step="0.01" min="0" max="100"
                                    value="{{ $socio->participacao }}" required
-                                   class="border border-gray-300 rounded px-2 py-1 text-sm w-24">
+                                   class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm w-24 bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200">
                         </div>
                         <div class="flex gap-2">
                             <button type="submit"
@@ -140,25 +140,25 @@
         <input type="hidden" name="capital_social" id="add-capital-hidden"
                value="{{ number_format((float) $cliente->capital_social, 2, '.', '') }}">
         <div>
-            <label class="block text-xs text-gray-500 mb-1">Nome *</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nome *</label>
             <input type="text" name="nome" required
                    class="border border-gray-300 rounded px-2 py-1.5 text-sm w-48"
                    placeholder="Nome completo">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">Telefone</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telefone</label>
             <input type="text" name="telefone"
                    class="border border-gray-300 rounded px-2 py-1.5 text-sm w-32"
                    placeholder="(00) 00000-0000">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">E-mail</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">E-mail</label>
             <input type="email" name="gmail"
                    class="border border-gray-300 rounded px-2 py-1.5 text-sm w-44"
                    placeholder="email@exemplo.com">
         </div>
         <div>
-            <label class="block text-xs text-gray-500 mb-1">Participação % *</label>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Participação % *</label>
             <input type="number" name="participacao" step="0.01" min="0" max="100" required
                    class="border border-gray-300 rounded px-2 py-1.5 text-sm w-24"
                    placeholder="0,00">
