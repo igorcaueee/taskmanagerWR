@@ -56,7 +56,13 @@ class AgendaController extends Controller
             ->get()
             ->groupBy(fn (Tarefa $t) => $t->data_vencimento->format('Y-m-d'));
 
-        $compromissosPorDia = Compromisso::whereBetween('data', [$primeiroDia->toDateString(), $ultimoDia->toDateString()])
+        $compromissosQuery = Compromisso::whereBetween('data', [$primeiroDia->toDateString(), $ultimoDia->toDateString()]);
+
+        if (! $podeVerTodas) {
+            $compromissosQuery->where('criado_por', $usuario->id);
+        }
+
+        $compromissosPorDia = $compromissosQuery
             ->orderBy('hora')
             ->get()
             ->groupBy(fn (Compromisso $c) => $c->data->format('Y-m-d'));
