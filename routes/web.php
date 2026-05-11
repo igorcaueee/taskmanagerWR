@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileExplorerController;
@@ -77,6 +78,13 @@ Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name(
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
 // Quadro societário routes
 Route::get('/clientes/{id}/quadro-societario', [ClienteController::class, 'quadroSocietario'])->name('clientes.quadro.modal')->middleware('auth');
+// Conhecimentos IA por cliente
+Route::get('/clientes/{id}/conhecimentos', [ClienteConhecimentoController::class, 'modal'])->name('clientes.conhecimentos.modal')->middleware('auth');
+Route::get('/clientes/{id}/conhecimentos/form', [ClienteConhecimentoController::class, 'formCreate'])->name('clientes.conhecimentos.form.create')->middleware('auth');
+Route::post('/clientes/{id}/conhecimentos', [ClienteConhecimentoController::class, 'store'])->name('clientes.conhecimentos.store')->middleware('auth');
+Route::get('/conhecimentos/{id}/form', [ClienteConhecimentoController::class, 'formEdit'])->name('conhecimentos.form.edit')->middleware('auth');
+Route::put('/conhecimentos/{id}', [ClienteConhecimentoController::class, 'update'])->name('conhecimentos.update')->middleware('auth');
+Route::delete('/conhecimentos/{id}', [ClienteConhecimentoController::class, 'destroy'])->name('conhecimentos.destroy')->middleware('auth');
 Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->name('clientes.socios.save')->middleware('auth');
 Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
 Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
