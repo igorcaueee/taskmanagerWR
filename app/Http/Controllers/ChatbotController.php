@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\ClienteConhecimento;
 use App\Models\Tarefa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -139,6 +140,31 @@ INSTRUCTIONS;
         }
 
         $lines[] = '=== FIM DOS DADOS DO SISTEMA ===';
+
+        // Conhecimento específico por cliente (todos os clientes com entradas cadastradas)
+        $conhecimentos = ClienteConhecimento::query()
+            ->with('cliente:id,nome')
+            ->orderBy('cliente_id')
+            ->orderByDesc('created_at')
+            ->get();
+
+        if ($conhecimentos->isNotEmpty()) {
+            $lines[] = '';
+            $lines[] = '=== CONHECIMENTO ESPECÍFICO DE CLIENTES ===';
+            foreach ($conhecimentos->groupBy('cliente_id') as $clienteIdKey => $entradas) {
+                $nomeCliente = $entradas->first()->cliente?->nome ?? "Cliente #{$clienteIdKey}";
+                $lines[] = "[{$nomeCliente}]";
+                foreach ($entradas as $entrada) {
+                    $conteudoTruncado = mb_substr($entrada->conteudo, 0, 500);
+                    if (mb_strlen($entrada->conteudo) > 500) {
+                        $conteudoTruncado .= '...';
+                    }
+                    $lines[] = "  Tópico: {$entrada->titulo}";
+                    $lines[] = "  {$conteudoTruncado}";
+                }
+            }
+            $lines[] = '=== FIM DO CONHECIMENTO ===';
+        }
 
         return implode("\n", $lines);
     }

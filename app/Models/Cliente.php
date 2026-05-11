@@ -61,4 +61,9 @@ class Cliente extends Model
     {
         return $this->hasMany(Socio::class)->orderBy('ordem');
     }
+
+    public function conhecimentos(): HasMany
+    {
+        return $this->hasMany(ClienteConhecimento::class)->orderByDesc('created_at');
+    }
 }
