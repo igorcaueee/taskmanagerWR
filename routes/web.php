@@ -69,6 +69,7 @@ Route::post('/clientes/import', [ClienteController::class, 'importClientes'])->n
 Route::post('/clientes/save', [ClienteController::class, 'saveCliente'])->name('clientes.save')->middleware('auth');
 Route::get('/clientes/{id}/encerrar', [ClienteController::class, 'formEncerrarCliente'])->name('clientes.form.encerrar')->middleware('auth');
 Route::post('/clientes/{id}/encerrar', [ClienteController::class, 'encerrarCliente'])->name('clientes.encerrar')->middleware('auth');
+Route::post('/clientes/{id}/reativar', [ClienteController::class, 'reativarCliente'])->name('clientes.reativar')->middleware('auth');
 Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
 Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name('clientes.update')->middleware('auth');
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
@@ -84,6 +85,7 @@ Route::get('/produtos', [ProdutoController::class, 'showProdutos'])->name('produ
 Route::get('/produtos/form', [ProdutoController::class, 'formCreate'])->name('produtos.form.create')->middleware('auth');
 Route::get('/produtos/{id}/form', [ProdutoController::class, 'formEdit'])->name('produtos.form.edit')->middleware('auth');
 Route::post('/produtos/save', [ProdutoController::class, 'save'])->name('produtos.save')->middleware('auth');
+Route::post('/produtos/inline', [ProdutoController::class, 'storeInline'])->name('produtos.store.inline')->middleware('auth');
 Route::put('/produtos/{id}', [ProdutoController::class, 'update'])->name('produtos.update')->middleware('auth');
 Route::delete('/produtos/{id}', [ProdutoController::class, 'delete'])->name('produtos.delete')->middleware('auth');
 // Tarefas routes

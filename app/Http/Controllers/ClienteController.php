@@ -79,7 +79,8 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -89,7 +90,6 @@ class ClienteController extends Controller
             'regime_tributario' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
-            'status' => ['nullable', 'string', 'max:255'],
             'fator_r' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
@@ -122,7 +122,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'status', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -132,7 +132,6 @@ class ClienteController extends Controller
             'regime_tributario' => ['nullable', 'string', 'max:255'],
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
-            'status' => ['nullable', 'string', 'max:255'],
             'fator_r' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
@@ -197,6 +196,21 @@ class ClienteController extends Controller
         ]);
 
         return Redirect::route('clientes')->with('success', 'Cliente encerrado com sucesso.');
+    }
+
+    public function reativarCliente(int $id): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        $cliente->update([
+            'status' => 'ativo',
+            'motivo_encerramento' => null,
+            'data_encerramento' => null,
+        ]);
+
+        return Redirect::route('clientes')->with('success', 'Cliente reativado com sucesso.');
     }
 
     public function formImportClientes(): View

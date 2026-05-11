@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Produto;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -43,6 +44,31 @@ class ProdutoController extends Controller
         $produto = Produto::findOrFail($id);
 
         return view('produtos.partials.formProduto', compact('produto'));
+    }
+
+    public function storeInline(Request $request): JsonResponse
+    {
+        abort_if(! auth()->user()?->canGerenciarProdutos(), 403);
+
+        $validator = Validator::make($request->only(['nome', 'descricao']), [
+            'nome' => ['required', 'string', 'max:255', 'unique:produtos,nome'],
+            'descricao' => ['nullable', 'string', 'max:255'],
+        ], [
+            'nome.required' => 'O nome do produto é obrigatório.',
+            'nome.unique' => 'Já existe um produto com este nome.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $produto = Produto::create([
+            'nome' => $request->string('nome'),
+            'descricao' => $request->string('descricao') ?: null,
+            'ativo' => true,
+        ]);
+
+        return response()->json(['id' => $produto->id, 'nome' => $produto->nome]);
     }
 
     public function save(Request $request): RedirectResponse

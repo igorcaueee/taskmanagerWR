@@ -34,6 +34,15 @@
                 <i class="fa-solid fa-building-circle-xmark"></i> Encerrar
             </button>
             @endif
+            @if(auth()->user()?->canEditarClientes() && $cliente->status === 'inativo')
+            <form method="POST" action="{{ route('clientes.reativar', $cliente->id) }}" class="inline">
+                @csrf
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-green-200 rounded text-green-600 hover:bg-green-50 bg-transparent">
+                    <i class="fa-solid fa-building-circle-check"></i> Reativar
+                </button>
+            </form>
+            @endif
         @endif
         <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 ml-1">
             <i class="fa-solid fa-xmark text-lg"></i>
@@ -209,14 +218,6 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700">Status</label>
-            <select name="status" class="mt-1 block w-full border rounded px-3 py-2">
-                <option value="ativo" {{ old('status', $isEditing ? $cliente->status : ($prefill['status'] ?? 'ativo')) === 'ativo' ? 'selected' : '' }}>Ativo</option>
-                <option value="inativo" {{ old('status', $isEditing ? $cliente->status : ($prefill['status'] ?? 'ativo')) === 'inativo' ? 'selected' : '' }}>Inativo</option>
-            </select>
-        </div>
-
-        <div>
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                 <input name="fator_r" type="checkbox" class="rounded border-gray-300"
                        {{ old('fator_r', $isEditing ? $cliente->fator_r : ($prefill['fator_r'] ?? false)) ? 'checked' : '' }}>
@@ -229,8 +230,17 @@
                 $produtosSelecionados = old('produtos', $isEditing ? $cliente->produtos->pluck('id')->toArray() : ($prefill['produtos'] ?? []));
             @endphp
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Produtos / Serviços</label>
-                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Produtos / Serviços</label>
+                    @if(auth()->user()?->canGerenciarProdutos())
+                    <button type="button" id="btn-novo-produto"
+                            title="Novo produto"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-50 bg-white">
+                        <i class="fa-solid fa-plus"></i> Novo
+                    </button>
+                    @endif
+                </div>
+                <div id="lista-produtos" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded p-3">
                     @foreach($produtos as $produto)
                         <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                             <input type="checkbox" name="produtos[]" value="{{ $produto->id }}"
@@ -257,6 +267,66 @@
     </div>
     @endunless
 </form>
+
+<script>
+(function () {
+    const btnNovoProduto = document.getElementById('btn-novo-produto');
+    if (btnNovoProduto) {
+        btnNovoProduto.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Novo Produto / Serviço',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
+                            <input id="swal-produto-nome" class="swal2-input mt-0 w-full" placeholder="Nome do produto/serviço">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                            <input id="swal-produto-descricao" class="swal2-input mt-0 w-full" placeholder="Breve descrição (opcional)">
+                        </div>
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Salvar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                preConfirm: function () {
+                    const nome = document.getElementById('swal-produto-nome').value.trim();
+                    if (!nome) {
+                        Swal.showValidationMessage('O nome é obrigatório.');
+                        return false;
+                    }
+                    return { nome: nome, descricao: document.getElementById('swal-produto-descricao').value.trim() };
+                },
+            }).then(function (result) {
+                if (!result.isConfirmed) { return; }
+
+                $.ajax({
+                    url: '{{ route('produtos.store.inline') }}',
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    data: result.value,
+                    success: function (data) {
+                        const lista = document.getElementById('lista-produtos');
+                        const label = document.createElement('label');
+                        label.className = 'inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer';
+                        label.innerHTML = `<input type="checkbox" name="produtos[]" value="${data.id}" class="rounded border-gray-300" checked> ${data.nome}`;
+                        lista.appendChild(label);
+                        Swal.fire({ icon: 'success', title: 'Produto criado!', timer: 1500, showConfirmButton: false });
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON?.error ?? 'Erro ao criar produto.';
+                        Swal.fire({ icon: 'error', title: 'Erro', text: msg, confirmButtonColor: '#dc2626' });
+                    },
+                });
+            });
+        });
+    }
+})();
+</script>
 
 <script>
 (function () {
