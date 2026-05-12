@@ -431,9 +431,24 @@
     selectTipo.addEventListener('change', updateField);
 
     inputCpfCnpj.addEventListener('input', function () {
-        const pos = this.selectionStart;
+        // Count digits before cursor so we can restore position after masking
+        const digitsBeforeCursor = this.value.slice(0, this.selectionStart).replace(/\D/g, '').length;
         this.value = applyMask(this.value, selectTipo.value);
-        this.setSelectionRange(pos, pos);
+
+        // Walk the masked value and find the position after the same number of digits
+        let digits = 0;
+        let newPos = this.value.length;
+        for (let i = 0; i < this.value.length; i++) {
+            if (/\d/.test(this.value[i])) {
+                digits++;
+            }
+            if (digits === digitsBeforeCursor) {
+                newPos = i + 1;
+                break;
+            }
+        }
+        if (digitsBeforeCursor === 0) { newPos = 0; }
+        this.setSelectionRange(newPos, newPos);
     });
 
     // Initialize on load

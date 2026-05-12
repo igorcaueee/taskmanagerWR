@@ -89,10 +89,10 @@ class Usuario extends Authenticatable
         return $this->belongsTo(Departamento::class);
     }
 
-    // Diretor e TI têm acesso total ao sistema
+    // Apenas Diretor vê o Funil de Vendas
     public function canVerFunil(): bool
     {
-        return in_array($this->cargo, ['diretor', 'ti']);
+        return $this->cargo === 'diretor';
     }
 
     // Diretor, TI e Supervisor podem ver colaboradores

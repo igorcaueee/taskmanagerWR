@@ -149,7 +149,7 @@ class ClienteController extends Controller
         $cliente = Cliente::query()->latest()->first();
         $cliente->produtos()->sync($request->input('produtos', []));
 
-        return Redirect::route('clientes')->with('success', 'Cliente criado com sucesso.');
+        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente criado com sucesso.');
     }
 
     public function updateCliente(Request $request, int $id): RedirectResponse
@@ -190,7 +190,7 @@ class ClienteController extends Controller
 
         $cliente->produtos()->sync($request->input('produtos', []));
 
-        return Redirect::route('clientes')->with('success', 'Cliente atualizado com sucesso.');
+        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente atualizado com sucesso.');
     }
 
     public function deleteCliente(int $id): RedirectResponse
