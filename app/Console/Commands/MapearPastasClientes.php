@@ -10,14 +10,20 @@ class MapearPastasClientes extends Command
 {
     protected $signature = 'clientes:mapear-pastas
                             {--dry-run : Mostra o que seria feito sem salvar}
-                            {--threshold=60 : Similaridade mínima (0-100) para aceitar um match automático}';
+                            {--threshold=60 : Similaridade mínima (0-100) para aceitar um match automático}
+                            {--fix-mei : Corrige registros salvos com o nome antigo incorreto da pasta MEI}';
 
     protected $description = 'Tenta mapear automaticamente clientes às pastas existentes no servidor pelo nome';
 
-    private const MEI_FOLDER = 'MICROEMPRENDEDOR INDIVIDUAL';
+    private const MEI_FOLDER       = 'MICROEMPRENDEDOR INDIVIDUAL';
+    private const MEI_FOLDER_WRONG = 'MICROEMPREENDEDOR INDIVIDUAL';
 
     public function handle(): int
     {
+        if ($this->option('fix-mei')) {
+            return $this->fixMei();
+        }
+
         $dryRun    = $this->option('dry-run');
         $threshold = (int) $this->option('threshold');
 
@@ -121,6 +127,43 @@ class MapearPastasClientes extends Command
             $this->warn('Para os clientes sem match ou ambíguos, edite manualmente em:');
             $this->line('  Detalhe do cliente → Editar → "Pasta de Arquivos no Servidor"');
         }
+
+        return self::SUCCESS;
+    }
+
+    private function fixMei(): int
+    {
+        $dryRun = $this->option('dry-run');
+        $wrong  = self::MEI_FOLDER_WRONG . '/';
+        $right  = self::MEI_FOLDER . '/';
+
+        $clientes = Cliente::where('pasta_arquivos', 'like', $wrong . '%')->get();
+
+        if ($clientes->isEmpty()) {
+            $this->info('Nenhum registro com nome incorreto encontrado.');
+            return self::SUCCESS;
+        }
+
+        $this->info("Registros com nome incorreto: {$clientes->count()}");
+        $this->newLine();
+
+        $rows = [];
+
+        foreach ($clientes as $cliente) {
+            $novo   = str_replace($wrong, $right, $cliente->pasta_arquivos);
+            $status = $dryRun ? '[DRY-RUN] corrigiria' : 'corrigido';
+
+            if (! $dryRun) {
+                $cliente->pasta_arquivos = $novo;
+                $cliente->save();
+            }
+
+            $rows[] = [$cliente->nome, $cliente->pasta_arquivos, $novo, $status];
+        }
+
+        $this->table(['Cliente', 'Antes', 'Depois', 'Status'], $rows);
+        $this->newLine();
+        $this->info("Total: {$clientes->count()} registros " . ($dryRun ? 'que seriam corrigidos.' : 'corrigidos.'));
 
         return self::SUCCESS;
     }
