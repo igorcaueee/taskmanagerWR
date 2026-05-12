@@ -76,31 +76,31 @@ class MapearPastasClientes extends Command
             }
 
             if ($bestScore >= $threshold && $ties === 1) {
-                if ($isMei && $best === $cliente->nome) {
-                    // Pasta já é resolvida automaticamente pela view — não precisa salvar
-                    $rows[] = [$cliente->nome, self::MEI_FOLDER . '/' . $best, "{$bestScore}%", 'automático (MEI)'];
-                    $auto++;
-                } else {
-                    $fullPath = $isMei ? self::MEI_FOLDER . '/' . $best : $best;
-                    $status   = $dryRun ? '[DRY-RUN] mapearia' : 'mapeado';
+                $fullPath = $isMei ? self::MEI_FOLDER . '/' . $best : $best;
+                $status   = $dryRun ? '[DRY-RUN] mapearia' : 'mapeado';
+
+                if (! $dryRun) {
+                    $cliente->pasta_arquivos = $fullPath;
+                    $cliente->save();
+                }
+
+                $rows[] = [$cliente->nome, $fullPath, "{$bestScore}%", $status];
+                $matched++;
+            } elseif ($bestScore >= $threshold && $ties > 1) {
+                $rows[] = [$cliente->nome, "ambíguo ({$ties} pastas com {$bestScore}%)", '', 'ignorado'];
+                $ambiguous++;
+            } else {
+                if ($isMei) {
+                    $fullPath = self::MEI_FOLDER . '/' . $cliente->nome;
+                    $status   = $dryRun ? '[DRY-RUN] mapearia (fallback)' : 'mapeado (fallback)';
 
                     if (! $dryRun) {
                         $cliente->pasta_arquivos = $fullPath;
                         $cliente->save();
                     }
 
-                    $rows[] = [$cliente->nome, $fullPath, "{$bestScore}%", $status];
+                    $rows[] = [$cliente->nome, $fullPath, '—', $status];
                     $matched++;
-                }
-            } elseif ($bestScore >= $threshold && $ties > 1) {
-                $prefix = $isMei ? self::MEI_FOLDER . '/' : '';
-                $rows[] = [$cliente->nome, "ambíguo ({$ties} pastas com {$bestScore}%)", '', 'ignorado'];
-                $ambiguous++;
-            } else {
-                if ($isMei) {
-                    // Sem match dentro do MEI, mas a view já aponta para MEI/<nome> como fallback
-                    $rows[] = [$cliente->nome, self::MEI_FOLDER . '/' . $cliente->nome, '—', 'fallback (MEI)'];
-                    $auto++;
                 } else {
                     $rows[] = [$cliente->nome, $best ?? '—', $best ? "{$bestScore}%" : '—', 'sem match'];
                     $noMatch++;
