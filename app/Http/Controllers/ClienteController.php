@@ -115,11 +115,12 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
+            'pasta_arquivos' => ['nullable', 'string', 'max:255'],
             'segmentacao_id' => ['nullable', 'integer', 'exists:segmentacoes,id'],
             'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj'],
@@ -158,10 +159,11 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
+            'pasta_arquivos' => ['nullable', 'string', 'max:255'],
             'segmentacao_id' => ['nullable', 'integer', 'exists:segmentacoes,id'],
             'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj,'.$id],

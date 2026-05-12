@@ -76,6 +76,19 @@
                    required>
         </div>
 
+        @if($isEditing)
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <i class="fa-solid fa-folder-open mr-1 text-amber-500"></i> Pasta de Arquivos no Servidor
+            </label>
+            <input name="pasta_arquivos" type="text"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                   placeholder="Deixe vazio para usar o nome do cliente"
+                   value="{{ old('pasta_arquivos', $cliente->pasta_arquivos ?? '') }}">
+            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Nome exato da pasta no servidor. Se vazio, usa o nome do cliente.</p>
+        </div>
+        @endif
+
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Segmentação</label>
             <div class="mt-1 flex gap-2">

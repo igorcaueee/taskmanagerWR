@@ -13,6 +13,7 @@ class Cliente extends Model
 
     protected $fillable = [
         'nome',
+        'pasta_arquivos',
         'segmentacao_id',
         'descricao',
         'cpfcnpj',
