@@ -14,7 +14,7 @@ class MapearPastasClientes extends Command
 
     protected $description = 'Tenta mapear automaticamente clientes às pastas existentes no servidor pelo nome';
 
-    private const MEI_FOLDER = 'MICROEMPREENDEDOR INDIVIDUAL';
+    private const MEI_FOLDER = 'MICROEMPRENDEDOR INDIVIDUAL';
 
     public function handle(): int
     {

@@ -36,7 +36,7 @@
                 @php
                     $pastaEfetiva = $cliente->pasta_arquivos
                         ?: (strtoupper($cliente->regime_tributario ?? '') === 'MEI'
-                            ? 'MICROEMPREENDEDOR INDIVIDUAL/' . $cliente->nome
+                            ? 'MICROEMPRENDEDOR INDIVIDUAL/' . $cliente->nome
                             : null);
                 @endphp
                 @if($pastaEfetiva)
@@ -84,7 +84,7 @@
                     </h2>
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
                         <div>
-                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">CPF / CNPJ</dt>
+                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">{{ (string) $cliente->tipo === '1' ? 'CNPJ' : 'CPF / CNPJ' }}</dt>
                             <dd class="mt-0.5 text-gray-900 dark:text-slate-100">{{ $cliente->cpfcnpj ?? '—' }}</dd>
                         </div>
                         <div>
