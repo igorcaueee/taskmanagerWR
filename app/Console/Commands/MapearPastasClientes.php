@@ -14,6 +14,8 @@ class MapearPastasClientes extends Command
 
     protected $description = 'Tenta mapear automaticamente clientes às pastas existentes no servidor pelo nome';
 
+    private const MEI_FOLDER = 'MICROEMPREENDEDOR INDIVIDUAL';
+
     public function handle(): int
     {
         $dryRun    = $this->option('dry-run');
@@ -24,18 +26,14 @@ class MapearPastasClientes extends Command
         $this->info('Lendo pastas do servidor...');
 
         try {
-            $folders = collect($disk->directories())->map(fn ($d) => basename($d));
+            $rootFolders = collect($disk->directories())->map(fn ($d) => basename($d));
+            $meiFolders  = collect($disk->directories(self::MEI_FOLDER))->map(fn ($d) => basename($d));
         } catch (\Throwable $e) {
             $this->error('Não foi possível ler o disco "shared": ' . $e->getMessage());
             return self::FAILURE;
         }
 
-        if ($folders->isEmpty()) {
-            $this->warn('Nenhuma pasta encontrada na raiz do disco compartilhado.');
-            return self::SUCCESS;
-        }
-
-        $this->info("Pastas encontradas: {$folders->count()}");
+        $this->info("Pastas na raiz: {$rootFolders->count()} | Pastas em " . self::MEI_FOLDER . ": {$meiFolders->count()}");
 
         $clientes = Cliente::whereNull('pasta_arquivos')->orWhere('pasta_arquivos', '')->get();
 
@@ -48,12 +46,16 @@ class MapearPastasClientes extends Command
         $this->newLine();
 
         $matched   = 0;
+        $auto      = 0;
         $ambiguous = 0;
         $noMatch   = 0;
 
         $rows = [];
 
         foreach ($clientes as $cliente) {
+            $isMei   = strtoupper($cliente->regime_tributario ?? '') === 'MEI';
+            $folders = $isMei ? $meiFolders : $rootFolders;
+
             $best      = null;
             $bestScore = 0;
             $ties      = 0;
@@ -74,21 +76,35 @@ class MapearPastasClientes extends Command
             }
 
             if ($bestScore >= $threshold && $ties === 1) {
-                $status = $dryRun ? '[DRY-RUN] mapearia' : 'mapeado';
+                if ($isMei && $best === $cliente->nome) {
+                    // Pasta já é resolvida automaticamente pela view — não precisa salvar
+                    $rows[] = [$cliente->nome, self::MEI_FOLDER . '/' . $best, "{$bestScore}%", 'automático (MEI)'];
+                    $auto++;
+                } else {
+                    $fullPath = $isMei ? self::MEI_FOLDER . '/' . $best : $best;
+                    $status   = $dryRun ? '[DRY-RUN] mapearia' : 'mapeado';
 
-                if (! $dryRun) {
-                    $cliente->pasta_arquivos = $best;
-                    $cliente->save();
+                    if (! $dryRun) {
+                        $cliente->pasta_arquivos = $fullPath;
+                        $cliente->save();
+                    }
+
+                    $rows[] = [$cliente->nome, $fullPath, "{$bestScore}%", $status];
+                    $matched++;
                 }
-
-                $rows[] = [$cliente->nome, $best, "{$bestScore}%", $status];
-                $matched++;
             } elseif ($bestScore >= $threshold && $ties > 1) {
+                $prefix = $isMei ? self::MEI_FOLDER . '/' : '';
                 $rows[] = [$cliente->nome, "ambíguo ({$ties} pastas com {$bestScore}%)", '', 'ignorado'];
                 $ambiguous++;
             } else {
-                $rows[] = [$cliente->nome, $best ?? '—', $best ? "{$bestScore}%" : '—', 'sem match'];
-                $noMatch++;
+                if ($isMei) {
+                    // Sem match dentro do MEI, mas a view já aponta para MEI/<nome> como fallback
+                    $rows[] = [$cliente->nome, self::MEI_FOLDER . '/' . $cliente->nome, '—', 'fallback (MEI)'];
+                    $auto++;
+                } else {
+                    $rows[] = [$cliente->nome, $best ?? '—', $best ? "{$bestScore}%" : '—', 'sem match'];
+                    $noMatch++;
+                }
             }
         }
 
@@ -98,15 +114,12 @@ class MapearPastasClientes extends Command
         );
 
         $this->newLine();
-        $this->info("Mapeados: {$matched} | Ambíguos: {$ambiguous} | Sem match: {$noMatch}");
+        $this->info("Mapeados: {$matched} | Automáticos MEI: {$auto} | Ambíguos: {$ambiguous} | Sem match: {$noMatch}");
 
         if ($noMatch > 0 || $ambiguous > 0) {
             $this->newLine();
             $this->warn('Para os clientes sem match ou ambíguos, edite manualmente em:');
             $this->line('  Detalhe do cliente → Editar → "Pasta de Arquivos no Servidor"');
-            $this->newLine();
-            $this->warn('Ou gere um CSV para importação em lote com o comando abaixo e ajuste manualmente:');
-            $this->line('  php artisan clientes:mapear-pastas --dry-run > resultado.txt');
         }
 
         return self::SUCCESS;
@@ -114,12 +127,10 @@ class MapearPastasClientes extends Command
 
     private function similarity(string $a, string $b): int
     {
-        // Exact match
         if ($a === $b) {
             return 100;
         }
 
-        // Remove common noise: dots, dashes, extra spaces, special chars
         $clean = fn (string $s) => preg_replace('/\s+/', ' ', trim(preg_replace('/[.\-_\/\\\\]/', ' ', $s)));
 
         $a = $clean($a);
@@ -129,12 +140,10 @@ class MapearPastasClientes extends Command
             return 95;
         }
 
-        // Check if one contains the other
         if (str_contains($b, $a) || str_contains($a, $b)) {
             return 85;
         }
 
-        // similar_text percentage
         similar_text($a, $b, $percent);
 
         return (int) round($percent);

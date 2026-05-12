@@ -33,8 +33,14 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                @if($cliente->pasta_arquivos)
-                <a href="https://assessoriawr.com/arquivos?path={{ rawurlencode($cliente->pasta_arquivos) }}"
+                @php
+                    $pastaEfetiva = $cliente->pasta_arquivos
+                        ?: (strtoupper($cliente->regime_tributario ?? '') === 'MEI'
+                            ? 'MICROEMPREENDEDOR INDIVIDUAL/' . $cliente->nome
+                            : null);
+                @endphp
+                @if($pastaEfetiva)
+                <a href="https://assessoriawr.com/arquivos?path={{ rawurlencode($pastaEfetiva) }}"
                    target="_blank"
                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded text-sm hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none">
                     <i class="fa-solid fa-folder-open"></i>
