@@ -16,6 +16,7 @@ class DashboardController extends Controller
         $totalUsuariosAtivos = Usuario::query()->where('status', true)->count();
 
         $clientesAtivos = Cliente::query()->where('status', 'ativo');
+        $totalClientesAtivos = (clone $clientesAtivos)->count();
         $totalClientesPJ = (clone $clientesAtivos)->where('tipo', '1')->count();
         $totalClientesPF = (clone $clientesAtivos)->where('tipo', '0')->count();
 
@@ -56,6 +57,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'totalUsuariosAtivos',
+            'totalClientesAtivos',
             'totalClientesPJ',
             'totalClientesPF',
             'cicloAtual',

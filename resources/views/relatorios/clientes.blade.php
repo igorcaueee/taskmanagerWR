@@ -60,11 +60,11 @@
                 <p class="mt-1 text-3xl font-bold text-gray-400">{{ $totalInativos }}</p>
             </div>
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">PJ</p>
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">PJ (ativos)</p>
                 <p class="mt-1 text-3xl font-bold text-blue-600">{{ $totalPJ }}</p>
             </div>
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">PF</p>
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">PF (ativos)</p>
                 <p class="mt-1 text-3xl font-bold text-emerald-600">{{ $totalPF }}</p>
             </div>
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">

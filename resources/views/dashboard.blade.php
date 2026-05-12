@@ -92,7 +92,7 @@
                     </div>
                     <div class="border-t border-gray-100 dark:border-slate-700 pt-2 flex items-center gap-2">
                         <span class="text-sm text-gray-500 dark:text-gray-400">Total</span>
-                        <span class="ml-auto text-xl font-bold text-gray-900 dark:text-slate-100">{{ $totalClientesPJ + $totalClientesPF }}</span>
+                        <span class="ml-auto text-xl font-bold text-gray-900 dark:text-slate-100">{{ $totalClientesAtivos }}</span>
                     </div>
                 </div>
             </div>

@@ -158,8 +158,8 @@ class RelatorioController extends Controller
         $totalAtivos = Cliente::query()->where('status', 'ativo')->count();
         $totalInativos = Cliente::query()->where('status', '!=', 'ativo')->count();
 
-        $totalPJ = Cliente::query()->where('tipo', '1')->count();
-        $totalPF = Cliente::query()->where('tipo', '0')->count();
+        $totalPJ = Cliente::query()->where('status', 'ativo')->where('tipo', '1')->count();
+        $totalPF = Cliente::query()->where('status', 'ativo')->where('tipo', '0')->count();
 
         // Clientes com mais tarefas no período
         $clientesComMaisTarefas = Tarefa::query()
