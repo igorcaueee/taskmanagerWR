@@ -170,6 +170,39 @@
                     @endforelse
                 </tbody>
             </table>
+            {{-- Pagination --}}
+            <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-slate-700">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    @if($clientes->hasPages())
+                        Exibindo {{ $clientes->firstItem() }}–{{ $clientes->lastItem() }} de {{ $clientes->total() }} clientes
+                    @else
+                        {{ $clientes->total() }} {{ $clientes->total() === 1 ? 'cliente' : 'clientes' }}
+                    @endif
+                </p>
+                @if($clientes->hasPages())
+                <div class="flex items-center gap-1">
+                    @if($clientes->onFirstPage())
+                        <span class="px-2 py-1 text-xs text-gray-400 dark:text-gray-600 cursor-default">&laquo;</span>
+                    @else
+                        <a href="{{ $clientes->previousPageUrl() }}" class="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded">&laquo;</a>
+                    @endif
+
+                    @foreach($clientes->getUrlRange(max(1, $clientes->currentPage() - 2), min($clientes->lastPage(), $clientes->currentPage() + 2)) as $page => $url)
+                        @if($page === $clientes->currentPage())
+                            <span class="px-2 py-1 text-xs bg-brand text-white rounded">{{ $page }}</span>
+                        @else
+                            <a href="{{ $url }}" class="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded">{{ $page }}</a>
+                        @endif
+                    @endforeach
+
+                    @if($clientes->hasMorePages())
+                        <a href="{{ $clientes->nextPageUrl() }}" class="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded">&raquo;</a>
+                    @else
+                        <span class="px-2 py-1 text-xs text-gray-400 dark:text-gray-600 cursor-default">&raquo;</span>
+                    @endif
+                </div>
+                @endif
+            </div>
         </div>
     </div>
 

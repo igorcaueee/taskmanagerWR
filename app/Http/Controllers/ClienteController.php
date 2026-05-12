@@ -78,7 +78,7 @@ class ClienteController extends Controller
             $query->where('regime_tributario', $request->input('regime_tributario'));
         }
 
-        $clientes = $query->get();
+        $clientes = $query->paginate(50)->withQueryString();
 
         return view('clientes.home', compact('clientes'));
     }
