@@ -11,7 +11,9 @@ class MapearPastasClientes extends Command
     protected $signature = 'clientes:mapear-pastas
                             {--dry-run : Mostra o que seria feito sem salvar}
                             {--threshold=60 : Similaridade mínima (0-100) para aceitar um match automático}
-                            {--fix-mei : Corrige registros salvos com o nome antigo incorreto da pasta MEI}';
+                            {--fix-mei : Corrige registros salvos com o nome antigo incorreto da pasta MEI}
+                            {--relatorio : Gera relatório CSV de todos os clientes com status do mapeamento}
+                            {--output= : Caminho do arquivo de saída do relatório (padrão: relatorio_pastas.csv)}';
 
     protected $description = 'Tenta mapear automaticamente clientes às pastas existentes no servidor pelo nome';
 
@@ -22,6 +24,10 @@ class MapearPastasClientes extends Command
     {
         if ($this->option('fix-mei')) {
             return $this->fixMei();
+        }
+
+        if ($this->option('relatorio')) {
+            return $this->gerarRelatorio();
         }
 
         $dryRun    = $this->option('dry-run');
@@ -127,6 +133,52 @@ class MapearPastasClientes extends Command
             $this->warn('Para os clientes sem match ou ambíguos, edite manualmente em:');
             $this->line('  Detalhe do cliente → Editar → "Pasta de Arquivos no Servidor"');
         }
+
+        return self::SUCCESS;
+    }
+
+    private function gerarRelatorio(): int
+    {
+        $output = $this->option('output') ?: 'relatorio_pastas.csv';
+
+        $clientes = Cliente::orderBy('nome')->get(['id', 'nome', 'regime_tributario', 'pasta_arquivos', 'status']);
+
+        $mapeados    = 0;
+        $naoMapeados = 0;
+
+        $file = fopen($output, 'w');
+        fprintf($file, "\xEF\xBB\xBF"); // BOM UTF-8 para abrir corretamente no Excel
+        fputcsv($file, ['ID', 'Nome', 'Regime', 'Status Cliente', 'Pasta Configurada', 'Status Mapeamento'], ';');
+
+        foreach ($clientes as $cliente) {
+            $isMei         = strtoupper($cliente->regime_tributario ?? '') === 'MEI';
+            $temPasta      = ! empty($cliente->pasta_arquivos);
+            $pastaEfetiva  = $cliente->pasta_arquivos
+                ?: ($isMei ? self::MEI_FOLDER . '/' . $cliente->nome : '');
+
+            if ($temPasta || $isMei) {
+                $statusMap = $temPasta ? 'mapeado' : 'automático (MEI)';
+                $mapeados++;
+            } else {
+                $statusMap = 'não mapeado';
+                $naoMapeados++;
+            }
+
+            fputcsv($file, [
+                $cliente->id,
+                $cliente->nome,
+                strtoupper($cliente->regime_tributario ?? ''),
+                $cliente->status,
+                $pastaEfetiva,
+                $statusMap,
+            ], ';');
+        }
+
+        fclose($file);
+
+        $total = $mapeados + $naoMapeados;
+        $this->info("Relatório gerado: {$output}");
+        $this->info("Total: {$total} | Mapeados: {$mapeados} | Não mapeados: {$naoMapeados}");
 
         return self::SUCCESS;
     }
