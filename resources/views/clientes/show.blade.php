@@ -33,12 +33,20 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                <a href="https://assessoriawr.com/arquivos?path={{ rawurlencode($cliente->pasta_arquivos ?? $cliente->nome) }}"
+                @if($cliente->pasta_arquivos)
+                <a href="https://assessoriawr.com/arquivos?path={{ rawurlencode($cliente->pasta_arquivos) }}"
                    target="_blank"
                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded text-sm hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none">
                     <i class="fa-solid fa-folder-open"></i>
                     Pasta de Arquivos
                 </a>
+                @else
+                <span title="Pasta não configurada. Edite o cliente para definir."
+                      class="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-600 rounded text-sm cursor-not-allowed select-none">
+                    <i class="fa-solid fa-folder-open"></i>
+                    Pasta de Arquivos
+                </span>
+                @endif
                 @if(auth()->user()?->canEditarClientes())
                     <button type="button"
                             class="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white rounded text-sm hover:bg-brand/80 focus:outline-none border-0"
