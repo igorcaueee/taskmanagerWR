@@ -42,6 +42,7 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
     ],
 
     /*
@@ -67,10 +68,6 @@ return [
             'model' => Usuario::class,
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
     ],
 
     /*

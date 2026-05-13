@@ -20,8 +20,8 @@ class Socio extends Model
     ];
 
     protected $casts = [
-        'participacao' => 'decimal:4',
-        'quotas_integralizadas' => 'decimal:2',
+        'participacao'           => 'decimal:4',
+        'quotas_integralizadas'  => 'decimal:2',
     ];
 
     public function cliente(): BelongsTo

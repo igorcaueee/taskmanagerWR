@@ -18,7 +18,8 @@
       "Bash(git -C /home/igorcaueee/LaravelProjects/taskmanagerwr diff app/Http/Controllers/AgendaController.php)",
       "Bash(sudo chown -R igorcaueee:igorcaueee /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)",
       "Bash(npm run *)",
-      "Bash(chmod -R u+w /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)"
+      "Bash(chmod -R u+w /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)",
+      "Bash(grep -rn '$contato' /home/igorcaueee/LaravelProjects/taskmanagerwr/resources/views/portal/ '--include=*.php')"
     ]
   }
 }

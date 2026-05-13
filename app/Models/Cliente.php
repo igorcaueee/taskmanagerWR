@@ -53,11 +53,6 @@ class Cliente extends Model
         return $this->belongsToMany(Produto::class, 'cliente_produto');
     }
 
-    public function contatos(): HasMany
-    {
-        return $this->hasMany(ContatoCliente::class);
-    }
-
     public function socios(): HasMany
     {
         return $this->hasMany(Socio::class)->orderBy('ordem');

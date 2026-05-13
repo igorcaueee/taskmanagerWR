@@ -95,7 +95,7 @@ class ClienteController extends Controller
 
     public function showCliente(int $id): View
     {
-        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'contatos'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao'])->findOrFail($id);
 
         return view('clientes.show', compact('cliente'));
     }
