@@ -130,4 +130,10 @@ class Usuario extends Authenticatable
     {
         return ! in_array($this->cargo, ['assistente', 'auxiliar']);
     }
+
+    // Diretor e TI gerenciam o blog
+    public function canGerenciarBlog(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
 }

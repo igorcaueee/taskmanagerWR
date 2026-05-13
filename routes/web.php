@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ClienteConhecimentoController;
@@ -126,3 +127,14 @@ Route::delete('/arquivos/delete', [FileExplorerController::class, 'delete'])->na
 // Chatbot routes
 Route::post('/chatbot/mensagem', [ChatbotController::class, 'message'])->name('chatbot.message')->middleware('auth');
 Route::delete('/chatbot/historico', [ChatbotController::class, 'clear'])->name('chatbot.clear')->middleware('auth');
+// Blog público
+Route::get('/blog', [BlogController::class, 'publicIndex'])->name('blog.index');
+Route::get('/blog/{slug}', [BlogController::class, 'publicShow'])->name('blog.show');
+// Blog admin (interno)
+Route::get('/admin/blog', [BlogController::class, 'index'])->name('blog.admin.index')->middleware(['auth', 'admin']);
+Route::get('/admin/blog/criar', [BlogController::class, 'formCreate'])->name('blog.admin.form.create')->middleware(['auth', 'admin']);
+Route::get('/admin/blog/{id}/editar', [BlogController::class, 'formEdit'])->name('blog.admin.form.edit')->middleware(['auth', 'admin']);
+Route::post('/admin/blog', [BlogController::class, 'save'])->name('blog.admin.save')->middleware(['auth', 'admin']);
+Route::put('/admin/blog/{id}', [BlogController::class, 'update'])->name('blog.admin.update')->middleware(['auth', 'admin']);
+Route::delete('/admin/blog/{id}', [BlogController::class, 'delete'])->name('blog.admin.delete')->middleware(['auth', 'admin']);
+Route::post('/admin/blog/gerar-ia', [BlogController::class, 'gerarIA'])->name('blog.admin.gerar-ia')->middleware(['auth', 'admin']);
