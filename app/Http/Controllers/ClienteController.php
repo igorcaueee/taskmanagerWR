@@ -334,9 +334,16 @@ class ClienteController extends Controller
             $regimeRaw = mb_strtolower($get($row, 'regime_tributario'));
             $regime = $regimeMap[$regimeRaw] ?? ($get($row, 'regime_tributario') ?: null);
 
+            $areaRaw = trim($get($row, 'area'));
+            $segmentacaoId = null;
+            if ($areaRaw !== '') {
+                $segmentacaoId = Segmentacao::firstOrCreate(['nome' => $areaRaw])->id;
+            }
+
             $dados = [
                 'tipo' => $tipo,
                 'atividade' => $get($row, 'atividade') ?: null,
+                'segmentacao_id' => $segmentacaoId,
                 'regime_tributario' => $regime,
                 'cidade' => $get($row, 'cidade') ?: null,
                 'estado' => mb_strtoupper($get($row, 'estado')) ?: null,
@@ -384,7 +391,7 @@ class ClienteController extends Controller
         $columns = [
             'nome', 'cpfcnpj', 'tipo', 'regime_tributario',
             'cidade', 'estado', 'status', 'cliente_desde',
-            'dataabertura', 'faturamento', 'servico', 'honorario', 'fator_r', 'atividade',
+            'dataabertura', 'faturamento', 'servico', 'honorario', 'fator_r', 'atividade', 'area',
         ];
 
         foreach ($columns as $i => $col) {
@@ -401,7 +408,7 @@ class ClienteController extends Controller
         $examples = [
             'Empresa Exemplo Ltda', '12.345.678/0001-99', 'PJ', 'Simples Nacional',
             'São Paulo', 'SP', 'ativo', '01/01/2024',
-            '15/03/2010', '50000', 'Contabilidade', '800', 'Não', 'Comércio',
+            '15/03/2010', '50000', 'Contabilidade', '800', 'Não', 'Comércio', 'Varejo',
         ];
 
         foreach ($examples as $i => $val) {

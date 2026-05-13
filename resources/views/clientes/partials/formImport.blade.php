@@ -18,6 +18,7 @@
         <li>Fator R: <strong>Sim</strong> ou <strong>Não</strong>.</li>
         <li>Regime Tributário: <strong>Simples Nacional</strong>, <strong>Lucro Presumido</strong>, <strong>Lucro Real</strong> ou <strong>MEI</strong>.</li>
         <li>Atividade: descrição livre da atividade econômica (ex: <strong>Comércio</strong>, <strong>Indústria</strong>).</li>
+        <li>Área: será criada automaticamente se não existir (ex: <strong>Varejo</strong>, <strong>Serviços</strong>).</li>
     </ul>
 </div>
 
