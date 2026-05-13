@@ -90,7 +90,7 @@
         @endif
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Segmentação</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Área</label>
             <div class="mt-1 flex gap-2">
                 <select name="segmentacao_id" id="select-segmentacao" class="block w-full border rounded px-3 py-2">
                     <option value="">— Selecione —</option>
@@ -109,6 +109,14 @@
                 </button>
                 @endif
             </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Atividade</label>
+            <input name="atividade" type="text"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                   placeholder="Ex: Comércio, Indústria, Serviços..."
+                   value="{{ old('atividade', $isEditing ? $cliente->atividade : ($prefill['atividade'] ?? '')) }}">
         </div>
 
         <div class="grid grid-cols-2 gap-4">

@@ -130,6 +130,10 @@
                             </dd>
                         </div>
                         <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Atividade</dt>
+                            <dd class="mt-0.5 text-gray-900 dark:text-slate-100">{{ $cliente->atividade ?? '—' }}</dd>
+                        </div>
+                        <div>
                             <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Serviço</dt>
                             <dd class="mt-0.5 text-gray-900 dark:text-slate-100">{{ $cliente->servico ?? '—' }}</dd>
                         </div>

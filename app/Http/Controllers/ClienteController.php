@@ -115,13 +115,14 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'pasta_arquivos' => ['nullable', 'string', 'max:255'],
             'segmentacao_id' => ['nullable', 'integer', 'exists:segmentacoes,id'],
+            'atividade' => ['nullable', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj'],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
@@ -159,12 +160,13 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'pasta_arquivos' => ['nullable', 'string', 'max:255'],
             'segmentacao_id' => ['nullable', 'integer', 'exists:segmentacoes,id'],
+            'atividade' => ['nullable', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
             'cpfcnpj' => ['nullable', 'string', 'max:255', 'unique:clientes,cpfcnpj,'.$id],
             'regime_tributario' => ['nullable', 'string', 'max:255'],
@@ -334,6 +336,7 @@ class ClienteController extends Controller
 
             $dados = [
                 'tipo' => $tipo,
+                'atividade' => $get($row, 'atividade') ?: null,
                 'regime_tributario' => $regime,
                 'cidade' => $get($row, 'cidade') ?: null,
                 'estado' => mb_strtoupper($get($row, 'estado')) ?: null,
@@ -381,7 +384,7 @@ class ClienteController extends Controller
         $columns = [
             'nome', 'cpfcnpj', 'tipo', 'regime_tributario',
             'cidade', 'estado', 'status', 'cliente_desde',
-            'dataabertura', 'faturamento', 'servico', 'honorario', 'fator_r',
+            'dataabertura', 'faturamento', 'servico', 'honorario', 'fator_r', 'atividade',
         ];
 
         foreach ($columns as $i => $col) {
@@ -398,7 +401,7 @@ class ClienteController extends Controller
         $examples = [
             'Empresa Exemplo Ltda', '12.345.678/0001-99', 'PJ', 'Simples Nacional',
             'São Paulo', 'SP', 'ativo', '01/01/2024',
-            '15/03/2010', '50000', 'Contabilidade', '800', 'Não',
+            '15/03/2010', '50000', 'Contabilidade', '800', 'Não', 'Comércio',
         ];
 
         foreach ($examples as $i => $val) {

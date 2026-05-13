@@ -15,6 +15,7 @@ class Cliente extends Model
         'nome',
         'pasta_arquivos',
         'segmentacao_id',
+        'atividade',
         'descricao',
         'cpfcnpj',
         'tipo',

@@ -17,6 +17,7 @@
         <li>Tipo: <strong>PF</strong> ou <strong>PJ</strong>. Status: <strong>ativo</strong> ou <strong>inativo</strong>.</li>
         <li>Fator R: <strong>Sim</strong> ou <strong>Não</strong>.</li>
         <li>Regime Tributário: <strong>Simples Nacional</strong>, <strong>Lucro Presumido</strong>, <strong>Lucro Real</strong> ou <strong>MEI</strong>.</li>
+        <li>Atividade: descrição livre da atividade econômica (ex: <strong>Comércio</strong>, <strong>Indústria</strong>).</li>
     </ul>
 </div>
 
