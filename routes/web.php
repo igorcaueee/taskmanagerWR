@@ -1,12 +1,13 @@
 <?php
 
 use App\Http\Controllers\AgendaController;
-use App\Http\Controllers\BlogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmailCampanhaController;
 use App\Http\Controllers\FileExplorerController;
 use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
@@ -138,3 +139,13 @@ Route::post('/admin/blog', [BlogController::class, 'save'])->name('blog.admin.sa
 Route::put('/admin/blog/{id}', [BlogController::class, 'update'])->name('blog.admin.update')->middleware(['auth', 'admin']);
 Route::delete('/admin/blog/{id}', [BlogController::class, 'delete'])->name('blog.admin.delete')->middleware(['auth', 'admin']);
 Route::post('/admin/blog/gerar-ia', [BlogController::class, 'gerarIA'])->name('blog.admin.gerar-ia')->middleware(['auth', 'admin']);
+// Email Campanhas (Newsletter)
+Route::get('/email-campanhas', [EmailCampanhaController::class, 'index'])->name('email-campanhas.index')->middleware(['auth', 'diretor']);
+Route::get('/email-campanhas/criar', [EmailCampanhaController::class, 'create'])->name('email-campanhas.create')->middleware(['auth', 'diretor']);
+Route::post('/email-campanhas/gerar-ia', [EmailCampanhaController::class, 'gerarConteudoAi'])->name('email-campanhas.gerar-ia')->middleware(['auth', 'diretor']);
+Route::post('/email-campanhas', [EmailCampanhaController::class, 'store'])->name('email-campanhas.store')->middleware(['auth', 'diretor']);
+Route::get('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'show'])->name('email-campanhas.show')->middleware(['auth', 'diretor']);
+Route::get('/email-campanhas/{emailCampanha}/editar', [EmailCampanhaController::class, 'edit'])->name('email-campanhas.edit')->middleware(['auth', 'diretor']);
+Route::put('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'update'])->name('email-campanhas.update')->middleware(['auth', 'diretor']);
+Route::post('/email-campanhas/{emailCampanha}/enviar', [EmailCampanhaController::class, 'enviar'])->name('email-campanhas.enviar')->middleware(['auth', 'diretor']);
+Route::delete('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'destroy'])->name('email-campanhas.destroy')->middleware(['auth', 'diretor']);

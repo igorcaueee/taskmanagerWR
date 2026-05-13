@@ -40,11 +40,11 @@ class BlogController extends Controller
     public function save(Request $request)
     {
         $data = $request->validate([
-            'titulo'      => ['required', 'string', 'max:255'],
-            'resumo'      => ['nullable', 'string', 'max:500'],
-            'conteudo'    => ['required', 'string'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'resumo' => ['nullable', 'string', 'max:500'],
+            'conteudo' => ['required', 'string'],
             'imagem_capa' => ['nullable', 'url', 'max:500'],
-            'status'      => ['required', 'in:rascunho,agendado,publicado'],
+            'status' => ['required', 'in:rascunho,agendado,publicado'],
             'publicado_em' => ['nullable', 'date', 'required_if:status,agendado'],
         ]);
 
@@ -65,11 +65,11 @@ class BlogController extends Controller
         $artigo = Artigo::findOrFail($id);
 
         $data = $request->validate([
-            'titulo'      => ['required', 'string', 'max:255'],
-            'resumo'      => ['nullable', 'string', 'max:500'],
-            'conteudo'    => ['required', 'string'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'resumo' => ['nullable', 'string', 'max:500'],
+            'conteudo' => ['required', 'string'],
             'imagem_capa' => ['nullable', 'url', 'max:500'],
-            'status'      => ['required', 'in:rascunho,agendado,publicado'],
+            'status' => ['required', 'in:rascunho,agendado,publicado'],
             'publicado_em' => ['nullable', 'date', 'required_if:status,agendado'],
         ]);
 
@@ -96,9 +96,9 @@ class BlogController extends Controller
     public function gerarIA(Request $request): JsonResponse
     {
         $request->validate([
-            'titulo'         => ['required', 'string', 'max:255'],
-            'tema'           => ['required', 'string', 'max:500'],
-            'tom'            => ['required', 'in:formal,informal,educativo,persuasivo'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'tema' => ['required', 'string', 'max:500'],
+            'tom' => ['required', 'in:formal,informal,educativo,persuasivo'],
             'palavras_chave' => ['nullable', 'string', 'max:300'],
         ]);
 
@@ -127,6 +127,8 @@ PROMPT;
         try {
             $response = AnonymousAgent::make(
                 instructions: 'Você é um redator especialista em conteúdo para escritórios de contabilidade e assessoria empresarial no Brasil. Escreva artigos informativos, claros e que gerem valor para empresários e empreendedores.',
+                messages: [],
+                tools: [],
             )->prompt(
                 prompt: $prompt,
                 provider: 'groq',
