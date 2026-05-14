@@ -78,9 +78,19 @@ class ClienteController extends Controller
             $query->where('regime_tributario', $request->input('regime_tributario'));
         }
 
+        if ($request->filled('segmentacao_id')) {
+            $query->where('segmentacao_id', $request->integer('segmentacao_id'));
+        }
+
+        if ($request->filled('atividade')) {
+            $query->where('atividade', 'like', '%'.$request->string('atividade').'%');
+        }
+
         $clientes = $query->paginate(50)->withQueryString();
 
-        return view('clientes.home', compact('clientes'));
+        $segmentacoes = Segmentacao::orderBy('nome')->get(['id', 'nome']);
+
+        return view('clientes.home', compact('clientes', 'segmentacoes'));
     }
 
     public function formClienteCreate(): View

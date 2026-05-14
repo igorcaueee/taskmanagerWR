@@ -77,6 +77,23 @@
                         <option value="MEI"              @selected(request('regime_tributario') === 'MEI')>MEI</option>
                     </select>
                 </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Área</label>
+                    <select name="segmentacao_id" onchange="document.getElementById('form-filtros-clientes').submit()"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todas</option>
+                        @foreach($segmentacoes as $segmentacao)
+                            <option value="{{ $segmentacao->id }}" @selected(request('segmentacao_id') == $segmentacao->id)>{{ $segmentacao->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Atividade</label>
+                    <input type="text" name="atividade" value="{{ request('atividade') }}"
+                           placeholder="Buscar por atividade..."
+                           onchange="document.getElementById('form-filtros-clientes').submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-44">
+                </div>
             </form>
 
             <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs">
