@@ -471,6 +471,7 @@
         ['name' => 'Maori Beach Club',     'img' => 'maori.png'],
         ['name' => 'Pão e Cia',            'img' => 'pao-e-cia.png'],
         ['name' => 'WA Elétrica',          'img' => 'wa-eletrica.png'],
+        ['name' => 'Ruverim',              'img' => 'ruverim.png'],
     ];
     @endphp
 
