@@ -57,9 +57,17 @@
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                             <i class="fa-solid fa-check mr-1"></i> Enviada
                         </span>
+                    @elseif($campanha->status === 'falha_parcial')
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Falha parcial
+                        </span>
                     @elseif($campanha->status === 'enviando')
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                             <i class="fa-solid fa-spinner fa-spin mr-1"></i> Enviando...
+                        </span>
+                    @elseif($campanha->status === 'agendada')
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            <i class="fa-solid fa-clock mr-1"></i> Agendada
                         </span>
                     @else
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
@@ -73,13 +81,26 @@
                     <p class="text-sm text-gray-800 dark:text-slate-200">{{ $campanha->total_destinatarios }} cliente(s)</p>
                 </div>
 
-                @if($campanha->status === 'enviada')
+                @if($campanha->enviar_em && $campanha->status === 'agendada')
                 <div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Enviados</p>
-                    <p class="text-sm text-gray-800 dark:text-slate-200">{{ $campanha->total_enviados }} e-mail(s)</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Agendada para</p>
+                    <p class="text-sm text-gray-800 dark:text-slate-200 font-medium">{{ $campanha->enviar_em->format('d/m/Y H:i') }}</p>
                 </div>
+                @endif
+
+                @if(in_array($campanha->status, ['enviada', 'falha_parcial']))
                 <div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Enviada em</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Enviados com sucesso</p>
+                    <p class="text-sm text-gray-800 dark:text-slate-200">{{ $campanha->total_enviados }}/{{ $campanha->total_destinatarios }}</p>
+                </div>
+                @if($campanha->total_falhas > 0)
+                <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Falhas</p>
+                    <p class="text-sm text-orange-600 font-medium">{{ $campanha->total_falhas }} e-mail(s)</p>
+                </div>
+                @endif
+                <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Concluída em</p>
                     <p class="text-sm text-gray-800 dark:text-slate-200">{{ $campanha->enviada_em?->format('d/m/Y H:i') ?? '—' }}</p>
                 </div>
                 @endif
@@ -96,19 +117,23 @@
             </div>
 
             {{-- Ações --}}
-            @if(in_array($campanha->status, ['rascunho', 'enviada']))
+            @if(in_array($campanha->status, ['rascunho', 'agendada', 'falha_parcial']))
             <form method="POST" action="{{ route('email-campanhas.enviar', $campanha->id) }}" id="form-enviar">
                 @csrf
                 @method('POST')
                 <button type="button" id="btn-enviar"
-                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 {{ $campanha->status === 'enviada' ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700' }} text-white rounded border-0 text-sm font-medium">
-                    <i class="fa-solid fa-paper-plane"></i> {{ $campanha->status === 'enviada' ? 'Reenviar Campanha' : 'Disparar Campanha' }}
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded border-0 text-sm font-medium">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    @if($campanha->status === 'agendada') Disparar Agora
+                    @elseif($campanha->status === 'falha_parcial') Retentar Envio
+                    @else Disparar Campanha
+                    @endif
                 </button>
             </form>
             @endif
 
             {{-- Editar --}}
-            @if($campanha->status !== 'enviando')
+            @if(!in_array($campanha->status, ['enviando', 'enviada']))
             <a href="{{ route('email-campanhas.edit', $campanha->id) }}"
                class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-brand hover:bg-brand/80 text-white rounded text-sm font-medium">
                 <i class="fa-solid fa-pen-to-square"></i> Editar Campanha
@@ -152,16 +177,16 @@ document.getElementById('btn-excluir')?.addEventListener('click', () => {
 });
 @endif
 
-@if(in_array($campanha->status, ['rascunho', 'enviada']))
+@if(in_array($campanha->status, ['rascunho', 'agendada', 'falha_parcial']))
 document.getElementById('btn-enviar')?.addEventListener('click', () => {
     Swal.fire({
         icon: 'question',
-        title: '{{ $campanha->status === "enviada" ? "Reenviar campanha?" : "Disparar campanha?" }}',
-        html: '{{ $campanha->status === "enviada" ? "Esta campanha já foi enviada. Deseja reenviar para " : "O e-mail será enviado para " }}<strong>{{ $campanha->total_destinatarios }}</strong> cliente(s)?',
+        title: @if($campanha->status === 'agendada') 'Disparar agora?' @elseif($campanha->status === 'falha_parcial') 'Retentar envio?' @else 'Disparar campanha?' @endif,
+        html: 'O e-mail será enviado para <strong>{{ $campanha->total_destinatarios }}</strong> cliente(s).',
         showCancelButton: true,
-        confirmButtonText: '{{ $campanha->status === "enviada" ? "Sim, reenviar!" : "Sim, disparar!" }}',
+        confirmButtonText: 'Sim, disparar!',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '{{ $campanha->status === "enviada" ? "#ca8a04" : "#16a34a" }}',
+        confirmButtonColor: '#16a34a',
         cancelButtonColor: '#6b7280',
     }).then(result => {
         if (result.isConfirmed) {

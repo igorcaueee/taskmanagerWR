@@ -17,14 +17,22 @@ class EmailCampanha extends Model
         'destinatarios',
         'total_destinatarios',
         'total_enviados',
+        'total_falhas',
         'enviada_em',
+        'enviar_em',
         'criado_por',
     ];
 
     protected $casts = [
         'destinatarios' => 'array',
         'enviada_em' => 'datetime',
+        'enviar_em' => 'datetime',
     ];
+
+    public function isConcluida(): bool
+    {
+        return ($this->total_enviados + $this->total_falhas) >= $this->total_destinatarios;
+    }
 
     public function criador(): BelongsTo
     {

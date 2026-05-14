@@ -15,7 +15,7 @@ class EnviarEmailCampanhaJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 60;
+    public int $timeout = 120;
 
     public function __construct(
         public EmailCampanha $campanha,
@@ -45,6 +45,8 @@ class EnviarEmailCampanhaJob implements ShouldQueue
                 'campanha_id' => $this->campanha->id,
                 'email' => $this->emailDestinatario,
             ]);
+
+            $this->verificarConclusao();
         } catch (\Throwable $e) {
             Log::error('[EnviarEmailJob] Falha ao enviar e-mail', [
                 'campanha_id' => $this->campanha->id,
@@ -63,6 +65,32 @@ class EnviarEmailCampanhaJob implements ShouldQueue
             'campanha_id' => $this->campanha->id,
             'email' => $this->emailDestinatario,
             'erro' => $exception->getMessage(),
+        ]);
+
+        $this->campanha->increment('total_falhas');
+        $this->verificarConclusao();
+    }
+
+    private function verificarConclusao(): void
+    {
+        $this->campanha->refresh();
+
+        if (! $this->campanha->isConcluida()) {
+            return;
+        }
+
+        $status = $this->campanha->total_falhas > 0 ? 'falha_parcial' : 'enviada';
+
+        $this->campanha->update([
+            'status' => $status,
+            'enviada_em' => now(),
+        ]);
+
+        Log::info('[EnviarEmailJob] Campanha concluída', [
+            'campanha_id' => $this->campanha->id,
+            'status' => $status,
+            'total_enviados' => $this->campanha->total_enviados,
+            'total_falhas' => $this->campanha->total_falhas,
         ]);
     }
 }

@@ -118,6 +118,18 @@
                     <div id="inputs-hidden"></div>
                 </div>
 
+                {{-- Agendamento --}}
+                <div class="bg-white dark:bg-slate-800 rounded shadow p-5">
+                    <h2 class="text-sm font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wide mb-3">
+                        <i class="fa-solid fa-clock text-blue-500"></i> Agendamento (opcional)
+                    </h2>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Enviar em</label>
+                    <input type="datetime-local" name="enviar_em" value="{{ old('enviar_em') }}"
+                           min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
+                           class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Deixe em branco para salvar como rascunho.</p>
+                </div>
+
                 {{-- Botão salvar --}}
                 <button type="submit"
                         class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-brand text-white rounded border-0 hover:bg-brand/80 text-sm font-medium">

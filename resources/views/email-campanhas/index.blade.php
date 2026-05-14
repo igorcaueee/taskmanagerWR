@@ -49,8 +49,14 @@
                             <td class="px-4 py-2 text-xs">
                                 @if($campanha->status === 'enviada')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Enviada</span>
+                                @elseif($campanha->status === 'falha_parcial')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">Falha parcial</span>
                                 @elseif($campanha->status === 'enviando')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Enviando...</span>
+                                @elseif($campanha->status === 'agendada')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="{{ $campanha->enviar_em?->format('d/m/Y H:i') }}">
+                                        <i class="fa-solid fa-clock mr-1"></i> Agendada
+                                    </span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">Rascunho</span>
                                 @endif

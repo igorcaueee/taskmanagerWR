@@ -57,13 +57,16 @@ class EmailCampanhaController extends Controller
             'clientes_ids.min' => 'Selecione pelo menos um cliente.',
         ]);
 
+        $enviarEm = $request->filled('enviar_em') ? $request->date('enviar_em') : null;
+
         $campanha = EmailCampanha::create([
             'titulo' => $request->titulo,
             'assunto' => $request->assunto,
             'conteudo_html' => $request->conteudo_html,
-            'status' => 'rascunho',
+            'status' => $enviarEm ? 'agendada' : 'rascunho',
             'destinatarios' => $request->clientes_ids,
             'total_destinatarios' => count($request->clientes_ids),
+            'enviar_em' => $enviarEm,
             'criado_por' => Auth::id(),
         ]);
 
@@ -90,8 +93,8 @@ class EmailCampanhaController extends Controller
 
     public function update(Request $request, EmailCampanha $emailCampanha): RedirectResponse
     {
-        if ($emailCampanha->status === 'enviando') {
-            return back()->with('error', 'Não é possível editar uma campanha em andamento.');
+        if (in_array($emailCampanha->status, ['enviando', 'enviada'])) {
+            return back()->with('error', 'Não é possível editar uma campanha já enviada ou em andamento.');
         }
 
         $request->validate([
@@ -100,13 +103,17 @@ class EmailCampanhaController extends Controller
             'conteudo_html' => ['required', 'string'],
             'clientes_ids' => ['required', 'array', 'min:1'],
             'clientes_ids.*' => ['integer', 'exists:clientes,id'],
+            'enviar_em' => ['nullable', 'date', 'after:now'],
         ], [
             'titulo.required' => 'O título da campanha é obrigatório.',
             'assunto.required' => 'O assunto do e-mail é obrigatório.',
             'conteudo_html.required' => 'O conteúdo do e-mail é obrigatório.',
             'clientes_ids.required' => 'Selecione pelo menos um cliente.',
             'clientes_ids.min' => 'Selecione pelo menos um cliente.',
+            'enviar_em.after' => 'A data de agendamento deve ser no futuro.',
         ]);
+
+        $enviarEm = $request->filled('enviar_em') ? $request->date('enviar_em') : null;
 
         $emailCampanha->update([
             'titulo' => $request->titulo,
@@ -114,7 +121,8 @@ class EmailCampanhaController extends Controller
             'conteudo_html' => $request->conteudo_html,
             'destinatarios' => $request->clientes_ids,
             'total_destinatarios' => count($request->clientes_ids),
-            'status' => 'rascunho',
+            'enviar_em' => $enviarEm,
+            'status' => $enviarEm ? 'agendada' : 'rascunho',
         ]);
 
         return redirect()->route('email-campanhas.show', $emailCampanha->id)
@@ -125,10 +133,10 @@ class EmailCampanhaController extends Controller
     {
         Log::info('[EmailCampanha] Iniciando envio', ['campanha_id' => $emailCampanha->id, 'titulo' => $emailCampanha->titulo]);
 
-        if ($emailCampanha->status === 'enviando') {
-            Log::warning('[EmailCampanha] Campanha já está sendo enviada', ['campanha_id' => $emailCampanha->id]);
+        if (in_array($emailCampanha->status, ['enviando', 'enviada'])) {
+            Log::warning('[EmailCampanha] Tentativa de reenvio bloqueada', ['campanha_id' => $emailCampanha->id, 'status' => $emailCampanha->status]);
 
-            return back()->with('error', 'Esta campanha já está sendo enviada.');
+            return back()->with('error', 'Esta campanha já foi enviada ou está em andamento.');
         }
 
         $clienteIds = $emailCampanha->destinatarios ?? [];
@@ -147,9 +155,8 @@ class EmailCampanhaController extends Controller
 
         Log::info('[EmailCampanha] Clientes encontrados', ['campanha_id' => $emailCampanha->id, 'total_clientes' => $clientes->count()]);
 
-        $emailCampanha->update(['status' => 'enviando']);
-
         $totalJobs = 0;
+        $destinatariosList = [];
 
         foreach ($clientes as $cliente) {
             $destinatarios = $this->resolverEmailsDoCliente($cliente);
@@ -159,20 +166,26 @@ class EmailCampanhaController extends Controller
             }
 
             foreach ($destinatarios as $destinatario) {
-                Log::info('[EmailCampanha] Despachando job', ['campanha_id' => $emailCampanha->id, 'email' => $destinatario['email'], 'nome' => $destinatario['nome']]);
-                EnviarEmailCampanhaJob::dispatch($emailCampanha, $destinatario['email'], $destinatario['nome']);
+                $destinatariosList[] = $destinatario;
                 $totalJobs++;
             }
         }
 
-        Log::info('[EmailCampanha] Jobs despachados', ['campanha_id' => $emailCampanha->id, 'total_jobs' => $totalJobs]);
-
         $emailCampanha->update([
-            'status' => 'enviada',
-            'enviada_em' => now(),
+            'status' => 'enviando',
+            'total_destinatarios' => $totalJobs,
+            'total_enviados' => 0,
+            'total_falhas' => 0,
         ]);
 
-        return back()->with('success', 'Campanha enviada com sucesso para a fila de e-mails!');
+        foreach ($destinatariosList as $destinatario) {
+            Log::info('[EmailCampanha] Despachando job', ['campanha_id' => $emailCampanha->id, 'email' => $destinatario['email'], 'nome' => $destinatario['nome']]);
+            EnviarEmailCampanhaJob::dispatch($emailCampanha, $destinatario['email'], $destinatario['nome']);
+        }
+
+        Log::info('[EmailCampanha] Jobs despachados', ['campanha_id' => $emailCampanha->id, 'total_jobs' => $totalJobs]);
+
+        return back()->with('success', "Campanha enviada para a fila! {$totalJobs} e-mail(s) serão processados.");
     }
 
     public function destroy(EmailCampanha $emailCampanha): RedirectResponse
