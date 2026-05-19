@@ -11,6 +11,7 @@ use App\Http\Controllers\EmailCampanhaController;
 use App\Http\Controllers\FileExplorerController;
 use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
+use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
@@ -149,3 +150,11 @@ Route::get('/email-campanhas/{emailCampanha}/editar', [EmailCampanhaController::
 Route::put('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'update'])->name('email-campanhas.update')->middleware(['auth', 'diretor']);
 Route::post('/email-campanhas/{emailCampanha}/enviar', [EmailCampanhaController::class, 'enviar'])->name('email-campanhas.enviar')->middleware(['auth', 'diretor']);
 Route::delete('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'destroy'])->name('email-campanhas.destroy')->middleware(['auth', 'diretor']);
+
+// Ideias & Correções routes
+Route::get('/ideias', [IdeiaController::class, 'index'])->name('ideias.index')->middleware('auth');
+Route::get('/ideias/form', [IdeiaController::class, 'form'])->name('ideias.form')->middleware('auth');
+Route::get('/ideias/{id}/form', [IdeiaController::class, 'formEdit'])->name('ideias.form.edit')->middleware('auth');
+Route::post('/ideias/save', [IdeiaController::class, 'store'])->name('ideias.store')->middleware('auth');
+Route::patch('/ideias/{id}/status', [IdeiaController::class, 'updateStatus'])->name('ideias.update-status')->middleware('auth');
+Route::delete('/ideias/{id}', [IdeiaController::class, 'destroy'])->name('ideias.destroy')->middleware('auth');
