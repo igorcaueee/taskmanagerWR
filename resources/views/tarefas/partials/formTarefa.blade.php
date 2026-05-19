@@ -41,55 +41,44 @@
         </div>
 
         @php
-            $selectedClienteId = old('cliente_id', $isEditing ? $tarefa->cliente_id : '');
-            $selectedClienteNome = $isEditing && $tarefa->cliente ? $tarefa->cliente->nome : '';
+            $selectedClienteIds = $selectedClienteIds ?? old('cliente_ids', $isEditing ? $tarefa->clientes->pluck('id')->toArray() : []);
         @endphp
 
+        {{-- Multi-select clientes (create & edit) --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-            <div class="relative mt-1" id="cliente-dropdown-wrapper">
-                {{-- Hidden select for form submission --}}
-                <select name="cliente_id" id="cliente_id_hidden" class="hidden" required>
-                    <option value="">— Selecione —</option>
-                    @foreach($clientes as $cliente)
-                        <option value="{{ $cliente->id }}"
-                            {{ $selectedClienteId == $cliente->id ? 'selected' : '' }}>
-                            {{ $cliente->nome }}
-                        </option>
-                    @endforeach
-                </select>
-
-                {{-- Visible trigger --}}
-                <button type="button" id="cliente-trigger"
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Clientes <span class="text-gray-400 font-normal">(pode selecionar mais de um)</span>
+            </label>
+            <div class="relative mt-1" id="cliente-multi-wrapper">
+                <button type="button" id="cliente-multi-trigger"
                     class="w-full flex items-center justify-between border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-left text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
-                    onclick="toggleClienteDropdown()">
-                    <span id="cliente-display-text" class="{{ $selectedClienteId ? 'text-gray-900' : 'text-gray-400' }}">
-                        {{ $selectedClienteId ? $selectedClienteNome : '— Selecione —' }}
-                    </span>
-                    <i class="fa-solid fa-chevron-down text-gray-400 text-xs ml-2"></i>
+                    onclick="toggleClienteMultiDropdown()">
+                    <span id="cliente-multi-display" class="text-gray-400 truncate">— Selecione os clientes —</span>
+                    <i class="fa-solid fa-chevron-down text-gray-400 text-xs ml-2 flex-shrink-0"></i>
                 </button>
 
-                {{-- Dropdown --}}
-                <div id="cliente-dropdown"
+                <div id="cliente-multi-dropdown"
                     class="absolute z-50 mt-1 w-full bg-white dark:bg-slate-700 border dark:border-slate-600 rounded shadow-lg hidden"
-                    style="max-height: 260px;">
-                    <div class="p-2 border-b">
-                        <input type="text" id="cliente-search"
+                    style="max-height: 280px;">
+                    <div class="p-2 border-b dark:border-slate-600">
+                        <input type="text" id="cliente-multi-search"
                             placeholder="Buscar cliente..."
-                            class="w-full px-3 py-1.5 text-sm border dark:border-slate-600 rounded bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand/50"
-                            oninput="filtrarClientes(this.value)">
+                            class="w-full px-3 py-1.5 text-sm border dark:border-slate-600 rounded bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200 focus:outline-none"
+                            oninput="filtrarClientesMulti(this.value)">
                     </div>
-                    <ul id="cliente-list" class="overflow-y-auto" style="max-height: 200px;">
-                        <li data-value="" data-label="— Selecione —"
-                            class="cliente-option px-3 py-2 text-sm text-gray-400 dark:text-slate-500 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600"
-                            onclick="selecionarCliente('', '— Selecione —')">
-                            — Selecione —
-                        </li>
+                    <ul id="cliente-multi-list" class="overflow-y-auto" style="max-height: 220px;">
                         @foreach($clientes as $cliente)
-                            <li data-value="{{ $cliente->id }}" data-label="{{ $cliente->nome }}"
-                                class="cliente-option px-3 py-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 {{ $selectedClienteId == $cliente->id ? 'bg-brand/10 font-medium' : '' }}"
-                                onclick="selecionarCliente('{{ $cliente->id }}', '{{ addslashes($cliente->nome) }}')">
-                                {{ $cliente->nome }}
+                            <li data-label="{{ $cliente->nome }}"
+                                class="cliente-multi-option flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600"
+                                onclick="toggleClienteCheck({{ $cliente->id }}, this)">
+                                <input type="checkbox" name="cliente_ids[]" value="{{ $cliente->id }}"
+                                    id="chk_cli_{{ $cliente->id }}"
+                                    class="rounded border-gray-300 text-brand focus:ring-brand"
+                                    {{ in_array($cliente->id, $selectedClienteIds) ? 'checked' : '' }}
+                                    onclick="event.stopPropagation()">
+                                <label for="chk_cli_{{ $cliente->id }}" class="cursor-pointer flex-1" onclick="event.stopPropagation(); toggleClienteCheck({{ $cliente->id }}, this.closest('li'))">
+                                    {{ $cliente->nome }}
+                                </label>
                             </li>
                         @endforeach
                     </ul>
@@ -217,9 +206,10 @@
 </form>
 
 <script>
-// --- Searchable cliente dropdown ---
+// --- Searchable cliente dropdown (edit mode) ---
 function toggleClienteDropdown() {
     const dropdown = document.getElementById('cliente-dropdown');
+    if (!dropdown) return;
     const search = document.getElementById('cliente-search');
     const isHidden = dropdown.classList.toggle('hidden');
     if (!isHidden) {
@@ -247,20 +237,87 @@ function selecionarCliente(value, label) {
     displayText.className = value ? 'text-gray-900' : 'text-gray-400';
     dropdown.classList.add('hidden');
 
-    // Highlight selected item
     document.querySelectorAll('#cliente-list .cliente-option').forEach(function (li) {
         li.classList.toggle('bg-brand/10', li.dataset.value === value);
         li.classList.toggle('font-medium', li.dataset.value === value);
     });
 }
 
-// Close dropdown when clicking outside
+// Close single dropdown when clicking outside
 document.addEventListener('click', function (e) {
     const wrapper = document.getElementById('cliente-dropdown-wrapper');
     if (wrapper && !wrapper.contains(e.target)) {
-        document.getElementById('cliente-dropdown').classList.add('hidden');
+        const dd = document.getElementById('cliente-dropdown');
+        if (dd) dd.classList.add('hidden');
     }
 });
+
+// --- Multi-select cliente dropdown (create mode) ---
+function toggleClienteMultiDropdown() {
+    const dropdown = document.getElementById('cliente-multi-dropdown');
+    if (!dropdown) return;
+    const isHidden = dropdown.classList.toggle('hidden');
+    if (!isHidden) {
+        const search = document.getElementById('cliente-multi-search');
+        search.value = '';
+        filtrarClientesMulti('');
+        search.focus();
+    }
+}
+
+function filtrarClientesMulti(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('#cliente-multi-list .cliente-multi-option').forEach(function (li) {
+        const label = li.dataset.label.toLowerCase();
+        li.style.display = (!q || label.includes(q)) ? '' : 'none';
+    });
+}
+
+function toggleClienteCheck(id, li) {
+    const chk = document.getElementById('chk_cli_' + id);
+    if (!chk) return;
+    chk.checked = !chk.checked;
+    atualizarDisplayMulti();
+}
+
+function atualizarDisplayMulti() {
+    const checked = Array.from(document.querySelectorAll('#cliente-multi-list input[type="checkbox"]:checked'));
+    const display = document.getElementById('cliente-multi-display');
+    if (!display) return;
+    if (checked.length === 0) {
+        display.textContent = '— Selecione os clientes —';
+        display.className = 'text-gray-400 truncate';
+    } else {
+        const nomes = checked.map(function (c) {
+            return c.closest('li').dataset.label;
+        });
+        display.textContent = nomes.join(', ');
+        display.className = 'text-gray-900 dark:text-slate-200 truncate';
+    }
+}
+
+// Re-sync display after checkbox change via direct click
+document.addEventListener('change', function (e) {
+    if (e.target.name === 'cliente_ids[]') {
+        atualizarDisplayMulti();
+    }
+});
+
+// Close multi dropdown when clicking outside
+document.addEventListener('click', function (e) {
+    const wrapper = document.getElementById('cliente-multi-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        const dd = document.getElementById('cliente-multi-dropdown');
+        if (dd) dd.classList.add('hidden');
+    }
+});
+
+// Init multi display on load
+(function () {
+    if (document.getElementById('cliente-multi-list')) {
+        atualizarDisplayMulti();
+    }
+}());
 
 // --- Departamento por responsável ---
 (function () {
@@ -277,7 +334,7 @@ document.addEventListener('click', function (e) {
         selectResponsavel.addEventListener('change', atualizarDepartamento);
         atualizarDepartamento();
     }
-})();
+}());
 </script>
 
 @if($isEditing && $tarefa->historico->isNotEmpty())

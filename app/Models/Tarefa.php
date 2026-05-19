@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tarefa extends Model
@@ -44,6 +45,11 @@ class Tarefa extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function clientes(): BelongsToMany
+    {
+        return $this->belongsToMany(Cliente::class, 'tarefa_cliente');
     }
 
     public function departamento(): BelongsTo

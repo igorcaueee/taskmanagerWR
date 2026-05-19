@@ -25,7 +25,7 @@ class TarefaController extends Controller
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
 
-        $query = Tarefa::with(['cliente', 'departamento', 'etapa', 'responsavel'])
+        $query = Tarefa::with(['cliente', 'clientes', 'departamento', 'etapa', 'responsavel'])
             ->orderBy('data_vencimento');
 
         if (! $podeVerTodas) {
@@ -83,7 +83,7 @@ class TarefaController extends Controller
         $cicloPrev = $cicloSelecionado->anterior();
         $cicloNext = $cicloSelecionado->proximo();
 
-        $query = Tarefa::with(['cliente', 'departamento', 'etapa', 'responsavel', 'ciclo'])
+        $query = Tarefa::with(['cliente', 'clientes', 'departamento', 'etapa', 'responsavel', 'ciclo'])
             ->orderBy('passou_ciclo', 'desc')
             ->orderBy('data_vencimento');
 
@@ -153,6 +153,7 @@ class TarefaController extends Controller
     public function formEdit(int $id): View
     {
         $tarefa = Tarefa::with([
+            'clientes',
             'historico.etapaAnterior',
             'historico.etapaNova',
             'historico.responsavelAnterior',
@@ -170,20 +171,23 @@ class TarefaController extends Controller
 
         $podeMudarResponsavel = (int) Auth::id() === (int) $tarefa->supervisor_id;
 
-        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel'));
+        $selectedClienteIds = $tarefa->clientes->pluck('id')->toArray();
+
+        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'selectedClienteIds'));
     }
 
     public function save(Request $request): RedirectResponse
     {
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_id',
+            'titulo', 'descricao', 'cliente_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
         ]);
 
         $validator = Validator::make($data, [
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'cliente_id' => ['required', 'exists:clientes,id'],
+            'cliente_ids' => ['required', 'array', 'min:1'],
+            'cliente_ids.*' => ['required', 'exists:clientes,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -201,10 +205,10 @@ class TarefaController extends Controller
         $departamentoId = Usuario::find($data['responsavel_id'] ?? null)?->departamento_id
             ?? Departamento::orderBy('id')->value('id');
 
-        Tarefa::create([
+        $tarefa = Tarefa::create([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
-            'cliente_id' => $data['cliente_id'],
+            'cliente_id' => $data['cliente_ids'][0],
             'departamento_id' => $departamentoId,
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $data['responsavel_id'] ?? null,
@@ -216,6 +220,8 @@ class TarefaController extends Controller
             'frequencia' => $frequencia,
             'recorrente' => $frequencia !== 'nenhuma',
         ]);
+
+        $tarefa->clientes()->sync($data['cliente_ids']);
 
         return Redirect::back()->with('success', 'Tarefa criada com sucesso.');
     }
@@ -230,14 +236,15 @@ class TarefaController extends Controller
         }
 
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_id',
+            'titulo', 'descricao', 'cliente_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
         ]);
 
         $validator = Validator::make($data, [
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'cliente_id' => ['required', 'exists:clientes,id'],
+            'cliente_ids' => ['required', 'array', 'min:1'],
+            'cliente_ids.*' => ['required', 'exists:clientes,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -270,7 +277,7 @@ class TarefaController extends Controller
         $tarefa->update([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
-            'cliente_id' => $data['cliente_id'],
+            'cliente_id' => $data['cliente_ids'][0],
             'departamento_id' => $departamentoId,
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $novoResponsavelId,
@@ -287,6 +294,8 @@ class TarefaController extends Controller
                 ? ($tarefa->data_conclusao ?? now())
                 : null,
         ]);
+
+        $tarefa->clientes()->sync($data['cliente_ids']);
 
         $etapaMudou = (int) $etapaAnteriorId !== (int) $data['etapa_id'];
         $responsavelMudou = (int) ($responsavelAnteriorId ?? 0) !== (int) ($novoResponsavelId ?? 0);
