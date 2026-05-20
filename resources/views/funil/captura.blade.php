@@ -126,7 +126,7 @@
                 </h2>
                 <div class="blue-line w-16 mb-8"></div>
                 <p class="text-white/45 mb-10 leading-relaxed">
-                    Desde 2009 transformando números em lucro. Soluções contábeis e assessoria empresarial para mais de 500 clientes em 56 cidades de 7 estados.
+                    Desde 2009 transformando números em lucro. Soluções contábeis e assessoria empresarial para mais de 500 clientes em 73 cidades de 7 estados.
                 </p>
 
                 <div class="space-y-4">
@@ -158,7 +158,7 @@
                         </div>
                         <div>
                             <p class="text-[11px] text-white/35 uppercase tracking-wider mb-0.5">Abrangência</p>
-                            <p class="text-white font-semibold">56 cidades em 7 estados</p>
+                            <p class="text-white font-semibold">73 cidades em 7 estados</p>
                             <p class="text-white/40 text-sm mt-0.5">R. Carlos Arnt, 2215 — Teutônia, RS</p>
                         </div>
                     </div>
