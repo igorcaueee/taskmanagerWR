@@ -11,6 +11,12 @@
             </div>
             @if (auth()->user()?->canEditarClientes())
             <div class="flex gap-2">
+                <a href="{{ route('clientes.export', request()->query()) }}"
+                   class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded focus:outline-none hover:bg-gray-50 dark:hover:bg-slate-600 text-sm"
+                   title="Exportar clientes com os filtros atuais">
+                    <i class="fa-solid fa-file-excel"></i>
+                    Exportar
+                </a>
                 <button type="button" class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded focus:outline-none hover:bg-gray-50 dark:hover:bg-slate-600 text-sm"
                         data-modal-url="{{ route('clientes.import.form') }}">
                     <i class="fa-solid fa-file-import"></i>

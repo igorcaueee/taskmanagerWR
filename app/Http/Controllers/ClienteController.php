@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -390,6 +391,135 @@ class ClienteController extends Controller
         }
 
         return Redirect::route('clientes')->with('success', $msg.'.');
+    }
+
+    public function exportClientes(Request $request): Response
+    {
+        $query = Cliente::with(['segmentacao', 'produtos'])->orderBy('nome');
+
+        if ($request->filled('busca')) {
+            $busca = '%'.$request->string('busca').'%';
+            $query->where(function ($q) use ($busca) {
+                $q->where('nome', 'like', $busca)
+                    ->orWhere('cpfcnpj', 'like', $busca)
+                    ->orWhere('cidade', 'like', $busca)
+                    ->orWhere('estado', 'like', $busca)
+                    ->orWhere('regime_tributario', 'like', $busca);
+            });
+        }
+
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->input('tipo'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('regime_tributario')) {
+            $query->where('regime_tributario', $request->input('regime_tributario'));
+        }
+
+        if ($request->filled('segmentacao_id')) {
+            $query->where('segmentacao_id', $request->integer('segmentacao_id'));
+        }
+
+        if ($request->filled('atividade')) {
+            $query->where('atividade', 'like', '%'.$request->string('atividade').'%');
+        }
+
+        $clientes = $query->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Clientes');
+
+        $headers = [
+            'Nome', 'CPF/CNPJ', 'Tipo', 'Regime Tributário', 'Área', 'Atividade',
+            'Cidade', 'UF', 'Status', 'Fator R', 'Cliente Desde', 'Data Abertura',
+            'Vencimento Certificado', 'Faturamento', 'Serviço', 'Honorário', 'Capital Social',
+            'Produtos', 'Motivo Encerramento', 'Data Encerramento',
+        ];
+
+        foreach ($headers as $i => $header) {
+            $col = $i + 1;
+            $cell = Coordinate::stringFromColumnIndex($col).'1';
+            $sheet->setCellValue($cell, $header);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+
+        $row = 2;
+        foreach ($clientes as $cliente) {
+            $tipo = match ((string) $cliente->tipo) {
+                '1' => 'PJ',
+                '0' => 'PF',
+                default => '',
+            };
+
+            $produtos = $cliente->produtos->pluck('nome')->join(', ');
+
+            $rowData = [
+                $cliente->nome,
+                $cliente->cpfcnpj,
+                $tipo,
+                $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '',
+                $cliente->segmentacao?->nome ?? '',
+                $cliente->atividade,
+                $cliente->cidade,
+                $cliente->estado,
+                $cliente->status === 'ativo' ? 'Ativo' : 'Inativo',
+                $cliente->fator_r ? 'Sim' : 'Não',
+                $cliente->cliente_desde?->format('d/m/Y') ?? '',
+                $cliente->dataabertura?->format('d/m/Y') ?? '',
+                $cliente->vencimento_certificado?->format('d/m/Y') ?? '',
+                $cliente->faturamento,
+                $cliente->servico,
+                $cliente->honorario,
+                $cliente->capital_social,
+                $produtos,
+                $cliente->motivo_encerramento,
+                $cliente->data_encerramento?->format('d/m/Y') ?? '',
+            ];
+
+            foreach ($rowData as $i => $value) {
+                $col = $i + 1;
+                $cell = Coordinate::stringFromColumnIndex($col).$row;
+                $sheet->setCellValue($cell, $value);
+            }
+
+            $fillColor = $row % 2 === 0 ? 'F8FAFC' : 'FFFFFF';
+            $lastCol = Coordinate::stringFromColumnIndex(count($headers));
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $fillColor]],
+            ]);
+
+            $row++;
+        }
+
+        // Freeze header row
+        $sheet->freezePane('A2');
+
+        // Auto-filter
+        $lastCol = Coordinate::stringFromColumnIndex(count($headers));
+        $sheet->setAutoFilter("A1:{$lastCol}1");
+
+        $writer = new Xlsx($spreadsheet);
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        $filename = 'clientes-'.now()->format('Y-m-d').'.xlsx';
+
+        return response($content, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     public function templateClientes(): Response
