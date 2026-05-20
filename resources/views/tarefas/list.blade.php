@@ -329,10 +329,9 @@
         if (t.historico.length === 0) {
             historicoHtml = '<p class="text-xs text-gray-400 italic ml-4">Nenhuma movimentação registrada.</p>';
         } else {
-            historicoHtml = '<ol class="relative border-l border-gray-200 ml-2 space-y-3">';
+            historicoHtml = '<ol reversed class="relative border-l border-gray-200 ml-2 space-y-3">';
             t.historico.forEach(h => {
-                let item = `<li class="ml-4 relative">
-                    <span style="position:absolute;left:-1.15rem;top:4px;width:10px;height:10px;border-radius:50%;background:${h.etapa_nova_cor ?? '#9ca3af'};border:2px solid white;display:block"></span>`;
+                let item = `<li class="ml-4 relative">`;
 
                 if (h.etapa_nova) {
                     item += `<p class="text-xs text-gray-700">

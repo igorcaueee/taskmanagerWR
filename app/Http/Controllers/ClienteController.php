@@ -11,8 +11,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -675,5 +677,35 @@ class ClienteController extends Controller
             ->each(fn ($s, $i) => $s->update(['ordem' => $i + 1]));
 
         return Redirect::route('clientes.quadro.modal', $clienteId)->with('success', 'Sócio removido com sucesso.');
+    }
+
+    public function gerarSenhaPortal(int $id): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        $senhaPlain = Str::password(12, symbols: false);
+
+        $cliente->update([
+            'senha_portal' => Hash::make($senhaPlain),
+            'senha_portal_plain' => $senhaPlain,
+            'portal_ativo' => true,
+        ]);
+
+        return response()->json([
+            'senha' => $senhaPlain,
+            'mensagem' => 'Senha gerada com sucesso.',
+        ]);
+    }
+
+    public function togglePortalAtivo(int $id): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update(['portal_ativo' => ! $cliente->portal_ativo]);
+
+        return response()->json(['portal_ativo' => $cliente->portal_ativo]);
     }
 }

@@ -254,6 +254,134 @@
         </div>
     </div>
 
+    {{-- ─── Portal do Cliente ──────────────────────────────────────────────── --}}
+    <div class="mt-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-6">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+                <h2 class="text-base font-semibold text-gray-800 dark:text-slate-100">Portal do Cliente</h2>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Gerencie o acesso de <strong>{{ $cliente->nome }}</strong> ao portal.</p>
+            </div>
+            <span id="portal-status-badge" class="text-xs font-semibold px-3 py-1 rounded-full {{ $cliente->portal_ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
+                {{ $cliente->portal_ativo ? 'Acesso Ativo' : 'Acesso Inativo' }}
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-600 dark:text-slate-300 mb-5">
+            <div>
+                <span class="text-xs text-gray-400">Login (CNPJ/CPF)</span>
+                <p class="font-mono font-medium mt-0.5">{{ $cliente->cpfcnpj ?? '—' }}</p>
+            </div>
+            <div>
+                <span class="text-xs text-gray-400">Senha cadastrada</span>
+                <div class="flex items-center gap-2 mt-0.5">
+                    @if($cliente->senha_portal_plain)
+                        <span id="senha-display" class="font-mono">••••••••••••</span>
+                        <button
+                            onclick="copiarSenhaPortal()"
+                            title="Copiar senha"
+                            class="p-0 border-0 bg-transparent text-gray-400 hover:text-[#0084AA] transition cursor-pointer"
+                        >
+                            <i id="icon-copy" class="fa-regular fa-copy text-sm"></i>
+                            <i id="icon-check" class="fa-solid fa-check text-sm hidden text-green-500"></i>
+                        </button>
+                        <input type="hidden" id="senha-plain-value" value="{{ $cliente->senha_portal_plain }}">
+                    @else
+                        <span>Não definida</span>
+                    @endif
+                </div>
+            </div>
+            <div>
+                <span class="text-xs text-gray-400">Último acesso</span>
+                <p class="mt-0.5">{{ $cliente->portal_ultimo_acesso?->format('d/m/Y H:i') ?? 'Nunca' }}</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+            <button
+                id="btn-gerar-senha"
+                onclick="gerarSenhaPortal({{ $cliente->id }})"
+                class="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white rounded text-sm hover:bg-brand/80 focus:outline-none border-0"
+            >
+                <i class="fa-solid fa-key"></i>
+                Gerar nova senha
+            </button>
+            <button
+                id="btn-toggle-portal"
+                onclick="togglePortal({{ $cliente->id }})"
+                class="inline-flex items-center gap-1.5 px-4 py-2 rounded text-sm focus:outline-none border transition
+                    {{ $cliente->portal_ativo
+                        ? 'border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30'
+                        : 'border-green-300 text-green-600 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-950/30' }}"
+            >
+                <i class="fa-solid {{ $cliente->portal_ativo ? 'fa-lock' : 'fa-lock-open' }}"></i>
+                {{ $cliente->portal_ativo ? 'Desativar acesso' : 'Ativar acesso' }}
+            </button>
+        </div>
+    </div>
+
+    @push('scripts')
+    <script type="module">
+    window.copiarSenhaPortal = function() {
+        const senha = document.getElementById('senha-plain-value')?.value;
+        if (!senha) { return; }
+        navigator.clipboard.writeText(senha).then(() => {
+            document.getElementById('icon-copy').classList.add('hidden');
+            document.getElementById('icon-check').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('icon-copy').classList.remove('hidden');
+                document.getElementById('icon-check').classList.add('hidden');
+            }, 2000);
+        });
+    };
+
+    window.gerarSenhaPortal = function(clienteId) {
+        Swal.fire({
+            title: 'Gerar nova senha?',
+            text: 'A senha anterior será substituída e o acesso ao portal será ativado.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Gerar senha',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#2563eb',
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+
+            const resp = await fetch(`/clientes/${clienteId}/portal/gerar-senha`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                    'Accept': 'application/json',
+                },
+            });
+
+            const data = await resp.json();
+
+            // Atualiza o campo hidden para permitir cópia imediata sem reload
+            const hiddenInput = document.getElementById('senha-plain-value');
+            if (hiddenInput) { hiddenInput.value = data.senha; }
+
+            Swal.fire({
+                title: 'Senha gerada!',
+                html: `<p class="mb-2">Anote a senha abaixo ou use o botão de cópia ao lado.</p>
+                       <div class="bg-gray-100 rounded px-4 py-3 font-mono text-xl tracking-widest select-all">${data.senha}</div>`,
+                icon: 'success',
+                confirmButtonColor: '#0084AA',
+            }).then(() => window.location.reload());
+        });
+    };
+
+    window.togglePortal = function(clienteId) {
+        fetch(`/clientes/${clienteId}/portal/toggle`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                'Accept': 'application/json',
+            },
+        }).then(r => r.json()).then(() => window.location.reload());
+    };
+    </script>
+    @endpush
+
     @if(session('success') || session('error'))
         @push('scripts')
         <script type="module">

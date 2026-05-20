@@ -1,30 +1,24 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Acesso — WR Assessoria</title>
+    <title>Acesso ao Portal — WR Assessoria</title>
     @include('partials.head')
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
-    <script>
-        if (localStorage.getItem('theme') === 'dark' ||
-            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        }
-    </script>
 </head>
-<body class="bg-gray-50 dark:bg-[#0f172a] antialiased">
+<body class="bg-[#0f172a] antialiased">
 
 <div class="min-h-screen flex items-center justify-center py-16">
     <div class="w-full max-w-md">
 
-        <div class="flex justify-center mb-8 text-center">
-            <div>
+        <div class="flex justify-center mb-8">
+            <div class="text-center">
                 <img src="/images/torresemfundo.png" alt="WR Assessoria" class="h-16 w-16 mx-auto object-contain mb-3">
                 <h1 class="text-xl font-bold text-gray-800 dark:text-slate-100">WR Assessoria</h1>
-                <p class="text-sm text-gray-500 dark:text-slate-400">Área restrita — Colaboradores</p>
+                <p class="text-sm text-gray-500 dark:text-slate-400">Portal Exclusivo para Clientes</p>
             </div>
         </div>
 
@@ -39,19 +33,22 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('login.post') }}" class="space-y-5">
+            <form method="POST" action="{{ route('portal.login.post') }}" class="space-y-5">
                 @csrf
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Email</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">CNPJ / CPF</label>
                     <input
-                        type="email"
-                        name="email"
-                        value="{{ old('email') }}"
+                        type="text"
+                        name="cpfcnpj"
+                        value="{{ old('cpfcnpj') }}"
                         required
                         autofocus
+                        placeholder="00.000.000/0000-00"
                         class="block w-full px-4 py-3 border border-gray-300 dark:border-[#475569] dark:bg-[#334155] dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0084AA]/20 focus:border-[#0084AA]"
                     >
                 </div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Senha</label>
                     <input
@@ -61,14 +58,15 @@
                         class="block w-full px-4 py-3 border border-gray-300 dark:border-[#475569] dark:bg-[#334155] dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0084AA]/20 focus:border-[#0084AA]"
                     >
                 </div>
+
                 <button type="submit" class="w-full bg-[#0084AA] hover:bg-[#006e8e] text-white font-semibold py-3 rounded-lg transition text-sm">
-                    Entrar
+                    Entrar no Portal
                 </button>
             </form>
         </div>
 
         <p class="text-center text-xs text-gray-400 dark:text-slate-500 mt-6">
-            Problemas no acesso? Fale com o administrador do sistema.
+            Problemas no acesso? Entre em contato com a WR Assessoria.
         </p>
     </div>
 </div>

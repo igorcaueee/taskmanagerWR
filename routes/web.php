@@ -13,6 +13,8 @@ use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
+use App\Http\Controllers\PortalAuthController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
@@ -22,6 +24,21 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+// ─── Portal do Cliente ────────────────────────────────────────────────────────
+Route::prefix('portal')->name('portal.')->group(function () {
+    Route::get('/login', [PortalAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [PortalAuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
+    Route::post('/logout', [PortalAuthController::class, 'logout'])->name('logout');
+
+    Route::middleware('portal.auth')->group(function () {
+        Route::get('/', [PortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/blog', [PortalController::class, 'blog'])->name('blog');
+        Route::get('/blog/{slug}', [PortalController::class, 'artigoShow'])->name('blog.show');
+        Route::get('/arquivos', [PortalController::class, 'arquivos'])->name('arquivos');
+        Route::get('/arquivos/download', [PortalController::class, 'downloadArquivo'])->name('arquivos.download');
+    });
 });
 
 // Authentication routes
@@ -92,6 +109,9 @@ Route::delete('/conhecimentos/{id}', [ClienteConhecimentoController::class, 'des
 Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->name('clientes.socios.save')->middleware('auth');
 Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
 Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
+// Portal do cliente — gerenciamento pelo admin
+Route::post('/clientes/{id}/portal/gerar-senha', [ClienteController::class, 'gerarSenhaPortal'])->name('clientes.portal.gerar-senha')->middleware('auth');
+Route::post('/clientes/{id}/portal/toggle', [ClienteController::class, 'togglePortalAtivo'])->name('clientes.portal.toggle')->middleware('auth');
 // Segmentações routes
 Route::post('/segmentacoes', [SegmentacaoController::class, 'store'])->name('segmentacoes.store')->middleware('auth');
 // Produtos routes

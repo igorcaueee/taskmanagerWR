@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class Cliente extends Model
+class Cliente extends Authenticatable
 {
     protected $table = 'clientes';
+
+    protected $hidden = ['senha_portal', 'senha_portal_plain'];
 
     protected $fillable = [
         'nome',
@@ -34,6 +36,10 @@ class Cliente extends Model
         'honorario',
         'capital_social',
         'possibilidade',
+        'senha_portal',
+        'senha_portal_plain',
+        'portal_ativo',
+        'portal_ultimo_acesso',
     ];
 
     protected $casts = [
@@ -42,7 +48,18 @@ class Cliente extends Model
         'dataabertura' => 'date',
         'data_encerramento' => 'date',
         'capital_social' => 'decimal:2',
+        'portal_ativo' => 'boolean',
+        'portal_ultimo_acesso' => 'datetime',
+        'senha_portal_plain' => 'encrypted',
     ];
+
+    /**
+     * Mapeia o campo usado pelo guard de autenticação para a senha.
+     */
+    public function getAuthPassword(): string
+    {
+        return $this->senha_portal ?? '';
+    }
 
     public function segmentacao(): BelongsTo
     {

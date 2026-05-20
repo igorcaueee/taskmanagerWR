@@ -345,7 +345,6 @@ document.addEventListener('click', function (e) {
         <ol reversed class="relative border-l border-gray-200 dark:border-slate-700 ml-2 space-y-3">
             @foreach($tarefa->historico->sortByDesc('created_at') as $reg)
                 <li class="ml-4">
-                    <span class="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-gray-300 dark:bg-slate-600 border border-white dark:border-slate-800"></span>
                     <p class="text-xs text-gray-700 dark:text-gray-300">
                         @if($reg->etapaAnterior)
                             <span class="font-medium">{{ $reg->etapaAnterior->nome }}</span>

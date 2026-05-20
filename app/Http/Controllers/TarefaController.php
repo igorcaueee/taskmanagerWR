@@ -205,25 +205,34 @@ class TarefaController extends Controller
         $departamentoId = Usuario::find($data['responsavel_id'] ?? null)?->departamento_id
             ?? Departamento::orderBy('id')->value('id');
 
-        $tarefa = Tarefa::create([
-            'titulo' => $data['titulo'],
-            'descricao' => $data['descricao'] ?? null,
-            'cliente_id' => $data['cliente_ids'][0],
-            'departamento_id' => $departamentoId,
-            'etapa_id' => $data['etapa_id'],
-            'responsavel_id' => $data['responsavel_id'] ?? null,
-            'supervisor_id' => $data['supervisor_id'] ?? null,
-            'criado_por' => Auth::id(),
-            'data_vencimento' => $data['data_vencimento'],
-            'prioridade' => $data['prioridade'],
-            'ciclo_id' => Ciclo::findOrCreateForDate(Carbon::parse($data['data_vencimento']))->id,
-            'frequencia' => $frequencia,
-            'recorrente' => $frequencia !== 'nenhuma',
-        ]);
+        $cicloId = Ciclo::findOrCreateForDate(Carbon::parse($data['data_vencimento']))->id;
 
-        $tarefa->clientes()->sync($data['cliente_ids']);
+        foreach ($data['cliente_ids'] as $clienteId) {
+            $tarefa = Tarefa::create([
+                'titulo' => $data['titulo'],
+                'descricao' => $data['descricao'] ?? null,
+                'cliente_id' => $clienteId,
+                'departamento_id' => $departamentoId,
+                'etapa_id' => $data['etapa_id'],
+                'responsavel_id' => $data['responsavel_id'] ?? null,
+                'supervisor_id' => $data['supervisor_id'] ?? null,
+                'criado_por' => Auth::id(),
+                'data_vencimento' => $data['data_vencimento'],
+                'prioridade' => $data['prioridade'],
+                'ciclo_id' => $cicloId,
+                'frequencia' => $frequencia,
+                'recorrente' => $frequencia !== 'nenhuma',
+            ]);
 
-        return Redirect::back()->with('success', 'Tarefa criada com sucesso.');
+            $tarefa->clientes()->sync([$clienteId]);
+        }
+
+        $count = count($data['cliente_ids']);
+        $mensagem = $count > 1
+            ? "{$count} tarefas criadas com sucesso."
+            : 'Tarefa criada com sucesso.';
+
+        return Redirect::back()->with('success', $mensagem);
     }
 
     public function update(Request $request, int $id): RedirectResponse

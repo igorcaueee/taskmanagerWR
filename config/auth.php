@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Cliente;
 use App\Models\Usuario;
 
 return [
@@ -43,6 +44,11 @@ return [
             'provider' => 'users',
         ],
 
+        'portal' => [
+            'driver' => 'session',
+            'provider' => 'clientes',
+        ],
+
     ],
 
     /*
@@ -66,6 +72,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => Usuario::class,
+        ],
+
+        'clientes' => [
+            'driver' => 'eloquent',
+            'model' => Cliente::class,
         ],
 
     ],

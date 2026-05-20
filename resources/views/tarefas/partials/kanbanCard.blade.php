@@ -42,14 +42,15 @@
         <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 {{ $colorClass }}">{{ $prioridadeLabel }}</span>
     </div>
 
-    @php $totalClientes = $tarefa->clientes->count(); @endphp
-    @if ($totalClientes > 0)
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+    @php
+        $nomeCliente = $tarefa->clientes->first()?->nome ?? $tarefa->cliente?->nome;
+        $totalClientes = $tarefa->clientes->count();
+    @endphp
+    @if ($nomeCliente)
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
             <i class="fa-regular fa-building w-3"></i>
-            {{ $totalClientes }} {{ $totalClientes === 1 ? 'cliente' : 'clientes' }}
+            {{ $totalClientes > 1 ? "{$totalClientes} clientes" : $nomeCliente }}
         </p>
-    @elseif ($tarefa->cliente)
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1"><i class="fa-regular fa-building w-3"></i> 1 cliente</p>
     @endif
 
     <div class="flex items-center justify-between mt-2">
