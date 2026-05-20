@@ -326,7 +326,7 @@
             </h1>
 
             <p class="text-lg text-white/55 max-w-xl leading-relaxed mb-10 reveal reveal-delay-2">
-                Desde 2009 transformando números em lucro. Soluções contábeis e assessoria empresarial para mais de 500 clientes em 56 cidades de 4 estados do Brasil.
+                Desde 2009 transformando números em lucro. Soluções contábeis e assessoria empresarial para mais de 500 clientes em 56 cidades de 7 estados do Brasil.
             </p>
 
             <div class="flex flex-col sm:flex-row gap-4 reveal reveal-delay-3">
@@ -521,10 +521,10 @@
                     Fundada em 2009 como WR Contabilidade, em 2026 evoluímos para <strong class="text-white/80">WR Assessoria</strong> — acompanhando o crescimento dos nossos clientes e suas necessidades cada vez mais específicas.
                 </p>
                 <p class="text-white/50 mb-10 leading-relaxed">
-                    Atendemos mais de 500 clientes dos setores industrial, comercial e de serviços, alcançando 56 cidades em 4 estados do Brasil. Nossa equipe é formada por 25 colaboradores com formação em Ciências Contábeis, Direito, Análise de Sistemas e Recursos Humanos.
+                    Atendemos mais de 500 clientes dos setores industrial, comercial e de serviços, alcançando 56 cidades em 7 estados do Brasil. Nossa equipe é formada por 25 colaboradores com formação em Ciências Contábeis, Direito, Análise de Sistemas e Recursos Humanos.
                 </p>
                 <ul class="space-y-3">
-                    @foreach(['Atendimento Personalizado e Exclusivo', '25 Especialistas Multidisciplinares', 'Presença em 4 Estados do Brasil', 'Soluções Integradas para o seu Negócio'] as $idx => $item)
+                    @foreach(['Atendimento Personalizado e Exclusivo', '25 Especialistas Multidisciplinares', 'Presença em 7 estados do Brasil', 'Soluções Integradas para o seu Negócio'] as $idx => $item)
                         <li class="flex items-center gap-3 reveal reveal-delay-{{ $idx + 1 }}">
                             <span class="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center" style="background:rgba(0,132,170,.2); border:1px solid rgba(0,132,170,.4);">
                                 <i class="fas fa-check text-brand text-[10px]"></i>
