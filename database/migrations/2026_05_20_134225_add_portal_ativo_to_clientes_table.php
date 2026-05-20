@@ -11,9 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Em produção, migration 1 criou 'portal_senha' com nome errado.
+        // Aqui corrigimos para 'senha_portal' e garantimos as demais colunas.
         Schema::table('clientes', function (Blueprint $table) {
-            $table->boolean('portal_ativo')->default(false)->after('senha_portal');
-            $table->timestamp('portal_ultimo_acesso')->nullable()->after('portal_ativo');
+            if (Schema::hasColumn('clientes', 'portal_senha') && ! Schema::hasColumn('clientes', 'senha_portal')) {
+                $table->renameColumn('portal_senha', 'senha_portal');
+            } elseif (! Schema::hasColumn('clientes', 'senha_portal')) {
+                $table->string('senha_portal')->nullable();
+            }
+
+            if (! Schema::hasColumn('clientes', 'portal_ativo')) {
+                $table->boolean('portal_ativo')->default(false);
+            }
+
+            if (! Schema::hasColumn('clientes', 'portal_ultimo_acesso')) {
+                $table->timestamp('portal_ultimo_acesso')->nullable();
+            }
         });
     }
 
@@ -23,7 +36,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('clientes', function (Blueprint $table) {
-            $table->dropColumn(['portal_ativo', 'portal_ultimo_acesso']);
+            if (Schema::hasColumn('clientes', 'senha_portal')) {
+                $table->renameColumn('senha_portal', 'portal_senha');
+            }
+            if (Schema::hasColumn('clientes', 'portal_ativo')) {
+                $table->dropColumn('portal_ativo');
+            }
+            if (Schema::hasColumn('clientes', 'portal_ultimo_acesso')) {
+                $table->dropColumn('portal_ultimo_acesso');
+            }
         });
     }
 };
