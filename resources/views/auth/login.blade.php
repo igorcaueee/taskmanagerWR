@@ -70,6 +70,12 @@
         <p class="text-center text-xs text-gray-400 dark:text-slate-500 mt-6">
             Problemas no acesso? Fale com o administrador do sistema.
         </p>
+        
+        <p class="text-center mt-4">
+            <a href="/" class="text-xs text-[#0084AA] hover:text-[#006e8e] transition">
+                ← Voltar para o site
+            </a>
+        </p>
     </div>
 </div>
 
