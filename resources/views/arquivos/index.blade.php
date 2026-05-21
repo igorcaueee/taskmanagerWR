@@ -139,9 +139,15 @@
                                         <i class="fa-solid fa-download text-xs"></i>
                                     </a>
                                 @endif
+                                @php
+                                    $isRootFolder = $path === '' && $item['type'] === 'folder';
+                                    $canRename = ! $isRootFolder || auth()->user()?->canRenomearPastaRaiz();
+                                @endphp
+                                @if($canRename)
                                 <button onclick="openRenameModal('{{ addslashes($item['path']) }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-amber-600 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 bg-transparent border-0" title="Renomear">
                                     <i class="fa-solid fa-pen text-xs"></i>
                                 </button>
+                                @endif
                                 <button onclick="confirmDelete('{{ addslashes($item['path']) }}', '{{ $item['type'] }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/30 bg-transparent border-0" title="Excluir">
                                     <i class="fa-solid fa-trash text-xs"></i>
                                 </button>

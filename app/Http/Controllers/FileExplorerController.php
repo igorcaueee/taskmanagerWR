@@ -6,6 +6,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -220,6 +221,12 @@ class FileExplorerController extends Controller
         $newName = str_replace(['/', '\\', '..'], '', $request->input('newName'));
         $parentDir = dirname($oldPath);
         $newPath = ($parentDir === '.' ? '' : $parentDir.'/').$newName;
+
+        // Root-level folders (client folders) can only be renamed by diretor and ti
+        $isRootFolder = $parentDir === '.' && $this->disk()->directoryExists($oldPath);
+        if ($isRootFolder && ! Auth::user()?->canRenomearPastaRaiz()) {
+            return response()->json(['error' => 'Sem permissão para renomear pastas de cliente.'], 403);
+        }
 
         if ($oldPath === '' || (! $this->disk()->exists($oldPath) && ! $this->disk()->directoryExists($oldPath))) {
             return response()->json(['error' => 'Arquivo ou pasta não encontrado.'], 404);

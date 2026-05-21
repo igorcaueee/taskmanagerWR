@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureColaboradoresAccess;
+use App\Http\Middleware\EnsureColaboradoresEdit;
 use App\Http\Middleware\EnsureDiretor;
 use App\Http\Middleware\PortalAuth;
 use App\Http\Middleware\SecurityHeaders;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'diretor' => EnsureDiretor::class,
             'colaboradores' => EnsureColaboradoresAccess::class,
+            'colaboradores.edit' => EnsureColaboradoresEdit::class,
             'admin' => EnsureAdmin::class,
             'portal.auth' => PortalAuth::class,
         ]);

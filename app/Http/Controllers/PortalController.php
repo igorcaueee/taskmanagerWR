@@ -6,6 +6,7 @@ use App\Models\Artigo;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -79,7 +80,8 @@ class PortalController extends Controller
             return [];
         }
 
-        $pastaPortal = rtrim($cliente->pasta_arquivos, '/').'/Portal';
+        $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
+        $pastaPortal = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal';
 
         if (! is_dir($pastaPortal)) {
             return [];
@@ -114,7 +116,8 @@ class PortalController extends Controller
         // Previne path traversal
         $basename = basename($filename);
 
-        $caminho = rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$basename;
+        $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
+        $caminho = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$basename;
 
         return realpath($caminho) ?: null;
     }

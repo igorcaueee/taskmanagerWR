@@ -135,11 +135,11 @@ Route::patch('/tarefas/{id}/ciclo/proximo', [TarefaController::class, 'passarPar
 Route::delete('/tarefas/{id}', [TarefaController::class, 'delete'])->name('tarefas.delete')->middleware('auth');
 // Colaboradores routes (diretor, TI, supervisor)
 Route::get('/colaboradores', [UsuarioController::class, 'showColaboradores'])->name('colaboradores')->middleware(['auth', 'colaboradores']);
-Route::get('/colaboradores/form', [UsuarioController::class, 'formColabCreate'])->name('colaboradores.form.create')->middleware(['auth', 'colaboradores']);
-Route::get('/colaboradores/{id}/form', [UsuarioController::class, 'formColabEdit'])->name('colaboradores.form.edit')->middleware(['auth', 'colaboradores']);
-Route::post('/colaboradores/save', [UsuarioController::class, 'saveColab'])->name('colaboradores.save')->middleware(['auth', 'colaboradores']);
-Route::put('/colaboradores/{id}', [UsuarioController::class, 'updateColab'])->name('colaboradores.update')->middleware(['auth', 'colaboradores']);
-Route::delete('/colaboradores/{id}', [UsuarioController::class, 'deleteColab'])->name('colaboradores.delete')->middleware(['auth', 'colaboradores']);
+Route::get('/colaboradores/form', [UsuarioController::class, 'formColabCreate'])->name('colaboradores.form.create')->middleware(['auth', 'colaboradores.edit']);
+Route::get('/colaboradores/{id}/form', [UsuarioController::class, 'formColabEdit'])->name('colaboradores.form.edit')->middleware(['auth', 'colaboradores.edit']);
+Route::post('/colaboradores/save', [UsuarioController::class, 'saveColab'])->name('colaboradores.save')->middleware(['auth', 'colaboradores.edit']);
+Route::put('/colaboradores/{id}', [UsuarioController::class, 'updateColab'])->name('colaboradores.update')->middleware(['auth', 'colaboradores.edit']);
+Route::delete('/colaboradores/{id}', [UsuarioController::class, 'deleteColab'])->name('colaboradores.delete')->middleware(['auth', 'colaboradores.edit']);
 // Arquivos routes
 Route::get('/arquivos', [FileExplorerController::class, 'index'])->name('arquivos')->middleware('auth');
 Route::get('/arquivos/download', [FileExplorerController::class, 'download'])->name('arquivos.download')->middleware('auth');

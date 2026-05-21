@@ -20,12 +20,14 @@
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-regular fa-user"></i> Colaboradores</h1>
                 <p class="text-gray-700 dark:text-gray-300">Aqui você pode visualizar e gerenciar seus colaboradores.</p>
             </div>
+            @if(auth()->user()?->canEditarColaboradores())
             <div>
                 <button type="button" class="inline-flex items-center px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80"
                         data-modal-url="{{ route('colaboradores.form.create') }}">
                     <i class="fa-solid fa-user-plus"></i>
                 </button>
             </div>
+            @endif
         </div>
 
         @if(session('success') || session('error'))
@@ -108,6 +110,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-right">
+                                @if(auth()->user()?->canEditarColaboradores())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
                                         data-modal-url="{{ route('colaboradores.form.edit', $colab->id) }}">
@@ -121,6 +124,7 @@
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

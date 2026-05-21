@@ -101,6 +101,12 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti', 'supervisor']);
     }
 
+    // Apenas Diretor e TI podem criar/editar/excluir colaboradores
+    public function canEditarColaboradores(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
+
     // Apenas Diretor vê o campo honorário (dados financeiros sensíveis)
     public function canVerHonorario(): bool
     {
@@ -133,6 +139,12 @@ class Usuario extends Authenticatable
 
     // Diretor e TI gerenciam o blog
     public function canGerenciarBlog(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
+
+    // Apenas Diretor e TI podem renomear pastas da raiz (pastas de cliente)
+    public function canRenomearPastaRaiz(): bool
     {
         return in_array($this->cargo, ['diretor', 'ti']);
     }
