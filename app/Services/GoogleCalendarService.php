@@ -161,7 +161,7 @@ class GoogleCalendarService
                 : null;
 
             $compromisso = Compromisso::updateOrCreate(
-                ['google_event_id' => $googleEvent->getId()],
+                ['google_event_id' => $googleEvent->getId(), 'criado_por' => $usuario->id],
                 [
                     'titulo' => $googleEvent->getSummary() ?? '(Sem título)',
                     'descricao' => $googleEvent->getDescription(),
