@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\Departamento;
 use App\Models\Etapa;
 use App\Models\Produto;
+use App\Models\Segmentacao;
 use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
@@ -154,16 +155,45 @@ class RelatorioController extends Controller
     {
         [$dataInicio, $dataFim] = $this->resolverPeriodo($request);
 
-        $totalClientes = Cliente::query()->count();
-        $totalAtivos = Cliente::query()->where('status', 'ativo')->count();
-        $totalInativos = Cliente::query()->where('status', '!=', 'ativo')->count();
+        $tipoFiltro = $request->input('tipo');
+        $statusFiltro = $request->input('status');
+        $regimeFiltro = $request->input('regime_tributario');
+        $estadoFiltro = $request->input('estado');
+        $segmentacaoFiltro = $request->filled('segmentacao_id') ? $request->integer('segmentacao_id') : null;
+        $fatorRFiltro = $request->input('fator_r');
 
-        $totalPJ = Cliente::query()->where('status', 'ativo')->where('tipo', '1')->count();
-        $totalPF = Cliente::query()->where('status', 'ativo')->where('tipo', '0')->count();
+        $aplicarFiltrosCliente = function ($q) use ($tipoFiltro, $statusFiltro, $regimeFiltro, $estadoFiltro, $segmentacaoFiltro, $fatorRFiltro): void {
+            if ($tipoFiltro !== null && $tipoFiltro !== '') {
+                $q->where('tipo', $tipoFiltro);
+            }
+            if ($statusFiltro) {
+                $q->where('status', $statusFiltro);
+            }
+            if ($regimeFiltro) {
+                $q->where('regime_tributario', $regimeFiltro);
+            }
+            if ($estadoFiltro) {
+                $q->where('estado', $estadoFiltro);
+            }
+            if ($segmentacaoFiltro) {
+                $q->where('segmentacao_id', $segmentacaoFiltro);
+            }
+            if ($fatorRFiltro !== null && $fatorRFiltro !== '') {
+                $q->where('fator_r', (bool) $fatorRFiltro);
+            }
+        };
+
+        $totalClientes = Cliente::query()->tap($aplicarFiltrosCliente)->count();
+        $totalAtivos = Cliente::query()->where('status', 'ativo')->tap($aplicarFiltrosCliente)->count();
+        $totalInativos = Cliente::query()->where('status', '!=', 'ativo')->tap($aplicarFiltrosCliente)->count();
+
+        $totalPJ = Cliente::query()->where('status', 'ativo')->where('tipo', '1')->tap($aplicarFiltrosCliente)->count();
+        $totalPF = Cliente::query()->where('status', 'ativo')->where('tipo', '0')->tap($aplicarFiltrosCliente)->count();
 
         // Clientes com mais tarefas no período
         $clientesComMaisTarefas = Tarefa::query()
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
+            ->whereHas('cliente', $aplicarFiltrosCliente)
             ->selectRaw('cliente_id, count(*) as total')
             ->groupBy('cliente_id')
             ->with('cliente')
@@ -179,6 +209,7 @@ class RelatorioController extends Controller
         $clientesComMaisConcluidas = Tarefa::query()
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->whereNotNull('data_conclusao')
+            ->whereHas('cliente', $aplicarFiltrosCliente)
             ->selectRaw('cliente_id, count(*) as total')
             ->groupBy('cliente_id')
             ->with('cliente')
@@ -194,6 +225,7 @@ class RelatorioController extends Controller
         $clientesComVencidas = Tarefa::query()
             ->whereNull('data_conclusao')
             ->where('data_vencimento', '<', now()->startOfDay())
+            ->whereHas('cliente', $aplicarFiltrosCliente)
             ->selectRaw('cliente_id, count(*) as total')
             ->groupBy('cliente_id')
             ->with('cliente')
@@ -212,6 +244,7 @@ class RelatorioController extends Controller
             $novosPorMes->push([
                 'mes' => $mes->translatedFormat('M/Y'),
                 'total' => Cliente::query()
+                    ->tap($aplicarFiltrosCliente)
                     ->whereYear('created_at', $mes->year)
                     ->whereMonth('created_at', $mes->month)
                     ->count(),
@@ -220,12 +253,22 @@ class RelatorioController extends Controller
 
         // Certificados a vencer nos próximos 30 dias
         $certificadosAVencer = Cliente::query()
+            ->tap($aplicarFiltrosCliente)
             ->whereNotNull('vencimento_certificado')
             ->whereDate('vencimento_certificado', '>=', now()->toDateString())
             ->whereDate('vencimento_certificado', '<=', now()->addDays(30)->toDateString())
             ->where('status', 'ativo')
             ->orderBy('vencimento_certificado')
             ->get(['id', 'nome', 'vencimento_certificado']);
+
+        // Dados para os selects de filtro
+        $segmentacoes = Segmentacao::query()->orderBy('nome')->get(['id', 'nome']);
+        $estados = Cliente::query()
+            ->whereNotNull('estado')
+            ->where('estado', '!=', '')
+            ->orderBy('estado')
+            ->distinct()
+            ->pluck('estado');
 
         return view('relatorios.clientes', compact(
             'dataInicio',
@@ -240,6 +283,8 @@ class RelatorioController extends Controller
             'clientesComVencidas',
             'novosPorMes',
             'certificadosAVencer',
+            'segmentacoes',
+            'estados',
         ));
     }
 

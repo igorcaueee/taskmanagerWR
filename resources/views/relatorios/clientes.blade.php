@@ -12,7 +12,7 @@
             </div>
         </div>
 
-        {{-- Filtro de período --}}
+        {{-- Filtros --}}
         <form method="GET" action="{{ route('relatorios.clientes') }}" id="form-relatorio"
               class="bg-white dark:bg-slate-800 rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
             <div>
@@ -40,10 +40,84 @@
                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
             </div>
+
+            {{-- Separador visual --}}
+            <div class="w-px h-8 bg-gray-200 dark:bg-slate-600 self-end hidden sm:block"></div>
+
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Status</label>
+                <select name="status"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    <option value="ativo"      @selected(request('status') === 'ativo')>Ativo</option>
+                    <option value="inativo"    @selected(request('status') === 'inativo')>Inativo</option>
+                    <option value="encerrado"  @selected(request('status') === 'encerrado')>Encerrado</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
+                <select name="tipo"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    <option value="1" @selected(request('tipo') === '1')>Pessoa Jurídica (PJ)</option>
+                    <option value="0" @selected(request('tipo') === '0')>Pessoa Física (PF)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Regime Tributário</label>
+                <select name="regime_tributario"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    @foreach(['MEI', 'Simples Nacional', 'Lucro Presumido', 'Lucro Real', 'ASSOCIACAO'] as $regime)
+                        <option value="{{ $regime }}" @selected(request('regime_tributario') === $regime)>{{ $regime }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Estado</label>
+                <select name="estado"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    @foreach($estados as $uf)
+                        <option value="{{ $uf }}" @selected(request('estado') === $uf)>{{ $uf }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Segmentação</label>
+                <select name="segmentacao_id"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todas</option>
+                    @foreach($segmentacoes as $seg)
+                        <option value="{{ $seg->id }}" @selected(request('segmentacao_id') == $seg->id)>{{ $seg->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fator R</label>
+                <select name="fator_r"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    <option value="1" @selected(request('fator_r') === '1')>Sim</option>
+                    <option value="0" @selected(request('fator_r') === '0')>Não</option>
+                </select>
+            </div>
+
             <button type="submit"
                     class="inline-flex items-center gap-2 px-4 py-1.5 bg-brand text-white rounded border-0 text-sm focus:outline-none hover:bg-brand/80">
                 <i class="fa-solid fa-magnifying-glass"></i> Aplicar
             </button>
+            @if(request()->hasAny(['status', 'tipo', 'regime_tributario', 'estado', 'segmentacao_id', 'fator_r']))
+                <a href="{{ route('relatorios.clientes', array_filter(['periodo' => request('periodo'), 'data_inicio' => request('data_inicio'), 'data_fim' => request('data_fim')])) }}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800 no-underline">
+                    <i class="fa-solid fa-xmark"></i> Limpar filtros
+                </a>
+            @endif
             <p class="text-xs text-gray-400 dark:text-slate-500 self-center ml-auto">
                 {{ $dataInicio->format('d/m/Y') }} — {{ $dataFim->format('d/m/Y') }}
             </p>
