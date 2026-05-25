@@ -20,6 +20,7 @@
      draggable="true"
      data-tarefa-id="{{ $tarefa->id }}"
      data-etapa-id="{{ $tarefa->etapa_id }}"
+     data-requer-arquivo="{{ $tarefa->requer_envio_arquivo ? '1' : '0' }}"
      ondragstart="handleDragStart(event, {{ $tarefa->id }}, {{ $tarefa->etapa_id }})"
      ondragend="handleDragEnd()">
 

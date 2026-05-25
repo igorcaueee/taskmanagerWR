@@ -8,6 +8,7 @@ use App\Models\Departamento;
 use App\Models\Etapa;
 use App\Models\RelTarefa;
 use App\Models\Tarefa;
+use App\Models\TarefaUpload;
 use App\Models\Usuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
@@ -181,6 +183,7 @@ class TarefaController extends Controller
         $data = $request->only([
             'titulo', 'descricao', 'cliente_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
+            'requer_envio_arquivo',
         ]);
 
         $validator = Validator::make($data, [
@@ -222,6 +225,7 @@ class TarefaController extends Controller
                 'ciclo_id' => $cicloId,
                 'frequencia' => $frequencia,
                 'recorrente' => $frequencia !== 'nenhuma',
+                'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
             ]);
 
             $tarefa->clientes()->sync([$clienteId]);
@@ -247,6 +251,7 @@ class TarefaController extends Controller
         $data = $request->only([
             'titulo', 'descricao', 'cliente_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
+            'requer_envio_arquivo',
         ]);
 
         $validator = Validator::make($data, [
@@ -302,6 +307,7 @@ class TarefaController extends Controller
             'data_conclusao' => $isFinalizadoForm
                 ? ($tarefa->data_conclusao ?? now())
                 : null,
+            'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
         ]);
 
         $tarefa->clientes()->sync($data['cliente_ids']);
@@ -356,6 +362,8 @@ class TarefaController extends Controller
         $etapaAnteriorId = $tarefa->etapa_id;
         $novaEtapa = Etapa::findOrFail($request->integer('etapa_id'));
         $isFinalizado = strtolower(trim($novaEtapa->nome)) === 'finalizado';
+        $isImpedimento = strtolower(trim($novaEtapa->nome)) === 'impedimento';
+        $observacao = $isImpedimento ? ($request->input('observacao') ?? null) : null;
 
         $tarefa->update([
             'etapa_id' => $novaEtapa->id,
@@ -367,13 +375,18 @@ class TarefaController extends Controller
             'etapa_anterior_id' => $etapaAnteriorId,
             'etapa_nova_id' => $novaEtapa->id,
             'alterado_por' => Auth::id(),
+            'observacao' => $observacao,
         ]);
 
         if ($isFinalizado && $tarefa->recorrente && $tarefa->frequencia !== 'nenhuma') {
             $this->criarProximaOcorrencia($tarefa);
         }
 
-        return response()->json(['success' => true, 'finalizado' => $isFinalizado]);
+        return response()->json([
+            'success' => true,
+            'finalizado' => $isFinalizado,
+            'requer_envio_arquivo' => $isFinalizado && $tarefa->requer_envio_arquivo,
+        ]);
     }
 
     private function criarProximaOcorrencia(Tarefa $tarefa): void
@@ -486,8 +499,150 @@ class TarefaController extends Controller
                 'responsavel_anterior' => $r->responsavelAnterior?->nome,
                 'responsavel_novo' => $r->responsavelNovo?->nome,
                 'alterado_por' => $r->alteradoPor?->nome,
+                'observacao' => $r->observacao,
                 'data' => $r->created_at->format('d/m/Y H:i'),
             ])->values(),
         ]);
+    }
+
+    public function uploadArquivo(Request $request, int $id): JsonResponse
+    {
+        $tarefa = Tarefa::with('cliente')->findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'arquivo' => ['required', 'file', 'max:51200'], // 50 MB
+            'pasta_categoria' => ['required', 'string', 'in:Contabilidade,Financeiro,Fiscal,Patrimônio,Pessoal'],
+            'pasta_periodo' => ['required', 'string', 'max:50', 'regex:/^[\w\s\-\.]+$/u'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $cliente = $tarefa->cliente;
+
+        if (! $cliente || ! $cliente->pasta_arquivos) {
+            return response()->json(['error' => 'Este cliente não possui pasta configurada.'], 422);
+        }
+
+        $arquivo = $request->file('arquivo');
+        $nomeOriginal = $arquivo->getClientOriginalName();
+        $categoria = $request->input('pasta_categoria');
+        $periodo = $request->input('pasta_periodo');
+
+        $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
+        $pastaPortal = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$categoria.'/'.$periodo;
+
+        if (! is_dir($pastaPortal)) {
+            mkdir($pastaPortal, 0775, true);
+        }
+
+        // Previne sobrescrita: adiciona timestamp se já existir
+        $nomeBase = pathinfo($nomeOriginal, PATHINFO_FILENAME);
+        $extensao = pathinfo($nomeOriginal, PATHINFO_EXTENSION);
+        $nomeArquivo = $nomeOriginal;
+
+        if (file_exists($pastaPortal.'/'.$nomeArquivo)) {
+            $nomeArquivo = $nomeBase.'_'.time().($extensao ? '.'.$extensao : '');
+        }
+
+        $destinoAbsoluto = $pastaPortal.'/'.$nomeArquivo;
+        $arquivo->move($pastaPortal, $nomeArquivo);
+
+        $caminhoDB = rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$categoria.'/'.$periodo.'/'.$nomeArquivo;
+
+        TarefaUpload::create([
+            'tarefa_id' => $tarefa->id,
+            'cliente_id' => $cliente->id,
+            'enviado_por' => Auth::id(),
+            'arquivo_nome' => $nomeArquivo,
+            'arquivo_path' => $caminhoDB,
+            'pasta_categoria' => $categoria,
+            'pasta_periodo' => $periodo,
+            'tamanho' => file_exists($destinoAbsoluto) ? filesize($destinoAbsoluto) : 0,
+            'mime_type' => $arquivo->getClientMimeType(),
+        ]);
+
+        return response()->json(['success' => true, 'nome' => $nomeArquivo]);
+    }
+
+    public function destroyUpload(TarefaUpload $upload): JsonResponse
+    {
+        $upload->eventos()->delete();
+        $upload->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function uploadsHistorico(TarefaUpload $upload): JsonResponse
+    {
+        $upload->load(['tarefa', 'cliente', 'enviadoPor', 'eventos.portalUsuario']);
+
+        $eventos = [];
+
+        $eventos[] = [
+            'tipo' => 'enviado',
+            'label' => 'Arquivo enviado ao portal',
+            'data' => $upload->created_at->format('d/m/Y H:i'),
+            'por' => $upload->enviadoPor?->nome ?? 'Sistema',
+        ];
+
+        foreach ($upload->eventos as $evento) {
+            $eventos[] = [
+                'tipo' => $evento->tipo === 'visualizou' ? 'visualizado' : 'baixado',
+                'label' => $evento->tipo === 'visualizou' ? 'Visualizado' : 'Baixado',
+                'data' => $evento->created_at->format('d/m/Y H:i'),
+                'por' => $evento->portalUsuario?->nome ?? 'Cliente',
+            ];
+        }
+
+        $totalVisualizacoes = $upload->eventos->where('tipo', 'visualizou')->count();
+        $totalDownloads = $upload->eventos->where('tipo', 'baixou')->count();
+
+        $pendentes = [];
+        if ($totalVisualizacoes === 0) {
+            $pendentes[] = ['tipo' => 'visualizado', 'label' => 'Ainda não visualizado', 'data' => null, 'por' => null];
+        }
+        if ($totalDownloads === 0) {
+            $pendentes[] = ['tipo' => 'baixado', 'label' => 'Ainda não baixado', 'data' => null, 'por' => null];
+        }
+
+        return response()->json([
+            'arquivo' => $upload->arquivo_nome,
+            'tamanho' => $upload->tamanhoFormatado(),
+            'cliente' => $upload->cliente?->nome ?? '—',
+            'tarefa' => $upload->tarefa?->titulo ?? '—',
+            'eventos' => array_merge($eventos, $pendentes),
+            'totalVisualizacoes' => $totalVisualizacoes,
+            'totalDownloads' => $totalDownloads,
+        ]);
+    }
+
+    public function uploadsPortal(Request $request): View
+    {
+        $usuario = Auth::user();
+        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
+
+        $query = TarefaUpload::with(['tarefa', 'cliente', 'enviadoPor'])
+            ->orderByDesc('created_at');
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->integer('cliente_id'));
+        }
+
+        if ($request->filled('status')) {
+            if ($request->input('status') === 'baixado') {
+                $query->whereNotNull('baixado_em');
+            } elseif ($request->input('status') === 'visualizado') {
+                $query->whereNull('baixado_em')->whereNotNull('visualizado_em');
+            } elseif ($request->input('status') === 'nao_baixado') {
+                $query->whereNull('baixado_em')->whereNull('visualizado_em');
+            }
+        }
+
+        $uploads = $query->paginate(30)->withQueryString();
+        $clientes = Cliente::orderBy('nome')->get();
+
+        return view('tarefas.uploads-portal', compact('uploads', 'clientes', 'podeVerTodas'));
     }
 }

@@ -16,6 +16,7 @@ class RelTarefa extends Model
         'responsavel_anterior_id',
         'responsavel_novo_id',
         'alterado_por',
+        'observacao',
     ];
 
     public function tarefa(): BelongsTo

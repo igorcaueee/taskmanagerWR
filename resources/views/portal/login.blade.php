@@ -37,14 +37,14 @@
                 @csrf
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">CNPJ / CPF</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Usuário</label>
                     <input
                         type="text"
-                        name="cpfcnpj"
-                        value="{{ old('cpfcnpj') }}"
+                        name="username"
+                        value="{{ old('username') }}"
                         required
                         autofocus
-                        placeholder="00.000.000/0000-00"
+                        placeholder="seu.usuario"
                         class="block w-full px-4 py-3 border border-gray-300 dark:border-[#475569] dark:bg-[#334155] dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0084AA]/20 focus:border-[#0084AA]"
                     >
                 </div>

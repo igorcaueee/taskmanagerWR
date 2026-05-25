@@ -31,6 +31,7 @@ class Tarefa extends Model
         'data_proxima_geracao',
         'ciclo_id',
         'passou_ciclo',
+        'requer_envio_arquivo',
     ];
 
     protected $casts = [
@@ -40,6 +41,7 @@ class Tarefa extends Model
         'atrasada' => 'boolean',
         'recorrente' => 'boolean',
         'passou_ciclo' => 'boolean',
+        'requer_envio_arquivo' => 'boolean',
     ];
 
     public function cliente(): BelongsTo
@@ -90,5 +92,10 @@ class Tarefa extends Model
     public function ciclo(): BelongsTo
     {
         return $this->belongsTo(Ciclo::class);
+    }
+
+    public function uploads(): HasMany
+    {
+        return $this->hasMany(TarefaUpload::class);
     }
 }

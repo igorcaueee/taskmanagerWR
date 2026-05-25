@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
+use App\Models\TarefaUpload;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -153,11 +155,30 @@ class FileExplorerController extends Controller
 
         $path = $this->safePath($request->input('path'));
 
+        // Detectar se o upload é dentro da pasta Portal/ de um cliente
+        $pathParts = array_values(array_filter(explode('/', $path)));
+        $clienteDoUpload = null;
+        if (count($pathParts) >= 2 && strtolower($pathParts[1]) === 'portal') {
+            $clienteDoUpload = Cliente::where('pasta_arquivos', $pathParts[0])->first();
+        }
+
         foreach ($request->file('files') as $file) {
             $filename = $file->getClientOriginalName();
             try {
                 $result = $this->disk()->putFileAs($path, $file, $filename);
                 Log::info('[Arquivos] Upload concluído', ['file' => $filename, 'result' => $result]);
+
+                if ($clienteDoUpload) {
+                    TarefaUpload::create([
+                        'tarefa_id' => null,
+                        'cliente_id' => $clienteDoUpload->id,
+                        'enviado_por' => Auth::id(),
+                        'arquivo_nome' => $filename,
+                        'arquivo_path' => ($path !== '' ? $path.'/' : '').$filename,
+                        'tamanho' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                    ]);
+                }
             } catch (\Throwable $e) {
                 Log::error('[Arquivos] Erro no upload', ['file' => $filename, 'error' => $e->getMessage()]);
 

@@ -195,6 +195,17 @@
         </div>
     </div>
 
+    {{-- Envio de arquivo ao finalizar --}}
+    <div class="flex items-start gap-3 p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+        <input type="checkbox" name="requer_envio_arquivo" id="requer_envio_arquivo" value="1"
+               class="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand"
+               {{ old('requer_envio_arquivo', $isEditing ? $tarefa->requer_envio_arquivo : false) ? 'checked' : '' }}>
+        <label for="requer_envio_arquivo" class="text-sm text-blue-800 dark:text-blue-300 cursor-pointer">
+            <span class="font-medium"><i class="fa-solid fa-file-arrow-up mr-1"></i>Esta tarefa necessita de envio de arquivo</span>
+            <span class="block text-xs text-blue-600 dark:text-blue-400 mt-0.5">Ao finalizar a tarefa, será solicitado o upload de um arquivo para o portal do cliente.</span>
+        </label>
+    </div>
+
     <div class="flex justify-end gap-2 mt-6">
         <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent dark:bg-transparent">
             Cancelar
@@ -354,6 +365,11 @@ document.addEventListener('click', function (e) {
                         @endif
                         <span class="font-medium text-brand">{{ $reg->etapaNova->nome ?? '—' }}</span>
                     </p>
+                    @if($reg->observacao)
+                        <p class="text-xs text-red-600 dark:text-red-400 mt-0.5 italic">
+                            <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ $reg->observacao }}
+                        </p>
+                    @endif
                     <p class="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
                         {{ $reg->created_at->format('d/m/Y H:i') }}
                         @if($reg->alteradoPor)

@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cliente;
+use App\Models\PortalUsuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class PortalAuthController extends Controller
@@ -23,28 +22,25 @@ class PortalAuthController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $request->validate([
-            'cpfcnpj' => ['required', 'string'],
+            'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $cpfcnpj = preg_replace('/\D/', '', $request->cpfcnpj);
+        $credentials = [
+            'username' => $request->username,
+            'password' => $request->password,
+            'ativo' => true,
+        ];
 
-        $cliente = Cliente::whereRaw(
-            "REPLACE(REPLACE(REPLACE(cpfcnpj, '.', ''), '-', ''), '/', '') = ?",
-            [$cpfcnpj]
-        )
-            ->where('portal_ativo', true)
-            ->first();
-
-        if (! $cliente || ! Hash::check($request->password, $cliente->senha_portal)) {
+        if (! Auth::guard('portal')->attempt($credentials)) {
             return back()
-                ->withInput($request->only('cpfcnpj'))
-                ->withErrors(['cpfcnpj' => 'CNPJ/CPF ou senha inválidos.']);
+                ->withInput($request->only('username'))
+                ->withErrors(['username' => 'Usuário ou senha inválidos.']);
         }
 
-        Auth::guard('portal')->login($cliente);
-
-        $cliente->update(['portal_ultimo_acesso' => now()]);
+        /** @var PortalUsuario $portalUsuario */
+        $portalUsuario = Auth::guard('portal')->user();
+        $portalUsuario->update(['ultimo_acesso' => now()]);
 
         $request->session()->regenerate();
 

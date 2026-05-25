@@ -103,6 +103,7 @@
                     {{-- Drop zone --}}
                     <div class="kanban-column flex-1 min-h-[200px] p-2 space-y-2 overflow-y-auto"
                          data-etapa-id="{{ $etapa->id }}"
+                         data-etapa-nome="{{ $etapa->nome }}"
                          ondragover="event.preventDefault()"
                          ondrop="handleDrop(event, {{ $etapa->id }})">
 
@@ -163,17 +164,73 @@
 
         const tarefaId = event.dataTransfer.getData('tarefaId');
         const etapaOrigem = parseInt(event.dataTransfer.getData('etapaOrigem'));
-        const cardToMove = draggedCard; // capture before handleDragEnd nulls it
+        const cardToMove = draggedCard;
 
         if (!tarefaId || novaEtapaId === etapaOrigem) {
             return;
         }
 
-        // Optimistic UI: move card
-        if (cardToMove) {
-            col.appendChild(cardToMove);
+        const nomeEtapa = (col.dataset.etapaNome ?? '').trim().toLowerCase();
+        const isImpedimento = nomeEtapa === 'impedimento';
+
+        // ── Impedimento: pedir motivo antes de mover ─────────────────────────
+        if (isImpedimento) {
+            const swalResult = await Swal.fire({
+                title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-circle-exclamation mr-2 text-red-500"></i>Por que está impedida?</span>',
+                html: '<p class="text-sm text-gray-500 mb-1">Descreva o motivo do impedimento para registrar no histórico da tarefa.</p>',
+                input: 'textarea',
+                inputPlaceholder: 'Ex: Aguardando documentação do cliente...',
+                inputAttributes: { rows: 4, style: 'font-size:0.875rem;' },
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar impedimento',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc2626',
+                inputValidator: (value) => {
+                    if (!value || !value.trim()) {
+                        return 'Informe o motivo do impedimento.';
+                    }
+                },
+            });
+
+            if (!swalResult.isConfirmed) { return; }
+
+            if (cardToMove) { col.appendChild(cardToMove); }
+            updateCount(etapaOrigem, -1);
+            updateCount(novaEtapaId, 1);
+
+            try {
+                const response = await fetch(updateEtapaUrl(tarefaId), {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ etapa_id: novaEtapaId, observacao: swalResult.value }),
+                });
+
+                if (!response.ok) { throw new Error(); }
+
+                if (cardToMove) {
+                    cardToMove.dataset.etapaId = novaEtapaId;
+                    cardToMove.classList.remove('bg-green-50', 'border-green-300');
+                    cardToMove.classList.add('bg-white', 'border-gray-200');
+                }
+
+                showToast('Tarefa marcada como impedida!', 'red');
+            } catch {
+                const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
+                if (originalCol && cardToMove) { originalCol.appendChild(cardToMove); }
+                updateCount(novaEtapaId, -1);
+                updateCount(etapaOrigem, 1);
+                showToast('Erro ao atualizar etapa. Tente novamente.', 'red');
+            }
+
+            return;
         }
 
+        // ── Fluxo normal (otimista) ───────────────────────────────────────────
+        if (cardToMove) { col.appendChild(cardToMove); }
         updateCount(etapaOrigem, -1);
         updateCount(novaEtapaId, 1);
 
@@ -188,17 +245,13 @@
                 body: JSON.stringify({ etapa_id: novaEtapaId }),
             });
 
-            if (!response.ok) {
-                throw new Error('Erro ao atualizar etapa.');
-            }
+            if (!response.ok) { throw new Error('Erro ao atualizar etapa.'); }
 
             const result = await response.json();
 
-            // Update the card's data attribute and visual state
             if (cardToMove) {
                 cardToMove.dataset.etapaId = novaEtapaId;
 
-                // Apply/remove green concluded style
                 if (result.finalizado) {
                     cardToMove.classList.remove('bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4');
                     cardToMove.classList.add('bg-green-50', 'border-green-300');
@@ -209,16 +262,142 @@
             }
 
             showToast('Etapa atualizada com sucesso!', 'green');
-        } catch (err) {
-            // Rollback: move card back
-            const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
-            if (originalCol && cardToMove) {
-                originalCol.appendChild(cardToMove);
+
+            // Solicitar upload se finalizado e tarefa requer arquivo
+            if (result.requer_envio_arquivo) {
+                await mostrarUploadArquivo(tarefaId);
             }
+        } catch {
+            const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
+            if (originalCol && cardToMove) { originalCol.appendChild(cardToMove); }
             updateCount(novaEtapaId, -1);
             updateCount(etapaOrigem, 1);
             showToast('Erro ao atualizar etapa. Tente novamente.', 'red');
         }
+    }
+
+    function gerarPeriodoPadrao() {
+        const now = new Date();
+        const mes = String(now.getMonth() + 1).padStart(2, '0');
+        const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        const nomeMes = nomesMeses[now.getMonth()];
+        const ano = now.getFullYear();
+        return `${mes} - ${nomeMes} ${ano}`;
+    }
+
+    async function mostrarUploadArquivo(tarefaId) {
+        const periodoPadrao = gerarPeriodoPadrao();
+        await Swal.fire({
+            title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-arrow-up mr-2 text-blue-500"></i>Enviar arquivo ao portal do cliente</span>',
+            html: `
+                <p class="text-sm text-gray-500 mb-4">Esta tarefa requer o envio de um arquivo para o portal do cliente.</p>
+
+                <div class="mb-3 text-left">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Pasta / Categoria <span class="text-red-500">*</span></label>
+                    <select id="swal-pasta-categoria" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="">Selecione a pasta...</option>
+                        <option value="Contabilidade">📂 Contabilidade</option>
+                        <option value="Financeiro">📂 Financeiro</option>
+                        <option value="Fiscal">📂 Fiscal</option>
+                        <option value="Patrimônio">📂 Patrimônio</option>
+                        <option value="Pessoal">📂 Pessoal</option>
+                    </select>
+                </div>
+
+                <div class="mb-4 text-left">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Período <span class="text-red-500">*</span></label>
+                    <input type="text" id="swal-pasta-periodo" value="${periodoPadrao}"
+                        placeholder="Ex: 05 - Maio 2026"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <p class="text-xs text-gray-400 mt-1">A subpasta de período será criada automaticamente se não existir.</p>
+                </div>
+
+                <div id="upload-area"
+                     class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
+                     onclick="document.getElementById('swal-file-input').click()"
+                     ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
+                     ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
+                     ondrop="onArquivoDrop(event)">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2 block"></i>
+                    <p class="text-sm text-gray-600 font-medium">Clique para selecionar ou arraste o arquivo aqui</p>
+                    <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
+                </div>
+                <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-paper-plane mr-1"></i> Enviar arquivo',
+            cancelButtonText: 'Enviar depois',
+            confirmButtonColor: '#0084AA',
+            preConfirm: async () => {
+                const fileInput = document.getElementById('swal-file-input');
+                const categoria = document.getElementById('swal-pasta-categoria').value.trim();
+                const periodo = document.getElementById('swal-pasta-periodo').value.trim();
+
+                if (!categoria) {
+                    Swal.showValidationMessage('Selecione a pasta / categoria.');
+                    return false;
+                }
+                if (!periodo) {
+                    Swal.showValidationMessage('Informe o período.');
+                    return false;
+                }
+                if (!fileInput || !fileInput.files.length) {
+                    Swal.showValidationMessage('Selecione um arquivo para enviar.');
+                    return false;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo', fileInput.files[0]);
+                formData.append('pasta_categoria', categoria);
+                formData.append('pasta_periodo', periodo);
+
+                Swal.showLoading();
+
+                try {
+                    const res = await fetch(`/tarefas/${tarefaId}/upload`, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: formData,
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        Swal.showValidationMessage(data.error ?? 'Erro ao enviar o arquivo.');
+                        return false;
+                    }
+                    return data;
+                } catch {
+                    Swal.showValidationMessage('Erro de conexão ao enviar o arquivo.');
+                    return false;
+                }
+            },
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                showToast(`Arquivo "${result.value.nome}" enviado ao portal!`, 'green');
+            }
+        });
+    }
+
+    function onArquivoSelecionado(input) {
+        const nameEl = document.getElementById('file-selected-name');
+        if (input.files.length && nameEl) {
+            nameEl.textContent = '📎 ' + input.files[0].name;
+            nameEl.classList.remove('hidden');
+            document.getElementById('upload-area').classList.add('border-blue-400', 'bg-blue-50');
+        }
+    }
+
+    function onArquivoDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const area = document.getElementById('upload-area');
+        if (area) { area.classList.remove('border-blue-400', 'bg-blue-50'); }
+        const files = event.dataTransfer.files;
+        if (!files.length) { return; }
+        const fakeInput = document.getElementById('swal-file-input');
+        const dt = new DataTransfer();
+        dt.items.add(files[0]);
+        fakeInput.files = dt.files;
+        onArquivoSelecionado(fakeInput);
     }
 
     function updateCount(etapaId, delta) {
@@ -337,6 +516,11 @@
                     item += `<p class="text-xs text-gray-700">
                         ${h.etapa_anterior ? `<span class="font-semibold">${h.etapa_anterior}</span> <i class="fa-solid fa-arrow-right text-gray-400" style="font-size:0.6rem"></i> ` : ''}
                         <span class="font-semibold" style="color:${h.etapa_nova_cor}">${h.etapa_nova}</span>
+                    </p>`;
+                }
+                if (h.observacao) {
+                    item += `<p class="text-xs text-red-600 mt-0.5 italic">
+                        <i class="fa-solid fa-circle-exclamation mr-1" style="font-size:0.6rem"></i>${h.observacao}
                     </p>`;
                 }
                 if (h.responsavel_novo) {

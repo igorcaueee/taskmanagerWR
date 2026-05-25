@@ -38,6 +38,7 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/blog/{slug}', [PortalController::class, 'artigoShow'])->name('blog.show');
         Route::get('/arquivos', [PortalController::class, 'arquivos'])->name('arquivos');
         Route::get('/arquivos/download', [PortalController::class, 'downloadArquivo'])->name('arquivos.download');
+        Route::get('/arquivos/visualizar', [PortalController::class, 'visualizarArquivo'])->name('arquivos.visualizar');
     });
 });
 
@@ -109,9 +110,10 @@ Route::delete('/conhecimentos/{id}', [ClienteConhecimentoController::class, 'des
 Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->name('clientes.socios.save')->middleware('auth');
 Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
 Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
-// Portal do cliente — gerenciamento pelo admin
-Route::post('/clientes/{id}/portal/gerar-senha', [ClienteController::class, 'gerarSenhaPortal'])->name('clientes.portal.gerar-senha')->middleware('auth');
-Route::post('/clientes/{id}/portal/toggle', [ClienteController::class, 'togglePortalAtivo'])->name('clientes.portal.toggle')->middleware('auth');
+// Portal do cliente — gerenciamento de usuários pelo admin
+Route::post('/clientes/{id}/portal/usuarios', [ClienteController::class, 'storeUsuarioPortal'])->name('clientes.portal.usuarios.store')->middleware('auth');
+Route::put('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'updateUsuarioPortal'])->name('clientes.portal.usuarios.update')->middleware('auth');
+Route::delete('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'destroyUsuarioPortal'])->name('clientes.portal.usuarios.destroy')->middleware('auth');
 // Segmentações routes
 Route::post('/segmentacoes', [SegmentacaoController::class, 'store'])->name('segmentacoes.store')->middleware('auth');
 // Produtos routes
@@ -133,6 +135,10 @@ Route::get('/tarefas/{id}/detalhe', [TarefaController::class, 'detalhe'])->name(
 Route::patch('/tarefas/{id}/etapa', [TarefaController::class, 'updateEtapa'])->name('tarefas.update.etapa')->middleware('auth');
 Route::patch('/tarefas/{id}/ciclo/proximo', [TarefaController::class, 'passarParaProximoCiclo'])->name('tarefas.ciclo.proximo')->middleware('auth');
 Route::delete('/tarefas/{id}', [TarefaController::class, 'delete'])->name('tarefas.delete')->middleware('auth');
+Route::post('/tarefas/{id}/upload', [TarefaController::class, 'uploadArquivo'])->name('tarefas.upload')->middleware('auth');
+Route::get('/tarefas/uploads-portal', [TarefaController::class, 'uploadsPortal'])->name('tarefas.uploads-portal')->middleware('auth');
+Route::get('/tarefas/uploads-portal/{upload}/historico', [TarefaController::class, 'uploadsHistorico'])->name('tarefas.uploads-portal.historico')->middleware('auth');
+Route::delete('/tarefas/uploads-portal/{upload}', [TarefaController::class, 'destroyUpload'])->name('tarefas.uploads-portal.destroy')->middleware('auth');
 // Colaboradores routes (diretor, TI, supervisor)
 Route::get('/colaboradores', [UsuarioController::class, 'showColaboradores'])->name('colaboradores')->middleware(['auth', 'colaboradores']);
 Route::get('/colaboradores/form', [UsuarioController::class, 'formColabCreate'])->name('colaboradores.form.create')->middleware(['auth', 'colaboradores.edit']);

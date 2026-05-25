@@ -393,18 +393,28 @@
     // ─── Delete ───
     function confirmDelete(path, type, name) {
         const label = type === 'folder' ? 'a pasta' : 'o arquivo';
-        if (!confirm(`Tem certeza que deseja excluir ${label} "${name}"?`)) return;
+        Swal.fire({
+            title: 'Excluir ' + (type === 'folder' ? 'pasta' : 'arquivo') + '?',
+            html: `Tem certeza que deseja excluir ${label} <strong>${name}</strong>?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ef4444',
+        }).then(result => {
+            if (!result.isConfirmed) { return; }
 
-        fetch('{{ route("arquivos.delete") }}', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ path, type })
-        }).then(res => {
-            if (res.ok) {
-                window.location.reload();
-            } else {
-                res.json().then(data => alert(data.error || 'Erro ao excluir.'));
-            }
+            fetch('{{ route("arquivos.delete") }}', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ path, type })
+            }).then(res => {
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    res.json().then(data => Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Erro ao excluir.' }));
+                }
+            });
         });
     }
 </script>

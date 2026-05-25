@@ -85,4 +85,9 @@ class Cliente extends Authenticatable
     {
         return $this->hasMany(ClienteConhecimento::class)->orderByDesc('created_at');
     }
+
+    public function portalUsuarios(): HasMany
+    {
+        return $this->hasMany(PortalUsuario::class);
+    }
 }

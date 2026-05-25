@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\PortalUsuario;
 use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\Socio;
@@ -14,7 +15,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -108,7 +108,7 @@ class ClienteController extends Controller
 
     public function showCliente(int $id): View
     {
-        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'portalUsuarios'])->findOrFail($id);
 
         return view('clientes.show', compact('cliente'));
     }
@@ -679,33 +679,79 @@ class ClienteController extends Controller
         return Redirect::route('clientes.quadro.modal', $clienteId)->with('success', 'Sócio removido com sucesso.');
     }
 
-    public function gerarSenhaPortal(int $id): JsonResponse
+    public function storeUsuarioPortal(Request $request, int $id): JsonResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
         $cliente = Cliente::findOrFail($id);
 
-        $senhaPlain = Str::password(12, symbols: false);
-
-        $cliente->update([
-            'senha_portal' => Hash::make($senhaPlain),
-            'senha_portal_plain' => $senhaPlain,
-            'portal_ativo' => true,
+        $validator = Validator::make($request->all(), [
+            'nome' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:100', 'unique:portal_usuarios,username'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'telefone' => ['nullable', 'string', 'max:30'],
+            'password' => ['required', 'string', 'min:6'],
         ]);
 
-        return response()->json([
-            'senha' => $senhaPlain,
-            'mensagem' => 'Senha gerada com sucesso.',
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $usuario = $cliente->portalUsuarios()->create([
+            'nome' => $request->nome,
+            'username' => $request->username,
+            'email' => $request->email,
+            'telefone' => $request->telefone,
+            'password' => Hash::make($request->password),
+            'ativo' => true,
         ]);
+
+        return response()->json(['usuario' => $usuario, 'mensagem' => 'Usuário criado com sucesso.']);
     }
 
-    public function togglePortalAtivo(int $id): JsonResponse
+    public function updateUsuarioPortal(Request $request, int $clienteId, int $usuarioId): JsonResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $cliente = Cliente::findOrFail($id);
-        $cliente->update(['portal_ativo' => ! $cliente->portal_ativo]);
+        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
 
-        return response()->json(['portal_ativo' => $cliente->portal_ativo]);
+        $validator = Validator::make($request->all(), [
+            'nome' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:100', 'unique:portal_usuarios,username,'.$usuarioId],
+            'email' => ['nullable', 'email', 'max:255'],
+            'telefone' => ['nullable', 'string', 'max:30'],
+            'password' => ['nullable', 'string', 'min:6'],
+            'ativo' => ['boolean'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $dados = [
+            'nome' => $request->nome,
+            'username' => $request->username,
+            'email' => $request->email,
+            'telefone' => $request->telefone,
+            'ativo' => $request->boolean('ativo', $usuario->ativo),
+        ];
+
+        if ($request->filled('password')) {
+            $dados['password'] = Hash::make($request->password);
+        }
+
+        $usuario->update($dados);
+
+        return response()->json(['usuario' => $usuario->fresh(), 'mensagem' => 'Usuário atualizado com sucesso.']);
+    }
+
+    public function destroyUsuarioPortal(int $clienteId, int $usuarioId): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
+        $usuario->delete();
+
+        return response()->json(['mensagem' => 'Usuário removido com sucesso.']);
     }
 }
