@@ -13,7 +13,7 @@
     $estaConcluida = ! is_null($tarefa->data_conclusao);
 @endphp
 
-<div class="kanban-card rounded-lg shadow-sm border p-3 cursor-grab active:cursor-grabbing select-none
+<div class="kanban-card rounded-lg shadow-sm border p-2 cursor-grab active:cursor-grabbing select-none
     {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800' }}
     {{ $tarefa->passou_ciclo && ! $estaConcluida ? 'border-amber-400 border-l-4' : '' }}
     {{ ! $estaConcluida && ! $tarefa->passou_ciclo ? 'border-gray-200 dark:border-slate-700' : '' }}"
@@ -25,21 +25,21 @@
      ondragend="handleDragEnd()">
 
     @if ($tarefa->passou_ciclo && ! $estaConcluida)
-        <div class="flex items-center gap-1 text-amber-600 text-xs font-medium mb-2">
+        <div class="flex items-center gap-1 text-amber-600 text-xs font-medium mb-1">
             <i class="fa-solid fa-forward-step"></i>
             <span>Vinda do ciclo anterior</span>
         </div>
     @endif
 
     @if ($estaConcluida)
-        <div class="flex items-center gap-1 text-green-600 text-xs font-medium mb-2">
+        <div class="flex items-center gap-1 text-green-600 text-xs font-medium mb-1">
             <i class="fa-solid fa-circle-check"></i>
             <span>Concluída em {{ $tarefa->data_conclusao->format('d/m/Y') }}</span>
         </div>
     @endif
 
-    <div class="flex items-start justify-between gap-1 mb-2">
-        <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 leading-tight line-clamp-2">{{ $tarefa->titulo }}</p>
+    <div class="flex items-start justify-between gap-1 mb-1.5">
+        <p class="text-xs font-semibold text-gray-800 dark:text-slate-200 leading-tight line-clamp-2">{{ $tarefa->titulo }}</p>
         <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 {{ $colorClass }}">{{ $prioridadeLabel }}</span>
     </div>
 
@@ -48,13 +48,13 @@
         $totalClientes = $tarefa->clientes->count();
     @endphp
     @if ($nomeCliente)
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5 truncate">
             <i class="fa-regular fa-building w-3"></i>
             {{ $totalClientes > 1 ? "{$totalClientes} clientes" : $nomeCliente }}
         </p>
     @endif
 
-    <div class="flex items-center justify-between mt-2">
+    <div class="flex items-center justify-between mt-1.5">
         @if ($tarefa->responsavel)
             <span class="text-xs text-gray-500 dark:text-gray-400"><i class="fa-regular fa-user w-3"></i> {{ $tarefa->responsavel->nome }}</span>
         @else
@@ -68,7 +68,7 @@
     </div>
 
     {{-- Quick actions --}}
-    <div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-slate-700 items-center">
+    <div class="flex gap-2 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-slate-700 items-center">
         @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
         <button type="button"
                 class="text-xs text-gray-400 dark:text-slate-500 hover:text-brand border-0 bg-transparent p-0 cursor-pointer"

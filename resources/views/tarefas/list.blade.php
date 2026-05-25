@@ -87,9 +87,9 @@
         </form>
 
         {{-- Kanban Board --}}
-        <div class="flex gap-4 overflow-x-auto pb-4 flex-1" id="kanban-board">
+        <div class="flex gap-4 pb-4 flex-1" id="kanban-board">
             @foreach ($etapas as $etapa)
-                <div class="flex-shrink-0 w-64 flex flex-col bg-gray-100 dark:bg-slate-700 rounded-xl">
+                <div class="flex-1 min-w-0 flex flex-col bg-gray-100 dark:bg-slate-700 rounded-xl">
                     {{-- Column header --}}
                     <div class="flex items-center gap-2 px-3 py-2.5 rounded-t-xl"
                          style="background-color: {{ $etapa->cor ?? '#6b7280' }}1a; border-bottom: 2px solid {{ $etapa->cor ?? '#6b7280' }}">
@@ -101,7 +101,7 @@
                     </div>
 
                     {{-- Drop zone --}}
-                    <div class="kanban-column flex-1 min-h-[200px] p-2 space-y-2 overflow-y-auto"
+                    <div class="kanban-column flex-1 min-h-[200px] p-2 grid grid-cols-2 gap-2 content-start overflow-y-auto"
                          data-etapa-id="{{ $etapa->id }}"
                          data-etapa-nome="{{ $etapa->nome }}"
                          ondragover="event.preventDefault()"
