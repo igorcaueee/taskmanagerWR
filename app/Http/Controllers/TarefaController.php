@@ -189,8 +189,8 @@ class TarefaController extends Controller
         $validator = Validator::make($data, [
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'cliente_ids' => ['required', 'array', 'min:1'],
-            'cliente_ids.*' => ['required', 'exists:clientes,id'],
+            'cliente_ids' => ['nullable', 'array'],
+            'cliente_ids.*' => ['exists:clientes,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -210,7 +210,9 @@ class TarefaController extends Controller
 
         $cicloId = Ciclo::findOrCreateForDate(Carbon::parse($data['data_vencimento']))->id;
 
-        foreach ($data['cliente_ids'] as $clienteId) {
+        $clienteIds = ! empty($data['cliente_ids']) ? $data['cliente_ids'] : [null];
+
+        foreach ($clienteIds as $clienteId) {
             $tarefa = Tarefa::create([
                 'titulo' => $data['titulo'],
                 'descricao' => $data['descricao'] ?? null,
@@ -228,10 +230,12 @@ class TarefaController extends Controller
                 'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
             ]);
 
-            $tarefa->clientes()->sync([$clienteId]);
+            if ($clienteId !== null) {
+                $tarefa->clientes()->sync([$clienteId]);
+            }
         }
 
-        $count = count($data['cliente_ids']);
+        $count = count($clienteIds);
         $mensagem = $count > 1
             ? "{$count} tarefas criadas com sucesso."
             : 'Tarefa criada com sucesso.';
@@ -257,8 +261,8 @@ class TarefaController extends Controller
         $validator = Validator::make($data, [
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
-            'cliente_ids' => ['required', 'array', 'min:1'],
-            'cliente_ids.*' => ['required', 'exists:clientes,id'],
+            'cliente_ids' => ['nullable', 'array'],
+            'cliente_ids.*' => ['exists:clientes,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -288,10 +292,12 @@ class TarefaController extends Controller
             ?? $tarefa->departamento_id
             ?? Departamento::orderBy('id')->value('id');
 
+        $clienteIds = ! empty($data['cliente_ids']) ? $data['cliente_ids'] : [];
+
         $tarefa->update([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
-            'cliente_id' => $data['cliente_ids'][0],
+            'cliente_id' => $clienteIds[0] ?? null,
             'departamento_id' => $departamentoId,
             'etapa_id' => $data['etapa_id'],
             'responsavel_id' => $novoResponsavelId,
@@ -310,7 +316,7 @@ class TarefaController extends Controller
             'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
         ]);
 
-        $tarefa->clientes()->sync($data['cliente_ids']);
+        $tarefa->clientes()->sync($clienteIds);
 
         $etapaMudou = (int) $etapaAnteriorId !== (int) $data['etapa_id'];
         $responsavelMudou = (int) ($responsavelAnteriorId ?? 0) !== (int) ($novoResponsavelId ?? 0);
