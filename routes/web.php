@@ -149,10 +149,15 @@ Route::delete('/colaboradores/{id}', [UsuarioController::class, 'deleteColab'])-
 // Arquivos routes
 Route::get('/arquivos', [FileExplorerController::class, 'index'])->name('arquivos')->middleware('auth');
 Route::get('/arquivos/download', [FileExplorerController::class, 'download'])->name('arquivos.download')->middleware('auth');
+Route::get('/arquivos/download-publico', [FileExplorerController::class, 'downloadPublico'])->name('arquivos.downloadPublico');
 Route::post('/arquivos/upload', [FileExplorerController::class, 'upload'])->name('arquivos.upload')->middleware('auth');
 Route::post('/arquivos/folder', [FileExplorerController::class, 'createFolder'])->name('arquivos.createFolder')->middleware('auth');
 Route::put('/arquivos/rename', [FileExplorerController::class, 'rename'])->name('arquivos.rename')->middleware('auth');
 Route::delete('/arquivos/delete', [FileExplorerController::class, 'delete'])->name('arquivos.delete')->middleware('auth');
+Route::post('/arquivos/gerar-link', [FileExplorerController::class, 'gerarLinkPublico'])->name('arquivos.gerarLink')->middleware('auth');
+Route::post('/arquivos/enviar-email', [FileExplorerController::class, 'enviarEmail'])->name('arquivos.enviarEmail')->middleware('auth');
+Route::get('/arquivos/usuarios', [FileExplorerController::class, 'usuariosParaCompartilhar'])->name('arquivos.usuarios')->middleware('auth');
+Route::get('/arquivos/portal-usuarios/{clienteId}', [FileExplorerController::class, 'portalUsuariosDoCliente'])->name('arquivos.portalUsuarios')->middleware('auth');
 // Chatbot routes
 Route::post('/chatbot/mensagem', [ChatbotController::class, 'message'])->name('chatbot.message')->middleware('auth');
 Route::delete('/chatbot/historico', [ChatbotController::class, 'clear'])->name('chatbot.clear')->middleware('auth');

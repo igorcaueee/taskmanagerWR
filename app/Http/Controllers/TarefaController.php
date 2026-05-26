@@ -392,6 +392,7 @@ class TarefaController extends Controller
             'success' => true,
             'finalizado' => $isFinalizado,
             'requer_envio_arquivo' => $isFinalizado && $tarefa->requer_envio_arquivo,
+            'cliente_id' => $tarefa->cliente_id,
         ]);
     }
 
@@ -569,7 +570,7 @@ class TarefaController extends Controller
             'mime_type' => $arquivo->getClientMimeType(),
         ]);
 
-        return response()->json(['success' => true, 'nome' => $nomeArquivo]);
+        return response()->json(['success' => true, 'nome' => $nomeArquivo, 'arquivo_path' => $caminhoDB]);
     }
 
     public function destroyUpload(TarefaUpload $upload): JsonResponse

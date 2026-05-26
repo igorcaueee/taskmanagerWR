@@ -2,15 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ArquivoCompartilhadoMail;
 use App\Models\Cliente;
+use App\Models\PortalUsuario;
 use App\Models\TarefaUpload;
+use App\Models\TarefaUploadEvento;
+use App\Models\Usuario;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -282,5 +288,152 @@ class FileExplorerController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Gera uma URL temporária assinada (24h) para download público do arquivo.
+     */
+    public function gerarLinkPublico(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => ['required', 'string'],
+        ]);
+
+        $path = $this->safePath($request->input('path'));
+
+        if ($path === '' || ! $this->disk()->exists($path)) {
+            return response()->json(['error' => 'Arquivo não encontrado.'], 404);
+        }
+
+        $link = URL::temporarySignedRoute(
+            'arquivos.downloadPublico',
+            now()->addHours(24),
+            ['path' => $path]
+        );
+
+        return response()->json(['link' => $link, 'nome' => basename($path)]);
+    }
+
+    /**
+     * Download público via URL assinada temporária (sem necessidade de login).
+     */
+    public function downloadPublico(Request $request): StreamedResponse
+    {
+        if (! $request->hasValidSignature()) {
+            abort(403, 'Link inválido ou expirado.');
+        }
+
+        $path = $this->safePath($request->query('path'));
+
+        if ($path === '' || ! $this->disk()->exists($path)) {
+            abort(404);
+        }
+
+        // Registrar download no histórico do upload, se existir
+        $upload = TarefaUpload::where('arquivo_path', $path)->first();
+        if ($upload) {
+            TarefaUploadEvento::create([
+                'tarefa_upload_id' => $upload->id,
+                'portal_usuario_id' => null,
+                'tipo' => 'baixou',
+                'created_at' => now(),
+            ]);
+
+            if (! $upload->baixado_em) {
+                $upload->update(['baixado_em' => now()]);
+            }
+        }
+
+        return $this->disk()->download($path, basename($path));
+    }
+
+    /**
+     * Envia o link de download do arquivo por e-mail.
+     * Aceita `usuario_id` (Usuario interno) ou `portal_usuario_id` (PortalUsuario do cliente).
+     */
+    public function enviarEmail(Request $request): JsonResponse
+    {
+        Log::info('[Email] Requisição recebida', $request->only(['path', 'usuario_id', 'portal_usuario_id']));
+
+        $request->validate([
+            'path' => ['required', 'string'],
+            'usuario_id' => ['nullable', 'integer', 'exists:usuarios,id'],
+            'portal_usuario_id' => ['nullable', 'integer', 'exists:portal_usuarios,id'],
+        ]);
+
+        if (! $request->filled('usuario_id') && ! $request->filled('portal_usuario_id')) {
+            return response()->json(['error' => 'Informe o destinatário.'], 422);
+        }
+
+        $path = $this->safePath($request->input('path'));
+
+        Log::info('[Email] Path após safePath', ['path' => $path, 'exists' => $this->disk()->exists($path)]);
+
+        if ($path === '' || ! $this->disk()->exists($path)) {
+            Log::warning('[Email] Arquivo não encontrado no disco', ['path' => $path]);
+
+            return response()->json(['error' => 'Arquivo não encontrado.'], 404);
+        }
+
+        if ($request->filled('portal_usuario_id')) {
+            $destinatario = PortalUsuario::findOrFail($request->input('portal_usuario_id'));
+        } else {
+            $destinatario = Usuario::findOrFail($request->input('usuario_id'));
+        }
+
+        if (! $destinatario->email) {
+            return response()->json(['error' => 'Este usuário não possui e-mail cadastrado.'], 422);
+        }
+
+        $link = URL::temporarySignedRoute(
+            'arquivos.downloadPublico',
+            now()->addHours(24),
+            ['path' => $path]
+        );
+
+        $nomeRemetente = Auth::user()?->nome ?? 'Equipe WR';
+        $nomeArquivo = basename($path);
+
+        Log::info('[Email] Enviando arquivo compartilhado', [
+            'destinatario_email' => $destinatario->email,
+            'arquivo' => $nomeArquivo,
+        ]);
+
+        try {
+            Mail::to($destinatario->email, $destinatario->nome)
+                ->send(new ArquivoCompartilhadoMail(
+                    nomeDestinatario: $destinatario->nome,
+                    nomeArquivo: $nomeArquivo,
+                    linkDownload: $link,
+                    nomeRemetente: $nomeRemetente,
+                ));
+
+            Log::info('[Email] Arquivo compartilhado enviado com sucesso', [
+                'destinatario_email' => $destinatario->email,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[Email] Falha ao enviar arquivo compartilhado', [
+                'destinatario_email' => $destinatario->email,
+                'erro' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Falha ao enviar o e-mail. Tente novamente.'], 500);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Retorna os usuários do portal de um cliente específico.
+     */
+    public function portalUsuariosDoCliente(int $clienteId): JsonResponse
+    {
+        $usuarios = PortalUsuario::query()
+            ->where('cliente_id', $clienteId)
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'email', 'telefone']);
+
+        return response()->json($usuarios);
     }
 }

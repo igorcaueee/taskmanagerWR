@@ -265,7 +265,7 @@
 
             // Solicitar upload se finalizado e tarefa requer arquivo
             if (result.requer_envio_arquivo) {
-                await mostrarUploadArquivo(tarefaId);
+                await mostrarUploadArquivo(tarefaId, result.cliente_id);
             }
         } catch {
             const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
@@ -285,7 +285,7 @@
         return `${mes} - ${nomeMes} ${ano}`;
     }
 
-    async function mostrarUploadArquivo(tarefaId) {
+    async function mostrarUploadArquivo(tarefaId, clienteId) {
         const periodoPadrao = gerarPeriodoPadrao();
         await Swal.fire({
             title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-arrow-up mr-2 text-blue-500"></i>Enviar arquivo ao portal do cliente</span>',
@@ -323,11 +323,45 @@
                     <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
                 </div>
                 <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
+
+                <div class="mt-5 border-t border-gray-200 pt-4 text-left">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notificar também via</p>
+                    <div class="flex items-center gap-4 mb-3">
+                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input type="checkbox" id="swal-share-email" onchange="toggleShareUsuario()" class="w-4 h-4 rounded accent-indigo-600">
+                            <i class="fa-solid fa-envelope text-indigo-500"></i> E-mail
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input type="checkbox" id="swal-share-whatsapp" onchange="toggleShareUsuario()" class="w-4 h-4 rounded accent-green-600">
+                            <i class="fa-brands fa-whatsapp text-green-500"></i> WhatsApp
+                        </label>
+                    </div>
+                    <div id="swal-share-usuario-wrap" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Destinatário</label>
+                        <select id="swal-share-usuario" onchange="atualizarShareInfo()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <option value="">Carregando...</option>
+                        </select>
+                        <p id="swal-share-info" class="text-xs text-gray-400 mt-1 h-4"></p>
+                    </div>
+                </div>
             `,
             showCancelButton: true,
             confirmButtonText: '<i class="fa-solid fa-paper-plane mr-1"></i> Enviar arquivo',
             cancelButtonText: 'Enviar depois',
             confirmButtonColor: '#0084AA',
+            didOpen: async () => {
+                try {
+                    const res = await fetch(`/arquivos/portal-usuarios/${clienteId}`);
+                    const usuarios = await res.json();
+                    const sel = document.getElementById('swal-share-usuario');
+                    if (!usuarios.length) {
+                        sel.innerHTML = '<option value="">Nenhum usuário no portal deste cliente</option>';
+                        return;
+                    }
+                    sel.innerHTML = '<option value="">— Selecione um usuário —</option>' +
+                        usuarios.map(u => `<option value="${u.id}" data-email="${u.email ?? ''}" data-telefone="${u.telefone ?? ''}">${u.nome}</option>`).join('');
+                } catch {}
+            },
             preConfirm: async () => {
                 const fileInput = document.getElementById('swal-file-input');
                 const categoria = document.getElementById('swal-pasta-categoria').value.trim();
@@ -343,6 +377,16 @@
                 }
                 if (!fileInput || !fileInput.files.length) {
                     Swal.showValidationMessage('Selecione um arquivo para enviar.');
+                    return false;
+                }
+
+                const enviarEmail = document.getElementById('swal-share-email').checked;
+                const enviarWhatsapp = document.getElementById('swal-share-whatsapp').checked;
+                const usuarioId = document.getElementById('swal-share-usuario').value;
+                const usuarioOpt = document.getElementById('swal-share-usuario').options[document.getElementById('swal-share-usuario').selectedIndex];
+
+                if ((enviarEmail || enviarWhatsapp) && !usuarioId) {
+                    Swal.showValidationMessage('Selecione um destinatário para notificar.');
                     return false;
                 }
 
@@ -364,17 +408,75 @@
                         Swal.showValidationMessage(data.error ?? 'Erro ao enviar o arquivo.');
                         return false;
                     }
-                    return data;
+
+                    // Enviar por e-mail se marcado
+                    if (enviarEmail && usuarioId) {
+                        const emailRes = await fetch('{{ route("arquivos.enviarEmail") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                            body: JSON.stringify({ path: data.arquivo_path, portal_usuario_id: usuarioId }),
+                        });
+                        if (!emailRes.ok) {
+                            const emailData = await emailRes.json();
+                            Swal.showValidationMessage('Arquivo enviado, mas falha no e-mail: ' + (emailData.error ?? 'erro desconhecido'));
+                            return false;
+                        }
+                    }
+
+                    return { ...data, enviarWhatsapp, usuarioId, telefoneDest: usuarioOpt?.dataset?.telefone ?? '' };
                 } catch {
                     Swal.showValidationMessage('Erro de conexão ao enviar o arquivo.');
                     return false;
                 }
             },
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed && result.value) {
-                showToast(`Arquivo "${result.value.nome}" enviado ao portal!`, 'green');
+                const { nome, arquivo_path, enviarWhatsapp, usuarioId, telefoneDest } = result.value;
+
+                showToast(`Arquivo "${nome}" enviado ao portal!`, 'green');
+
+                // Abrir WhatsApp se marcado
+                if (enviarWhatsapp && usuarioId && telefoneDest) {
+                    try {
+                        const linkRes = await fetch('{{ route("arquivos.gerarLink") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                            body: JSON.stringify({ path: arquivo_path }),
+                        });
+                        const linkData = await linkRes.json();
+                        if (linkRes.ok) {
+                            let numero = telefoneDest.replace(/\D/g, '');
+                            if (numero.length <= 11) { numero = '55' + numero; }
+                            const mensagem = encodeURIComponent(`Olá! Segue o link para download do arquivo *${linkData.nome}*:\n\n${linkData.link}\n\n_Link válido por 24 horas._`);
+                            window.open(`https://wa.me/${numero}?text=${mensagem}`, '_blank');
+                        }
+                    } catch {}
+                } else if (enviarWhatsapp && usuarioId && !telefoneDest) {
+                    Swal.fire({ icon: 'warning', title: 'WhatsApp', text: 'Arquivo enviado, mas o usuário não possui telefone cadastrado.', timer: 4000, showConfirmButton: false });
+                }
             }
         });
+    }
+
+    function toggleShareUsuario() {
+        const emailChecked = document.getElementById('swal-share-email').checked;
+        const waChecked = document.getElementById('swal-share-whatsapp').checked;
+        const wrap = document.getElementById('swal-share-usuario-wrap');
+        wrap.classList.toggle('hidden', !emailChecked && !waChecked);
+        if (!emailChecked && !waChecked) {
+            document.getElementById('swal-share-info').textContent = '';
+        }
+    }
+
+    function atualizarShareInfo() {
+        const sel = document.getElementById('swal-share-usuario');
+        const opt = sel.options[sel.selectedIndex];
+        const email = opt?.dataset?.email ?? '';
+        const telefone = opt?.dataset?.telefone ?? '';
+        const parts = [];
+        if (email) { parts.push('✉ ' + email); }
+        if (telefone) { parts.push('📱 ' + telefone); }
+        document.getElementById('swal-share-info').textContent = parts.join('   ');
     }
 
     function onArquivoSelecionado(input) {

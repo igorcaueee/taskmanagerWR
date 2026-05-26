@@ -138,6 +138,12 @@
                                     <a href="{{ route('arquivos.download', ['path' => $item['path']]) }}" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Baixar">
                                         <i class="fa-solid fa-download text-xs"></i>
                                     </a>
+                                    <button onclick="openShareModal('email', '{{ addslashes($item['path']) }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-indigo-600 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 bg-transparent border-0" title="Enviar por e-mail">
+                                        <i class="fa-solid fa-envelope text-xs"></i>
+                                    </button>
+                                    <button onclick="openShareModal('whatsapp', '{{ addslashes($item['path']) }}', '{{ addslashes($item['name']) }}')" class="p-1.5 text-gray-400 dark:text-slate-500 hover:text-green-600 rounded hover:bg-green-50 dark:hover:bg-green-900/30 bg-transparent border-0" title="Enviar pelo WhatsApp">
+                                        <i class="fa-brands fa-whatsapp text-xs"></i>
+                                    </button>
                                 @endif
                                 @php
                                     $isRootFolder = $path === '' && $item['type'] === 'folder';
@@ -271,6 +277,54 @@
                 <button type="submit" class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Renomear</button>
             </div>
         </form>
+    </div>
+</div>
+
+{{-- Share Email Modal --}}
+<div id="shareEmailModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold dark:text-slate-100"><i class="fa-solid fa-envelope mr-2 text-indigo-500"></i>Enviar por E-mail</h3>
+            <button onclick="closeShareModal('email')" class="text-gray-400 hover:text-gray-600 bg-transparent border-0">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <p id="shareEmailFileName" class="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate"></p>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Destinatário</label>
+        <select id="shareEmailUsuario" class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="">Carregando...</option>
+        </select>
+        <p id="shareEmailInfo" class="text-xs text-gray-400 dark:text-gray-500 mt-1 h-4"></p>
+        <div class="flex justify-end gap-2 mt-4">
+            <button type="button" onclick="closeShareModal('email')" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700">Cancelar</button>
+            <button type="button" id="shareEmailBtn" onclick="enviarEmail()" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50">
+                <i class="fa-solid fa-paper-plane mr-1"></i> Enviar
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Share WhatsApp Modal --}}
+<div id="shareWhatsappModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold dark:text-slate-100"><i class="fa-brands fa-whatsapp mr-2 text-green-500"></i>Enviar pelo WhatsApp</h3>
+            <button onclick="closeShareModal('whatsapp')" class="text-gray-400 hover:text-gray-600 bg-transparent border-0">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <p id="shareWhatsappFileName" class="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate"></p>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Destinatário</label>
+        <select id="shareWhatsappUsuario" class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+            <option value="">Carregando...</option>
+        </select>
+        <p id="shareWhatsappInfo" class="text-xs text-gray-400 dark:text-gray-500 mt-1 h-4"></p>
+        <div class="flex justify-end gap-2 mt-4">
+            <button type="button" onclick="closeShareModal('whatsapp')" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700">Cancelar</button>
+            <button type="button" id="shareWhatsappBtn" onclick="enviarWhatsapp()" class="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+                <i class="fa-brands fa-whatsapp mr-1"></i> Abrir WhatsApp
+            </button>
+        </div>
     </div>
 </div>
 
@@ -416,6 +470,134 @@
                 }
             });
         });
+    }
+
+    // ─── Compartilhamento (Email & WhatsApp) ───
+    let shareFilePath = '';
+    let shareFileName = '';
+    let usuariosCache = null;
+
+    async function carregarUsuarios() {
+        if (usuariosCache) { return usuariosCache; }
+        const res = await fetch('{{ route("arquivos.usuarios") }}');
+        usuariosCache = await res.json();
+        return usuariosCache;
+    }
+
+    function buildSelectOptions(usuarios) {
+        return '<option value="">— Selecione um usuário —</option>' +
+            usuarios.map(u => `<option value="${u.id}" data-email="${u.email ?? ''}" data-telefone="${u.telefone ?? ''}">${u.nome}</option>`).join('');
+    }
+
+    async function openShareModal(tipo, path, nome) {
+        shareFilePath = path;
+        shareFileName = nome;
+
+        const usuarios = await carregarUsuarios();
+        const options = buildSelectOptions(usuarios);
+
+        if (tipo === 'email') {
+            document.getElementById('shareEmailFileName').textContent = '📄 ' + nome;
+            const sel = document.getElementById('shareEmailUsuario');
+            sel.innerHTML = options;
+            sel.dispatchEvent(new Event('change'));
+            document.getElementById('shareEmailModal').classList.remove('hidden');
+        } else {
+            document.getElementById('shareWhatsappFileName').textContent = '📄 ' + nome;
+            const sel = document.getElementById('shareWhatsappUsuario');
+            sel.innerHTML = options;
+            sel.dispatchEvent(new Event('change'));
+            document.getElementById('shareWhatsappModal').classList.remove('hidden');
+        }
+    }
+
+    function closeShareModal(tipo) {
+        document.getElementById(tipo === 'email' ? 'shareEmailModal' : 'shareWhatsappModal').classList.add('hidden');
+    }
+
+    document.getElementById('shareEmailUsuario').addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        const email = opt.dataset.email;
+        const info = document.getElementById('shareEmailInfo');
+        info.textContent = email ? '✉ ' + email : '';
+    });
+
+    document.getElementById('shareWhatsappUsuario').addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        const tel = opt.dataset.telefone;
+        const info = document.getElementById('shareWhatsappInfo');
+        info.textContent = tel ? '📱 ' + tel : (this.value ? 'Telefone não cadastrado' : '');
+    });
+
+    async function enviarEmail() {
+        const usuarioId = document.getElementById('shareEmailUsuario').value;
+        if (!usuarioId) { alert('Selecione um destinatário.'); return; }
+
+        const btn = document.getElementById('shareEmailBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Enviando...';
+
+        try {
+            const res = await fetch('{{ route("arquivos.enviarEmail") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ path: shareFilePath, usuario_id: usuarioId })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                closeShareModal('email');
+                Swal.fire({ icon: 'success', title: 'E-mail enviado!', text: 'O link de download foi enviado com sucesso.', timer: 3000, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Não foi possível enviar o e-mail.' });
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Enviar';
+        }
+    }
+
+    async function enviarWhatsapp() {
+        const sel = document.getElementById('shareWhatsappUsuario');
+        const usuarioId = sel.value;
+        if (!usuarioId) { alert('Selecione um destinatário.'); return; }
+
+        const telefone = sel.options[sel.selectedIndex].dataset.telefone;
+        if (!telefone) {
+            Swal.fire({ icon: 'warning', title: 'Sem telefone', text: 'Este usuário não possui telefone cadastrado.' });
+            return;
+        }
+
+        const btn = document.getElementById('shareWhatsappBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Gerando link...';
+
+        try {
+            const res = await fetch('{{ route("arquivos.gerarLink") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ path: shareFilePath })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Não foi possível gerar o link.' });
+                return;
+            }
+
+            // Limpa o número para o formato internacional (remove não-dígitos, adiciona 55 se necessário)
+            let numero = telefone.replace(/\D/g, '');
+            if (numero.length <= 11) { numero = '55' + numero; }
+
+            const mensagem = encodeURIComponent(`Olá! Segue o link para download do arquivo *${data.nome}*:\n\n${data.link}\n\n_Link válido por 24 horas._`);
+            closeShareModal('whatsapp');
+            window.open(`https://wa.me/${numero}?text=${mensagem}`, '_blank');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-brands fa-whatsapp mr-1"></i> Abrir WhatsApp';
+        }
     }
 </script>
 @endpush
