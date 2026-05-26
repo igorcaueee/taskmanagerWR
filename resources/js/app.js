@@ -122,3 +122,42 @@ document.addEventListener('DOMContentLoaded', () => {
 		overlay.addEventListener('click', closeSidebar);
 	}
 });
+
+// ─── Detecção de sessão expirada ────────────────────────────────────────────
+(function () {
+	let sessionAlertShown = false;
+
+	function showSessionExpired() {
+		if (sessionAlertShown) return;
+		sessionAlertShown = true;
+
+		Swal.fire({
+			icon: 'warning',
+			title: 'Sessão expirada',
+			text: 'Sua sessão foi encerrada por inatividade. Clique abaixo para fazer login novamente.',
+			confirmButtonText: 'Fazer login',
+			confirmButtonColor: '#0084AA',
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+		}).then(() => {
+			window.location.href = '/login';
+		});
+	}
+
+	// Intercepta fetch nativo
+	const originalFetch = window.fetch;
+	window.fetch = async function (...args) {
+		const response = await originalFetch(...args);
+		if (response.status === 419) {
+			showSessionExpired();
+		}
+		return response;
+	};
+
+	// Intercepta jQuery AJAX ($.ajax, $.get, $.post, etc.)
+	$(document).ajaxError(function (_event, xhr) {
+		if (xhr.status === 419) {
+			showSessionExpired();
+		}
+	});
+})();
