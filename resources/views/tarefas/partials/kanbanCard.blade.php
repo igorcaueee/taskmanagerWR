@@ -17,11 +17,12 @@
     {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800' }}
     {{ $tarefa->passou_ciclo && ! $estaConcluida ? 'border-amber-400 border-l-4' : '' }}
     {{ ! $estaConcluida && ! $tarefa->passou_ciclo ? 'border-gray-200 dark:border-slate-700' : '' }}"
+     style="border-top: 3px solid {{ $tarefa->etapa->cor ?? '#6b7280' }};"
      draggable="true"
      data-tarefa-id="{{ $tarefa->id }}"
      data-etapa-id="{{ $tarefa->etapa_id }}"
      data-requer-arquivo="{{ $tarefa->requer_envio_arquivo ? '1' : '0' }}"
-     ondragstart="handleDragStart(event, {{ $tarefa->id }}, {{ $tarefa->etapa_id }})"
+     ondragstart="handleDragStart(event, {{ $tarefa->id }})"
      ondragend="handleDragEnd()">
 
     @if ($tarefa->passou_ciclo && ! $estaConcluida)
@@ -32,7 +33,7 @@
     @endif
 
     @if ($estaConcluida)
-        <div class="flex items-center gap-1 text-green-600 text-xs font-medium mb-1">
+        <div class="kanban-conclusao-badge flex items-center gap-1 text-green-600 text-xs font-medium mb-1">
             <i class="fa-solid fa-circle-check"></i>
             <span>Concluída em {{ $tarefa->data_conclusao->format('d/m/Y') }}</span>
         </div>

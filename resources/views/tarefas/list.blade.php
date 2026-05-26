@@ -104,7 +104,9 @@
                     <div class="kanban-column flex-1 min-h-[200px] p-2 grid grid-cols-2 gap-2 content-start overflow-y-auto"
                          data-etapa-id="{{ $etapa->id }}"
                          data-etapa-nome="{{ $etapa->nome }}"
-                         ondragover="event.preventDefault()"
+                         data-etapa-cor="{{ $etapa->cor ?? '#6b7280' }}"
+                         ondragover="handleDragOver(event)"
+                         ondragleave="handleDragLeave(event)"
                          ondrop="handleDrop(event, {{ $etapa->id }})">
 
                         @foreach (($tarefas[$etapa->id] ?? collect()) as $tarefa)
@@ -124,6 +126,22 @@
 @endsection
 
 @push('scripts')
+<style>
+    .kanban-card {
+        transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+    }
+    .kanban-card.is-dragging {
+        opacity: 0.25;
+        transform: scale(0.96);
+        border-style: dashed !important;
+    }
+    .kanban-column {
+        transition: box-shadow 0.15s ease, background-color 0.15s ease;
+    }
+    .kanban-column.drag-over {
+        border-radius: 0 0 0.75rem 0.75rem;
+    }
+</style>
 <script>
     const updateEtapaUrl = (id) => `/tarefas/${id}/etapa`;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
@@ -132,35 +150,137 @@
     let draggedCard = null;
     let draggedOriginalEtapa = null;
 
-    function handleDragStart(event, tarefaId, etapaId) {
+    function handleDragStart(event, tarefaId) {
         draggedCard = event.currentTarget;
-        draggedOriginalEtapa = etapaId;
+        // Lê a etapa atual do dataset (atualizado otimisticamente), não do atributo estático do HTML
+        const etapaAtual = parseInt(draggedCard.dataset.etapaId);
+        draggedOriginalEtapa = etapaAtual;
         event.dataTransfer.setData('tarefaId', tarefaId);
-        event.dataTransfer.setData('etapaOrigem', etapaId);
+        event.dataTransfer.setData('etapaOrigem', etapaAtual);
         event.dataTransfer.effectAllowed = 'move';
-        setTimeout(() => { draggedCard.classList.add('opacity-40'); }, 0);
+
+        // Ghost rotacionado com sombra
+        const ghost = draggedCard.cloneNode(true);
+        ghost.style.cssText = [
+            'position:fixed',
+            'top:-9999px',
+            'left:-9999px',
+            `width:${draggedCard.offsetWidth}px`,
+            'transform:rotate(2.5deg) scale(1.05)',
+            'box-shadow:0 20px 48px rgba(0,0,0,0.45)',
+            'border-radius:8px',
+            'opacity:1',
+            'pointer-events:none',
+        ].join(';');
+        document.body.appendChild(ghost);
+        event.dataTransfer.setDragImage(ghost, draggedCard.offsetWidth / 2, 28);
+        requestAnimationFrame(() => document.body.removeChild(ghost));
+
+        // Card original vira placeholder tracejado
+        setTimeout(() => { draggedCard.classList.add('is-dragging'); }, 0);
     }
 
     function handleDragEnd() {
         if (draggedCard) {
-            draggedCard.classList.remove('opacity-40');
+            draggedCard.classList.remove('is-dragging');
             draggedCard = null;
         }
+        // Limpa highlight de todas as colunas caso o drop seja cancelado
+        document.querySelectorAll('.kanban-column.drag-over').forEach(col => {
+            col.classList.remove('drag-over');
+            col.style.boxShadow = '';
+            col.style.backgroundColor = '';
+        });
     }
 
     function handleDragOver(event) {
         event.preventDefault();
-        event.currentTarget.classList.add('bg-blue-50');
+        const col = event.currentTarget;
+        if (!col.classList.contains('drag-over')) {
+            col.classList.add('drag-over');
+            col.style.boxShadow = `inset 0 0 0 2px ${col.dataset.etapaCor}`;
+            col.style.backgroundColor = `${col.dataset.etapaCor}22`;
+        }
     }
 
     function handleDragLeave(event) {
-        event.currentTarget.classList.remove('bg-blue-50');
+        // Só remove se sair de fato da coluna (evita flicker com elementos filhos)
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+            const col = event.currentTarget;
+            col.classList.remove('drag-over');
+            col.style.boxShadow = '';
+            col.style.backgroundColor = '';
+        }
+    }
+
+    function applyCardStyle(card, col) {
+        const isFinalizado = (col.dataset.etapaNome ?? '').trim().toLowerCase() === 'finalizado';
+        const etapaCor = col.dataset.etapaCor;
+
+        if (isFinalizado) {
+            card.classList.remove(
+                'bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4',
+                'dark:bg-slate-800', 'dark:border-slate-700'
+            );
+            card.classList.add('bg-green-50', 'border-green-300', 'dark:bg-green-950/30', 'dark:border-green-800');
+            card.querySelector('.text-amber-600')?.closest('div')?.remove();
+
+            if (!card.querySelector('.kanban-conclusao-badge')) {
+                const today = new Date();
+                const day = String(today.getDate()).padStart(2, '0');
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const year = today.getFullYear();
+                const badge = document.createElement('div');
+                badge.className = 'kanban-conclusao-badge flex items-center gap-1 text-green-600 text-xs font-medium mb-1';
+                badge.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>Concluída em ${day}/${month}/${year}</span>`;
+                card.insertBefore(badge, card.firstChild);
+            }
+        } else {
+            card.classList.remove(
+                'bg-green-50', 'border-green-300', 'dark:bg-green-950/30', 'dark:border-green-800',
+                'border-amber-400', 'border-l-4'
+            );
+            card.classList.add('bg-white', 'border-gray-200', 'dark:bg-slate-800', 'dark:border-slate-700');
+            card.querySelector('.kanban-conclusao-badge')?.remove();
+        }
+
+        if (etapaCor) {
+            card.style.borderTopColor = etapaCor;
+            card.style.borderTopWidth = '3px';
+        }
+
+        // Atualiza estilo da data de vencimento
+        const dateSpan = card.querySelector('.fa-calendar')?.parentElement;
+        if (dateSpan) {
+            if (isFinalizado) {
+                dateSpan.classList.remove('text-red-600', 'font-semibold');
+                dateSpan.classList.add('text-gray-400');
+            } else {
+                // Re-verifica se está atrasada com base na data exibida (formato dd/mm/yyyy)
+                const dateText = dateSpan.textContent.trim();
+                const match = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (match) {
+                    const due = new Date(match[3], match[2] - 1, match[1]);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (due < today) {
+                        dateSpan.classList.remove('text-gray-400');
+                        dateSpan.classList.add('text-red-600', 'font-semibold');
+                    } else {
+                        dateSpan.classList.remove('text-red-600', 'font-semibold');
+                        dateSpan.classList.add('text-gray-400');
+                    }
+                }
+            }
+        }
     }
 
     async function handleDrop(event, novaEtapaId) {
         event.preventDefault();
         const col = event.currentTarget;
-        col.classList.remove('bg-blue-50');
+        col.classList.remove('drag-over');
+        col.style.boxShadow = '';
+        col.style.backgroundColor = '';
 
         const tarefaId = event.dataTransfer.getData('tarefaId');
         const etapaOrigem = parseInt(event.dataTransfer.getData('etapaOrigem'));
@@ -194,7 +314,17 @@
 
             if (!swalResult.isConfirmed) { return; }
 
-            if (cardToMove) { col.appendChild(cardToMove); }
+            // Snapshot para reverter em caso de erro
+            const savedClass = cardToMove ? cardToMove.className : '';
+            const savedStyle = cardToMove ? cardToMove.style.cssText : '';
+            const savedHTML  = cardToMove ? cardToMove.innerHTML : '';
+
+            // Movimento + visual otimista (inclui dataset.etapaId)
+            if (cardToMove) {
+                col.appendChild(cardToMove);
+                cardToMove.dataset.etapaId = novaEtapaId;
+                applyCardStyle(cardToMove, col);
+            }
             updateCount(etapaOrigem, -1);
             updateCount(novaEtapaId, 1);
 
@@ -211,16 +341,16 @@
 
                 if (!response.ok) { throw new Error(); }
 
-                if (cardToMove) {
-                    cardToMove.dataset.etapaId = novaEtapaId;
-                    cardToMove.classList.remove('bg-green-50', 'border-green-300');
-                    cardToMove.classList.add('bg-white', 'border-gray-200');
-                }
-
                 showToast('Tarefa marcada como impedida!', 'red');
             } catch {
                 const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
-                if (originalCol && cardToMove) { originalCol.appendChild(cardToMove); }
+                if (originalCol && cardToMove) {
+                    originalCol.appendChild(cardToMove);
+                    cardToMove.dataset.etapaId = etapaOrigem;
+                    cardToMove.className = savedClass;
+                    cardToMove.style.cssText = savedStyle;
+                    cardToMove.innerHTML = savedHTML;
+                }
                 updateCount(novaEtapaId, -1);
                 updateCount(etapaOrigem, 1);
                 showToast('Erro ao atualizar etapa. Tente novamente.', 'red');
@@ -230,7 +360,17 @@
         }
 
         // ── Fluxo normal (otimista) ───────────────────────────────────────────
-        if (cardToMove) { col.appendChild(cardToMove); }
+        // Snapshot para reverter em caso de erro
+        const savedClass = cardToMove ? cardToMove.className : '';
+        const savedStyle = cardToMove ? cardToMove.style.cssText : '';
+        const savedHTML  = cardToMove ? cardToMove.innerHTML : '';
+
+        // Movimento + visual otimista imediato (inclui dataset.etapaId)
+        if (cardToMove) {
+            col.appendChild(cardToMove);
+            cardToMove.dataset.etapaId = novaEtapaId;
+            applyCardStyle(cardToMove, col);
+        }
         updateCount(etapaOrigem, -1);
         updateCount(novaEtapaId, 1);
 
@@ -249,27 +389,20 @@
 
             const result = await response.json();
 
-            if (cardToMove) {
-                cardToMove.dataset.etapaId = novaEtapaId;
-
-                if (result.finalizado) {
-                    cardToMove.classList.remove('bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4');
-                    cardToMove.classList.add('bg-green-50', 'border-green-300');
-                } else {
-                    cardToMove.classList.remove('bg-green-50', 'border-green-300');
-                    cardToMove.classList.add('bg-white', 'border-gray-200');
-                }
-            }
-
             showToast('Etapa atualizada com sucesso!', 'green');
 
-            // Solicitar upload se finalizado e tarefa requer arquivo
             if (result.requer_envio_arquivo) {
                 await mostrarUploadArquivo(tarefaId, result.cliente_id);
             }
         } catch {
             const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
-            if (originalCol && cardToMove) { originalCol.appendChild(cardToMove); }
+            if (originalCol && cardToMove) {
+                originalCol.appendChild(cardToMove);
+                cardToMove.dataset.etapaId = etapaOrigem;
+                cardToMove.className = savedClass;
+                cardToMove.style.cssText = savedStyle;
+                cardToMove.innerHTML = savedHTML;
+            }
             updateCount(novaEtapaId, -1);
             updateCount(etapaOrigem, 1);
             showToast('Erro ao atualizar etapa. Tente novamente.', 'red');
