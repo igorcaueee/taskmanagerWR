@@ -6,6 +6,7 @@ use App\Models\EtapaFunil;
 use App\Models\Lead;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class FunilTest extends TestCase
@@ -102,12 +103,16 @@ class FunilTest extends TestCase
     {
         $this->etapa();
 
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true], 200),
+        ]);
+
         $response = $this->post(route('funil.captura.store'), [
             'nome' => 'Maria Souza',
-            'email' => 'maria@example.com',
             'telefone' => '11988888888',
             'empresa' => 'Empresa XYZ',
             'possibilidade' => 'Interesse em contratação',
+            'g-recaptcha-response' => 'fake-token',
         ]);
 
         $response->assertRedirect();

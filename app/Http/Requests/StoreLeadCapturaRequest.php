@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Validator;
 
 class StoreLeadCapturaRequest extends FormRequest
 {
@@ -19,6 +21,7 @@ class StoreLeadCapturaRequest extends FormRequest
             'telefone' => ['nullable', 'string', 'max:20'],
             'empresa' => ['nullable', 'string', 'max:255'],
             'possibilidade' => ['nullable', 'string', 'max:2000'],
+            'g-recaptcha-response' => ['required', 'string'],
         ];
     }
 
@@ -27,7 +30,29 @@ class StoreLeadCapturaRequest extends FormRequest
         return [
             'nome.required' => 'O nome é obrigatório.',
             'email.email' => 'Informe um e-mail válido.',
+            'g-recaptcha-response.required' => 'Por favor, confirme que você não é um robô.',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $token = $this->input('g-recaptcha-response');
+
+            if (empty($token)) {
+                return;
+            }
+
+            $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+                'secret' => config('services.recaptcha.secret'),
+                'response' => $token,
+                'remoteip' => $this->ip(),
+            ]);
+
+            if (! $response->successful() || ! $response->json('success')) {
+                $validator->errors()->add('g-recaptcha-response', 'Verificação de CAPTCHA falhou. Tente novamente.');
+            }
+        });
     }
 
     protected function prepareForValidation(): void

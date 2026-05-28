@@ -238,6 +238,11 @@
                         @error('possibilidade')<span class="field-error">{{ $message }}</span>@enderror
                     </div>
 
+                    <div class="mb-6">
+                        <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}" data-theme="dark"></div>
+                        @error('g-recaptcha-response')<span class="field-error">{{ $message }}</span>@enderror
+                    </div>
+
                     <button type="submit"
                             class="w-full flex items-center justify-center gap-3 text-white py-4 rounded-xl font-bold transition-all duration-300 hover:shadow-[0_0_40px_rgba(0,132,170,.5)] hover:scale-[1.01]"
                             style="background:#0084aa;">
@@ -250,6 +255,9 @@
         </div>
     </div>
 </section>
+
+{{-- ══ reCAPTCHA ══ --}}
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 {{-- ══ Reveal script ══ --}}
 <script>
