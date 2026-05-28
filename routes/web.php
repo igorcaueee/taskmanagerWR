@@ -98,6 +98,8 @@ Route::post('/clientes/{id}/reativar', [ClienteController::class, 'reativarClien
 Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
 Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name('clientes.update')->middleware('auth');
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
+Route::post('/clientes/{id}/logo', [ClienteController::class, 'uploadLogo'])->name('clientes.logo.upload')->middleware('auth');
+Route::delete('/clientes/{id}/logo', [ClienteController::class, 'removeLogo'])->name('clientes.logo.remove')->middleware('auth');
 // Quadro societário routes
 Route::get('/clientes/{id}/quadro-societario', [ClienteController::class, 'quadroSocietario'])->name('clientes.quadro.modal')->middleware('auth');
 // Conhecimentos IA por cliente

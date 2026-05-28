@@ -178,7 +178,7 @@
                 <input name="estado" type="text"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        maxlength="2"
-                       placeholder="SP"
+                       placeholder="RS"
                        value="{{ old('estado', $isEditing ? $cliente->estado : ($prefill['estado'] ?? '')) }}">
             </div>
         </div>

@@ -14,6 +14,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -753,5 +754,46 @@ class ClienteController extends Controller
         $usuario->delete();
 
         return response()->json(['mensagem' => 'Usuário removido com sucesso.']);
+    }
+
+    // ── Logo do cliente ────────────────────────────────────────────────
+
+    public function uploadLogo(Request $request, int $id): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+        ]);
+
+        if ($validator->fails()) {
+            return Redirect::back()->with('error', $validator->errors()->first());
+        }
+
+        if ($cliente->logo) {
+            Storage::disk('public')->delete($cliente->logo);
+        }
+
+        $path = $request->file('logo')->store('clientes/logos', 'public');
+
+        $cliente->update(['logo' => $path]);
+
+        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Logo atualizada com sucesso.');
+    }
+
+    public function removeLogo(int $id): RedirectResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        if ($cliente->logo) {
+            Storage::disk('public')->delete($cliente->logo);
+            $cliente->update(['logo' => null]);
+        }
+
+        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Logo removida com sucesso.');
     }
 }

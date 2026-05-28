@@ -15,6 +15,7 @@ class Cliente extends Authenticatable
 
     protected $fillable = [
         'nome',
+        'logo',
         'pasta_arquivos',
         'segmentacao_id',
         'atividade',

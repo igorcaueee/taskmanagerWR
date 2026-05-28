@@ -1,5 +1,7 @@
 @extends('layouts.internal')
 
+@use(Illuminate\Support\Facades\Storage)
+
 @section('title', $cliente->nome . ' — WR Assessoria')
 
 @section('content')
@@ -220,6 +222,59 @@
 
             {{-- Sidebar: Sócios --}}
             <div class="space-y-4">
+
+                {{-- Logo --}}
+                <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
+                    @if($cliente->logo)
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="flex items-center justify-center w-full h-20 rounded bg-gray-50 dark:bg-slate-700/50">
+                                <img src="{{ Storage::disk('public')->url($cliente->logo) }}"
+                                     alt="Logo {{ $cliente->nome }}"
+                                     class="max-h-16 max-w-full object-contain">
+                            </div>
+                            @if(auth()->user()?->canEditarClientes())
+                                <div class="flex gap-2 w-full">
+                                    <label for="logo-input-{{ $cliente->id }}"
+                                           class="flex-1 text-center cursor-pointer inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition">
+                                        <i class="fa-solid fa-arrow-up-from-bracket"></i> Trocar
+                                    </label>
+                                    <form method="POST" action="{{ route('clientes.logo.remove', $cliente->id) }}" class="flex-1"
+                                          onsubmit="return confirm('Remover a logo do cliente?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition border-0 cursor-pointer">
+                                            <i class="fa-regular fa-trash-can"></i> Remover
+                                        </button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        @if(auth()->user()?->canEditarClientes())
+                            <label for="logo-input-{{ $cliente->id }}"
+                                   class="flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-gray-200 dark:border-slate-600 rounded cursor-pointer hover:border-brand dark:hover:border-brand transition text-gray-400 dark:text-slate-500 hover:text-brand">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                                <span class="text-xs">Clique para enviar a logo</span>
+                                <span class="text-[10px]">JPG, PNG, WEBP ou SVG — máx. 2 MB</span>
+                            </label>
+                        @else
+                            <p class="text-sm text-gray-400 dark:text-slate-500 text-center py-4">Sem logo cadastrada.</p>
+                        @endif
+                    @endif
+
+                    @if(auth()->user()?->canEditarClientes())
+                        <form id="logo-form-{{ $cliente->id }}" method="POST"
+                              action="{{ route('clientes.logo.upload', $cliente->id) }}"
+                              enctype="multipart/form-data" class="hidden">
+                            @csrf
+                            <input id="logo-input-{{ $cliente->id }}" type="file"
+                                   name="logo" accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                                   class="hidden"
+                                   onchange="document.getElementById('logo-form-{{ $cliente->id }}').submit()">
+                        </form>
+                    @endif
+                </div>
 
                 {{-- Sócios --}}
                 @if($cliente->socios->isNotEmpty())
