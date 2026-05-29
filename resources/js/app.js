@@ -30,10 +30,20 @@ window.closeModal = function () {
 
 document.addEventListener('DOMContentLoaded', () => {
 	// Close global modal when clicking the backdrop
-	document.getElementById('globalModal')?.addEventListener('click', function (e) {
-		if (e.target === this) {
+	// Track mousedown origin to avoid closing when the user starts a click inside
+	// the modal content and releases the mouse button outside (e.g. while selecting text).
+	let mousedownOnBackdrop = false;
+	const globalModal = document.getElementById('globalModal');
+
+	globalModal?.addEventListener('mousedown', function (e) {
+		mousedownOnBackdrop = e.target === this;
+	});
+
+	globalModal?.addEventListener('click', function (e) {
+		if (e.target === this && mousedownOnBackdrop) {
 			window.closeModal();
 		}
+		mousedownOnBackdrop = false;
 	});
 
 	// Open modal on any element with data-modal-url
