@@ -227,10 +227,10 @@
                 <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
                     @if($cliente->logo)
                         <div class="flex flex-col items-center gap-3">
-                            <div class="flex items-center justify-center w-full h-20 rounded bg-gray-50 dark:bg-slate-700/50">
+                            <div class="flex items-center justify-center w-full aspect-square rounded bg-gray-50 dark:bg-slate-700/50 p-4">
                                 <img src="{{ Storage::disk('public')->url($cliente->logo) }}"
                                      alt="Logo {{ $cliente->nome }}"
-                                     class="max-h-16 max-w-full object-contain">
+                                     class="w-full h-full object-contain">
                             </div>
                             @if(auth()->user()?->canEditarClientes())
                                 <div class="flex gap-2 w-full">
