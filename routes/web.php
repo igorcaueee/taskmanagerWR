@@ -183,7 +183,7 @@ Route::get('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 
 Route::get('/email-campanhas/{emailCampanha}/editar', [EmailCampanhaController::class, 'edit'])->name('email-campanhas.edit')->middleware(['auth', 'email-marketing']);
 Route::put('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'update'])->name('email-campanhas.update')->middleware(['auth', 'email-marketing']);
 Route::post('/email-campanhas/{emailCampanha}/enviar', [EmailCampanhaController::class, 'enviar'])->name('email-campanhas.enviar')->middleware(['auth', 'email-marketing']);
-Route::delete('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'destroy'])->name('email-campanhas.destroy')->middleware(['auth', 'diretor']);
+Route::delete('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'destroy'])->name('email-campanhas.destroy')->middleware(['auth', 'email-marketing']);
 
 // Ideias & Correções routes
 Route::get('/ideias', [IdeiaController::class, 'index'])->name('ideias.index')->middleware('auth');

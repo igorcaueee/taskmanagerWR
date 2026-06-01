@@ -220,7 +220,7 @@
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
             if (resp.ok || resp.redirected) {
-                window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}', 'max-w-4xl');
+                window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}');
             } else {
                 btn.disabled = false;
             }
@@ -245,7 +245,7 @@
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
             if (resp.ok || resp.redirected) {
-                window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}', 'max-w-4xl');
+                window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}');
             } else {
                 btn.disabled = false;
             }
@@ -282,6 +282,6 @@ async function deletarSocio(id, nome) {
         body: fd,
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
     });
-    window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}', 'max-w-4xl');
+    window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}');
 }
 </script>

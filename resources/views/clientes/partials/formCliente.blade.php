@@ -21,7 +21,7 @@
         @if($isEditing)
             <button type="button"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 dark:border-slate-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent"
-                    onclick="window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}', 'max-w-4xl')">
+                    data-modal-url="{{ route('clientes.quadro.modal', $cliente->id) }}">
                 <i class="fa-solid fa-scale-balanced"></i> Quadro Societário
                 @if($cliente->socios->isNotEmpty())
                     <span class="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-brand text-white">{{ $cliente->socios->count() }}</span>
