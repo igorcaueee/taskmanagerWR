@@ -7,7 +7,8 @@ import $ from 'jquery';
 window.$ = $;
 window.jQuery = $;
 
-window.openModal = function (url) {
+window.openModal = function (url, widthClass) {
+	const modalBox = document.getElementById('globalModal').querySelector('.bg-white, .dark\\:bg-slate-800');
 	$.get(url, function (html) {
 		const container = document.getElementById('modalContent');
 		container.innerHTML = html;
@@ -19,11 +20,22 @@ window.openModal = function (url) {
 			newScript.textContent = oldScript.textContent;
 			oldScript.parentNode.replaceChild(newScript, oldScript);
 		});
+		if (widthClass && modalBox) {
+			modalBox.dataset.defaultWidth = modalBox.className.match(/max-w-\S+/)?.[0] ?? 'max-w-2xl';
+			modalBox.classList.remove(modalBox.dataset.defaultWidth);
+			modalBox.classList.add(widthClass);
+		}
 		document.getElementById('globalModal').classList.remove('hidden');
 	});
 };
 
 window.closeModal = function () {
+	const modalBox = document.getElementById('globalModal').querySelector('.bg-white, .dark\\:bg-slate-800');
+	if (modalBox && modalBox.dataset.defaultWidth) {
+		modalBox.classList.remove(...modalBox.className.match(/max-w-\S+/g) ?? []);
+		modalBox.classList.add(modalBox.dataset.defaultWidth);
+		delete modalBox.dataset.defaultWidth;
+	}
 	document.getElementById('globalModal').classList.add('hidden');
 	document.getElementById('modalContent').innerHTML = '';
 };

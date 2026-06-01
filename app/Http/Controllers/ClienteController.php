@@ -159,13 +159,20 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
+        $data['tipo'] = $request->input('tipo', '1');
 
         Cliente::create($data);
 
         $cliente = Cliente::query()->latest()->first();
         $cliente->produtos()->sync($request->input('produtos', []));
 
-        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente criado com sucesso.');
+        $redirect = Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente criado com sucesso.');
+
+        if ($data['tipo'] === '1') {
+            $redirect = $redirect->with('open_quadro_societario', true);
+        }
+
+        return $redirect;
     }
 
     public function updateCliente(Request $request, int $id): RedirectResponse

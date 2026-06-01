@@ -531,7 +531,10 @@
     @if(session('success') || session('error'))
         @push('scripts')
         <script type="module">
-        @if(session('success'))
+        @if(session('success') && session('open_quadro_societario'))
+        Swal.fire({ icon: 'success', title: 'Sucesso', text: '{{ session('success') }}', confirmButtonColor: '#2563eb', timer: 1800, showConfirmButton: false })
+            .then(() => window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}', 'max-w-4xl'));
+        @elseif(session('success'))
         Swal.fire({ icon: 'success', title: 'Sucesso', text: '{{ session('success') }}', confirmButtonColor: '#2563eb' });
         @endif
         @if(session('error'))
