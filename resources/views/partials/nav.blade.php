@@ -32,7 +32,7 @@
         <a href="#services" class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Serviços</a>
         <a href="#about"    class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Sobre</a>
         <a href="#location" class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Localização</a>
-        <a href="{{ route('blog.index') }}" class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Blog</a>
+        <a href="{{ route('blog') }}" class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Blog</a>
         <a href="{{ route('funil.captura') }}"  class="text-white/70 hover:text-white text-sm font-medium py-3 border-b border-white/10 no-underline block">Contato</a>
         <a href="{{ route('funil.captura') }}"  class="mt-3 inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-3 rounded-xl no-underline" style="background:#0084aa;">
             <i class="far fa-calendar-check"></i> Fale com um especialista
