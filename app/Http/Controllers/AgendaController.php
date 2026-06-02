@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Compromisso;
 use App\Models\Tarefa;
+use App\Models\Usuario;
 use App\Services\GoogleCalendarService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,14 @@ class AgendaController extends Controller
 
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
+        $podeSelecionarColaborador = $usuario->isDiretor();
+
+        // Apenas o diretor pode selecionar outro colaborador; padrão é o próprio usuário logado
+        $colaboradorId = $podeSelecionarColaborador
+            ? $request->integer('colaborador_id', $usuario->id)
+            : $usuario->id;
+
+        $usuarios = $podeSelecionarColaborador ? Usuario::orderBy('nome')->get() : collect();
 
         // Sincroniza automaticamente com Google Calendar a cada carregamento da página
         if ($usuario->isGoogleConnected()) {
@@ -44,22 +53,15 @@ class AgendaController extends Controller
             }
         }
 
-        $tarefasQuery = Tarefa::with(['etapa', 'cliente', 'responsavel'])
-            ->whereBetween('data_vencimento', [$primeiroDia->toDateString(), $ultimoDia->toDateString()]);
-
-        if (! $podeVerTodas) {
-            $tarefasQuery->where('responsavel_id', $usuario->id);
-        }
-
-        $tarefasPorDia = $tarefasQuery
+        $tarefasPorDia = Tarefa::with(['etapa', 'cliente', 'responsavel'])
+            ->whereBetween('data_vencimento', [$primeiroDia->toDateString(), $ultimoDia->toDateString()])
+            ->where('responsavel_id', $colaboradorId)
             ->orderBy('data_vencimento')
             ->get()
             ->groupBy(fn (Tarefa $t) => $t->data_vencimento->format('Y-m-d'));
 
-        $compromissosQuery = Compromisso::whereBetween('data', [$primeiroDia->toDateString(), $ultimoDia->toDateString()])
-            ->where('criado_por', $usuario->id);
-
-        $compromissosPorDia = $compromissosQuery
+        $compromissosPorDia = Compromisso::whereBetween('data', [$primeiroDia->toDateString(), $ultimoDia->toDateString()])
+            ->where('criado_por', $colaboradorId)
             ->orderBy('hora')
             ->get()
             ->groupBy(fn (Compromisso $c) => $c->data->format('Y-m-d'));
@@ -89,6 +91,10 @@ class AgendaController extends Controller
             'compromissosPorDia',
             'mesAnterior',
             'proximoMes',
+            'podeVerTodas',
+            'podeSelecionarColaborador',
+            'usuarios',
+            'colaboradorId',
         ));
     }
 

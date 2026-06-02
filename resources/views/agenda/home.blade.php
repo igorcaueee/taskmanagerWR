@@ -12,6 +12,21 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">Visualize tarefas e compromissos do mês.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
+            {{-- Seletor de colaborador (apenas para o diretor) --}}
+            @if ($podeSelecionarColaborador)
+                <form method="GET" action="{{ route('agenda') }}" id="form-colaborador">
+                    <input type="hidden" name="mes" value="{{ $primeiroDia->month }}">
+                    <input type="hidden" name="ano" value="{{ $primeiroDia->year }}">
+                    <select name="colaborador_id"
+                            onchange="document.getElementById('form-colaborador').submit()"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        @foreach ($usuarios as $usr)
+                            <option value="{{ $usr->id }}" @selected($colaboradorId == $usr->id)>{{ $usr->nome }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
+
             {{-- Google Calendar integration --}}
             @if (auth()->user()->isGoogleConnected())
                 <form method="POST" action="{{ route('google.calendar.sync') }}">
@@ -66,7 +81,7 @@
 
     {{-- Month navigation --}}
     <div class="flex items-center justify-between mb-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 shadow-sm">
-        <a href="{{ route('agenda', ['mes' => $mesAnterior->month, 'ano' => $mesAnterior->year]) }}"
+        <a href="{{ route('agenda', ['mes' => $mesAnterior->month, 'ano' => $mesAnterior->year, 'colaborador_id' => $podeSelecionarColaborador ? $colaboradorId : null]) }}"
            class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand no-underline group">
             <i class="fa-solid fa-chevron-left group-hover:-translate-x-0.5 transition-transform"></i>
             <span class="hidden sm:inline text-xs">{{ ucfirst($mesAnterior->translatedFormat('F Y')) }}</span>
@@ -76,7 +91,7 @@
             {{ ucfirst($primeiroDia->translatedFormat('F Y')) }}
         </span>
 
-        <a href="{{ route('agenda', ['mes' => $proximoMes->month, 'ano' => $proximoMes->year]) }}"
+        <a href="{{ route('agenda', ['mes' => $proximoMes->month, 'ano' => $proximoMes->year, 'colaborador_id' => $podeSelecionarColaborador ? $colaboradorId : null]) }}"
            class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand no-underline group">
             <span class="hidden sm:inline text-xs">{{ ucfirst($proximoMes->translatedFormat('F Y')) }}</span>
             <i class="fa-solid fa-chevron-right group-hover:translate-x-0.5 transition-transform"></i>
