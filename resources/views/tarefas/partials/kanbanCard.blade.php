@@ -14,10 +14,8 @@
 @endphp
 
 <div class="kanban-card rounded-lg shadow-sm border p-2 cursor-grab active:cursor-grabbing select-none
-    {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800' }}
-    {{ $tarefa->passou_ciclo && ! $estaConcluida ? 'border-amber-400 border-l-4' : '' }}
-    {{ ! $estaConcluida && ! $tarefa->passou_ciclo ? 'border-gray-200 dark:border-slate-700' : '' }}"
-     style="border-top: 3px solid {{ $tarefa->etapa->cor ?? '#6b7280' }};"
+    {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700' }}"
+     style="border-left: 4px solid {{ $tarefa->etapa->cor ?? '#6b7280' }};"
      draggable="true"
      data-tarefa-id="{{ $tarefa->id }}"
      data-etapa-id="{{ $tarefa->etapa_id }}"

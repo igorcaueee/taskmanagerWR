@@ -76,7 +76,7 @@
 
         {{-- Global modal --}}
         <div id="globalModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div id="globalModalContainer" class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                 <div id="modalContent" class="p-6"></div>
             </div>
         </div>

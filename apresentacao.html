@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WR Assessoria — Sistema Completo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ─────────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --blue:    #0084AA;
+  --light:   #00b4d8;
+  --glow:    rgba(0,132,170,.32);
+  --dark:    #050e14;
+  --card:    rgba(255,255,255,.04);
+  --border:  rgba(255,255,255,.07);
+  --muted:   #3a6070;
+  --text:    #c8dde6;
+}
+
+html,body{
+  width:100%;height:100%;
+  overflow:hidden;
+  font-family:'Instrument Sans',system-ui,sans-serif;
+  background:var(--dark);
+  color:#fff;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Deck / slides ───────────────────────────── */
+.deck{position:relative;width:100vw;height:100vh}
+
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  padding:64px 96px;
+  opacity:0;pointer-events:none;
+  transform:translateX(52px);
+  transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .5s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;
+}
+.slide.active{opacity:1;pointer-events:auto;transform:translateX(0)}
+.slide.exit{opacity:0;transform:translateX(-52px);transition:opacity .35s ease,transform .35s ease}
+
+/* ── Glows ───────────────────────────────────── */
+.g1,.g2{position:absolute;border-radius:50%;pointer-events:none}
+.g1{top:-180px;left:-180px;width:520px;height:520px;
+    background:radial-gradient(circle,var(--glow) 0%,transparent 70%);
+    animation:pg 6s ease-in-out infinite}
+.g2{bottom:-180px;right:-180px;width:620px;height:620px;
+    background:radial-gradient(circle,rgba(0,132,170,.16) 0%,transparent 70%);
+    animation:pg 8s ease-in-out infinite reverse}
+@keyframes pg{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.1)}}
+
+/* ── Watermark ───────────────────────────────── */
+.wm{
+  position:absolute;top:26px;left:40px;
+  display:flex;align-items:center;gap:9px;
+  opacity:.28;z-index:10;
+}
+.wm img{height:26px}
+.wm span{font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#7fa8b8}
+
+/* ── Counter ─────────────────────────────────── */
+.ct{
+  position:absolute;top:30px;right:40px;
+  font-size:11px;color:#2a4a58;font-weight:700;letter-spacing:1px;z-index:10
+}
+
+/* ── Dots ────────────────────────────────────── */
+.dots{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;gap:7px;z-index:200;
+}
+.dot{
+  width:6px;height:6px;border-radius:3px;
+  background:rgba(255,255,255,.16);cursor:pointer;
+  transition:all .3s ease;
+}
+.dot.active{width:20px;background:var(--blue)}
+
+/* ── Arrows ──────────────────────────────────── */
+.arr{
+  position:fixed;top:50%;transform:translateY(-50%);
+  width:42px;height:42px;border-radius:50%;
+  border:1px solid rgba(0,132,170,.28);
+  background:rgba(0,132,170,.07);
+  color:var(--blue);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:200;font-size:17px;
+  transition:background .2s,border-color .2s;user-select:none;
+}
+.arr:hover{background:rgba(0,132,170,.2);border-color:var(--blue)}
+.ap{left:18px}.an{right:18px}
+
+/* ── Typography helpers ──────────────────────── */
+.tag{
+  display:inline-block;padding:4px 14px;border-radius:20px;
+  font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  background:rgba(0,132,170,.12);color:var(--blue);margin-bottom:18px;
+}
+.h1{font-size:clamp(2.8rem,5.2vw,5rem);font-weight:800;line-height:1.05;letter-spacing:-.8px}
+.h2{font-size:clamp(1.8rem,3.2vw,3rem);font-weight:800;line-height:1.1;letter-spacing:-.4px}
+.h3{font-size:clamp(1rem,1.6vw,1.35rem);font-weight:700}
+.acc{color:var(--blue)}
+.sub{font-size:clamp(.9rem,1.4vw,1.1rem);color:var(--muted);line-height:1.7}
+
+/* ── Layout helpers ──────────────────────────── */
+.row{display:flex;gap:72px;align-items:center;width:100%}
+.col{flex:1;position:relative;z-index:1}
+.center{text-align:center;position:relative;z-index:1}
+
+/* ── Cards ───────────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:22px;
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* ── Perks list ──────────────────────────────── */
+.perks{display:flex;flex-direction:column;gap:11px;margin-top:22px}
+.perk{display:flex;align-items:flex-start;gap:10px;font-size:clamp(.84rem,1.2vw,.98rem);color:var(--text);font-weight:500}
+.pd{width:7px;height:7px;background:var(--blue);border-radius:50%;flex-shrink:0;margin-top:5px}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 1 — CAPA
+═══════════════════════════════════════════════ */
+#s1{text-align:center}
+.cbadge{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid rgba(0,132,170,.38);background:rgba(0,132,170,.08);
+  border-radius:20px;padding:6px 20px;
+  font-size:.82rem;font-weight:600;color:var(--light);letter-spacing:.5px;
+  margin-bottom:28px;position:relative;z-index:1;
+}
+.cdot{width:7px;height:7px;background:var(--light);border-radius:50%;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.clogo{width:120px;margin-bottom:24px;position:relative;z-index:1;
+  filter:drop-shadow(0 0 30px rgba(0,132,170,.55));
+  animation:fl 5s ease-in-out infinite}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.chint{margin-top:44px;font-size:.75rem;color:#1e3a48;letter-spacing:2.5px;text-transform:uppercase;
+  position:relative;z-index:1;animation:fh 3s ease-in-out infinite}
+@keyframes fh{0%,100%{opacity:.35}50%{opacity:.9}}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 2 — O ANTES
+═══════════════════════════════════════════════ */
+.chaos{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin-bottom:44px;position:relative;z-index:1}
+.cw{
+  padding:9px 20px;border:1px solid rgba(255,255,255,.09);border-radius:10px;
+  font-size:clamp(.86rem,1.3vw,1.08rem);color:#4a6a7a;font-weight:600;
+  background:rgba(255,255,255,.02);
+  text-decoration:line-through;text-decoration-color:rgba(0,132,170,.5);
+}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 3 — VISÃO GERAL
+═══════════════════════════════════════════════ */
+.mods{
+  display:flex;flex-wrap:wrap;justify-content:center;gap:11px;
+  margin-top:36px;max-width:900px;position:relative;z-index:1;
+}
+.mod{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 18px;
+  background:rgba(0,132,170,.07);border:1px solid rgba(0,132,170,.18);
+  border-radius:10px;font-size:clamp(.8rem,1.1vw,.95rem);font-weight:600;color:#90c0d0;
+}
+.mod.new-mod{
+  background:rgba(0,132,170,.14);border-color:rgba(0,132,170,.38);
+  color:var(--light);
+}
+.new-badge{
+  font-size:.6rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  background:var(--blue);color:#fff;border-radius:4px;padding:1px 5px;
+}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 4 — TAREFAS (mini-kanban)
+═══════════════════════════════════════════════ */
+.kanban{display:flex;gap:11px;width:100%}
+.kc{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:13px 11px}
+.kct{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+     display:flex;align-items:center;gap:6px;margin-bottom:9px;color:#3a5a68}
+.kd{width:7px;height:7px;border-radius:50%}
+.kcard{background:rgba(255,255,255,.05);border-radius:7px;padding:8px 10px;margin-bottom:7px;
+       font-size:.75rem;color:#7aaab8;border-left:3px solid;line-height:1.4}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 5 — CLIENTES (card demo)
+═══════════════════════════════════════════════ */
+.ccd{width:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.ccd-hdr{background:rgba(0,132,170,.1);border-bottom:1px solid rgba(0,132,170,.15);padding:15px 18px;
+         display:flex;align-items:center;gap:13px}
+.ccd-av{width:48px;height:48px;border-radius:10px;background:var(--blue);
+        display:flex;align-items:center;justify-content:center;
+        font-size:1.1rem;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.ccd-av img{width:100%;height:100%;object-fit:cover}
+.ccd-name{font-weight:700;font-size:.95rem;color:#c8e8f0}
+.ccd-type{font-size:.74rem;color:#3a7080;margin-top:2px}
+.ccd-body{padding:15px 18px;display:flex;flex-direction:column;gap:9px}
+.ccd-row{display:flex;justify-content:space-between;align-items:center;
+         border-bottom:1px solid rgba(255,255,255,.04);padding-bottom:8px}
+.ccd-row:last-child{border-bottom:none;padding-bottom:0}
+.ccd-lbl{font-size:.72rem;color:#2a5060;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.ccd-val{font-size:.84rem;color:#8ab0bf;font-weight:500}
+.ccd-ftr{padding:10px 18px;background:rgba(255,255,255,.02);border-top:1px solid var(--border);display:flex;gap:7px}
+.ctag{padding:3px 9px;border-radius:5px;font-size:.7rem;font-weight:700;background:rgba(0,132,170,.12);color:var(--blue)}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 6 — FUNIL
+═══════════════════════════════════════════════ */
+.funnel{display:flex;align-items:center;gap:0;margin-top:40px;width:100%;max-width:900px;position:relative;z-index:1}
+.fs{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+.fs::after{content:'→';position:absolute;right:-14px;top:22px;color:rgba(0,132,170,.4);font-size:1.1rem;z-index:2}
+.fs:last-child::after{display:none}
+.fb{width:100%;padding:18px 12px;background:rgba(0,132,170,.07);border:1px solid rgba(0,132,170,.16);border-radius:12px;text-align:center}
+.fi{font-size:1.8rem;margin-bottom:7px;display:block}
+.fl{font-size:clamp(.75rem,.95vw,.88rem);font-weight:700;color:#7ab0c0}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 7 — AGENDA
+═══════════════════════════════════════════════ */
+.cal{width:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.cal-hdr{background:rgba(0,132,170,.1);border-bottom:1px solid rgba(0,132,170,.15);
+         padding:13px 18px;font-weight:700;font-size:.9rem;color:var(--light);
+         display:flex;justify-content:space-between;align-items:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);padding:1px}
+.cc{background:rgba(255,255,255,.02);padding:9px 5px;text-align:center;font-size:.72rem;color:#3a5a68}
+.cc.today{background:rgba(0,132,170,.15);color:var(--light);font-weight:700}
+.cc.ev{color:#8ab0bf;position:relative}
+.cc.ev::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:var(--blue);margin:2px auto 0}
+.cc.hd{color:#2a4a58;font-weight:700;font-size:.65rem;letter-spacing:.5px}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 8 — PORTAL DO CLIENTE
+═══════════════════════════════════════════════ */
+.portal-demo{
+  width:100%;background:rgba(5,20,30,.8);border:1px solid rgba(0,132,170,.25);
+  border-radius:16px;overflow:hidden;
+}
+.portal-bar{
+  background:var(--blue);padding:12px 20px;
+  display:flex;align-items:center;gap:10px;
+}
+.portal-bar-icon{width:28px;height:28px;background:rgba(255,255,255,.2);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.portal-bar-text{font-weight:700;font-size:.88rem;color:#fff}
+.portal-bar-sub{font-size:.72rem;color:rgba(255,255,255,.65);margin-left:auto}
+.portal-body{padding:18px 20px;display:flex;flex-direction:column;gap:11px}
+.portal-section-title{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:4px}
+.portal-doc{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:9px 12px;
+}
+.portal-doc-icon{font-size:1.1rem;flex-shrink:0}
+.portal-doc-name{font-size:.8rem;color:#8ab0bf;font-weight:500;flex:1}
+.portal-doc-btn{font-size:.68rem;font-weight:700;color:var(--blue);padding:3px 9px;
+  border:1px solid rgba(0,132,170,.3);border-radius:6px;white-space:nowrap}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 9 — BLOG
+═══════════════════════════════════════════════ */
+.blog-card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+}
+.blog-img{
+  width:100%;height:130px;
+  background:linear-gradient(135deg,rgba(0,84,107,.6),rgba(0,132,170,.3));
+  display:flex;align-items:center;justify-content:center;font-size:2.5rem;
+}
+.blog-body{padding:14px 16px}
+.blog-date{font-size:.68rem;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-bottom:6px}
+.blog-title{font-size:.88rem;font-weight:700;color:#c8e8f0;line-height:1.4;margin-bottom:8px}
+.blog-excerpt{font-size:.76rem;color:#3a6070;line-height:1.55}
+
+.ai-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(0,132,170,.1);border:1px solid rgba(0,132,170,.25);
+  border-radius:8px;padding:7px 14px;font-size:.78rem;font-weight:600;color:#70c0d8;margin-top:12px;
+}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 10 — EMAIL MARKETING
+═══════════════════════════════════════════════ */
+.email-demo{
+  width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+}
+.email-hdr{background:rgba(0,132,170,.1);border-bottom:1px solid rgba(0,132,170,.15);padding:13px 18px;
+  display:flex;justify-content:space-between;align-items:center}
+.email-hdr-title{font-weight:700;font-size:.88rem;color:#c8e8f0}
+.email-status{font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px}
+.s-rascunho{background:rgba(255,255,255,.08);color:#7a9aa8}
+.s-enviada{background:rgba(52,211,153,.1);color:#34d399}
+.s-enviando{background:rgba(251,191,36,.1);color:#fbbf24}
+.email-body{padding:14px 18px;display:flex;flex-direction:column;gap:9px}
+.email-row{display:flex;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.04);padding-bottom:8px}
+.email-row:last-child{border-bottom:none;padding-bottom:0}
+.email-lbl{font-size:.72rem;color:#2a5060;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.email-val{font-size:.82rem;color:#8ab0bf}
+.email-preview{
+  margin:0 18px 14px;padding:11px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;
+  font-size:.75rem;color:#5a8090;line-height:1.55;
+  border-left:3px solid var(--blue);
+}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 11 — IDEIAS & CORREÇÕES
+═══════════════════════════════════════════════ */
+.idea-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;
+}
+.idea-text{font-size:.82rem;color:#8ab0bf;line-height:1.55;margin-bottom:10px}
+.idea-foot{display:flex;align-items:center;justify-content:space-between}
+.idea-user{font-size:.72rem;color:#3a6070}
+.istatus{font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px}
+.i-pen{background:rgba(251,191,36,.1);color:#fbbf24}
+.i-analise{background:rgba(56,189,248,.1);color:#38bdf8}
+.i-ok{background:rgba(52,211,153,.1);color:#34d399}
+.i-done{background:rgba(148,163,184,.1);color:#94a3b8}
+.i-desc{background:rgba(248,113,113,.1);color:#f87171}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 12 — ARQUIVOS
+═══════════════════════════════════════════════ */
+.file-row{
+  display:flex;align-items:center;gap:12px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:11px 15px;margin-bottom:9px;
+}
+.file-icon{font-size:1.3rem;flex-shrink:0}
+.file-name{font-size:.82rem;color:#8ab0bf;font-weight:500;flex:1}
+.file-share{display:flex;gap:7px}
+.file-btn{
+  font-size:.66rem;font-weight:700;padding:4px 10px;border-radius:6px;
+  border:1px solid;cursor:pointer;
+}
+.fb-wa{border-color:rgba(52,211,153,.3);color:#34d399;background:rgba(52,211,153,.08)}
+.fb-em{border-color:rgba(0,132,170,.3);color:var(--blue);background:rgba(0,132,170,.08)}
+.fb-dl{border-color:rgba(255,255,255,.1);color:#94a3b8;background:rgba(255,255,255,.04)}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 13 — RELATÓRIOS
+═══════════════════════════════════════════════ */
+.rel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:860px;position:relative;z-index:1}
+.rel-card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:20px 16px;text-align:center;
+}
+.rel-icon{font-size:2rem;margin-bottom:10px;display:block}
+.rel-title{font-size:.82rem;font-weight:700;color:#90c0d0;margin-bottom:6px}
+.rel-desc{font-size:.73rem;color:#2a5060;line-height:1.5}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 14 — PERFIS
+═══════════════════════════════════════════════ */
+.profiles{display:flex;gap:14px;width:100%;max-width:920px;margin-top:36px;position:relative;z-index:1}
+.pc{
+  flex:1;background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:20px 14px;text-align:center;
+  transition:border-color .25s,background .25s;
+}
+.pc:hover{border-color:rgba(0,132,170,.3);background:rgba(0,132,170,.06)}
+.pc-icon{font-size:1.8rem;margin-bottom:9px;display:block}
+.pc-name{font-size:.78rem;font-weight:700;color:#7aacbc;letter-spacing:.5px;text-transform:uppercase}
+.pc-desc{font-size:.71rem;color:#2a5060;margin-top:7px;line-height:1.5}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 15 — ASSISTENTE IA
+═══════════════════════════════════════════════ */
+.chat{width:100%;max-width:520px;display:flex;flex-direction:column;gap:11px;position:relative;z-index:1}
+.cm{display:flex;gap:11px;align-items:flex-end}
+.cm.u{flex-direction:row-reverse}
+.cav{width:32px;height:32px;border-radius:9px;flex-shrink:0;
+     display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.cav.wr{background:var(--blue)}.cav.us{background:rgba(255,255,255,.1)}
+.cb{padding:11px 15px;border-radius:13px;font-size:.84rem;line-height:1.55;max-width:360px}
+.cb.wr{background:rgba(0,132,170,.14);border:1px solid rgba(0,132,170,.2);color:#a8d8e8;border-radius:13px 13px 13px 3px}
+.cb.us{background:rgba(255,255,255,.06);color:#6a9aaa;border-radius:13px 13px 3px 13px}
+
+/* ═══════════════════════════════════════════════
+   SLIDE 16 — FECHAMENTO
+═══════════════════════════════════════════════ */
+.close-logo{width:88px;margin-bottom:24px;position:relative;z-index:1;
+  filter:drop-shadow(0 0 26px rgba(0,132,170,.55))}
+.close-div{width:56px;height:3px;background:linear-gradient(90deg,var(--blue),transparent);
+  border-radius:2px;margin:24px auto;position:relative;z-index:1}
+.close-pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:760px;position:relative;z-index:1}
+.cp{
+  display:flex;align-items:center;gap:7px;
+  padding:11px 18px;
+  background:rgba(0,132,170,.06);border:1px solid rgba(0,132,170,.14);
+  border-radius:9px;font-size:clamp(.76rem,1vw,.88rem);font-weight:600;color:#5a8a9a;
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 1 — CAPA
+══════════════════════════════════════════════ -->
+<section class="slide active" id="s1">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">01 / 16</div>
+
+  <div class="cbadge"><span class="cdot"></span>Exclusivo para o time WR</div>
+  <img src="public/images/torresemfundo.png" alt="WR" class="clogo">
+  <h1 class="h1" style="position:relative;z-index:1;text-align:center">
+    O sistema que a<br><span class="acc">WR estava esperando.</span>
+  </h1>
+  <p class="sub" style="margin-top:16px;max-width:580px;text-align:center;position:relative;z-index:1">
+    Uma plataforma feita do zero para o nosso jeito de trabalhar —
+    tarefas, clientes, vendas, conteúdo e muito mais, tudo em um só lugar.
+  </p>
+  <p class="chint">→ &nbsp; use as setas para navegar &nbsp; ←</p>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 2 — O ANTES
+══════════════════════════════════════════════ -->
+<section class="slide" id="s2">
+  <div class="g1"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">02 / 16</div>
+
+  <div class="chaos">
+    <span class="cw">📌 Post-it</span>
+    <span class="cw">💬 WhatsApp</span>
+    <span class="cw">📊 Planilha solta</span>
+    <span class="cw">📧 E-mail perdido</span>
+    <span class="cw">📒 Caderno</span>
+    <span class="cw">🗓️ Agenda de papel</span>
+    <span class="cw">📁 Pasta no computador</span>
+  </div>
+
+  <h2 class="h2 center">Chega de informação<br>espalhada em <span class="acc">mil lugares.</span></h2>
+  <p class="sub center" style="margin-top:14px">A gente sabe como era antes. Isso vai mudar — de vez.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 3 — VISÃO GERAL
+══════════════════════════════════════════════ -->
+<section class="slide" id="s3">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">03 / 16</div>
+
+  <p class="center" style="font-size:.75rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--blue);margin-bottom:16px">Apresentando</p>
+  <h2 class="h2 center">Uma plataforma.<br>Tudo que a WR <span class="acc">precisa.</span></h2>
+
+  <div class="mods">
+    <div class="mod">✅ Tarefas</div>
+    <div class="mod">👥 Clientes</div>
+    <div class="mod">🎯 Funil de Vendas</div>
+    <div class="mod">🗓️ Agenda</div>
+    <div class="mod">📁 Arquivos</div>
+    <div class="mod">📊 Relatórios</div>
+    <div class="mod new-mod">🌐 Portal do Cliente <span class="new-badge">NOVO</span></div>
+    <div class="mod new-mod">📰 Blog <span class="new-badge">NOVO</span></div>
+    <div class="mod new-mod">📧 E-mail Marketing <span class="new-badge">NOVO</span></div>
+    <div class="mod new-mod">💡 Ideias & Correções <span class="new-badge">NOVO</span></div>
+    <div class="mod">🤖 Assistente IA</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 4 — TAREFAS
+══════════════════════════════════════════════ -->
+<section class="slide" id="s4">
+  <div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">04 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag">Tarefas</span>
+      <h2 class="h2">Sua semana,<br><span class="acc">organizada de verdade.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Cada tarefa no lugar certo — quem faz, quando entrega, em qual etapa está.
+        Visão kanban ou lista, do jeito que você preferir.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Planejamento por ciclo semanal automático</div>
+        <div class="perk"><span class="pd"></span>Tarefas recorrentes sem precisar criar de novo</div>
+        <div class="perk"><span class="pd"></span>Histórico completo de cada mudança</div>
+        <div class="perk"><span class="pd"></span>Tarefas vinculadas ao cliente ou sem cliente</div>
+        <div class="perk"><span class="pd"></span>Drag & drop entre etapas no kanban</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="kanban">
+        <div class="kc">
+          <div class="kct"><div class="kd" style="background:#3a5a68"></div>A fazer</div>
+          <div class="kcard" style="border-color:#3a5a68">Declaração IRPJ<br>Empresa ABC</div>
+          <div class="kcard" style="border-color:#3a5a68">Reunião de renovação</div>
+        </div>
+        <div class="kc">
+          <div class="kct"><div class="kd" style="background:#0084AA"></div>Em andamento</div>
+          <div class="kcard" style="border-color:#0084AA">Folha de pagamento<br>Maio/2025</div>
+        </div>
+        <div class="kc">
+          <div class="kct"><div class="kd" style="background:#34d399"></div>Concluído</div>
+          <div class="kcard" style="border-color:#34d399">Guia FGTS — Abril</div>
+          <div class="kcard" style="border-color:#34d399">DAS Simples 04/25</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 5 — CLIENTES
+══════════════════════════════════════════════ -->
+<section class="slide" id="s5">
+  <div class="g1"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">05 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag">Clientes</span>
+      <h2 class="h2">Tudo sobre cada cliente,<br><span class="acc">num clique.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Dados financeiros, regime tributário, sócios, contatos,
+        serviços contratados e logo — completo e sempre acessível.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Logo personalizada por cliente</div>
+        <div class="perk"><span class="pd"></span>Quadro societário com % de participação</div>
+        <div class="perk"><span class="pd"></span>Controle de vencimento de certidões</div>
+        <div class="perk"><span class="pd"></span>Importação em massa via planilha</div>
+        <div class="perk"><span class="pd"></span>Workflow de encerramento com histórico</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="ccd">
+        <div class="ccd-hdr">
+          <div class="ccd-av">M</div>
+          <div>
+            <div class="ccd-name">Mercado São João Ltda.</div>
+            <div class="ccd-type">CNPJ · Pessoa Jurídica · Ativo</div>
+          </div>
+        </div>
+        <div class="ccd-body">
+          <div class="ccd-row"><span class="ccd-lbl">Regime</span><span class="ccd-val">Simples Nacional</span></div>
+          <div class="ccd-row"><span class="ccd-lbl">Faturamento</span><span class="ccd-val">R$ 48.000 / mês</span></div>
+          <div class="ccd-row"><span class="ccd-lbl">Honorário</span><span class="ccd-val">R$ 1.200 / mês</span></div>
+          <div class="ccd-row"><span class="ccd-lbl">Sócios</span><span class="ccd-val">2 cadastrados</span></div>
+          <div class="ccd-row"><span class="ccd-lbl">Certidão</span><span class="ccd-val">Vence em 12/08/2025</span></div>
+        </div>
+        <div class="ccd-ftr">
+          <span class="ctag">Contabilidade</span>
+          <span class="ctag">Folha</span>
+          <span class="ctag">Fiscal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 6 — FUNIL DE VENDAS
+══════════════════════════════════════════════ -->
+<section class="slide" id="s6">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">06 / 16</div>
+
+  <span class="tag center" style="position:relative;z-index:1">Funil de Vendas</span>
+  <h2 class="h2 center">Do primeiro contato<br>ao <span class="acc">cliente fidelizado.</span></h2>
+  <p class="sub center" style="margin-top:12px;max-width:540px;position:relative;z-index:1">
+    Acompanhe cada oportunidade em um kanban visual.
+    Nenhum lead cai no esquecimento — do contato até o fechamento.
+  </p>
+
+  <div class="funnel">
+    <div class="fs"><div class="fb"><span class="fi">📬</span><div class="fl">Primeiro contato</div></div></div>
+    <div class="fs"><div class="fb"><span class="fi">🤝</span><div class="fl">Reunião / Proposta</div></div></div>
+    <div class="fs"><div class="fb"><span class="fi">💬</span><div class="fl">Negociação</div></div></div>
+    <div class="fs"><div class="fb"><span class="fi">✍️</span><div class="fl">Contrato enviado</div></div></div>
+    <div class="fs">
+      <div class="fb" style="background:rgba(0,132,170,.18);border-color:rgba(0,132,170,.4)">
+        <span class="fi">🏆</span><div class="fl" style="color:var(--light)">Cliente WR!</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 7 — AGENDA
+══════════════════════════════════════════════ -->
+<section class="slide" id="s7">
+  <div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">07 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag">Agenda</span>
+      <h2 class="h2">Compromissos e tarefas<br><span class="acc">lado a lado.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Visualize reuniões, prazos e entregas em um calendário só.
+        Integrado ao Google Calendar — seus eventos sempre sincronizados.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Cor personalizada por compromisso</div>
+        <div class="perk"><span class="pd"></span>Tarefas do dia aparecem na agenda</div>
+        <div class="perk"><span class="pd"></span>Sincronização com Google Calendar</div>
+        <div class="perk"><span class="pd"></span>Visão da agenda do time (supervisores)</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="cal">
+        <div class="cal-hdr"><span>Junho 2025</span><span style="font-size:.75rem;color:#2a5060">Google Calendar ✓</span></div>
+        <div class="cal-grid">
+          <div class="cc hd">Seg</div><div class="cc hd">Ter</div><div class="cc hd">Qua</div>
+          <div class="cc hd">Qui</div><div class="cc hd">Sex</div><div class="cc hd">Sáb</div><div class="cc hd">Dom</div>
+          <div class="cc">1</div><div class="cc ev">2</div><div class="cc">3</div>
+          <div class="cc ev">4</div><div class="cc">5</div><div class="cc">6</div><div class="cc">7</div>
+          <div class="cc today">8</div><div class="cc ev">9</div><div class="cc">10</div>
+          <div class="cc">11</div><div class="cc ev">12</div><div class="cc">13</div><div class="cc">14</div>
+          <div class="cc">15</div><div class="cc">16</div><div class="cc ev">17</div>
+          <div class="cc">18</div><div class="cc">19</div><div class="cc">20</div><div class="cc">21</div>
+          <div class="cc ev">22</div><div class="cc">23</div><div class="cc">24</div>
+          <div class="cc ev">25</div><div class="cc">26</div><div class="cc">27</div><div class="cc">28</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 8 — PORTAL DO CLIENTE  ★ NOVO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s8">
+  <div class="g1"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">08 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag" style="background:rgba(52,211,153,.1);color:#34d399;border-color:rgba(52,211,153,.2)">✨ Novo</span>
+      <h2 class="h2">Portal exclusivo<br>para o seu <span class="acc">cliente.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Cada cliente tem acesso a um portal próprio onde encontra
+        os documentos dele, lê os artigos do blog e fica por dentro
+        da WR — tudo com login e senha.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Acesso por usuário e senha exclusivos</div>
+        <div class="perk"><span class="pd"></span>Documentos organizados por categoria e período</div>
+        <div class="perk"><span class="pd"></span>Rastreamento de quem baixou e quando</div>
+        <div class="perk"><span class="pd"></span>Múltiplos usuários por cliente</div>
+        <div class="perk"><span class="pd"></span>Acesso aos artigos do blog</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="portal-demo">
+        <div class="portal-bar">
+          <div class="portal-bar-icon">🏦</div>
+          <div class="portal-bar-text">Portal WR Assessoria</div>
+          <div class="portal-bar-sub">Mercado São João</div>
+        </div>
+        <div class="portal-body">
+          <div class="portal-section-title">📁 Documentos disponíveis</div>
+          <div class="portal-doc">
+            <span class="portal-doc-icon">📄</span>
+            <span class="portal-doc-name">Balancete — Maio/2025</span>
+            <span class="portal-doc-btn">⬇ Baixar</span>
+          </div>
+          <div class="portal-doc">
+            <span class="portal-doc-icon">📊</span>
+            <span class="portal-doc-name">Folha de Pagamento — Maio/2025</span>
+            <span class="portal-doc-btn">⬇ Baixar</span>
+          </div>
+          <div class="portal-doc">
+            <span class="portal-doc-icon">📋</span>
+            <span class="portal-doc-name">Guia FGTS — Abril/2025</span>
+            <span class="portal-doc-btn">👁 Ver</span>
+          </div>
+          <div class="portal-section-title" style="margin-top:4px">📰 Últimos artigos</div>
+          <div class="portal-doc">
+            <span class="portal-doc-icon">📰</span>
+            <span class="portal-doc-name">Como reduzir impostos no Simples Nacional</span>
+            <span class="portal-doc-btn">Ler →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 9 — BLOG  ★ NOVO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s9">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">09 / 16</div>
+
+  <div class="row" style="align-items:flex-start">
+    <div class="col">
+      <span class="tag" style="background:rgba(52,211,153,.1);color:#34d399">✨ Novo</span>
+      <h2 class="h2">A WR agora tem<br><span class="acc">voz no mercado.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Um blog público onde a equipe publica conteúdo de valor —
+        posiciona a WR como referência em contabilidade e aparece
+        para novos clientes no Google.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Publicação de artigos com agendamento</div>
+        <div class="perk"><span class="pd"></span>IA escreve o rascunho — você revisa e publica</div>
+        <div class="perk"><span class="pd"></span>Artigos aparecem no Portal do Cliente</div>
+        <div class="perk"><span class="pd"></span>URL amigável para o Google (SEO)</div>
+      </div>
+      <div class="ai-pill">🤖 IA gera o conteúdo em segundos</div>
+    </div>
+    <div class="col">
+      <div class="grid2">
+        <div class="blog-card">
+          <div class="blog-img">📰</div>
+          <div class="blog-body">
+            <div class="blog-date">30 Mai 2025</div>
+            <div class="blog-title">Como reduzir impostos no Simples Nacional em 2025</div>
+            <div class="blog-excerpt">Estratégias legais para empresas que faturam até R$ 4,8 mi por ano...</div>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="blog-img">💼</div>
+          <div class="blog-body">
+            <div class="blog-date">25 Mai 2025</div>
+            <div class="blog-title">Folha de pagamento: erros que custam caro</div>
+            <div class="blog-excerpt">Veja os 5 erros mais comuns na gestão de RH e como evitá-los...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 10 — E-MAIL MARKETING  ★ NOVO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s10">
+  <div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">10 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag" style="background:rgba(52,211,153,.1);color:#34d399">✨ Novo</span>
+      <h2 class="h2">Fale com todos<br>os clientes de <span class="acc">uma vez.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Envie newsletters e comunicados direto para a base de clientes
+        — com IA ajudando a escrever o conteúdo certo,
+        na hora certa.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Selecione quais clientes recebem</div>
+        <div class="perk"><span class="pd"></span>IA cria o conteúdo do e-mail pra você</div>
+        <div class="perk"><span class="pd"></span>Agende envios para datas futuras</div>
+        <div class="perk"><span class="pd"></span>Acompanhe status em tempo real</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="email-demo">
+        <div class="email-hdr">
+          <span class="email-hdr-title">📧 Declaração IR 2025 — Documentos</span>
+          <span class="email-status s-enviada">✓ Enviada</span>
+        </div>
+        <div class="email-body">
+          <div class="email-row"><span class="email-lbl">Assunto</span><span class="email-val">Sua declaração está pronta!</span></div>
+          <div class="email-row"><span class="email-lbl">Destinatários</span><span class="email-val">143 clientes</span></div>
+          <div class="email-row"><span class="email-lbl">Enviados</span><span class="email-val">143 de 143 ✓</span></div>
+          <div class="email-row"><span class="email-lbl">Data de envio</span><span class="email-val">01/06/2025 às 09:00</span></div>
+        </div>
+        <div class="email-preview">
+          "Prezado cliente, sua declaração de IR 2025 está disponível no seu portal.
+          Acesse agora para revisar e assinar..."
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 11 — IDEIAS & CORREÇÕES  ★ NOVO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s11">
+  <div class="g1"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">11 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag" style="background:rgba(52,211,153,.1);color:#34d399">✨ Novo</span>
+      <h2 class="h2">Sua ideia<br>tem um <span class="acc">lugar aqui.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Qualquer pessoa do time pode sugerir melhorias e reportar
+        correções. A gestão acompanha, aprova e implementa —
+        tudo registrado e transparente.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Qualquer colaborador pode enviar</div>
+        <div class="perk"><span class="pd"></span>Status: Pendente → Em análise → Aprovada → Concluída</div>
+        <div class="perk"><span class="pd"></span>Filtros por status e colaborador</div>
+        <div class="perk"><span class="pd"></span>Histórico de todas as sugestões</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="idea-card">
+        <div class="idea-text">💡 "Seria útil ter um filtro de tarefas por data de vencimento na tela de lista."</div>
+        <div class="idea-foot"><span class="idea-user">👤 Ana Souza · 28 Mai</span><span class="istatus i-ok">✓ Aprovada</span></div>
+      </div>
+      <div class="idea-card" style="margin-top:10px">
+        <div class="idea-text">🔧 "O campo de honorário não salva com vírgula, só com ponto. Confunde na hora de digitar."</div>
+        <div class="idea-foot"><span class="idea-user">👤 Carlos Melo · 30 Mai</span><span class="istatus i-analise">🔍 Em análise</span></div>
+      </div>
+      <div class="idea-card" style="margin-top:10px">
+        <div class="idea-text">💡 "Poder visualizar as tarefas de todos os colaboradores em uma única tela."</div>
+        <div class="idea-foot"><span class="idea-user">👤 Juliana Lima · 01 Jun</span><span class="istatus i-pen">⏳ Pendente</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 12 — ARQUIVOS & COMPARTILHAMENTO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s12">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">12 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag">Arquivos</span>
+      <h2 class="h2">Documento certo,<br>para quem <span class="acc">precisa.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        Organize, envie e compartilhe documentos em segundos —
+        direto pelo WhatsApp ou e-mail, com link seguro e com prazo.
+        Sem precisar de Google Drive ou WeTransfer.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Upload e download de qualquer arquivo</div>
+        <div class="perk"><span class="pd"></span>Pastas organizadas por cliente / categoria</div>
+        <div class="perk"><span class="pd"></span>Link assinado para compartilhamento seguro</div>
+        <div class="perk"><span class="pd"></span>Envio direto pelo WhatsApp ou por e-mail</div>
+        <div class="perk"><span class="pd"></span>Portal do cliente com rastreamento de download</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="file-row">
+        <span class="file-icon">📄</span>
+        <span class="file-name">Balancete_maio2025.pdf</span>
+        <div class="file-share">
+          <button class="file-btn fb-wa">WhatsApp</button>
+          <button class="file-btn fb-em">E-mail</button>
+          <button class="file-btn fb-dl">⬇ Baixar</button>
+        </div>
+      </div>
+      <div class="file-row">
+        <span class="file-icon">📊</span>
+        <span class="file-name">Folha_pagamento_05_2025.xlsx</span>
+        <div class="file-share">
+          <button class="file-btn fb-wa">WhatsApp</button>
+          <button class="file-btn fb-em">E-mail</button>
+          <button class="file-btn fb-dl">⬇ Baixar</button>
+        </div>
+      </div>
+      <div class="file-row">
+        <span class="file-icon">🧾</span>
+        <span class="file-name">DAS_simples_abril.pdf</span>
+        <div class="file-share">
+          <button class="file-btn fb-wa">WhatsApp</button>
+          <button class="file-btn fb-em">E-mail</button>
+          <button class="file-btn fb-dl">⬇ Baixar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 13 — RELATÓRIOS
+══════════════════════════════════════════════ -->
+<section class="slide" id="s13">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">13 / 16</div>
+
+  <span class="tag center" style="position:relative;z-index:1">Relatórios & Dashboard</span>
+  <h2 class="h2 center">Saiba tudo<br>o que está <span class="acc">acontecendo.</span></h2>
+  <p class="sub center" style="margin-top:12px;max-width:560px;position:relative;z-index:1">
+    Do resumo do dia até a análise completa da carteira de clientes — tudo num só lugar.
+  </p>
+
+  <div class="rel-grid" style="margin-top:32px">
+    <div class="rel-card">
+      <span class="rel-icon">📈</span>
+      <div class="rel-title">Dashboard</div>
+      <div class="rel-desc">Tarefas do ciclo, clientes ativos e aniversariantes do mês</div>
+    </div>
+    <div class="rel-card">
+      <span class="rel-icon">👥</span>
+      <div class="rel-title">Clientes</div>
+      <div class="rel-desc">Faturamento, regime tributário, produtos contratados e status</div>
+    </div>
+    <div class="rel-card">
+      <span class="rel-icon">🙋</span>
+      <div class="rel-title">Colaboradores</div>
+      <div class="rel-desc">Performance do time, tarefas por colaborador e produtividade</div>
+    </div>
+    <div class="rel-card">
+      <span class="rel-icon">📦</span>
+      <div class="rel-title">Produtos</div>
+      <div class="rel-desc">Serviços mais contratados e receita por produto</div>
+    </div>
+    <div class="rel-card">
+      <span class="rel-icon">🗺️</span>
+      <div class="rel-title">Geolocalização</div>
+      <div class="rel-desc">Onde estão os clientes da WR no Brasil</div>
+    </div>
+    <div class="rel-card">
+      <span class="rel-icon">✅</span>
+      <div class="rel-title">Tarefas</div>
+      <div class="rel-desc">Concluídas, em atraso, por etapa e por ciclo</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 14 — PERFIS DE ACESSO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s14">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">14 / 16</div>
+
+  <h2 class="h2 center">Cada um vê exatamente<br>o que <span class="acc">precisa.</span></h2>
+  <p class="sub center" style="margin-top:12px;position:relative;z-index:1">O sistema se adapta ao seu papel na empresa — sem complicação.</p>
+
+  <div class="profiles">
+    <div class="pc">
+      <span class="pc-icon">👑</span>
+      <div class="pc-name">Diretor</div>
+      <div class="pc-desc">Visão total: relatórios, funil de vendas, blog e e-mail marketing</div>
+    </div>
+    <div class="pc">
+      <span class="pc-icon">💻</span>
+      <div class="pc-name">TI</div>
+      <div class="pc-desc">Acesso técnico completo e configurações do sistema</div>
+    </div>
+    <div class="pc">
+      <span class="pc-icon">🔭</span>
+      <div class="pc-name">Supervisor</div>
+      <div class="pc-desc">Acompanha o time, distribui tarefas e monitora entregas</div>
+    </div>
+    <div class="pc">
+      <span class="pc-icon">💼</span>
+      <div class="pc-name">Assistente</div>
+      <div class="pc-desc">Gestão de clientes e tarefas da sua carteira</div>
+    </div>
+    <div class="pc">
+      <span class="pc-icon">🙋</span>
+      <div class="pc-name">Colaborador</div>
+      <div class="pc-desc">Suas tarefas, sua agenda, suas ideias</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 15 — ASSISTENTE IA
+══════════════════════════════════════════════ -->
+<section class="slide" id="s15">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">15 / 16</div>
+
+  <div class="row">
+    <div class="col">
+      <span class="tag" style="background:rgba(167,139,250,.1);color:#a78bfa">IA em todo lugar</span>
+      <h2 class="h2">Um assistente sempre<br>disponível <span class="acc">pra você.</span></h2>
+      <p class="sub" style="margin-top:14px;max-width:420px">
+        A inteligência artificial não é só no chatbot —
+        ela ajuda a escrever artigos do blog, criar campanhas de
+        e-mail e responder dúvidas do dia a dia.
+      </p>
+      <div class="perks">
+        <div class="perk"><span class="pd"></span>Chatbot integrado: tire dúvidas sem sair do sistema</div>
+        <div class="perk"><span class="pd"></span>IA escreve artigos do blog para você</div>
+        <div class="perk"><span class="pd"></span>IA cria o conteúdo das campanhas de e-mail</div>
+        <div class="perk"><span class="pd"></span>Histórico de conversas salvo</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="chat">
+        <div class="cm">
+          <div class="cav wr">🤖</div>
+          <div class="cb wr">Olá! Como posso ajudar hoje?</div>
+        </div>
+        <div class="cm u">
+          <div class="cav us">👤</div>
+          <div class="cb us">Me escreve um e-mail sobre o prazo do IR para enviar aos clientes</div>
+        </div>
+        <div class="cm">
+          <div class="cav wr">🤖</div>
+          <div class="cb wr">Claro! Aqui está um rascunho profissional para sua campanha. Quer que eu ajuste o tom ou adicione mais informações? ✅</div>
+        </div>
+        <div class="cm u">
+          <div class="cav us">👤</div>
+          <div class="cb us">Perfeito, pode deixar assim!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 16 — FECHAMENTO
+══════════════════════════════════════════════ -->
+<section class="slide" id="s16">
+  <div class="g1"></div><div class="g2"></div>
+  <div class="wm"><img src="public/images/torresemfundo.png" alt=""><span>WR Assessoria</span></div>
+  <div class="ct">16 / 16</div>
+
+  <img src="public/images/torresemfundo.png" alt="WR" class="close-logo">
+
+  <h2 class="h2 center">Em breve,<br>pra <span class="acc">todo o time.</span></h2>
+  <p class="sub center" style="margin-top:14px;max-width:560px">
+    Desenvolvido com cuidado, pensado em cada detalhe do dia a dia da WR.
+    Isso não é um software qualquer — é o nosso.
+  </p>
+
+  <div class="close-div"></div>
+
+  <div class="close-pills">
+    <div class="cp">✅ Tarefas</div>
+    <div class="cp">👥 Clientes</div>
+    <div class="cp">🎯 Funil de Vendas</div>
+    <div class="cp">🗓️ Agenda</div>
+    <div class="cp">🌐 Portal do Cliente</div>
+    <div class="cp">📰 Blog</div>
+    <div class="cp">📧 E-mail Marketing</div>
+    <div class="cp">💡 Ideias & Correções</div>
+    <div class="cp">📁 Arquivos</div>
+    <div class="cp">📊 Relatórios</div>
+    <div class="cp">🤖 Assistente IA</div>
+  </div>
+
+  <p style="font-size:.72rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#1e3a48;margin-top:28px;position:relative;z-index:1">
+    WR Assessoria · Contabilidade & Gestão Empresarial
+  </p>
+</section>
+
+</div><!-- /deck -->
+
+<!-- ── Navegação ───────────────────────────────── -->
+<div class="arr ap" id="prev">‹</div>
+<div class="arr an" id="next">›</div>
+<div class="dots" id="dots"></div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const dotsEl  = document.getElementById('dots');
+let cur = 0, busy = false;
+
+slides.forEach((_,i)=>{
+  const d = document.createElement('div');
+  d.className = 'dot'+(i===0?' active':'');
+  d.onclick = ()=> go(i);
+  dotsEl.appendChild(d);
+});
+
+function go(n){
+  if(busy || n===cur || n<0 || n>=slides.length) return;
+  busy = true;
+  slides[cur].classList.add('exit');
+  slides[cur].classList.remove('active');
+  dotsEl.children[cur].classList.remove('active');
+  setTimeout(()=>{
+    slides[cur].classList.remove('exit');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    busy = false;
+  }, 380);
+}
+
+document.getElementById('next').onclick = ()=> go(cur+1);
+document.getElementById('prev').onclick = ()=> go(cur-1);
+document.addEventListener('keydown', e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){ e.preventDefault(); go(cur+1); }
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){ e.preventDefault(); go(cur-1); }
+});
+</script>
+</body>
+</html>

@@ -219,7 +219,7 @@
 
         if (isFinalizado) {
             card.classList.remove(
-                'bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4',
+                'bg-white', 'border-gray-200', 'border-amber-400',
                 'dark:bg-slate-800', 'dark:border-slate-700'
             );
             card.classList.add('bg-green-50', 'border-green-300', 'dark:bg-green-950/30', 'dark:border-green-800');
@@ -238,15 +238,14 @@
         } else {
             card.classList.remove(
                 'bg-green-50', 'border-green-300', 'dark:bg-green-950/30', 'dark:border-green-800',
-                'border-amber-400', 'border-l-4'
+                'border-amber-400'
             );
             card.classList.add('bg-white', 'border-gray-200', 'dark:bg-slate-800', 'dark:border-slate-700');
             card.querySelector('.kanban-conclusao-badge')?.remove();
         }
 
         if (etapaCor) {
-            card.style.borderTopColor = etapaCor;
-            card.style.borderTopWidth = '3px';
+            card.style.borderLeftColor = etapaCor;
         }
 
         // Atualiza estilo da data de vencimento
@@ -876,7 +875,7 @@
                 updateCount(etapaAnteriorId, 1);
 
                 if (result2.finalizado) {
-                    card.classList.remove('bg-white', 'border-gray-200', 'border-amber-400', 'border-l-4');
+                    card.classList.remove('bg-white', 'border-gray-200', 'border-amber-400');
                     card.classList.add('bg-green-50', 'border-green-300');
                 } else {
                     card.classList.remove('bg-green-50', 'border-green-300');

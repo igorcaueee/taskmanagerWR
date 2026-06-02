@@ -7,9 +7,15 @@ import $ from 'jquery';
 window.$ = $;
 window.jQuery = $;
 
-window.openModal = function (url) {
+window.openModal = function (url, widthClass) {
 	$.get(url, function (html) {
 		const container = document.getElementById('modalContent');
+		const modalContainer = document.getElementById('globalModalContainer');
+		if (widthClass) {
+			modalContainer.dataset.defaultWidth = modalContainer.className.match(/max-w-\S+/)?.[0] ?? 'max-w-2xl';
+			modalContainer.classList.remove('max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl');
+			modalContainer.classList.add(widthClass);
+		}
 		container.innerHTML = html;
 		container.querySelectorAll('script').forEach(function (oldScript) {
 			const newScript = document.createElement('script');
@@ -24,6 +30,13 @@ window.openModal = function (url) {
 };
 
 window.closeModal = function () {
+	const modalContainer = document.getElementById('globalModalContainer');
+	const defaultWidth = modalContainer.dataset.defaultWidth;
+	if (defaultWidth) {
+		modalContainer.classList.remove('max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl');
+		modalContainer.classList.add(defaultWidth);
+		delete modalContainer.dataset.defaultWidth;
+	}
 	document.getElementById('globalModal').classList.add('hidden');
 	document.getElementById('modalContent').innerHTML = '';
 };

@@ -163,9 +163,6 @@ Route::get('/arquivos/portal-usuarios/{clienteId}', [FileExplorerController::cla
 // Chatbot routes
 Route::post('/chatbot/mensagem', [ChatbotController::class, 'message'])->name('chatbot.message')->middleware('auth');
 Route::delete('/chatbot/historico', [ChatbotController::class, 'clear'])->name('chatbot.clear')->middleware('auth');
-// Blog público
-Route::get('/blog', [BlogController::class, 'publicIndex'])->name('blog.index');
-Route::get('/blog/{slug}', [BlogController::class, 'publicShow'])->name('blog.show');
 // Blog admin (interno)
 Route::get('/admin/blog', [BlogController::class, 'index'])->name('blog.admin.index')->middleware(['auth', 'admin']);
 Route::get('/admin/blog/criar', [BlogController::class, 'formCreate'])->name('blog.admin.form.create')->middleware(['auth', 'admin']);
