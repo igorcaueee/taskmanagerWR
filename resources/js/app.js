@@ -7,6 +7,10 @@ import $ from 'jquery';
 window.$ = $;
 window.jQuery = $;
 
+window._modalBackUrl = null;
+window._modalBackWidth = null;
+window._modalHasChanges = false;
+
 window.openModal = function (url, widthClass) {
 	$.get(url, function (html) {
 		const container = document.getElementById('modalContent');
@@ -16,6 +20,7 @@ window.openModal = function (url, widthClass) {
 			modalContainer.classList.remove('max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl');
 			modalContainer.classList.add(widthClass);
 		}
+		window._modalHasChanges = false;
 		container.innerHTML = html;
 		container.querySelectorAll('script').forEach(function (oldScript) {
 			const newScript = document.createElement('script');
@@ -29,7 +34,34 @@ window.openModal = function (url, widthClass) {
 	});
 };
 
-window.closeModal = function () {
+window.closeModal = async function () {
+	if (window._modalHasChanges) {
+		const result = await Swal.fire({
+			title: 'Alterações não salvas',
+			text: 'Você tem alterações não salvas. Deseja descartá-las?',
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonText: 'Sim, descartar',
+			cancelButtonText: 'Continuar editando',
+			confirmButtonColor: '#ef4444',
+		});
+		if (!result.isConfirmed) { return; }
+		window._modalHasChanges = false;
+	}
+
+	if (window._modalBackUrl) {
+		const backUrl = window._modalBackUrl;
+		const backWidth = window._modalBackWidth;
+		window._modalBackUrl = null;
+		window._modalBackWidth = null;
+		const modalContainer = document.getElementById('globalModalContainer');
+		modalContainer.classList.remove('max-w-2xl', 'max-w-3xl', 'max-w-4xl', 'max-w-5xl', 'max-w-6xl');
+		modalContainer.classList.add(backWidth || 'max-w-2xl');
+		delete modalContainer.dataset.defaultWidth;
+		window.openModal(backUrl);
+		return;
+	}
+
 	const modalContainer = document.getElementById('globalModalContainer');
 	const defaultWidth = modalContainer.dataset.defaultWidth;
 	if (defaultWidth) {
@@ -60,12 +92,35 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// Open modal on any element with data-modal-url
-	document.addEventListener('click', function (e) {
+	document.addEventListener('click', async function (e) {
 		const btn = e.target.closest('[data-modal-url]');
 		if (!btn) {
 			return;
 		}
-		window.openModal(btn.dataset.modalUrl);
+
+		if (window._modalHasChanges) {
+			const result = await Swal.fire({
+				title: 'Alterações não salvas',
+				text: 'Você tem alterações não salvas. Deseja descartá-las?',
+				icon: 'warning',
+				showCancelButton: true,
+				confirmButtonText: 'Sim, descartar',
+				cancelButtonText: 'Continuar editando',
+				confirmButtonColor: '#ef4444',
+			});
+			if (!result.isConfirmed) { return; }
+			window._modalHasChanges = false;
+		}
+
+		if (btn.dataset.modalBackUrl) {
+			window._modalBackWidth = document.getElementById('globalModalContainer').className.match(/max-w-\S+/)?.[0] ?? 'max-w-2xl';
+			window._modalBackUrl = btn.dataset.modalBackUrl;
+		} else {
+			window._modalBackUrl = null;
+			window._modalBackWidth = null;
+		}
+
+		window.openModal(btn.dataset.modalUrl, btn.dataset.modalWidth || null);
 	});
 
 	// Phone mask (delegated so it works on AJAX-loaded inputs)
