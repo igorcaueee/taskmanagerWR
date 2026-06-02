@@ -21,6 +21,8 @@ class PortalUsuario extends Authenticatable
         'password',
         'ativo',
         'ultimo_acesso',
+        'acesso_total',
+        'pastas_permitidas',
     ];
 
     protected $hidden = [
@@ -30,8 +32,19 @@ class PortalUsuario extends Authenticatable
 
     protected $casts = [
         'ativo' => 'boolean',
+        'acesso_total' => 'boolean',
+        'pastas_permitidas' => 'array',
         'ultimo_acesso' => 'datetime',
     ];
+
+    public function temAcessoPasta(string $pasta): bool
+    {
+        if ($this->acesso_total) {
+            return true;
+        }
+
+        return in_array($pasta, $this->pastas_permitidas ?? [], true);
+    }
 
     public function cliente(): BelongsTo
     {

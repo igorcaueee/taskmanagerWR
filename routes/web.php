@@ -113,6 +113,7 @@ Route::post('/clientes/{id}/socios', [ClienteController::class, 'saveSocio'])->n
 Route::put('/clientes/socios/{id}', [ClienteController::class, 'updateSocio'])->name('clientes.socios.update')->middleware('auth');
 Route::delete('/clientes/socios/{id}', [ClienteController::class, 'deleteSocio'])->name('clientes.socios.delete')->middleware('auth');
 // Portal do cliente — gerenciamento de usuários pelo admin
+Route::get('/clientes/{id}/portal/pastas', [ClienteController::class, 'pastasPortalCliente'])->name('clientes.portal.pastas')->middleware('auth');
 Route::post('/clientes/{id}/portal/usuarios', [ClienteController::class, 'storeUsuarioPortal'])->name('clientes.portal.usuarios.store')->middleware('auth');
 Route::put('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'updateUsuarioPortal'])->name('clientes.portal.usuarios.update')->middleware('auth');
 Route::delete('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'destroyUsuarioPortal'])->name('clientes.portal.usuarios.destroy')->middleware('auth');

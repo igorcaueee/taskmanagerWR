@@ -334,6 +334,7 @@
                             <th class="text-left py-2 pr-4 font-medium">E-mail</th>
                             <th class="text-left py-2 pr-4 font-medium">Telefone</th>
                             <th class="text-left py-2 pr-4 font-medium">Último acesso</th>
+                            <th class="text-left py-2 pr-4 font-medium">Pastas</th>
                             <th class="text-left py-2 pr-4 font-medium">Status</th>
                             <th class="text-right py-2 font-medium">Ações</th>
                         </tr>
@@ -347,6 +348,13 @@
                             <td class="py-2.5 pr-4">{{ $pu->telefone ?? '—' }}</td>
                             <td class="py-2.5 pr-4">{{ $pu->ultimo_acesso?->format('d/m/Y H:i') ?? 'Nunca' }}</td>
                             <td class="py-2.5 pr-4">
+                                @if($pu->acesso_total)
+                                    <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Todas</span>
+                                @else
+                                    <span class="text-xs text-gray-500 dark:text-slate-400" title="{{ implode(', ', $pu->pastas_permitidas ?? []) }}">{{ count($pu->pastas_permitidas ?? []) }} pasta(s)</span>
+                                @endif
+                            </td>
+                            <td class="py-2.5 pr-4">
                                 @if($pu->ativo)
                                     <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Ativo</span>
                                 @else
@@ -355,7 +363,7 @@
                             </td>
                             <td class="py-2.5 text-right">
                                 <button
-                                    onclick="abrirModalEditarUsuario({{ $pu->id }}, {{ json_encode(['nome'=>$pu->nome,'username'=>$pu->username,'email'=>$pu->email,'telefone'=>$pu->telefone,'ativo'=>$pu->ativo]) }})"
+                                    onclick="abrirModalEditarUsuario({{ $pu->id }}, {{ json_encode(['nome'=>$pu->nome,'username'=>$pu->username,'email'=>$pu->email,'telefone'=>$pu->telefone,'ativo'=>$pu->ativo,'acesso_total'=>$pu->acesso_total,'pastas_permitidas'=>$pu->pastas_permitidas ?? []]) }})"
                                     class="text-gray-400 hover:text-[#0084AA] transition px-1 border-0 bg-transparent cursor-pointer"
                                     title="Editar"
                                 >
@@ -384,7 +392,28 @@
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     const CLIENTE_ID = {{ $cliente->id }};
 
-    const camposFormUsuario = (dados = {}) => `
+    async function buscarPastasPortal() {
+        try {
+            const resp = await fetch(`/clientes/${CLIENTE_ID}/portal/pastas`, {
+                headers: { 'Accept': 'application/json' },
+            });
+            if (!resp.ok) { return []; }
+            const data = await resp.json();
+            return data.pastas ?? [];
+        } catch {
+            return [];
+        }
+    }
+
+    function togglePastasAccess() {
+        const acessoTotal = document.getElementById('pu-acesso-total')?.checked;
+        const wrapper = document.getElementById('pu-pastas-wrapper');
+        if (wrapper) {
+            wrapper.classList.toggle('hidden', acessoTotal);
+        }
+    }
+
+    const camposFormUsuario = (dados = {}, pastas = []) => `
         <div class="text-left space-y-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Nome *</label>
@@ -416,24 +445,52 @@
                 <input id="pu-ativo" type="checkbox" ${dados.ativo ? 'checked' : ''} class="rounded">
                 <label for="pu-ativo" class="text-xs font-medium text-gray-600">Acesso ativo</label>
             </div>` : ''}
+            ${pastas.length > 0 ? `
+            <div class="border-t border-gray-200 pt-3">
+                <label class="block text-xs font-medium text-gray-600 mb-2">Acesso às pastas</label>
+                <div class="flex items-center gap-2 mb-2">
+                    <input id="pu-acesso-total" type="checkbox" ${(dados.acesso_total !== false) ? 'checked' : ''} class="rounded">
+                    <label for="pu-acesso-total" class="text-xs font-medium text-gray-600">Acesso total (todas as pastas)</label>
+                </div>
+                <div id="pu-pastas-wrapper" class="${(dados.acesso_total !== false) ? 'hidden' : ''} ml-1 grid grid-cols-2 gap-1 mt-1">
+                    ${pastas.map(p => `
+                    <div class="flex items-center gap-2">
+                        <input id="pu-pasta-${p}" type="checkbox" value="${p}"
+                            ${(dados.pastas_permitidas ?? []).includes(p) ? 'checked' : ''}
+                            class="pu-pasta-check rounded">
+                        <label for="pu-pasta-${p}" class="text-xs text-gray-600">${p}</label>
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
         </div>
     `;
 
-    window.abrirModalNovoUsuario = function() {
+    window.abrirModalNovoUsuario = async function() {
+        const pastas = await buscarPastasPortal();
         Swal.fire({
             title: 'Novo usuário do portal',
-            html: camposFormUsuario(),
+            html: camposFormUsuario({}, pastas),
             showCancelButton: true,
             confirmButtonText: 'Criar usuário',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0084AA',
+            didOpen: () => {
+                document.getElementById('pu-acesso-total')?.addEventListener('change', togglePastasAccess);
+            },
             preConfirm: async () => {
+                const acessoTotal = document.getElementById('pu-acesso-total')?.checked ?? true;
+                const pastasPermitidas = acessoTotal
+                    ? null
+                    : [...document.querySelectorAll('.pu-pasta-check:checked')].map(el => el.value);
+
                 const body = {
                     nome: document.getElementById('pu-nome').value,
                     username: document.getElementById('pu-username').value,
                     email: document.getElementById('pu-email').value,
                     telefone: document.getElementById('pu-telefone').value,
                     password: document.getElementById('pu-password').value,
+                    acesso_total: acessoTotal ? 1 : 0,
+                    pastas_permitidas: pastasPermitidas,
                 };
 
                 const resp = await fetch(`/clientes/${CLIENTE_ID}/portal/usuarios`, {
@@ -460,15 +517,24 @@
         });
     };
 
-    window.abrirModalEditarUsuario = function(usuarioId, dados) {
+    window.abrirModalEditarUsuario = async function(usuarioId, dados) {
+        const pastas = await buscarPastasPortal();
         Swal.fire({
             title: 'Editar usuário',
-            html: camposFormUsuario(dados),
+            html: camposFormUsuario(dados, pastas),
             showCancelButton: true,
             confirmButtonText: 'Salvar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0084AA',
+            didOpen: () => {
+                document.getElementById('pu-acesso-total')?.addEventListener('change', togglePastasAccess);
+            },
             preConfirm: async () => {
+                const acessoTotal = document.getElementById('pu-acesso-total')?.checked ?? true;
+                const pastasPermitidas = acessoTotal
+                    ? null
+                    : [...document.querySelectorAll('.pu-pasta-check:checked')].map(el => el.value);
+
                 const body = {
                     nome: document.getElementById('pu-nome').value,
                     username: document.getElementById('pu-username').value,
@@ -476,6 +542,8 @@
                     telefone: document.getElementById('pu-telefone').value,
                     password: document.getElementById('pu-password').value,
                     ativo: document.getElementById('pu-ativo')?.checked ? 1 : 0,
+                    acesso_total: acessoTotal ? 1 : 0,
+                    pastas_permitidas: pastasPermitidas,
                 };
 
                 const resp = await fetch(`/clientes/${CLIENTE_ID}/portal/usuarios/${usuarioId}`, {

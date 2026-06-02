@@ -687,6 +687,36 @@ class ClienteController extends Controller
         return Redirect::route('clientes.quadro.modal', $clienteId)->with('success', 'Sócio removido com sucesso.');
     }
 
+    public function pastasPortalCliente(int $id): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        if (! $cliente->pasta_arquivos) {
+            return response()->json(['pastas' => []]);
+        }
+
+        $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
+        $pastaPortal = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal';
+
+        if (! is_dir($pastaPortal)) {
+            return response()->json(['pastas' => []]);
+        }
+
+        $pastas = [];
+        foreach (new \DirectoryIterator($pastaPortal) as $item) {
+            if ($item->isDot() || ! $item->isDir()) {
+                continue;
+            }
+            $pastas[] = $item->getFilename();
+        }
+
+        sort($pastas);
+
+        return response()->json(['pastas' => $pastas]);
+    }
+
     public function storeUsuarioPortal(Request $request, int $id): JsonResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
@@ -699,11 +729,16 @@ class ClienteController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'telefone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:6'],
+            'acesso_total' => ['boolean'],
+            'pastas_permitidas' => ['nullable', 'array'],
+            'pastas_permitidas.*' => ['string', 'max:100'],
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
+
+        $acessoTotal = $request->boolean('acesso_total', true);
 
         $usuario = $cliente->portalUsuarios()->create([
             'nome' => $request->nome,
@@ -712,6 +747,8 @@ class ClienteController extends Controller
             'telefone' => $request->telefone,
             'password' => Hash::make($request->password),
             'ativo' => true,
+            'acesso_total' => $acessoTotal,
+            'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
         ]);
 
         return response()->json(['usuario' => $usuario, 'mensagem' => 'Usuário criado com sucesso.']);
@@ -730,11 +767,16 @@ class ClienteController extends Controller
             'telefone' => ['nullable', 'string', 'max:30'],
             'password' => ['nullable', 'string', 'min:6'],
             'ativo' => ['boolean'],
+            'acesso_total' => ['boolean'],
+            'pastas_permitidas' => ['nullable', 'array'],
+            'pastas_permitidas.*' => ['string', 'max:100'],
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
+
+        $acessoTotal = $request->boolean('acesso_total', $usuario->acesso_total);
 
         $dados = [
             'nome' => $request->nome,
@@ -742,6 +784,8 @@ class ClienteController extends Controller
             'email' => $request->email,
             'telefone' => $request->telefone,
             'ativo' => $request->boolean('ativo', $usuario->ativo),
+            'acesso_total' => $acessoTotal,
+            'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
         ];
 
         if ($request->filled('password')) {

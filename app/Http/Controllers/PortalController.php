@@ -53,7 +53,7 @@ class PortalController extends Controller
         $portalUsuario = Auth::guard('portal')->user();
         $cliente = $portalUsuario->cliente;
 
-        $arvore = $this->listarArquivosCliente($cliente);
+        $arvore = $this->listarArquivosCliente($cliente, $portalUsuario);
 
         return view('portal.arquivos', compact('cliente', 'arvore', 'portalUsuario'));
     }
@@ -135,7 +135,7 @@ class PortalController extends Controller
      *
      * @return array<string, array<string, array<int, array{nome: string, tamanho: string, modificado: string, extensao: string, path: string}>>>
      */
-    private function listarArquivosCliente(Cliente $cliente): array
+    private function listarArquivosCliente(Cliente $cliente, ?PortalUsuario $portalUsuario = null): array
     {
         if (! $cliente->pasta_arquivos) {
             return [];
@@ -152,6 +152,11 @@ class PortalController extends Controller
         $arvore = [];
 
         foreach ($categorias as $categoria) {
+            // Filtrar por permissão de pasta quando o usuário não tem acesso total
+            if ($portalUsuario !== null && ! $portalUsuario->temAcessoPasta($categoria)) {
+                continue;
+            }
+
             $pastaCategoria = $pastaPortal.'/'.$categoria;
 
             if (! is_dir($pastaCategoria)) {
