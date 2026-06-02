@@ -134,3 +134,15 @@
         </button>
     </div>
 </form>
+
+<script>
+(function () {
+    const container = document.getElementById('modalContent');
+    const form = container ? container.querySelector('form') : null;
+    if (!form) { return; }
+    const markDirty = function () { window._modalHasChanges = true; };
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
+    form.addEventListener('submit', function () { window._modalHasChanges = false; });
+})();
+</script>
