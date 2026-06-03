@@ -210,6 +210,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
+        $data['tipo'] = $request->input('tipo', '1');
 
         $cliente->update($data);
 
