@@ -241,10 +241,12 @@
 
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
                 <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                    <i class="fa-solid fa-chart-line mr-1 text-brand"></i> Novos clientes por mês (últimos 12 meses)
+                    <i class="fa-solid fa-chart-line mr-1 text-brand"></i> Novos clientes por mês (histórico completo)
                 </h2>
-                <div style="position:relative;height:240px">
-                    <canvas id="chartNovosPorMes"></canvas>
+                <div style="overflow-x:auto;">
+                    <div style="position:relative;height:240px;min-width:{{ max(600, $novosPorMes->count() * 60) }}px">
+                        <canvas id="chartNovosPorMes"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -361,6 +363,7 @@
             animation: false,
             plugins: { legend: { display: false } },
             scales: {
+                x: { ticks: { maxRotation: 45, font: { size: 11 } } },
                 y: { beginAtZero: true, ticks: { precision: 0 } },
             },
         },

@@ -196,6 +196,41 @@ class FunilController extends Controller
         ]);
     }
 
+    public function searchEmpresas(Request $request): JsonResponse
+    {
+        $q = '%'.trim($request->string('q')).'%';
+
+        $fromClientes = Cliente::where('nome', 'like', $q)
+            ->orderBy('nome')
+            ->limit(10)
+            ->pluck('nome');
+
+        $fromLeads = Lead::whereNotNull('empresa')
+            ->where('empresa', '!=', '')
+            ->where('empresa', 'like', $q)
+            ->orderBy('empresa')
+            ->limit(10)
+            ->pluck('empresa');
+
+        $results = $fromClientes->merge($fromLeads)->unique()->sort()->values()->take(15);
+
+        return response()->json($results);
+    }
+
+    public function show(int $id): View
+    {
+        $lead = Lead::with([
+            'etapaFunil',
+            'responsavel',
+            'historico.etapaAnterior',
+            'historico.etapaNova',
+            'historico.alteradoPor',
+            'produtos',
+        ])->findOrFail($id);
+
+        return view('funil.show', compact('lead'));
+    }
+
     public function detalhe(int $id): JsonResponse
     {
         $lead = Lead::with([

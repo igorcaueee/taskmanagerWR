@@ -237,18 +237,30 @@ class RelatorioController extends Controller
                 'total' => $t->total,
             ]);
 
-        // Novos clientes por mês (últimos 12 meses)
+        // Novos clientes por mês (desde o primeiro cliente)
+        $primeiroClienteDesde = Cliente::query()
+            ->tap($aplicarFiltrosCliente)
+            ->whereNotNull('cliente_desde')
+            ->orderBy('cliente_desde')
+            ->value('cliente_desde');
+
         $novosPorMes = collect();
-        for ($i = 11; $i >= 0; $i--) {
-            $mes = now()->subMonths($i)->startOfMonth();
-            $novosPorMes->push([
-                'mes' => $mes->translatedFormat('M/Y'),
-                'total' => Cliente::query()
-                    ->tap($aplicarFiltrosCliente)
-                    ->whereYear('created_at', $mes->year)
-                    ->whereMonth('created_at', $mes->month)
-                    ->count(),
-            ]);
+        if ($primeiroClienteDesde) {
+            $mesInicio = Carbon::parse($primeiroClienteDesde)->startOfMonth();
+            $mesFim = now()->startOfMonth();
+            $mesAtual = $mesInicio->copy();
+
+            while ($mesAtual->lte($mesFim)) {
+                $novosPorMes->push([
+                    'mes' => $mesAtual->translatedFormat('M/Y'),
+                    'total' => Cliente::query()
+                        ->tap($aplicarFiltrosCliente)
+                        ->whereYear('cliente_desde', $mesAtual->year)
+                        ->whereMonth('cliente_desde', $mesAtual->month)
+                        ->count(),
+                ]);
+                $mesAtual->addMonth();
+            }
         }
 
         // Certificados a vencer nos próximos 30 dias

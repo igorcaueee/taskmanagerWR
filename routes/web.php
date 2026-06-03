@@ -81,6 +81,8 @@ Route::patch('/leads/{id}/etapa', [FunilController::class, 'updateEtapa'])->name
 Route::get('/leads/{id}/detalhe', [FunilController::class, 'detalhe'])->name('leads.detalhe')->middleware(['auth', 'diretor']);
 Route::get('/leads/{id}/form-conversao', [FunilController::class, 'formConversao'])->name('leads.form.conversao')->middleware(['auth', 'diretor']);
 Route::post('/leads/{id}/converter', [FunilController::class, 'converterParaCliente'])->name('leads.converter')->middleware(['auth', 'diretor']);
+Route::get('/leads/empresas', [FunilController::class, 'searchEmpresas'])->name('leads.empresas')->middleware(['auth', 'diretor']);
+Route::get('/leads/{id}', [FunilController::class, 'show'])->name('leads.show')->middleware(['auth', 'diretor']);
 Route::delete('/leads/{id}', [FunilController::class, 'delete'])->name('leads.delete')->middleware(['auth', 'diretor']);
 // Clientes routes
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');

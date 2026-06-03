@@ -271,14 +271,13 @@
         col.addEventListener('dragleave', handleDragLeave);
     });
 
-    // ── Detail Modal (Swal) ───────────────────────────────────────────────────
+    // ── Card click → navigate to detail page ─────────────────────────────────
     let wasDragged = false;
-    let activeLeadId = null;
 
     document.addEventListener('dragstart', () => { wasDragged = true; });
     document.addEventListener('dragend',   () => { setTimeout(() => { wasDragged = false; }, 50); });
 
-    document.addEventListener('click', async function (e) {
+    document.addEventListener('click', function (e) {
         if (wasDragged) { return; }
 
         const card = e.target.closest('.kanban-card');
@@ -288,236 +287,15 @@
         const leadId = card.dataset.leadId;
         if (!leadId) { return; }
 
-        activeLeadId = leadId;
-        await openDetailModal(leadId);
+        window.location.href = `/leads/${leadId}`;
     });
 
-    async function openDetailModal(leadId) {
-        Swal.fire({
-            title: '<span style="font-size:1rem;font-weight:600">Carregando...</span>',
-            html: '<div class="flex justify-center py-6"><i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i></div>',
-            showConfirmButton: false,
-            width: 640,
-            padding: '1.5rem',
-            customClass: { popup: 'text-left' },
-        });
-
-        try {
-            const res = await fetch(`/leads/${leadId}/detalhe`, {
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            });
-            if (!res.ok) { throw new Error(); }
-            const l = await res.json();
-            renderDetailModal(l);
-        } catch {
-            Swal.fire({ title: 'Erro', text: 'Não foi possível carregar os dados do lead.', icon: 'error' });
-        }
-    }
-
-    function fmt(val) {
-        return val ? 'R$ ' + parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—';
-    }
-
-    function field(label, value, extra = '') {
-        return `<div>
-            <p class="text-xs text-gray-400 mb-0.5">${label}</p>
-            <p class="text-sm text-gray-800 font-medium ${extra}">${value || '—'}</p>
-        </div>`;
-    }
-
-    function renderDetailModal(l) {
-        const origemHtml = l.origem === 'formulario'
-            ? '<span class="inline-flex items-center gap-1 text-purple-700 text-sm font-medium"><i class="fa-solid fa-globe text-xs"></i> Formulário público</span>'
-            : '<span class="text-sm text-gray-600">Manual</span>';
-
-        const etapaHtml = `<span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style="background:${l.etapa.cor}22;color:${l.etapa.cor}">
-            <span style="width:7px;height:7px;border-radius:50%;background:${l.etapa.cor};display:inline-block;flex-shrink:0"></span>
-            ${l.etapa.nome}
-        </span>`;
-
-        // Historico
-        let historicoHtml = '';
-        if (l.historico.length === 0) {
-            historicoHtml = '<p class="text-xs text-gray-400 italic ml-4">Nenhuma movimentação registrada.</p>';
-        } else {
-            historicoHtml = '<ol class="relative border-l border-gray-200 ml-2 space-y-3">';
-            l.historico.forEach(h => {
-                let item = `<li class="ml-4 relative">
-                    <span style="position:absolute;left:-1.15rem;top:4px;width:10px;height:10px;border-radius:50%;background:${h.etapa_nova_cor ?? '#9ca3af'};border:2px solid white;display:block"></span>`;
-
-                if (h.etapa_nova) {
-                    item += `<p class="text-xs text-gray-700">
-                        ${h.etapa_anterior ? `<span class="font-semibold">${h.etapa_anterior}</span> <i class="fa-solid fa-arrow-right text-gray-400" style="font-size:0.6rem"></i> ` : ''}
-                        <span class="font-semibold" style="color:${h.etapa_nova_cor}">${h.etapa_nova}</span>
-                    </p>`;
-                }
-                if (h.descricao) {
-                    item += `<p class="text-xs text-gray-500 italic mt-0.5">"${h.descricao}"</p>`;
-                }
-                item += `<p class="text-[11px] text-gray-400 mt-0.5">${h.data}${h.alterado_por ? ' · ' + h.alterado_por : ''}</p></li>`;
-                historicoHtml += item;
-            });
-            historicoHtml += '</ol>';
-        }
-
-        // Optional fields
-        const optionals = [
-            l.servico      ? `<div class="col-span-2">${field('Serviço', l.servico)}</div>` : '',
-            l.possibilidade ? `<div class="col-span-2">${field('Como podemos ajudar', l.possibilidade)}</div>` : '',
-            l.observacoes  ? `<div class="col-span-2">${field('Observações', l.observacoes)}</div>` : '',
-        ].join('');
-
-        // Converter button
-        const converterBtn = l.convertido
-            ? `<button disabled class="flex-1 text-sm px-4 py-2 bg-gray-200 text-gray-400 rounded-lg border-0 cursor-not-allowed"><i class="fa-solid fa-check mr-1"></i> Já convertido</button>`
-            : `<button onclick="confirmarConversaoModal(${l.id}, '${l.nome.replace(/'/g, "\\'")}')" class="flex-1 text-sm px-4 py-2 bg-green-600 text-white rounded-lg border-0 hover:bg-green-700 cursor-pointer"><i class="fa-solid fa-user-check mr-1"></i> Converter em cliente</button>`;
-
-        // Voltar etapa button — show only if most recent historico has a previous stage
-        const ultimoHistorico = l.historico[0] ?? null;
-        const voltarBtn = (ultimoHistorico && ultimoHistorico.etapa_anterior_id)
-            ? `<button onclick="voltarEtapaLead(${l.id}, ${ultimoHistorico.etapa_anterior_id}, '${(ultimoHistorico.etapa_anterior ?? '').replace(/'/g, "\\'")}')" title="Voltar para: ${ultimoHistorico.etapa_anterior ?? ''}" class="text-sm px-3 py-2 bg-amber-100 text-amber-700 rounded-lg border-0 hover:bg-amber-200 cursor-pointer"><i class="fa-solid fa-rotate-left"></i></button>`
-            : '';
-
-        const html = `
-            <div class="space-y-4 text-left">
-                {{-- Etapa + Origem --}}
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                    ${etapaHtml}
-                    ${origemHtml}
-                </div>
-
-                {{-- Fields grid --}}
-                <div class="grid grid-cols-2 gap-x-6 gap-y-3 bg-gray-50 rounded-xl p-4">
-                    ${field('Empresa', l.empresa)}
-                    ${field('Responsável', l.responsavel)}
-                    ${field('E-mail', l.email)}
-                    ${field('Telefone', l.telefone)}
-                    @if (auth()->user()?->canVerFaturamento()) ${field('Faturamento', fmt(l.faturamento))} @endif
-                    @if (auth()->user()?->canVerHonorario()) ${field('Honorário estimado', fmt(l.honorario), 'text-green-700')} @endif
-                    ${optionals}
-                </div>
-
-                {{-- Histórico --}}
-                <div>
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                        <i class="fa-solid fa-clock-rotate-left mr-1"></i> Histórico de etapas
-                    </p>
-                    ${historicoHtml}
-                </div>
-
-                {{-- Actions --}}
-                <div class="flex gap-2 pt-2 border-t border-gray-100">
-                    ${voltarBtn}
-                    <button onclick="window.openModal('/leads/${l.id}/form'); Swal.close();" class="flex-1 text-sm px-4 py-2 bg-brand text-white rounded-lg border-0 hover:bg-brand/80 cursor-pointer">
-                        <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
-                    </button>
-                    ${converterBtn}
-                </div>
-            </div>`;
-
-        Swal.fire({
-            title: `<span style="font-size:1.05rem;font-weight:700">${l.nome}</span>`,
-            html: html,
-            showConfirmButton: false,
-            showCloseButton: true,
-            width: 640,
-            padding: '1.5rem',
-            customClass: { popup: 'text-left' },
-        });
-    }
-
-    async function voltarEtapaLead(leadId, etapaAnteriorId, etapaAnteriorNome) {
-        Swal.close();
-        await new Promise(r => setTimeout(r, 200));
-
-        const result = await Swal.fire({
-            title: 'Voltar etapa?',
-            text: `O lead será movido de volta para "${etapaAnteriorNome}".`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, voltar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#d97706',
-        });
-
-        if (!result.isConfirmed) { return; }
-
-        try {
-            const res = await fetch(updateEtapaUrl(leadId), {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ etapa_funil_id: etapaAnteriorId, descricao: null }),
-            });
-
-            if (!res.ok) { throw new Error(); }
-
-            // Move card visually
-            const card = document.querySelector(`.kanban-card[data-lead-id="${leadId}"]`);
-            const novaCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaAnteriorId}"]`);
-            if (card && novaCol) {
-                const oldEtapaId = parseInt(card.dataset.etapaId);
-                novaCol.appendChild(card);
-                card.dataset.etapaId = etapaAnteriorId;
-                updateCount(oldEtapaId, -1);
-                updateCount(etapaAnteriorId, 1);
-            }
-
-            showToast(`Voltou para "${etapaAnteriorNome}"`, 'amber');
-        } catch {
-            showToast('Erro ao voltar etapa. Tente novamente.', 'red');
-        }
-    }
-
     async function confirmarConversaoModal(leadId, nome) {
-        Swal.close();
-        await new Promise(r => setTimeout(r, 200));
         window.openModal(`/leads/${leadId}/form-conversao`);
     }
 
     async function confirmarConversao(leadId, nome) {
         await confirmarConversaoModal(leadId, nome);
-    }
-
-    async function converterLead(leadId) {
-        try {
-            const res = await fetch(`/leads/${leadId}/converter`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error ?? 'Erro ao converter.');
-            }
-
-            const data = await res.json();
-
-            showToast(`"${data.cliente_nome}" convertido em cliente!`, 'green');
-
-            // Update card visually
-            const card = document.querySelector(`.kanban-card[data-lead-id="${leadId}"]`);
-            if (card) {
-                card.classList.remove('bg-white', 'border-gray-200');
-                card.classList.add('bg-green-50', 'border-green-300');
-                const convertBtn = card.querySelector('.btn-converter-lead');
-                if (convertBtn) { convertBtn.remove(); }
-            }
-
-            // Refresh modal if open
-            if (activeLeadId == leadId) {
-                await openDetailModal(leadId);
-            }
-        } catch (err) {
-            Swal.fire({ title: 'Erro', text: err.message, icon: 'error' });
-        }
     }
 
     // ── Delete lead ───────────────────────────────────────────────────────────

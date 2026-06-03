@@ -50,11 +50,15 @@
             </div>
         </div>
 
-        <div>
+        <div class="relative" id="empresa-wrapper">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Empresa</label>
-            <input name="empresa" type="text"
-                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                   value="{{ old('empresa', $isEditing ? $lead->empresa : '') }}">
+            <input name="empresa" id="empresa-input" type="text" autocomplete="off"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand"
+                   value="{{ old('empresa', $isEditing ? $lead->empresa : '') }}"
+                   placeholder="Digite para buscar ou criar nova...">
+            <ul id="empresa-dropdown"
+                class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded shadow-lg max-h-48 overflow-y-auto">
+            </ul>
         </div>
 
         @php
@@ -203,6 +207,91 @@
         </ol>
     </div>
 @endif
+
+<script>
+(function () {
+    const input    = document.getElementById('empresa-input');
+    const dropdown = document.getElementById('empresa-dropdown');
+    if (!input || !dropdown) { return; }
+
+    let debounceTimer = null;
+    let activeIndex   = -1;
+
+    function showDropdown(items) {
+        dropdown.innerHTML = '';
+        activeIndex = -1;
+
+        if (items.length === 0) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        items.forEach(function (nome) {
+            const li = document.createElement('li');
+            li.textContent = nome;
+            li.className = 'px-3 py-2 text-sm text-gray-800 dark:text-slate-200 cursor-pointer hover:bg-brand/10 dark:hover:bg-slate-600';
+            li.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                input.value = nome;
+                dropdown.classList.add('hidden');
+            });
+            dropdown.appendChild(li);
+        });
+
+        dropdown.classList.remove('hidden');
+    }
+
+    function fetchEmpresas(q) {
+        if (q.length < 1) { dropdown.classList.add('hidden'); return; }
+
+        fetch('/leads/empresas?q=' + encodeURIComponent(q), {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { showDropdown(data); })
+        .catch(function () { dropdown.classList.add('hidden'); });
+    }
+
+    input.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () { fetchEmpresas(input.value.trim()); }, 220);
+    });
+
+    input.addEventListener('keydown', function (e) {
+        const items = dropdown.querySelectorAll('li');
+        if (!items.length || dropdown.classList.contains('hidden')) { return; }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0) {
+                e.preventDefault();
+                input.value = items[activeIndex].textContent;
+                dropdown.classList.add('hidden');
+            }
+            return;
+        } else if (e.key === 'Escape') {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        items.forEach(function (li, i) {
+            li.classList.toggle('bg-brand/10', i === activeIndex);
+            li.classList.toggle('dark:bg-slate-600', i === activeIndex);
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('empresa-wrapper')?.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+})();
+</script>
 
 <script>
 (function () {
