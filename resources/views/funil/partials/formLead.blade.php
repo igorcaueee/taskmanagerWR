@@ -217,6 +217,32 @@
     let debounceTimer = null;
     let activeIndex   = -1;
 
+    function fillClienteData(item) {
+        if (item.source !== 'cliente') { return; }
+
+        const selectTipo   = document.getElementById('lead-select-tipo');
+        const inputCpfCnpj = document.getElementById('lead-input-cpfcnpj');
+        const inputFat     = document.querySelector('input[name="faturamento"]');
+        const inputHon     = document.querySelector('input[name="honorario"]');
+
+        if (selectTipo && item.tipo !== null && item.tipo !== undefined) {
+            selectTipo.value = String(item.tipo);
+            selectTipo.dispatchEvent(new Event('change'));
+        }
+
+        if (inputCpfCnpj && item.cpfcnpj) {
+            inputCpfCnpj.value = item.cpfcnpj;
+        }
+
+        if (inputFat && item.faturamento !== '' && item.faturamento !== null && item.faturamento !== undefined) {
+            inputFat.value = item.faturamento;
+        }
+
+        if (inputHon && item.honorario !== '' && item.honorario !== null && item.honorario !== undefined) {
+            inputHon.value = item.honorario;
+        }
+    }
+
     function showDropdown(items) {
         dropdown.innerHTML = '';
         activeIndex = -1;
@@ -226,14 +252,27 @@
             return;
         }
 
-        items.forEach(function (nome) {
+        items.forEach(function (item) {
+            const nome = item.nome;
             const li = document.createElement('li');
-            li.textContent = nome;
-            li.className = 'px-3 py-2 text-sm text-gray-800 dark:text-slate-200 cursor-pointer hover:bg-brand/10 dark:hover:bg-slate-600';
+            li.className = 'px-3 py-2 text-sm text-gray-800 dark:text-slate-200 cursor-pointer hover:bg-brand/10 dark:hover:bg-slate-600 flex items-center justify-between gap-2';
+
+            const span = document.createElement('span');
+            span.textContent = nome;
+            li.appendChild(span);
+
+            if (item.source === 'cliente') {
+                const badge = document.createElement('span');
+                badge.textContent = 'cliente';
+                badge.className = 'text-[0.65rem] px-1.5 py-0.5 rounded bg-brand/10 text-brand dark:bg-brand/20 dark:text-brand-light flex-shrink-0';
+                li.appendChild(badge);
+            }
+
             li.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 input.value = nome;
                 dropdown.classList.add('hidden');
+                fillClienteData(item);
             });
             dropdown.appendChild(li);
         });
@@ -270,7 +309,7 @@
         } else if (e.key === 'Enter') {
             if (activeIndex >= 0) {
                 e.preventDefault();
-                input.value = items[activeIndex].textContent;
+                items[activeIndex].dispatchEvent(new MouseEvent('mousedown'));
                 dropdown.classList.add('hidden');
             }
             return;

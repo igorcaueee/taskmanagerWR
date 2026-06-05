@@ -203,16 +203,31 @@ class FunilController extends Controller
         $fromClientes = Cliente::where('nome', 'like', $q)
             ->orderBy('nome')
             ->limit(10)
-            ->pluck('nome');
+            ->get(['id', 'nome', 'tipo', 'cpfcnpj', 'faturamento', 'honorario'])
+            ->map(fn ($c) => [
+                'nome' => $c->nome,
+                'source' => 'cliente',
+                'tipo' => $c->tipo,
+                'cpfcnpj' => $c->cpfcnpj ?? '',
+                'faturamento' => $c->faturamento ?? '',
+                'honorario' => $c->honorario ?? '',
+            ]);
 
         $fromLeads = Lead::whereNotNull('empresa')
             ->where('empresa', '!=', '')
             ->where('empresa', 'like', $q)
             ->orderBy('empresa')
             ->limit(10)
-            ->pluck('empresa');
+            ->pluck('empresa')
+            ->map(fn ($nome) => ['nome' => $nome, 'source' => 'lead']);
 
-        $results = $fromClientes->merge($fromLeads)->unique()->sort()->values()->take(15);
+        $nomesDosClientes = $fromClientes->pluck('nome');
+
+        $results = $fromClientes
+            ->merge($fromLeads->filter(fn ($item) => ! $nomesDosClientes->contains($item['nome'])))
+            ->sortBy('nome')
+            ->values()
+            ->take(15);
 
         return response()->json($results);
     }
