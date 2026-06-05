@@ -252,6 +252,26 @@
             </label>
         </div>
 
+        <div>
+            @php
+                $acessoExtratoAtual = old('acesso_extrato', $isEditing ? $cliente->acesso_extrato : ($prefill['acesso_extrato'] ?? null));
+                $acessoExtratoAtual = $acessoExtratoAtual === null ? null : (bool) $acessoExtratoAtual;
+            @endphp
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Temos acesso a extratos do cliente?</label>
+            <div class="flex gap-4">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input name="acesso_extrato" type="radio" value="1" class="border-gray-300"
+                           {{ $acessoExtratoAtual === true ? 'checked' : '' }}>
+                    Sim
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input name="acesso_extrato" type="radio" value="0" class="border-gray-300"
+                           {{ $acessoExtratoAtual === false ? 'checked' : '' }}>
+                    Não
+                </label>
+            </div>
+        </div>
+
         @if(isset($produtos) && $produtos->isNotEmpty())
             @php
                 $produtosSelecionados = old('produtos', $isEditing ? $cliente->produtos->pluck('id')->toArray() : ($prefill['produtos'] ?? []));

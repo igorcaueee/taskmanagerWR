@@ -90,6 +90,10 @@ class ClienteController extends Controller
             $query->where('atividade', 'like', '%'.$request->string('atividade').'%');
         }
 
+        if ($request->input('acesso_extrato') !== null && $request->input('acesso_extrato') !== '') {
+            $query->where('acesso_extrato', $request->boolean('acesso_extrato'));
+        }
+
         $clientes = $query->paginate(50)->withQueryString();
 
         $segmentacoes = Segmentacao::orderBy('nome')->get(['id', 'nome']);
@@ -129,7 +133,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'acesso_extrato', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
@@ -150,6 +154,7 @@ class ClienteController extends Controller
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
             'possibilidade' => ['nullable', 'string'],
+            'acesso_extrato' => ['nullable', 'boolean'],
         ], [
             'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
@@ -159,6 +164,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
+        $data['acesso_extrato'] = $request->filled('acesso_extrato') ? $request->boolean('acesso_extrato') : null;
         $data['tipo'] = $request->input('tipo', '1');
 
         Cliente::create($data);
@@ -181,7 +187,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'acesso_extrato', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -201,6 +207,7 @@ class ClienteController extends Controller
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
             'possibilidade' => ['nullable', 'string'],
+            'acesso_extrato' => ['nullable', 'boolean'],
         ], [
             'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
@@ -210,6 +217,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
+        $data['acesso_extrato'] = $request->filled('acesso_extrato') ? $request->boolean('acesso_extrato') : null;
         $data['tipo'] = $request->input('tipo', '1');
 
         $cliente->update($data);

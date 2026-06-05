@@ -100,6 +100,15 @@
                            onchange="document.getElementById('form-filtros-clientes').submit()"
                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-44">
                 </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Acesso a extratos</label>
+                    <select name="acesso_extrato" onchange="document.getElementById('form-filtros-clientes').submit()"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="1" @selected(request('acesso_extrato') === '1')>Sim</option>
+                        <option value="0" @selected(request('acesso_extrato') === '0')>Não</option>
+                    </select>
+                </div>
             </form>
 
             <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs">
@@ -113,6 +122,7 @@
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente Desde</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fator R</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Extrato</th>
                         <th class="px-4 py-2"></th>
                     </tr>
                 </thead>
@@ -152,6 +162,15 @@
                                     <i class="fa-solid fa-xmark text-gray-300"></i>
                                 @endif
                             </td>
+                            <td class="px-4 py-2 text-xs text-center">
+                                @if($cliente->acesso_extrato === true)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Sim</span>
+                                @elseif($cliente->acesso_extrato === false)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Não</span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-2 text-xs text-right whitespace-nowrap">
                                 @if (auth()->user()?->canEditarClientes())
                                 <button type="button"
@@ -188,7 +207,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum cliente encontrado.</td>
+                            <td colspan="10" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum cliente encontrado.</td>
                         </tr>
                     @endforelse
                 </tbody>

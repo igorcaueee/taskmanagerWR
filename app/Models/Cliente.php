@@ -41,6 +41,7 @@ class Cliente extends Authenticatable
         'senha_portal_plain',
         'portal_ativo',
         'portal_ultimo_acesso',
+        'acesso_extrato',
     ];
 
     protected $casts = [
@@ -51,6 +52,7 @@ class Cliente extends Authenticatable
         'capital_social' => 'decimal:2',
         'portal_ativo' => 'boolean',
         'portal_ultimo_acesso' => 'datetime',
+        'acesso_extrato' => 'boolean',
         'senha_portal_plain' => 'encrypted',
     ];
 

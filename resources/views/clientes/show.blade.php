@@ -181,6 +181,18 @@
                             </dd>
                         </div>
                         <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Acesso a Extratos</dt>
+                            <dd class="mt-0.5">
+                                @if($cliente->acesso_extrato === true)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">Sim</span>
+                                @elseif($cliente->acesso_extrato === false)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">Não</span>
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
                             <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Atividade</dt>
                             <dd class="mt-0.5 text-gray-900 dark:text-slate-100">{{ $cliente->atividade ?? '—' }}</dd>
                         </div>
