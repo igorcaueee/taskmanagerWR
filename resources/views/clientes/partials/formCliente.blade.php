@@ -68,6 +68,9 @@
     @if($isEditing)
         @method('PUT')
     @endif
+    @if(request()->query('redirect') === 'list')
+        <input type="hidden" name="redirect_to" value="list">
+    @endif
 
     <div class="space-y-4">
         <div>
