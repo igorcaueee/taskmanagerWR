@@ -217,7 +217,9 @@ class ClienteController extends Controller
         $cliente->produtos()->sync($request->input('produtos', []));
 
         if ($request->input('redirect_to') === 'list') {
-            return Redirect::route('clientes')->with('success', 'Cliente atualizado com sucesso.');
+            $page = (int) $request->input('redirect_page', 1);
+
+            return Redirect::route('clientes', $page > 1 ? ['page' => $page] : [])->with('success', 'Cliente atualizado com sucesso.');
         }
 
         return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente atualizado com sucesso.');

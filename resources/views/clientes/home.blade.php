@@ -163,7 +163,7 @@
 
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0 ml-3"
-                                        data-modal-url="{{ route('clientes.form.edit', $cliente->id) }}?redirect=list">
+                                        data-modal-url="{{ route('clientes.form.edit', $cliente->id) }}?redirect=list&page={{ request('page', 1) }}">
                                     <i class="fa-solid fa-pencil"></i>
                                 </button>
 

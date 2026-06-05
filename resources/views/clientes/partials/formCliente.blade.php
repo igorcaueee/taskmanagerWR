@@ -70,6 +70,7 @@
     @endif
     @if(request()->query('redirect') === 'list')
         <input type="hidden" name="redirect_to" value="list">
+        <input type="hidden" name="redirect_page" value="{{ request()->query('page', 1) }}">
     @endif
 
     <div class="space-y-4">
