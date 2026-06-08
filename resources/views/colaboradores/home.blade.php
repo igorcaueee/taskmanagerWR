@@ -14,7 +14,7 @@
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto py-6 px-4">
+    <div class="max-w-full mx-auto py-6 px-4">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-regular fa-user"></i> Colaboradores</h1>
