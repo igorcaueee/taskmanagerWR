@@ -19,10 +19,14 @@ class VerificarCertificados extends Command
 {
     public function handle(): int
     {
-        $silvia = Usuario::where('email', 'silvia@assessoriawr.com')->first();
+        $silvia = Usuario::where('email', 'silvia@assessoriawr.com')
+            ->orWhere('email', 'contato@wrcontabilidade.com.br')
+            ->orWhere('nome', 'like', '%Silvia%')
+            ->orWhere('nome', 'like', '%Sílvia%')
+            ->first();
 
         if (! $silvia) {
-            $this->error('Usuária Silvia não encontrada. Execute: php artisan db:seed --class=SilviaUserSeeder');
+            $this->error('Usuária Silvia não encontrada.');
 
             return self::FAILURE;
         }
@@ -45,14 +49,16 @@ class VerificarCertificados extends Command
             return self::FAILURE;
         }
 
-        $dataAlvo = Carbon::today()->addDays(30)->toDateString();
+        $hoje = Carbon::today();
+        $dataAlvo = $hoje->copy()->addDays(30);
 
-        $clientes = Cliente::whereDate('vencimento_certificado', $dataAlvo)
+        $clientes = Cliente::whereDate('vencimento_certificado', '>=', $hoje)
+            ->whereDate('vencimento_certificado', '<=', $dataAlvo)
             ->where('status', 'ativo')
             ->get();
 
         if ($clientes->isEmpty()) {
-            $this->info("Nenhum certificado vencendo em {$dataAlvo}.");
+            $this->info("Nenhum certificado vencendo até {$dataAlvo->toDateString()}.");
 
             return self::SUCCESS;
         }
@@ -76,18 +82,18 @@ class VerificarCertificados extends Command
             $ciclo = Ciclo::findOrCreateForDate($dataTarefa->copy());
 
             Tarefa::create([
-                'titulo'          => $titulo,
-                'descricao'       => "Certificado digital do cliente {$cliente->nome} vence em {$vencimento->format('d/m/Y')}. Providenciar renovação.",
-                'cliente_id'      => $cliente->id,
+                'titulo' => $titulo,
+                'descricao' => "Certificado digital do cliente {$cliente->nome} vence em {$vencimento->format('d/m/Y')}. Providenciar renovação.",
+                'cliente_id' => $cliente->id,
                 'departamento_id' => $departamentoId,
-                'etapa_id'        => $etapa->id,
-                'responsavel_id'  => $silvia->id,
-                'criado_por'      => $silvia->id,
+                'etapa_id' => $etapa->id,
+                'responsavel_id' => $silvia->id,
+                'criado_por' => $silvia->id,
                 'data_vencimento' => $vencimento->copy()->subDays(30),
-                'prioridade'      => 4,
-                'recorrente'      => false,
-                'frequencia'      => 'nenhuma',
-                'ciclo_id'        => $ciclo->id,
+                'prioridade' => 4,
+                'recorrente' => false,
+                'frequencia' => 'nenhuma',
+                'ciclo_id' => $ciclo->id,
             ]);
 
             $criadas++;
