@@ -43,10 +43,11 @@
                        value="{{ old('email', $isEditing ? $lead->email : '') }}">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone <span class="text-red-500">*</span></label>
                 <input name="telefone" type="text"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('telefone', $isEditing ? $lead->telefone : '') }}">
+                       value="{{ old('telefone', $isEditing ? $lead->telefone : '') }}"
+                       required>
             </div>
         </div>
 

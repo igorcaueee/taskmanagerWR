@@ -15,11 +15,14 @@
 
     <div class="flex items-start justify-between gap-1 mb-1">
         <p class="text-sm font-semibold text-gray-800 dark:text-slate-200 leading-tight line-clamp-2">{{ $lead->nome }}</p>
-        @if ($lead->origem === 'formulario')
-            <span class="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 bg-purple-100 text-purple-700" title="Veio do formulário público">
-                <i class="fa-solid fa-globe"></i>
-            </span>
-        @endif
+        <div class="flex items-center gap-1 flex-shrink-0">
+            <span class="text-xs text-gray-400 dark:text-slate-500" title="Data de cadastro">{{ $lead->created_at->format('d/m/Y') }}</span>
+            @if ($lead->origem === 'formulario')
+                <span class="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700" title="Veio do formulário público">
+                    <i class="fa-solid fa-globe"></i>
+                </span>
+            @endif
+        </div>
     </div>
 
     @if ($lead->empresa)
@@ -64,7 +67,7 @@
             </button>
         </form>
 
-        @if (!$lead->convertido_cliente_id)
+        @if (!$lead->convertido_cliente_id && strtolower(trim($lead->etapaFunil?->nome ?? '')) !== 'cliente')
             <button type="button"
                     class="ml-auto text-xs text-gray-400 dark:text-slate-500 hover:text-green-600 border-0 bg-transparent p-0 cursor-pointer btn-converter-lead"
                     title="Converter em cliente"

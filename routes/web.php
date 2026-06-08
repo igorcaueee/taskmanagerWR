@@ -73,6 +73,7 @@ Route::post('/google/disconnect', [GoogleCalendarController::class, 'disconnect'
 Route::post('/google/sync', [GoogleCalendarController::class, 'sync'])->name('google.calendar.sync')->middleware('auth');
 // Funil de Vendas (CRM) routes
 Route::get('/funil', [FunilController::class, 'showFunil'])->name('funil')->middleware(['auth', 'diretor']);
+Route::get('/leads', [FunilController::class, 'leadsIndex'])->name('leads.index')->middleware(['auth', 'diretor']);
 Route::get('/leads/form', [FunilController::class, 'formCreate'])->name('leads.form.create')->middleware(['auth', 'diretor']);
 Route::get('/leads/{id}/form', [FunilController::class, 'formEdit'])->name('leads.form.edit')->middleware(['auth', 'diretor']);
 Route::post('/leads/save', [FunilController::class, 'save'])->name('leads.save')->middleware(['auth', 'diretor']);
@@ -84,6 +85,7 @@ Route::post('/leads/{id}/converter', [FunilController::class, 'converterParaClie
 Route::get('/leads/empresas', [FunilController::class, 'searchEmpresas'])->name('leads.empresas')->middleware(['auth', 'diretor']);
 Route::get('/leads/{id}', [FunilController::class, 'show'])->name('leads.show')->middleware(['auth', 'diretor']);
 Route::delete('/leads/{id}', [FunilController::class, 'delete'])->name('leads.delete')->middleware(['auth', 'diretor']);
+Route::post('/leads/{id}/delegar-tarefa', [FunilController::class, 'delegarTarefa'])->name('leads.delegar.tarefa')->middleware(['auth', 'diretor']);
 // Clientes routes
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');

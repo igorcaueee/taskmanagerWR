@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ciclo;
 use App\Models\Cliente;
+use App\Models\Departamento;
+use App\Models\Etapa;
 use App\Models\EtapaFunil;
 use App\Models\HistoricoFunil;
 use App\Models\Lead;
 use App\Models\Produto;
+use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
@@ -42,8 +47,40 @@ class FunilController extends Controller
         $usuario = Auth::user();
         $podeVerTodos = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
         $usuarios = $podeVerTodos ? Usuario::orderBy('nome')->get() : collect();
+        $todosUsuarios = Usuario::orderBy('nome')->get();
 
-        return view('funil.kanban', compact('etapas', 'leads', 'usuarios', 'podeVerTodos'));
+        return view('funil.kanban', compact('etapas', 'leads', 'usuarios', 'podeVerTodos', 'todosUsuarios'));
+    }
+
+    public function leadsIndex(Request $request): View
+    {
+        $query = Lead::with(['etapaFunil', 'responsavel'])->orderBy('created_at', 'desc');
+
+        if ($request->filled('busca')) {
+            $busca = '%'.$request->string('busca').'%';
+            $query->where(function ($q) use ($busca) {
+                $q->where('nome', 'like', $busca)
+                    ->orWhere('empresa', 'like', $busca)
+                    ->orWhere('email', 'like', $busca)
+                    ->orWhere('telefone', 'like', $busca);
+            });
+        }
+
+        if ($request->filled('etapa_id')) {
+            $query->where('etapa_funil_id', $request->integer('etapa_id'));
+        }
+
+        if ($request->filled('responsavel_id')) {
+            $query->where('responsavel_id', $request->integer('responsavel_id'));
+        }
+
+        $usuario = Auth::user();
+        $podeVerTodos = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
+        $usuarios = $podeVerTodos ? Usuario::orderBy('nome')->get() : collect();
+        $etapas = EtapaFunil::orderBy('ordem')->get();
+        $leads = $query->paginate(30)->withQueryString();
+
+        return view('funil.leads', compact('leads', 'etapas', 'usuarios', 'podeVerTodos'));
     }
 
     public function formCreate(): View
@@ -90,7 +127,7 @@ class FunilController extends Controller
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
-            'telefone' => ['nullable', 'string', 'max:20'],
+            'telefone' => ['required', 'string', 'max:20'],
             'empresa' => ['nullable', 'string', 'max:255'],
             'tipo' => ['nullable', 'integer', 'in:0,1'],
             'cpfcnpj' => ['nullable', 'string', 'max:18'],
@@ -126,7 +163,7 @@ class FunilController extends Controller
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
-            'telefone' => ['nullable', 'string', 'max:20'],
+            'telefone' => ['required', 'string', 'max:20'],
             'empresa' => ['nullable', 'string', 'max:255'],
             'tipo' => ['nullable', 'integer', 'in:0,1'],
             'cpfcnpj' => ['nullable', 'string', 'max:18'],
@@ -418,5 +455,41 @@ class FunilController extends Controller
         Lead::findOrFail($id)->delete();
 
         return Redirect::route('funil')->with('success', 'Lead excluído com sucesso.');
+    }
+
+    public function delegarTarefa(Request $request, int $id): JsonResponse
+    {
+        $lead = Lead::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'responsavel_id' => ['required', 'exists:usuarios,id'],
+            'data_vencimento' => ['required', 'date'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $etapa = Etapa::orderBy('ordem')->first();
+        $dataVencimento = Carbon::parse($request->input('data_vencimento'));
+        $cicloId = Ciclo::findOrCreateForDate($dataVencimento)->id;
+        $responsavel = Usuario::find($request->integer('responsavel_id'));
+        $departamentoId = $responsavel?->departamento_id ?? Departamento::orderBy('id')->value('id');
+
+        Tarefa::create([
+            'titulo' => 'Preencher dados do cliente — '.$lead->nome,
+            'descricao' => 'Lead convertido para etapa "Cliente". Preencher os dados completos do cliente no sistema.',
+            'etapa_id' => $etapa->id,
+            'responsavel_id' => $responsavel?->id,
+            'departamento_id' => $departamentoId,
+            'criado_por' => Auth::id(),
+            'data_vencimento' => $dataVencimento,
+            'prioridade' => 2,
+            'ciclo_id' => $cicloId,
+            'frequencia' => 'nenhuma',
+            'recorrente' => false,
+        ]);
+
+        return response()->json(['success' => true]);
     }
 }

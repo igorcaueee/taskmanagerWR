@@ -235,6 +235,8 @@
 
                 if (conv.isConfirmed) {
                     await confirmarConversaoModal(leadId, '');
+                } else {
+                    await sugerirDelegacaoTarefa(leadId);
                 }
             }
         } catch (err) {
@@ -296,6 +298,75 @@
 
     async function confirmarConversao(leadId, nome) {
         await confirmarConversaoModal(leadId, nome);
+    }
+
+    // ── Delegate task when user skips conversion ──────────────────────────────
+    const todosUsuarios = @json($todosUsuarios->map(fn($u) => ['id' => $u->id, 'nome' => $u->nome]));
+
+    async function sugerirDelegacaoTarefa(leadId) {
+        const opcoesUsuarios = todosUsuarios.map(u =>
+            `<option value="${u.id}">${u.nome}</option>`
+        ).join('');
+
+        const hoje = new Date().toISOString().split('T')[0];
+
+        const { isConfirmed, value } = await Swal.fire({
+            title: 'Delegar tarefa?',
+            html: `
+                <p style="font-size:0.875rem; color:#6b7280; margin-bottom:1rem;">Deseja criar uma tarefa para um colaborador preencher os dados do cliente?</p>
+                <div style="text-align:left; margin-bottom:0.75rem;">
+                    <label style="display:block; font-size:0.75rem; font-weight:500; color:#6b7280; margin-bottom:0.25rem;">Responsável</label>
+                    <select id="swal-responsavel" style="display:block; width:100%; border:1px solid #4b5563; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; background:#1e293b; color:#e2e8f0; box-sizing:border-box;">
+                        <option value="">— Selecione um colaborador —</option>
+                        ${opcoesUsuarios}
+                    </select>
+                </div>
+                <div style="text-align:left;">
+                    <label style="display:block; font-size:0.75rem; font-weight:500; color:#6b7280; margin-bottom:0.25rem;">Data limite</label>
+                    <input id="swal-data" type="date" value="${hoje}" style="display:block; width:100%; border:1px solid #4b5563; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; background:#1e293b; color:#e2e8f0; box-sizing:border-box;">
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Delegar',
+            cancelButtonText: 'Não, obrigado',
+            confirmButtonColor: '#2563eb',
+            preConfirm: () => {
+                const responsavelId = document.getElementById('swal-responsavel').value;
+                const dataVencimento = document.getElementById('swal-data').value;
+                if (!responsavelId) {
+                    Swal.showValidationMessage('Selecione um responsável.');
+                    return false;
+                }
+                if (!dataVencimento) {
+                    Swal.showValidationMessage('Informe uma data limite.');
+                    return false;
+                }
+                return { responsavelId, dataVencimento };
+            },
+        });
+
+        if (!isConfirmed) { return; }
+
+        const { responsavelId, dataVencimento } = value;
+
+        try {
+            const res = await fetch(`/leads/${leadId}/delegar-tarefa`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ responsavel_id: responsavelId, data_vencimento: dataVencimento }),
+            });
+
+            if (!res.ok) { throw new Error(); }
+
+            showToast('Tarefa delegada com sucesso!', 'green');
+        } catch {
+            showToast('Erro ao delegar tarefa. Tente novamente.', 'red');
+        }
     }
 
     // ── Delete lead ───────────────────────────────────────────────────────────
