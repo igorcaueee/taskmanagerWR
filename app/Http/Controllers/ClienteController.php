@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\PortalUsuario;
 use App\Models\Produto;
-use App\Models\QuestionarioResposta;
 use App\Models\Segmentacao;
 use App\Models\Socio;
 use Illuminate\Http\JsonResponse;
@@ -13,12 +11,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -83,23 +78,9 @@ class ClienteController extends Controller
             $query->where('regime_tributario', $request->input('regime_tributario'));
         }
 
-        if ($request->filled('segmentacao_id')) {
-            $query->where('segmentacao_id', $request->integer('segmentacao_id'));
-        }
-
-        if ($request->filled('atividade')) {
-            $query->where('atividade', 'like', '%'.$request->string('atividade').'%');
-        }
-
-        if ($request->input('acesso_extrato') !== null && $request->input('acesso_extrato') !== '') {
-            $query->where('acesso_extrato', $request->boolean('acesso_extrato'));
-        }
-
         $clientes = $query->paginate(50)->withQueryString();
 
-        $segmentacoes = Segmentacao::orderBy('nome')->get(['id', 'nome']);
-
-        return view('clientes.home', compact('clientes', 'segmentacoes'));
+        return view('clientes.home', compact('clientes'));
     }
 
     public function formClienteCreate(): View
@@ -114,14 +95,9 @@ class ClienteController extends Controller
 
     public function showCliente(int $id): View
     {
-        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'portalUsuarios'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao'])->findOrFail($id);
 
-        $ultimoIDE = QuestionarioResposta::where('cliente_id', $id)
-            ->where('finalizado', true)
-            ->latest()
-            ->first();
-
-        return view('clientes.show', compact('cliente', 'ultimoIDE'));
+        return view('clientes.show', compact('cliente'));
     }
 
     public function formClienteEdit(int $id): View
@@ -139,7 +115,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'acesso_extrato', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
@@ -160,7 +136,6 @@ class ClienteController extends Controller
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
             'possibilidade' => ['nullable', 'string'],
-            'acesso_extrato' => ['nullable', 'boolean'],
         ], [
             'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
@@ -170,21 +145,13 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
-        $data['acesso_extrato'] = $request->filled('acesso_extrato') ? $request->boolean('acesso_extrato') : null;
-        $data['tipo'] = $request->input('tipo', '1');
 
         Cliente::create($data);
 
         $cliente = Cliente::query()->latest()->first();
         $cliente->produtos()->sync($request->input('produtos', []));
 
-        $redirect = Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente criado com sucesso.');
-
-        if ($data['tipo'] === '1') {
-            $redirect = $redirect->with('open_quadro_societario', true);
-        }
-
-        return $redirect;
+        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente criado com sucesso.');
     }
 
     public function updateCliente(Request $request, int $id): RedirectResponse
@@ -193,7 +160,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'acesso_extrato', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -213,7 +180,6 @@ class ClienteController extends Controller
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
             'possibilidade' => ['nullable', 'string'],
-            'acesso_extrato' => ['nullable', 'boolean'],
         ], [
             'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
@@ -223,18 +189,10 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
-        $data['acesso_extrato'] = $request->filled('acesso_extrato') ? $request->boolean('acesso_extrato') : null;
-        $data['tipo'] = $request->input('tipo', '1');
 
         $cliente->update($data);
 
         $cliente->produtos()->sync($request->input('produtos', []));
-
-        if ($request->input('redirect_to') === 'list') {
-            $page = (int) $request->input('redirect_page', 1);
-
-            return Redirect::route('clientes', $page > 1 ? ['page' => $page] : [])->with('success', 'Cliente atualizado com sucesso.');
-        }
 
         return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente atualizado com sucesso.');
     }
@@ -424,135 +382,6 @@ class ClienteController extends Controller
         return Redirect::route('clientes')->with('success', $msg.'.');
     }
 
-    public function exportClientes(Request $request): Response
-    {
-        $query = Cliente::with(['segmentacao', 'produtos'])->orderBy('nome');
-
-        if ($request->filled('busca')) {
-            $busca = '%'.$request->string('busca').'%';
-            $query->where(function ($q) use ($busca) {
-                $q->where('nome', 'like', $busca)
-                    ->orWhere('cpfcnpj', 'like', $busca)
-                    ->orWhere('cidade', 'like', $busca)
-                    ->orWhere('estado', 'like', $busca)
-                    ->orWhere('regime_tributario', 'like', $busca);
-            });
-        }
-
-        if ($request->filled('tipo')) {
-            $query->where('tipo', $request->input('tipo'));
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
-        }
-
-        if ($request->filled('regime_tributario')) {
-            $query->where('regime_tributario', $request->input('regime_tributario'));
-        }
-
-        if ($request->filled('segmentacao_id')) {
-            $query->where('segmentacao_id', $request->integer('segmentacao_id'));
-        }
-
-        if ($request->filled('atividade')) {
-            $query->where('atividade', 'like', '%'.$request->string('atividade').'%');
-        }
-
-        $clientes = $query->get();
-
-        $spreadsheet = new Spreadsheet;
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Clientes');
-
-        $headers = [
-            'Nome', 'CPF/CNPJ', 'Tipo', 'Regime Tributário', 'Área', 'Atividade',
-            'Cidade', 'UF', 'Status', 'Fator R', 'Cliente Desde', 'Data Abertura',
-            'Vencimento Certificado', 'Faturamento', 'Serviço', 'Honorário', 'Capital Social',
-            'Produtos', 'Motivo Encerramento', 'Data Encerramento',
-        ];
-
-        foreach ($headers as $i => $header) {
-            $col = $i + 1;
-            $cell = Coordinate::stringFromColumnIndex($col).'1';
-            $sheet->setCellValue($cell, $header);
-            $sheet->getStyle($cell)->applyFromArray([
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ]);
-            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
-        }
-
-        $row = 2;
-        foreach ($clientes as $cliente) {
-            $tipo = match ((string) $cliente->tipo) {
-                '1' => 'PJ',
-                '0' => 'PF',
-                default => '',
-            };
-
-            $produtos = $cliente->produtos->pluck('nome')->join(', ');
-
-            $rowData = [
-                $cliente->nome,
-                $cliente->cpfcnpj,
-                $tipo,
-                $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '',
-                $cliente->segmentacao?->nome ?? '',
-                $cliente->atividade,
-                $cliente->cidade,
-                $cliente->estado,
-                $cliente->status === 'ativo' ? 'Ativo' : 'Inativo',
-                $cliente->fator_r ? 'Sim' : 'Não',
-                $cliente->cliente_desde?->format('d/m/Y') ?? '',
-                $cliente->dataabertura?->format('d/m/Y') ?? '',
-                $cliente->vencimento_certificado?->format('d/m/Y') ?? '',
-                $cliente->faturamento,
-                $cliente->servico,
-                $cliente->honorario,
-                $cliente->capital_social,
-                $produtos,
-                $cliente->motivo_encerramento,
-                $cliente->data_encerramento?->format('d/m/Y') ?? '',
-            ];
-
-            foreach ($rowData as $i => $value) {
-                $col = $i + 1;
-                $cell = Coordinate::stringFromColumnIndex($col).$row;
-                $sheet->setCellValue($cell, $value);
-            }
-
-            $fillColor = $row % 2 === 0 ? 'F8FAFC' : 'FFFFFF';
-            $lastCol = Coordinate::stringFromColumnIndex(count($headers));
-            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $fillColor]],
-            ]);
-
-            $row++;
-        }
-
-        // Freeze header row
-        $sheet->freezePane('A2');
-
-        // Auto-filter
-        $lastCol = Coordinate::stringFromColumnIndex(count($headers));
-        $sheet->setAutoFilter("A1:{$lastCol}1");
-
-        $writer = new Xlsx($spreadsheet);
-
-        ob_start();
-        $writer->save('php://output');
-        $content = ob_get_clean();
-
-        $filename = 'clientes-'.now()->format('Y-m-d').'.xlsx';
-
-        return response($content, 200, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
-    }
-
     public function templateClientes(): Response
     {
         $spreadsheet = new Spreadsheet;
@@ -706,166 +535,5 @@ class ClienteController extends Controller
             ->each(fn ($s, $i) => $s->update(['ordem' => $i + 1]));
 
         return Redirect::route('clientes.quadro.modal', $clienteId)->with('success', 'Sócio removido com sucesso.');
-    }
-
-    public function pastasPortalCliente(int $id): JsonResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $cliente = Cliente::findOrFail($id);
-
-        if (! $cliente->pasta_arquivos) {
-            return response()->json(['pastas' => []]);
-        }
-
-        $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
-        $pastaPortal = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal';
-
-        if (! is_dir($pastaPortal)) {
-            return response()->json(['pastas' => []]);
-        }
-
-        $pastas = [];
-        foreach (new \DirectoryIterator($pastaPortal) as $item) {
-            if ($item->isDot() || ! $item->isDir()) {
-                continue;
-            }
-            $pastas[] = $item->getFilename();
-        }
-
-        sort($pastas);
-
-        return response()->json(['pastas' => $pastas]);
-    }
-
-    public function storeUsuarioPortal(Request $request, int $id): JsonResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $cliente = Cliente::findOrFail($id);
-
-        $validator = Validator::make($request->all(), [
-            'nome' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:100', 'unique:portal_usuarios,username'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'telefone' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'string', 'min:6'],
-            'acesso_total' => ['boolean'],
-            'pastas_permitidas' => ['nullable', 'array'],
-            'pastas_permitidas.*' => ['string', 'max:100'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $acessoTotal = $request->boolean('acesso_total', true);
-
-        $usuario = $cliente->portalUsuarios()->create([
-            'nome' => $request->nome,
-            'username' => $request->username,
-            'email' => $request->email,
-            'telefone' => $request->telefone,
-            'password' => Hash::make($request->password),
-            'ativo' => true,
-            'acesso_total' => $acessoTotal,
-            'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
-        ]);
-
-        return response()->json(['usuario' => $usuario, 'mensagem' => 'Usuário criado com sucesso.']);
-    }
-
-    public function updateUsuarioPortal(Request $request, int $clienteId, int $usuarioId): JsonResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
-
-        $validator = Validator::make($request->all(), [
-            'nome' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:100', 'unique:portal_usuarios,username,'.$usuarioId],
-            'email' => ['nullable', 'email', 'max:255'],
-            'telefone' => ['nullable', 'string', 'max:30'],
-            'password' => ['nullable', 'string', 'min:6'],
-            'ativo' => ['boolean'],
-            'acesso_total' => ['boolean'],
-            'pastas_permitidas' => ['nullable', 'array'],
-            'pastas_permitidas.*' => ['string', 'max:100'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $acessoTotal = $request->boolean('acesso_total', $usuario->acesso_total);
-
-        $dados = [
-            'nome' => $request->nome,
-            'username' => $request->username,
-            'email' => $request->email,
-            'telefone' => $request->telefone,
-            'ativo' => $request->boolean('ativo', $usuario->ativo),
-            'acesso_total' => $acessoTotal,
-            'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
-        ];
-
-        if ($request->filled('password')) {
-            $dados['password'] = Hash::make($request->password);
-        }
-
-        $usuario->update($dados);
-
-        return response()->json(['usuario' => $usuario->fresh(), 'mensagem' => 'Usuário atualizado com sucesso.']);
-    }
-
-    public function destroyUsuarioPortal(int $clienteId, int $usuarioId): JsonResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
-        $usuario->delete();
-
-        return response()->json(['mensagem' => 'Usuário removido com sucesso.']);
-    }
-
-    // ── Logo do cliente ────────────────────────────────────────────────
-
-    public function uploadLogo(Request $request, int $id): RedirectResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $cliente = Cliente::findOrFail($id);
-
-        $validator = Validator::make($request->all(), [
-            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
-        ]);
-
-        if ($validator->fails()) {
-            return Redirect::back()->with('error', $validator->errors()->first());
-        }
-
-        if ($cliente->logo) {
-            Storage::disk('public')->delete($cliente->logo);
-        }
-
-        $path = $request->file('logo')->store('clientes/logos', 'public');
-
-        $cliente->update(['logo' => $path]);
-
-        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Logo atualizada com sucesso.');
-    }
-
-    public function removeLogo(int $id): RedirectResponse
-    {
-        abort_if(! auth()->user()?->canEditarClientes(), 403);
-
-        $cliente = Cliente::findOrFail($id);
-
-        if ($cliente->logo) {
-            Storage::disk('public')->delete($cliente->logo);
-            $cliente->update(['logo' => null]);
-        }
-
-        return Redirect::route('clientes.show', $cliente->id)->with('success', 'Logo removida com sucesso.');
     }
 }

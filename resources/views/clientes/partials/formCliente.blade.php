@@ -21,9 +21,7 @@
         @if($isEditing)
             <button type="button"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-gray-300 dark:border-slate-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent"
-                    data-modal-url="{{ route('clientes.quadro.modal', $cliente->id) }}"
-                    data-modal-back-url="{{ route('clientes.form.edit', $cliente->id) }}"
-                    data-modal-width="max-w-4xl">
+                    data-modal-url="{{ route('clientes.quadro.modal', $cliente->id) }}">
                 <i class="fa-solid fa-scale-balanced"></i> Quadro Societário
                 @if($cliente->socios->isNotEmpty())
                     <span class="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-brand text-white">{{ $cliente->socios->count() }}</span>
@@ -67,10 +65,6 @@
     @csrf
     @if($isEditing)
         @method('PUT')
-    @endif
-    @if(request()->query('redirect') === 'list')
-        <input type="hidden" name="redirect_to" value="list">
-        <input type="hidden" name="redirect_page" value="{{ request()->query('page', 1) }}">
     @endif
 
     <div class="space-y-4">
@@ -184,7 +178,7 @@
                 <input name="estado" type="text"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        maxlength="2"
-                       placeholder="RS"
+                       placeholder="SP"
                        value="{{ old('estado', $isEditing ? $cliente->estado : ($prefill['estado'] ?? '')) }}">
             </div>
         </div>
@@ -250,26 +244,6 @@
                        {{ old('fator_r', $isEditing ? $cliente->fator_r : ($prefill['fator_r'] ?? false)) ? 'checked' : '' }}>
                 Fator R
             </label>
-        </div>
-
-        <div>
-            @php
-                $acessoExtratoAtual = old('acesso_extrato', $isEditing ? $cliente->acesso_extrato : ($prefill['acesso_extrato'] ?? null));
-                $acessoExtratoAtual = $acessoExtratoAtual === null ? null : (bool) $acessoExtratoAtual;
-            @endphp
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Temos acesso a extratos do cliente?</label>
-            <div class="flex gap-4">
-                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input name="acesso_extrato" type="radio" value="1" class="border-gray-300"
-                           {{ $acessoExtratoAtual === true ? 'checked' : '' }}>
-                    Sim
-                </label>
-                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input name="acesso_extrato" type="radio" value="0" class="border-gray-300"
-                           {{ $acessoExtratoAtual === false ? 'checked' : '' }}>
-                    Não
-                </label>
-            </div>
         </div>
 
         @if(isset($produtos) && $produtos->isNotEmpty())
@@ -500,21 +474,5 @@
 
     // Initialize on load
     updateField();
-})();
-</script>
-
-<script>
-(function () {
-    const container = document.getElementById('modalContent');
-    const form = container ? container.querySelector('form') : null;
-    if (!form) { return; }
-
-    const markDirty = function () { window._modalHasChanges = true; };
-    form.addEventListener('input', markDirty);
-    form.addEventListener('change', markDirty);
-
-    form.addEventListener('submit', function () {
-        window._modalHasChanges = false;
-    });
 })();
 </script>
