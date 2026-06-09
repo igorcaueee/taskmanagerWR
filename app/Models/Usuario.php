@@ -159,4 +159,10 @@ class Usuario extends Authenticatable
     {
         return in_array($this->cargo, ['diretor', 'ti']);
     }
+
+    // Diagnóstico IDE e Classificação — apenas Diretor e TI
+    public function canVerClassificacao(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
 }

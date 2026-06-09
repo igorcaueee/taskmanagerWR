@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\PortalUsuario;
 use App\Models\Produto;
+use App\Models\QuestionarioResposta;
 use App\Models\Segmentacao;
 use App\Models\Socio;
 use Illuminate\Http\JsonResponse;
@@ -115,7 +116,12 @@ class ClienteController extends Controller
     {
         $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'portalUsuarios'])->findOrFail($id);
 
-        return view('clientes.show', compact('cliente'));
+        $ultimoIDE = QuestionarioResposta::where('cliente_id', $id)
+            ->where('finalizado', true)
+            ->latest()
+            ->first();
+
+        return view('clientes.show', compact('cliente', 'ultimoIDE'));
     }
 
     public function formClienteEdit(int $id): View

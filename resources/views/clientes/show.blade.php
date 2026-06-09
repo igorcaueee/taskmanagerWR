@@ -281,8 +281,48 @@
                 @endif
             </div>
 
-            {{-- Sidebar: Sócios --}}
+            {{-- Sidebar: Sócios + IDE --}}
             <div class="space-y-4">
+
+                {{-- Card IDE --}}
+                @if(auth()->user()?->canVerClassificacao())
+                @php $ideQ = \App\Models\Questionario::where('ativo', true)->first(); @endphp
+                <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
+                    <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                        <i class="fa-solid fa-star-half-stroke mr-1"></i> Diagnóstico IDE
+                    </h2>
+
+                    @if($ultimoIDE)
+                    @php
+                        $ideCor = match($ultimoIDE->classificacao) {
+                            'Muito Dinheiro Escondido'     => ['badge' => 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300', 'bar' => 'bg-red-500', 'circle' => 'bg-red-600'],
+                            'Dinheiro Escondido Relevante' => ['badge' => 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300', 'bar' => 'bg-orange-500', 'circle' => 'bg-orange-500'],
+                            'Boa Gestão'                   => ['badge' => 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300', 'bar' => 'bg-blue-500', 'circle' => 'bg-blue-600'],
+                            'Alta Performance'             => ['badge' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300', 'bar' => 'bg-green-500', 'circle' => 'bg-green-600'],
+                            default                        => ['badge' => 'bg-gray-100 dark:bg-gray-700 text-gray-500', 'bar' => 'bg-gray-400', 'circle' => 'bg-gray-500'],
+                        };
+                    @endphp
+                    <div class="flex items-center gap-4 mb-3">
+                        <div class="w-14 h-14 rounded-full {{ $ideCor['circle'] }} flex items-center justify-center shrink-0">
+                            <span class="text-white font-extrabold text-lg leading-none">{{ number_format($ultimoIDE->pontuacao_total, 0) }}</span>
+                        </div>
+                        <div>
+                            <span class="text-xs px-2 py-0.5 rounded-full {{ $ideCor['badge'] }} font-medium">{{ $ultimoIDE->classificacao }}</span>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ $ultimoIDE->created_at->format('d/m/Y') }}</p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-1.5 mb-3">
+                        <div class="{{ $ideCor['bar'] }} h-1.5 rounded-full" style="width: {{ min(100, $ultimoIDE->pontuacao_total) }}%"></div>
+                    </div>
+                    <a href="{{ route('questionarios.respostas.detalhe', $ultimoIDE->id) }}"
+                       class="block text-center text-xs px-2 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-slate-600 no-underline">
+                        <i class="fa-solid fa-eye mr-1"></i> Ver detalhe
+                    </a>
+                    @else
+                    <p class="text-sm text-gray-400 dark:text-gray-500">Nenhum diagnóstico realizado.</p>
+                    @endif
+                </div>
+                @endif
 
                 {{-- Sócios --}}
                 <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
@@ -623,4 +663,5 @@
         </script>
         @endpush
     @endif
+
 @endsection

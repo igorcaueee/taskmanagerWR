@@ -41,6 +41,7 @@
                 @endif
             </div>
         </div>
+        @if(auth()->user()?->canVerClassificacao())
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-classificacao">
                 <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-star-half-stroke"></i> Classificação</span>
@@ -52,6 +53,7 @@
                 <a href="{{ route('questionarios.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-clipboard-question"></i> Questionário</a>
             </div>
         </div>
+        @endif
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-relatorios">
                 <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-chart-bar"></i> Relatórios</span>

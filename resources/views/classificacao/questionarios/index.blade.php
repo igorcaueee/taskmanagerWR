@@ -90,7 +90,7 @@
             </select>
         </div>
 
-        <div class="mb-5">
+        <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Selecionar</label>
             <input type="text" id="envio-busca" placeholder="Digite para pesquisar..."
                    oninput="filtrarVinculos(this.value)"
@@ -100,6 +100,13 @@
                     class="w-full border border-gray-300 dark:border-slate-600 border-t-0 rounded-b px-1 py-1 text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
                 <option value="">Aguarde...</option>
             </select>
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Responsável <span class="text-red-500">*</span></label>
+            <input type="text" id="envio-responsavel" placeholder="Nome do responsável que responderá"
+                   class="w-full border border-gray-300 dark:border-slate-600 rounded px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                   autocomplete="off">
         </div>
 
         <div id="envio-resultado" style="display:none" class="mb-4 p-3 bg-gray-50 dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600">
@@ -133,6 +140,7 @@ function abrirModalEnvio(id) {
     document.getElementById('modal-envio').style.display = 'flex';
     document.getElementById('envio-resultado').style.display = 'none';
     document.getElementById('envio-busca').value = '';
+    document.getElementById('envio-responsavel').value = '';
     buscarVinculos();
 }
 
@@ -192,9 +200,11 @@ async function buscarVinculos() {
 }
 
 async function gerarLink() {
-    var tipo    = document.getElementById('envio-tipo').value;
-    var vinculo = document.getElementById('envio-vinculo').value;
-    if (!vinculo) { alert('Selecione um ' + (tipo === 'lead' ? 'lead' : 'cliente')); return; }
+    var tipo         = document.getElementById('envio-tipo').value;
+    var vinculo      = document.getElementById('envio-vinculo').value;
+    var responsavel  = document.getElementById('envio-responsavel').value.trim();
+    if (!vinculo) { Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione um ' + (tipo === 'lead' ? 'lead' : 'cliente') + '.', confirmButtonColor: '#2563eb' }); return; }
+    if (!responsavel) { Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe o nome do responsável.', confirmButtonColor: '#2563eb' }).then(() => document.getElementById('envio-responsavel').focus()); return; }
 
     try {
         var res = await fetch('/classificacao/questionarios/' + _questionarioAtivo + '/enviar-link', {
@@ -206,7 +216,7 @@ async function gerarLink() {
                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]') ? document.querySelector('meta[name=csrf-token]').content : '',
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            body: JSON.stringify({ tipo: tipo, vinculo_id: vinculo }),
+            body: JSON.stringify({ tipo: tipo, vinculo_id: vinculo, responsavel: responsavel }),
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
@@ -214,7 +224,7 @@ async function gerarLink() {
         document.getElementById('envio-resultado').style.display = 'block';
     } catch(e) {
         console.error('gerarLink error:', e);
-        alert('Erro ao gerar link. Verifique o console.');
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao gerar link. Tente novamente.', confirmButtonColor: '#dc2626' });
     }
 }
 

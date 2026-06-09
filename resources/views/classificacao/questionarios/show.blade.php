@@ -119,10 +119,11 @@
                                class="text-blue-600 dark:text-blue-400 hover:underline text-xs no-underline">
                                 <i class="fa-solid fa-eye"></i> Ver
                             </a>
-                            <form method="POST" action="{{ route('questionarios.respostas.delete', $r->id) }}"
-                                  onsubmit="return confirm('Excluir esta resposta?')">
+                            <form id="form-del-{{ $r->id }}" method="POST" action="{{ route('questionarios.respostas.delete', $r->id) }}">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-700 bg-transparent border-0 text-xs cursor-pointer">
+                                <button type="button"
+                                        onclick="confirmarExclusao({{ $r->id }})"
+                                        class="text-red-500 hover:text-red-700 bg-transparent border-0 text-xs cursor-pointer">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
                             </form>
@@ -153,6 +154,23 @@
 window.copiarLink = function(url) {
     navigator.clipboard.writeText(url).then(() => {
         Swal.fire({ icon: 'success', title: 'Link copiado!', confirmButtonColor: '#2563eb', timer: 1800, showConfirmButton: false });
+    });
+};
+
+window.confirmarExclusao = function(id) {
+    Swal.fire({
+        title: 'Excluir resposta?',
+        text: 'Esta ação não pode ser desfeita.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar',
+    }).then(result => {
+        if (result.isConfirmed) {
+            document.getElementById('form-del-' + id).submit();
+        }
     });
 };
 </script>

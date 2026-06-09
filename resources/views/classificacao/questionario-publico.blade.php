@@ -1,14 +1,33 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $questionario->titulo }}</title>
+    <title>Diagnóstico IDE — WR Assessoria</title>
+    <link rel="icon" href="{{ asset('favicon.webp') }}" type="image/webp">
     @vite(['resources/css/app.css'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { background: #f0f4f8; }
+        :root {
+            --wr-blue: #0084AA;
+            --wr-blue-dark: #006688;
+            --wr-blue-light: #e6f4f8;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: linear-gradient(160deg, #0a0a0a 0%, #1a2a30 60%, #0a0a0a 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
         .card-pergunta {
             animation: fadeSlide .35s ease;
         }
@@ -16,33 +35,76 @@
             from { opacity: 0; transform: translateY(16px); }
             to   { opacity: 1; transform: translateY(0); }
         }
+
+        /* Botões de opção */
         .opcao-btn {
-            transition: all .15s ease;
+            transition: all .18s ease;
             cursor: pointer;
+            background: #fff;
+            border: 2px solid #e5e7eb;
+            color: #111827;
         }
         .opcao-btn:hover {
+            border-color: var(--wr-blue);
+            background: var(--wr-blue-light);
             transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,.12);
+            box-shadow: 0 6px 20px rgba(0,132,170,.15);
         }
         .opcao-btn.selected {
-            border-color: #2563eb;
-            background: #eff6ff;
+            border-color: var(--wr-blue);
+            background: var(--wr-blue-light);
+        }
+
+        /* Letra do círculo */
+        .letra-opcao {
+            border-color: #d1d5db;
+            color: #6b7280;
+        }
+        .opcao-btn:hover .letra-opcao,
+        .opcao-btn.selected .letra-opcao {
+            background: var(--wr-blue);
+            border-color: var(--wr-blue);
+            color: #fff;
+        }
+
+        /* Badge de categoria */
+        .tag-cat {
+            background: rgba(0,132,170,.15);
+            color: var(--wr-blue);
+        }
+
+        /* Barra de progresso */
+        .progress-bar { background: var(--wr-blue); }
+
+        /* Botão primário */
+        .btn-primary {
+            background: var(--wr-blue);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background .15s ease;
+        }
+        .btn-primary:hover { background: var(--wr-blue-dark); }
+
+        /* Input */
+        .input-wr:focus {
+            outline: none;
+            ring: 2px solid var(--wr-blue);
+            border-color: var(--wr-blue);
         }
     </style>
 </head>
-<body class="min-h-full flex flex-col items-center justify-center px-4 py-10">
+<body class="flex flex-col items-center justify-center px-4 py-6" style="min-height:100vh">
 
     <div class="w-full max-w-xl">
 
-        {{-- Logo / cabeçalho --}}
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-600 text-white text-2xl mb-3">
-                <i class="fa-solid fa-clipboard-question"></i>
+        {{-- Header WR --}}
+        <div class="text-center mb-5">
+            <div class="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-3 mb-5">
+                <img src="{{ asset('images/torresemfundo.png') }}" alt="WR Assessoria" class="h-9 w-9 object-contain">
+                <span class="text-base font-bold text-white tracking-tight">WR Assessoria</span>
             </div>
-            <h1 class="text-xl font-bold text-gray-800">{{ $questionario->titulo }}</h1>
-            @if($questionario->descricao)
-            <p class="text-sm text-gray-500 mt-1 max-w-sm mx-auto">{{ $questionario->descricao }}</p>
-            @endif
+            <h1 class="text-xl font-bold text-white leading-snug">{{ $questionario->titulo }}</h1>
         </div>
 
         {{-- TELA 1: Finalizado --}}
@@ -86,9 +148,14 @@
 
         {{-- TELA 2: Formulário de identificação (sem token ou sem sessão iniciada) --}}
         @elseif(! $token || ! $resposta)
-        <div id="tela-identificacao" class="bg-white rounded-2xl shadow-lg p-8 card-pergunta">
-            <h2 class="text-lg font-semibold text-gray-800 mb-1">Antes de começar</h2>
-            <p class="text-sm text-gray-500 mb-5">Preencha os dados abaixo para iniciar o diagnóstico.</p>
+        <div id="tela-identificacao" class="bg-white rounded-2xl shadow-xl p-8 card-pergunta">
+            <div class="flex items-center gap-2 mb-1">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style="background:#0084AA">
+                    <i class="fa-solid fa-user text-white text-xs"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900">Antes de começar</h2>
+            </div>
+            <p class="text-sm text-gray-500 mb-5 ml-9">Preencha os dados abaixo para iniciar o diagnóstico.</p>
 
             <div class="space-y-4">
                 <div>
@@ -128,7 +195,7 @@
             </div>
 
             <button id="btn-iniciar" onclick="iniciar()"
-                    class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-sm border-0 cursor-pointer transition-colors">
+                    class="btn-primary mt-6 w-full font-semibold py-3 rounded-xl text-sm">
                 Iniciar diagnóstico <i class="fa-solid fa-arrow-right ml-1"></i>
             </button>
         </div>
@@ -147,40 +214,55 @@
             ];
         @endphp
 
+        {{-- Greeting personalizado (link enviado pelo admin) --}}
+        @if($resposta && $resposta->respondente_nome)
+        <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:#0084AA">
+                <i class="fa-solid fa-building text-white text-xs"></i>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-white leading-tight">{{ $resposta->respondente_nome }}</p>
+                @if($resposta->respondente_empresa)
+                <p class="text-xs text-white/80">{{ $resposta->respondente_empresa }}</p>
+                @endif
+            </div>
+        </div>
+        @endif
+
         {{-- Barra de progresso --}}
         <div class="mb-4">
-            <div class="flex justify-between text-xs text-gray-500 mb-1">
+            <div class="flex justify-between text-xs text-white/80 mb-1">
                 <span>Progresso</span>
-                <span>{{ $progresso }}/{{ $totalPerguntas }}</span>
+                <span id="progresso-texto">{{ $progresso }}/{{ $totalPerguntas }}</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-                <div id="barra-progresso" class="bg-blue-600 h-2 rounded-full transition-all duration-500"
+            <div class="w-full rounded-full h-1.5" style="background:rgba(255,255,255,.15)">
+                <div id="barra-progresso" class="progress-bar h-1.5 rounded-full transition-all duration-500"
                      style="width: {{ $pct }}%"></div>
             </div>
         </div>
 
         {{-- Card da pergunta atual --}}
         @if($proximaPergunta)
-        <div id="card-pergunta" class="bg-white rounded-2xl shadow-lg p-8 card-pergunta">
+        <div id="card-pergunta" class="bg-white rounded-2xl shadow-xl p-8 card-pergunta">
             <div class="flex items-center gap-2 mb-4">
-                <span id="tag-categoria" class="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                <span id="tag-categoria" class="tag-cat text-xs px-2.5 py-0.5 rounded-full font-semibold">
                     {{ $catLabels[$proximaPergunta->categoria] ?? $proximaPergunta->categoria }}
                 </span>
                 <span id="tag-ordem" class="text-xs text-gray-400">Pergunta {{ $proximaPergunta->ordem }} de {{ $totalPerguntas }}</span>
             </div>
 
-            <p id="texto-pergunta" class="text-lg font-semibold text-gray-800 mb-6 leading-snug">
+            <p id="texto-pergunta" class="text-lg font-bold text-gray-900 mb-6 leading-snug">
                 {{ $proximaPergunta->texto }}
             </p>
 
             <div id="opcoes-container" class="space-y-3">
                 @foreach($proximaPergunta->opcoes as $opcao)
-                <button class="opcao-btn w-full text-left px-5 py-4 border-2 border-gray-200 rounded-xl text-sm text-gray-700 font-medium bg-white"
+                <button class="opcao-btn w-full text-left px-5 py-4 border-2 rounded-xl text-sm font-medium"
                         data-pergunta="{{ $proximaPergunta->id }}"
                         data-opcao="{{ $opcao->id }}"
                         onclick="responder({{ $proximaPergunta->id }}, {{ $opcao->id }}, this)">
                     <span class="inline-flex items-center gap-3">
-                        <span class="w-6 h-6 rounded-full border-2 border-gray-300 inline-flex items-center justify-center text-xs font-bold shrink-0 check-icon">
+                        <span class="letra-opcao w-6 h-6 rounded-full border-2 inline-flex items-center justify-center text-xs font-bold shrink-0 transition-all">
                             {{ ['A','B','C'][$loop->index] ?? ($loop->index + 1) }}
                         </span>
                         {{ $opcao->texto }}
@@ -189,7 +271,7 @@
                 @endforeach
             </div>
 
-            <div id="loading" class="hidden text-center py-4 text-gray-400 text-sm">
+            <div id="loading" class="hidden text-center py-4 text-sm" style="color:#0084AA">
                 <i class="fa-solid fa-spinner fa-spin mr-2"></i> Salvando...
             </div>
         </div>
@@ -205,7 +287,10 @@
         </script>
         @endif
 
-        <p class="text-center text-xs text-gray-400 mt-6">Diagnóstico empresarial — IDE®</p>
+        <div class="flex items-center justify-center gap-2 mt-4">
+            <img src="{{ asset('images/torresemfundo.png') }}" alt="WR" class="h-5 w-5 object-contain opacity-40">
+            <p class="text-xs text-white/40">WR Assessoria — Diagnóstico IDE®</p>
+        </div>
     </div>
 
 <script>
@@ -214,7 +299,7 @@ const CSRF_TOKEN  = @json(csrf_token());
 
 async function iniciar() {
     const nome = document.getElementById('id-nome')?.value?.trim();
-    if (!nome) { alert('Informe seu nome para continuar.'); return; }
+    if (!nome) { Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe seu nome para continuar.', confirmButtonColor: '#0084AA' }); return; }
 
     const btn = document.getElementById('btn-iniciar');
     btn.disabled = true;
@@ -243,7 +328,7 @@ async function iniciar() {
     } catch {
         btn.disabled = false;
         btn.textContent = 'Iniciar diagnóstico →';
-        alert('Erro ao iniciar. Tente novamente.');
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao iniciar. Tente novamente.', confirmButtonColor: '#0084AA' });
     }
 }
 
@@ -268,6 +353,7 @@ async function responder(perguntaId, opcaoId, el) {
 
         const pct = Math.round((data.respondidas / data.total) * 100);
         document.getElementById('barra-progresso').style.width = pct + '%';
+        document.getElementById('progresso-texto').textContent = data.respondidas + '/' + data.total;
 
         const card = document.getElementById('card-pergunta');
         card.style.opacity = '0';
@@ -282,10 +368,10 @@ async function responder(perguntaId, opcaoId, el) {
             const cont = document.getElementById('opcoes-container');
             const letras = ['A','B','C'];
             cont.innerHTML = p.opcoes.map((o, i) => `
-                <button class="opcao-btn w-full text-left px-5 py-4 border-2 border-gray-200 rounded-xl text-sm text-gray-700 font-medium bg-white"
+                <button class="opcao-btn w-full text-left px-5 py-4 border-2 rounded-xl text-sm font-medium"
                         onclick="responder(${p.id}, ${o.id}, this)">
                     <span class="inline-flex items-center gap-3">
-                        <span class="w-6 h-6 rounded-full border-2 border-gray-300 inline-flex items-center justify-center text-xs font-bold shrink-0">
+                        <span class="letra-opcao w-6 h-6 rounded-full border-2 inline-flex items-center justify-center text-xs font-bold shrink-0 transition-all">
                             ${letras[i] ?? (i+1)}
                         </span>
                         ${o.texto}
@@ -303,7 +389,7 @@ async function responder(perguntaId, opcaoId, el) {
         document.querySelectorAll('.opcao-btn').forEach(b => b.disabled = false);
         el.classList.remove('selected');
         document.getElementById('loading').classList.add('hidden');
-        alert('Erro ao salvar. Tente novamente.');
+        Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao salvar. Tente novamente.', confirmButtonColor: '#0084AA' });
     }
 }
 @endif

@@ -19,7 +19,7 @@ class QuestionarioController extends Controller
 
     public function index(): View
     {
-        $questionarios = Questionario::withCount('respostas')->get();
+        $questionarios = Questionario::withCount(['respostas' => fn($q) => $q->where('finalizado', true)])->get();
 
         return view('classificacao.questionarios.index', compact('questionarios'));
     }
@@ -79,42 +79,43 @@ class QuestionarioController extends Controller
     public function enviarLink(int $questionarioId, Request $request): JsonResponse
     {
         $request->validate([
-            'tipo'       => 'required|in:lead,cliente',
-            'vinculo_id' => 'required|integer',
+            'tipo'        => 'required|in:lead,cliente',
+            'vinculo_id'  => 'required|integer',
+            'responsavel' => 'required|string|max:255',
         ]);
 
         $questionario = Questionario::findOrFail($questionarioId);
 
         $leadId    = null;
         $clienteId = null;
-        $nome      = '';
-        $email     = '';
+        $empresa   = null;
 
         if ($request->tipo === 'lead') {
             $lead      = Lead::findOrFail($request->vinculo_id);
             $leadId    = $lead->id;
-            $nome      = $lead->nome;
-            $email     = $lead->email;
+            $empresa   = $lead->empresa ?? $lead->nome;
         } else {
             $cliente   = Cliente::findOrFail($request->vinculo_id);
             $clienteId = $cliente->id;
-            $nome      = $cliente->nome ?? $cliente->nome;
-            $email     = $cliente->email;
+            $empresa   = $cliente->nome;
         }
 
-        $resposta = QuestionarioResposta::create([
-            'questionario_id'   => $questionario->id,
-            'lead_id'           => $leadId,
-            'cliente_id'        => $clienteId,
-            'respondente_nome'  => $nome,
-            'respondente_email' => $email,
-            'token'             => Str::uuid(),
-            'finalizado'        => false,
+        $token = (string) Str::uuid();
+
+        QuestionarioResposta::create([
+            'questionario_id'     => $questionario->id,
+            'lead_id'             => $leadId,
+            'cliente_id'          => $clienteId,
+            'respondente_nome'    => $request->responsavel,
+            'respondente_empresa' => $empresa,
+            'respondente_email'   => null,
+            'token'               => $token,
+            'finalizado'          => false,
         ]);
 
         $link = route('questionario.publico', [
             'slug'  => $questionario->slug,
-            'token' => $resposta->token,
+            'token' => $token,
         ]);
 
         return response()->json(['link' => $link]);
@@ -179,7 +180,9 @@ class QuestionarioController extends Controller
 
         $questionario = Questionario::where('slug', $slug)->where('ativo', true)->firstOrFail();
 
-        $resposta = QuestionarioResposta::create([
+        $token = (string) Str::uuid();
+
+        QuestionarioResposta::create([
             'questionario_id'     => $questionario->id,
             'respondente_nome'    => $request->nome,
             'respondente_email'   => $request->email,
@@ -187,11 +190,11 @@ class QuestionarioController extends Controller
             'respondente_segmento'=> $request->segmento,
             'faturamento_mensal'  => $request->faturamento,
             'num_colaboradores'   => $request->colaboradores,
-            'token'               => Str::uuid(),
+            'token'               => $token,
             'finalizado'          => false,
         ]);
 
-        return response()->json(['token' => $resposta->token]);
+        return response()->json(['token' => $token]);
     }
 
     public function responder(string $slug, Request $request): JsonResponse
