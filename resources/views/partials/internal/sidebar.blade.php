@@ -42,6 +42,17 @@
             </div>
         </div>
         <div>
+            <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-classificacao">
+                <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-star-half-stroke"></i> Classificação</span>
+                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+            <div id="submenu-classificacao" class="hidden pl-3 mt-1 space-y-1">
+                <a href="{{ route('questionarios.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-clipboard-question"></i> Questionário</a>
+            </div>
+        </div>
+        <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-relatorios">
                 <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-chart-bar"></i> Relatórios</span>
                 <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

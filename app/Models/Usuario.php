@@ -84,6 +84,11 @@ class Usuario extends Authenticatable
         return ! empty($this->google_access_token);
     }
 
+    public function isDiretor(): bool
+    {
+        return $this->cargo === 'diretor';
+    }
+
     public function departamento(): BelongsTo
     {
         return $this->belongsTo(Departamento::class);

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ChatbotController;
@@ -186,6 +187,18 @@ Route::get('/email-campanhas/{emailCampanha}/editar', [EmailCampanhaController::
 Route::put('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'update'])->name('email-campanhas.update')->middleware(['auth', 'email-marketing']);
 Route::post('/email-campanhas/{emailCampanha}/enviar', [EmailCampanhaController::class, 'enviar'])->name('email-campanhas.enviar')->middleware(['auth', 'email-marketing']);
 Route::delete('/email-campanhas/{emailCampanha}', [EmailCampanhaController::class, 'destroy'])->name('email-campanhas.destroy')->middleware(['auth', 'email-marketing']);
+
+// Classificação — Questionários (admin)
+Route::get('/classificacao/questionarios', [QuestionarioController::class, 'index'])->name('questionarios.index')->middleware('auth');
+Route::get('/classificacao/questionarios/{id}', [QuestionarioController::class, 'show'])->name('questionarios.show')->middleware('auth');
+Route::get('/classificacao/respostas/{id}', [QuestionarioController::class, 'detalheResposta'])->name('questionarios.respostas.detalhe')->middleware('auth');
+Route::delete('/classificacao/respostas/{id}', [QuestionarioController::class, 'deleteResposta'])->name('questionarios.respostas.delete')->middleware('auth');
+Route::post('/classificacao/questionarios/{id}/enviar-link', [QuestionarioController::class, 'enviarLink'])->name('questionarios.enviar-link')->middleware('auth');
+Route::get('/classificacao/vinculos', [QuestionarioController::class, 'vinculos'])->name('questionarios.vinculos')->middleware('auth');
+// Questionário público (para leads e clientes responderem)
+Route::get('/q/{slug}', [QuestionarioController::class, 'publico'])->name('questionario.publico');
+Route::post('/q/{slug}/iniciar', [QuestionarioController::class, 'iniciar'])->name('questionario.iniciar')->middleware('throttle:20,1');
+Route::post('/q/{slug}/responder', [QuestionarioController::class, 'responder'])->name('questionario.responder')->middleware('throttle:60,1');
 
 // Ideias & Correções routes
 Route::get('/ideias', [IdeiaController::class, 'index'])->name('ideias.index')->middleware('auth');

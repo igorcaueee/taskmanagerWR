@@ -19,7 +19,25 @@
       "Bash(sudo chown -R igorcaueee:igorcaueee /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)",
       "Bash(npm run *)",
       "Bash(chmod -R u+w /home/igorcaueee/LaravelProjects/taskmanagerwr/public/build/)",
-      "Bash(grep -rn '$contato' /home/igorcaueee/LaravelProjects/taskmanagerwr/resources/views/portal/ '--include=*.php')"
+      "Bash(grep -rn '$contato' /home/igorcaueee/LaravelProjects/taskmanagerwr/resources/views/portal/ '--include=*.php')",
+      "Bash(docker exec taskmanagermysql mysql -u igorwr -ppassword taskmanager -e ' *)",
+      "Bash(mv 2026_06_09_083521_create_questionarios_table.php              2026_06_09_083521_create_questionarios_table.php.bak)",
+      "Bash(mv 2026_06_09_083521_create_questionario_perguntas_table.php     2026_06_09_083522_create_questionario_perguntas_table.php)",
+      "Bash(mv 2026_06_09_083521_create_questionario_opcoes_table.php        2026_06_09_083523_create_questionario_opcoes_table.php)",
+      "Bash(mv 2026_06_09_083521_create_questionario_respostas_table.php     2026_06_09_083524_create_questionario_respostas_table.php)",
+      "Bash(mv 2026_06_09_083521_create_questionario_resposta_itens_table.php 2026_06_09_083525_create_questionario_resposta_itens_table.php)",
+      "Bash(DB_HOST=127.0.0.1 php artisan migrate)",
+      "Bash(DB_HOST=127.0.0.1 php artisan db:seed --class=QuestionarioIDESeeder)",
+      "Bash(DB_HOST=127.0.0.1 php artisan route:list --path=classificacao)",
+      "Bash(DB_HOST=127.0.0.1 php artisan route:list --path=\"/q/\")",
+      "Bash(DB_HOST=127.0.0.1 php artisan route:list)",
+      "Bash(DB_HOST=127.0.0.1 php artisan config:clear)",
+      "Bash(DB_HOST=127.0.0.1 php artisan view:clear)",
+      "Bash(DB_HOST=127.0.0.1 php artisan optimize:clear)",
+      "Bash(DB_HOST=127.0.0.1 php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/app/Http/Controllers/QuestionarioController.php)",
+      "Bash(DB_HOST=127.0.0.1 php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/app/Models/QuestionarioResposta.php)",
+      "Bash(DB_HOST=127.0.0.1 php artisan tinker '--execute= *)",
+      "Bash(docker exec *)"
     ]
   }
 }
