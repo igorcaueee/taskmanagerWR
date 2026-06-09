@@ -962,5 +962,7 @@
             showToast('Erro ao mover tarefa. Tente novamente.', 'red');
         }
     });
+
+
 </script>
 @endpush

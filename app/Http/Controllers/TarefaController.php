@@ -82,6 +82,11 @@ class TarefaController extends Controller
             ? Ciclo::findOrFail($request->integer('ciclo_id'))
             : Ciclo::current();
 
+        // Ao abrir o ciclo atual, traz automaticamente tarefas "A Fazer" de ciclos passados
+        if ($cicloSelecionado->status === 'atual') {
+            $this->trazerAFazerPendentesParaCicloAtual($cicloSelecionado);
+        }
+
         $cicloPrev = $cicloSelecionado->anterior();
         $cicloNext = $cicloSelecionado->proximo();
 
@@ -464,6 +469,40 @@ class TarefaController extends Controller
             'success' => true,
             'ciclo_nome' => $proximoCiclo->nome,
         ]);
+    }
+
+    private function trazerAFazerPendentesParaCicloAtual(Ciclo $cicloAtual): void
+    {
+        $hoje = Carbon::today();
+
+        $etapaAFazer = Etapa::where('nome', 'A Fazer')->first();
+        $etapaTransferido = Etapa::where('nome', 'Transferido para o próximo ciclo')->first();
+
+        if (! $etapaAFazer) {
+            return;
+        }
+
+        $tarefas = Tarefa::whereHas('ciclo', fn ($q) => $q->where('data_fim', '<', $hoje))
+            ->where('etapa_id', $etapaAFazer->id)
+            ->where('ciclo_id', '!=', $cicloAtual->id)
+            ->get();
+
+        foreach ($tarefas as $tarefa) {
+            $tarefa->update([
+                'ciclo_id'        => $cicloAtual->id,
+                'data_vencimento' => $cicloAtual->data_inicio,
+                'passou_ciclo'    => true,
+            ]);
+
+            if ($etapaTransferido) {
+                RelTarefa::create([
+                    'tarefa_id'         => $tarefa->id,
+                    'etapa_anterior_id' => $tarefa->etapa_id,
+                    'etapa_nova_id'     => $etapaTransferido->id,
+                    'alterado_por'      => null,
+                ]);
+            }
+        }
     }
 
     public function detalhe(int $id): JsonResponse
