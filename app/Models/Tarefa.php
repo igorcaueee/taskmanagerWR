@@ -14,6 +14,7 @@ class Tarefa extends Model
     protected $fillable = [
         'titulo',
         'descricao',
+        'tipo_tarefa_id',
         'cliente_id',
         'departamento_id',
         'etapa_id',
@@ -97,5 +98,10 @@ class Tarefa extends Model
     public function uploads(): HasMany
     {
         return $this->hasMany(TarefaUpload::class);
+    }
+
+    public function tipoTarefa(): BelongsTo
+    {
+        return $this->belongsTo(TipoTarefa::class);
     }
 }

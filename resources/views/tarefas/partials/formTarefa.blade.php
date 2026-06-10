@@ -27,6 +27,28 @@
 
     <div class="space-y-4">
         <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <i class="fa-solid fa-tag mr-1 text-brand"></i> Tipo de Tarefa
+            </label>
+            <select name="tipo_tarefa_id" id="tipo_tarefa_id"
+                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">
+                <option value="">— Sem tipo —</option>
+                @foreach($tiposTarefa as $tipo)
+                    <option value="{{ $tipo->id }}"
+                            data-data-vencimento="{{ $tipo->data_vencimento ? $tipo->data_vencimento->format('Y-m-d') : '' }}"
+                            data-titulo-padrao="{{ $tipo->titulo_padrao ?? '' }}"
+                            {{ old('tipo_tarefa_id', $isEditing ? $tarefa->tipo_tarefa_id : '') == $tipo->id ? 'selected' : '' }}>
+                        {{ $tipo->nome }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                Ao selecionar um tipo com data padrão, a data de vencimento será preenchida automaticamente.
+            </p>
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
             <input name="titulo" type="text"
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
@@ -340,6 +362,26 @@ document.addEventListener('click', function (e) {
     if (document.getElementById('cliente-multi-list')) {
         atualizarDisplayMulti();
     }
+}());
+
+// --- Auto-fill título e data de vencimento pelo tipo de tarefa ---
+(function () {
+    const selectTipo = document.getElementById('tipo_tarefa_id');
+    const inputData = document.querySelector('[name="data_vencimento"]');
+    const inputTitulo = document.querySelector('[name="titulo"]');
+    if (!selectTipo) return;
+
+    selectTipo.addEventListener('change', function () {
+        const selected = selectTipo.options[selectTipo.selectedIndex];
+        const dataVenc = selected.dataset.dataVencimento;
+        const tituloPadrao = selected.dataset.tituloPadrao;
+        if (dataVenc && inputData) {
+            inputData.value = dataVenc;
+        }
+        if (tituloPadrao && inputTitulo && !inputTitulo.value.trim()) {
+            inputTitulo.value = tituloPadrao;
+        }
+    });
 }());
 
 // --- Departamento por responsável ---

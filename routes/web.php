@@ -20,6 +20,7 @@ use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
+use App\Http\Controllers\TipoTarefaController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
@@ -132,6 +133,13 @@ Route::post('/produtos/save', [ProdutoController::class, 'save'])->name('produto
 Route::post('/produtos/inline', [ProdutoController::class, 'storeInline'])->name('produtos.store.inline')->middleware('auth');
 Route::put('/produtos/{id}', [ProdutoController::class, 'update'])->name('produtos.update')->middleware('auth');
 Route::delete('/produtos/{id}', [ProdutoController::class, 'delete'])->name('produtos.delete')->middleware('auth');
+// Tipos de Tarefa routes
+Route::get('/tipos-tarefa', [TipoTarefaController::class, 'index'])->name('tipos-tarefa.index')->middleware('auth');
+Route::get('/tipos-tarefa/form', [TipoTarefaController::class, 'formCreate'])->name('tipos-tarefa.form.create')->middleware('auth');
+Route::get('/tipos-tarefa/{id}/form', [TipoTarefaController::class, 'formEdit'])->name('tipos-tarefa.form.edit')->middleware('auth');
+Route::post('/tipos-tarefa/save', [TipoTarefaController::class, 'save'])->name('tipos-tarefa.save')->middleware('auth');
+Route::put('/tipos-tarefa/{id}', [TipoTarefaController::class, 'update'])->name('tipos-tarefa.update')->middleware('auth');
+Route::delete('/tipos-tarefa/{id}', [TipoTarefaController::class, 'delete'])->name('tipos-tarefa.delete')->middleware('auth');
 // Tarefas routes
 Route::get('/tarefas', [TarefaController::class, 'showTarefas'])->name('tarefas')->middleware('auth');
 Route::get('/tarefaslist', [TarefaController::class, 'showTarefasList'])->name('tarefas.list')->middleware('auth');

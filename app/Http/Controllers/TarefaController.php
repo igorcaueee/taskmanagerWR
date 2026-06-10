@@ -9,6 +9,7 @@ use App\Models\Etapa;
 use App\Models\RelTarefa;
 use App\Models\Tarefa;
 use App\Models\TarefaUpload;
+use App\Models\TipoTarefa;
 use App\Models\Usuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -183,6 +184,8 @@ class TarefaController extends Controller
             $u->id => ['id' => $u->departamento_id, 'nome' => $u->departamento?->nome ?? '—'],
         ]);
 
+        $tiposTarefa = TipoTarefa::orderBy('nome')->get();
+
         return view('tarefas.partials.formTarefa', [
             'tarefa' => null,
             'clientes' => $clientes,
@@ -190,6 +193,7 @@ class TarefaController extends Controller
             'usuarios' => $usuarios,
             'etapaDefault' => $etapaDefault,
             'usuariosDepartamentos' => $usuariosDepartamentos,
+            'tiposTarefa' => $tiposTarefa,
         ]);
     }
 
@@ -216,13 +220,15 @@ class TarefaController extends Controller
 
         $selectedClienteIds = $tarefa->clientes->pluck('id')->toArray();
 
-        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'selectedClienteIds'));
+        $tiposTarefa = TipoTarefa::orderBy('nome')->get();
+
+        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'selectedClienteIds', 'tiposTarefa'));
     }
 
     public function save(Request $request): RedirectResponse
     {
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_ids',
+            'titulo', 'descricao', 'cliente_ids', 'tipo_tarefa_id',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
             'requer_envio_arquivo',
         ]);
@@ -232,6 +238,7 @@ class TarefaController extends Controller
             'descricao' => ['nullable', 'string'],
             'cliente_ids' => ['nullable', 'array'],
             'cliente_ids.*' => ['exists:clientes,id'],
+            'tipo_tarefa_id' => ['nullable', 'exists:tipos_tarefa,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -257,6 +264,7 @@ class TarefaController extends Controller
             $tarefa = Tarefa::create([
                 'titulo' => $data['titulo'],
                 'descricao' => $data['descricao'] ?? null,
+                'tipo_tarefa_id' => $data['tipo_tarefa_id'] ?? null,
                 'cliente_id' => $clienteId,
                 'departamento_id' => $departamentoId,
                 'etapa_id' => $data['etapa_id'],
@@ -294,7 +302,7 @@ class TarefaController extends Controller
         }
 
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_ids',
+            'titulo', 'descricao', 'cliente_ids', 'tipo_tarefa_id',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
             'requer_envio_arquivo',
         ]);
@@ -304,6 +312,7 @@ class TarefaController extends Controller
             'descricao' => ['nullable', 'string'],
             'cliente_ids' => ['nullable', 'array'],
             'cliente_ids.*' => ['exists:clientes,id'],
+            'tipo_tarefa_id' => ['nullable', 'exists:tipos_tarefa,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'supervisor_id' => ['nullable', 'exists:usuarios,id'],
@@ -338,6 +347,7 @@ class TarefaController extends Controller
         $tarefa->update([
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
+            'tipo_tarefa_id' => $data['tipo_tarefa_id'] ?? null,
             'cliente_id' => $clienteIds[0] ?? null,
             'departamento_id' => $departamentoId,
             'etapa_id' => $data['etapa_id'],
