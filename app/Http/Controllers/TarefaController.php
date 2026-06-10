@@ -98,17 +98,32 @@ class TarefaController extends Controller
             $query->where('responsavel_id', $usuario->id);
         }
 
-        // Filtra pelo ciclo selecionado (inclui tarefas sem ciclo_id que caem no intervalo)
-        $query->where(function ($q) use ($cicloSelecionado) {
-            $q->where('ciclo_id', $cicloSelecionado->id)
-                ->orWhere(function ($q2) use ($cicloSelecionado) {
-                    $q2->whereNull('ciclo_id')
-                        ->whereBetween('data_vencimento', [
-                            $cicloSelecionado->data_inicio,
-                            $cicloSelecionado->data_fim,
-                        ]);
-                });
-        });
+        // Filtro por data de vencimento (substitui o filtro de ciclo quando ativo)
+        $filtroDataTipo = $request->input('filtro_data_tipo');
+        $dataEspecifica = $request->input('data_especifica');
+        $dataIniciofiltro = $request->input('data_inicio_filtro');
+        $dataFimFiltro = $request->input('data_fim_filtro');
+        $filtroDataAtivo = false;
+
+        if ($filtroDataTipo === 'data_especifica' && $dataEspecifica) {
+            $query->whereDate('data_vencimento', $dataEspecifica);
+            $filtroDataAtivo = true;
+        } elseif ($filtroDataTipo === 'periodo' && $dataIniciofiltro && $dataFimFiltro) {
+            $query->whereBetween('data_vencimento', [$dataIniciofiltro, $dataFimFiltro]);
+            $filtroDataAtivo = true;
+        } else {
+            // Filtra pelo ciclo selecionado (inclui tarefas sem ciclo_id que caem no intervalo)
+            $query->where(function ($q) use ($cicloSelecionado) {
+                $q->where('ciclo_id', $cicloSelecionado->id)
+                    ->orWhere(function ($q2) use ($cicloSelecionado) {
+                        $q2->whereNull('ciclo_id')
+                            ->whereBetween('data_vencimento', [
+                                $cicloSelecionado->data_inicio,
+                                $cicloSelecionado->data_fim,
+                            ]);
+                    });
+            });
+        }
 
         if ($request->filled('departamento_id')) {
             $query->where('departamento_id', $request->integer('departamento_id'));
@@ -132,6 +147,7 @@ class TarefaController extends Controller
             'cicloSelecionado',
             'cicloPrev',
             'cicloNext',
+            'filtroDataAtivo',
         ));
     }
 
@@ -448,7 +464,7 @@ class TarefaController extends Controller
         $etapaTransferido = Etapa::where('nome', 'Transferido para o próximo ciclo')->first();
 
         $proximoCiclo = Ciclo::findOrCreateForDate(
-            Carbon::parse($tarefa->data_vencimento)->addWeek()->startOfWeek(Carbon::MONDAY)
+            Carbon::parse($tarefa->data_vencimento)->addMonth()->startOfMonth()
         );
 
         $tarefa->update([

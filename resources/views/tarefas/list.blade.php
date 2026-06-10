@@ -27,7 +27,7 @@
             ];
             $cicloAtual = \App\Models\Ciclo::current();
         @endphp
-        <div class="flex items-center justify-between mb-4 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+        <div class="flex items-center justify-between mb-4 bg-white border {{ $filtroDataAtivo ? 'border-amber-300' : 'border-gray-200' }} rounded-xl px-4 py-3 shadow-sm {{ $filtroDataAtivo ? 'opacity-60' : '' }}">
             {{-- Prev --}}
             <a href="{{ route('tarefas.list', array_merge(request()->except(['ciclo_id', 'page']), ['ciclo_id' => $cicloPrev->id])) }}"
                class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand no-underline group">
@@ -59,8 +59,20 @@
             </a>
         </div>
 
+        {{-- Aviso quando filtro de data está ativo --}}
+        @if ($filtroDataAtivo)
+            <div class="flex items-center gap-2 mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                <i class="fa-solid fa-filter"></i>
+                <span>Filtro por data de vencimento ativo — o navegador de ciclo está sendo ignorado.</span>
+                <a href="{{ route('tarefas.list', request()->except(['filtro_data_tipo', 'data_especifica', 'data_inicio_filtro', 'data_fim_filtro'])) }}"
+                   class="ml-auto text-xs font-medium text-amber-800 hover:underline no-underline flex items-center gap-1">
+                    <i class="fa-solid fa-xmark"></i> Limpar filtro
+                </a>
+            </div>
+        @endif
+
         {{-- Filters --}}
-        <form method="GET" action="{{ route('tarefas.list') }}" id="form-filtros" class="flex flex-wrap gap-3 mb-5">
+        <form method="GET" action="{{ route('tarefas.list') }}" id="form-filtros" class="flex flex-wrap gap-3 mb-5 items-end">
             <input type="hidden" name="ciclo_id" value="{{ $cicloSelecionado->id }}">
             <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Departamento</label>
@@ -84,7 +96,63 @@
                 </select>
             </div>
             @endif
+
+            {{-- Filtro por Vencimento --}}
+            <div class="flex items-end gap-2 border-l border-gray-200 dark:border-slate-600 pl-3 ml-1">
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Filtrar por vencimento</label>
+                    <select name="filtro_data_tipo" id="filtro-data-tipo"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">— Sem filtro —</option>
+                        <option value="data_especifica" @selected(request('filtro_data_tipo') === 'data_especifica')>Data específica</option>
+                        <option value="periodo" @selected(request('filtro_data_tipo') === 'periodo')>Período</option>
+                    </select>
+                </div>
+
+                <div id="campo-data-especifica" class="hidden">
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Data</label>
+                    <input type="date" name="data_especifica" value="{{ request('data_especifica') }}"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                </div>
+
+                <div id="campo-periodo" class="hidden">
+                <div class="flex items-end gap-2">
+                    <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">De</label>
+                        <input type="date" name="data_inicio_filtro" value="{{ request('data_inicio_filtro') }}"
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Até</label>
+                        <input type="date" name="data_fim_filtro" value="{{ request('data_fim_filtro') }}"
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    </div>
+                </div>
+                </div>
+
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded border-0 text-sm hover:bg-brand/80 focus:outline-none">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filtrar
+                </button>
+            </div>
         </form>
+
+        <script>
+            (function () {
+                const sel = document.getElementById('filtro-data-tipo');
+                const campoEspecifica = document.getElementById('campo-data-especifica');
+                const campoPeriodo = document.getElementById('campo-periodo');
+
+                function atualizar() {
+                    const val = sel.value;
+                    campoEspecifica.classList.toggle('hidden', val !== 'data_especifica');
+                    campoPeriodo.classList.toggle('hidden', val !== 'periodo');
+                }
+
+                sel.addEventListener('change', atualizar);
+                atualizar();
+            })();
+        </script>
 
         {{-- Kanban Board --}}
         <div class="flex gap-4 pb-4 flex-1" id="kanban-board">

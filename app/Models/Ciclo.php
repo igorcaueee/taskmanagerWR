@@ -41,40 +41,43 @@ class Ciclo extends Model
     }
 
     /**
-     * Retorna (ou cria) o ciclo da semana seguinte.
+     * Retorna (ou cria) o ciclo do mês seguinte.
      */
     public function proximo(): self
     {
-        return self::findOrCreateForDate($this->data_inicio->copy()->addWeek());
+        return self::findOrCreateForDate($this->data_inicio->copy()->addMonth());
     }
 
     /**
-     * Retorna (ou cria) o ciclo da semana anterior.
+     * Retorna (ou cria) o ciclo do mês anterior.
      */
     public function anterior(): self
     {
-        return self::findOrCreateForDate($this->data_inicio->copy()->subWeek());
+        return self::findOrCreateForDate($this->data_inicio->copy()->subMonth());
     }
 
     /**
-     * Encontra ou cria um ciclo semanal (seg–dom) para a data informada.
+     * Encontra ou cria um ciclo mensal (1º ao último dia) para a data informada.
      */
     public static function findOrCreateForDate(Carbon $date): self
     {
-        $monday = $date->copy()->startOfWeek(Carbon::MONDAY);
-        $sunday = $monday->copy()->endOfWeek(Carbon::SUNDAY);
+        $inicio = $date->copy()->startOfMonth();
+        $fim = $inicio->copy()->endOfMonth();
+
+        $meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
         return self::firstOrCreate(
-            ['data_inicio' => $monday->toDateString()],
+            ['data_inicio' => $inicio->toDateString()],
             [
-                'nome' => 'Semana '.$monday->weekOfYear.' · '.$monday->format('d/m').' – '.$sunday->format('d/m/Y'),
-                'data_fim' => $sunday->toDateString(),
+                'nome' => $meses[$inicio->month - 1].' '.$inicio->year,
+                'data_fim' => $fim->toDateString(),
             ]
         );
     }
 
     /**
-     * Retorna (ou cria) o ciclo da semana corrente.
+     * Retorna (ou cria) o ciclo do mês corrente.
      */
     public static function current(): self
     {
