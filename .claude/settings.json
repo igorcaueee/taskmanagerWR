@@ -40,7 +40,8 @@
       "Bash(docker exec *)",
       "Bash(DB_HOST=127.0.0.1 php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/app/Http/Controllers/ClienteController.php)",
       "Bash(php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/app/Console/Commands/PassarTarefasAFazerCommand.php)",
-      "Bash(php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/database/migrations/2026_06_09_200000_make_alterado_por_nullable_in_reltarefas_table.php)"
+      "Bash(php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/database/migrations/2026_06_09_200000_make_alterado_por_nullable_in_reltarefas_table.php)",
+      "Bash(xargs cat)"
     ]
   }
 }
