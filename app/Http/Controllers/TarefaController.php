@@ -133,16 +133,36 @@ class TarefaController extends Controller
             $query->where('responsavel_id', $request->integer('responsavel_id'));
         }
 
+        if ($request->filled('recorrencia')) {
+            if ($request->input('recorrencia') === 'recorrente') {
+                $query->where('recorrente', true);
+            } elseif ($request->input('recorrencia') === 'nao_recorrente') {
+                $query->where(function ($q) {
+                    $q->where('recorrente', false)->orWhereNull('recorrente');
+                });
+            }
+        }
+
+        if ($request->filled('cliente_id')) {
+            $clienteId = $request->integer('cliente_id');
+            $query->where(function ($q) use ($clienteId) {
+                $q->where('cliente_id', $clienteId)
+                    ->orWhereHas('clientes', fn ($q2) => $q2->where('clientes.id', $clienteId));
+            });
+        }
+
         $tarefas = $query->get()->groupBy('etapa_id');
 
         $departamentos = Departamento::orderBy('nome')->get();
         $usuarios = $podeVerTodas ? Usuario::orderBy('nome')->get() : collect();
+        $clientes = Cliente::orderBy('nome')->get();
 
         return view('tarefas.list', compact(
             'tarefas',
             'etapas',
             'departamentos',
             'usuarios',
+            'clientes',
             'podeVerTodas',
             'cicloSelecionado',
             'cicloPrev',

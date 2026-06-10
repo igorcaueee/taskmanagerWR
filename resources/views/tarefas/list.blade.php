@@ -97,8 +97,47 @@
             </div>
             @endif
 
+            {{-- Filtro Recorrência --}}
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Recorrência</label>
+                <select name="recorrencia" onchange="document.getElementById('form-filtros').submit()"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todas</option>
+                    <option value="recorrente" @selected(request('recorrencia') === 'recorrente')>Recorrentes</option>
+                    <option value="nao_recorrente" @selected(request('recorrencia') === 'nao_recorrente')>Não recorrentes</option>
+                </select>
+            </div>
+
+            {{-- Filtro Empresa --}}
+            <div class="relative" id="wrapper-empresa">
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Empresa</label>
+                <input type="hidden" name="cliente_id" id="cliente-id-hidden" value="{{ request('cliente_id') }}">
+                <div class="relative">
+                    <input type="text" id="empresa-search"
+                           placeholder="Buscar empresa..."
+                           autocomplete="off"
+                           value="{{ request('cliente_id') ? $clientes->firstWhere('id', request('cliente_id'))?->nome : '' }}"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-64">
+                    @if(request('cliente_id'))
+                        <button type="button" id="empresa-clear"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full bg-gray-400 hover:bg-gray-500 dark:bg-slate-500 dark:hover:bg-slate-400 text-white transition-colors">
+                            <i class="fa-solid fa-xmark text-[10px]"></i>
+                        </button>
+                    @endif
+                </div>
+                <ul id="empresa-dropdown"
+                    class="hidden absolute z-50 mt-1 min-w-full w-80 max-h-64 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg text-sm">
+                    @foreach ($clientes as $cli)
+                        <li class="empresa-opcao px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200"
+                            data-id="{{ $cli->id }}" data-nome="{{ $cli->nome }}">
+                            {{ $cli->nome }}
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+
             {{-- Filtro por Vencimento --}}
-            <div class="flex items-end gap-2 border-l border-gray-200 dark:border-slate-600 pl-3 ml-1">
+            <div class="flex items-end gap-2 ml-auto">
                 <div>
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Filtrar por vencimento</label>
                     <select name="filtro_data_tipo" id="filtro-data-tipo"
@@ -151,6 +190,57 @@
 
                 sel.addEventListener('change', atualizar);
                 atualizar();
+            })();
+
+            (function () {
+                const input    = document.getElementById('empresa-search');
+                const hidden   = document.getElementById('cliente-id-hidden');
+                const dropdown = document.getElementById('empresa-dropdown');
+                const clearBtn = document.getElementById('empresa-clear');
+                const opcoes   = dropdown ? dropdown.querySelectorAll('.empresa-opcao') : [];
+
+                if (!input) return;
+
+                function filtrar(termo) {
+                    if (termo.length < 3) {
+                        dropdown.classList.add('hidden');
+                        return;
+                    }
+                    let visiveis = 0;
+                    opcoes.forEach(op => {
+                        const match = op.dataset.nome.toLowerCase().includes(termo.toLowerCase());
+                        op.classList.toggle('hidden', !match);
+                        if (match) visiveis++;
+                    });
+                    dropdown.classList.toggle('hidden', visiveis === 0);
+                }
+
+                input.addEventListener('input', () => { filtrar(input.value); hidden.value = ''; });
+
+                opcoes.forEach(op => {
+                    op.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        input.value  = op.dataset.nome;
+                        hidden.value = op.dataset.id;
+                        dropdown.classList.add('hidden');
+                        document.getElementById('form-filtros').submit();
+                    });
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!document.getElementById('wrapper-empresa')?.contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                        if (!hidden.value) input.value = '';
+                    }
+                });
+
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        input.value  = '';
+                        hidden.value = '';
+                        document.getElementById('form-filtros').submit();
+                    });
+                }
             })();
         </script>
 
