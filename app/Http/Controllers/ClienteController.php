@@ -79,8 +79,9 @@ class ClienteController extends Controller
         }
 
         $clientes = $query->paginate(50)->withQueryString();
+        $segmentacoes = Segmentacao::orderBy('nome')->get();
 
-        return view('clientes.home', compact('clientes'));
+        return view('clientes.home', compact('clientes', 'segmentacoes'));
     }
 
     public function formClienteCreate(): View
