@@ -121,7 +121,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
@@ -166,7 +166,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
