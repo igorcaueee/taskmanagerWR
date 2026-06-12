@@ -91,8 +91,6 @@ class NfseService
 
                 $nsuAtual = $maxNsuEncontrado + 1;
                 $lotes++;
-
-                usleep(1_000_000); // 1s entre lotes (evitar rate limit silencioso)
             }
         } finally {
             foreach ($tempFiles as $f) {
@@ -276,7 +274,7 @@ class NfseService
             } catch (RateLimitException) {
                 if ($i < $tentativas) {
                     Log::warning('[NFS-e] 429 rate limit, aguardando', ['tentativa' => $i, 'url' => $url]);
-                    sleep(5 * $i); // 5s, 10s
+                    sleep(10 * $i); // 10s, 20s
                 }
             } catch (\RuntimeException $e) {
                 $isTimeout = str_contains($e->getMessage(), 'timed out')
