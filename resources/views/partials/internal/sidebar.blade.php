@@ -5,6 +5,7 @@
         <a href="{{ route('agenda') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-calendar-days"></i> Agenda</a>
         <a href="{{ route('arquivos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-regular fa-folder-open"></i> Arquivos</a>
         <a href="{{ route('tarefas.uploads-portal') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-arrow-up"></i> Uploads Portal</a>
+        <a href="{{ route('nfse.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-invoice" style="color:#0084aa"></i> NFS-e Portal Nacional</a>
         <a href="{{ route('ideias.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-lightbulb"></i> Ideias &amp; Correções</a>
         @if (auth()->user()?->canGerenciarBlog())
             <a href="{{ route('blog.admin.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-newspaper"></i> Blog</a>

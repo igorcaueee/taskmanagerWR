@@ -21,6 +21,7 @@ use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\TipoTarefaController;
+use App\Http\Controllers\NfseController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
@@ -215,3 +216,16 @@ Route::get('/ideias/{id}/form', [IdeiaController::class, 'formEdit'])->name('ide
 Route::post('/ideias/save', [IdeiaController::class, 'store'])->name('ideias.store')->middleware('auth');
 Route::patch('/ideias/{id}/status', [IdeiaController::class, 'updateStatus'])->name('ideias.update-status')->middleware('auth');
 Route::delete('/ideias/{id}', [IdeiaController::class, 'destroy'])->name('ideias.destroy')->middleware('auth');
+
+// NFS-e Portal Nacional
+Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
+    Route::get('/', [NfseController::class, 'index'])->name('index');
+    Route::get('/certificado/{clienteId}', [NfseController::class, 'getCertificado'])->name('certificado.get');
+    Route::post('/certificado', [NfseController::class, 'salvarCertificado'])->name('certificado.salvar');
+    Route::post('/certificado/{clienteId}/reset-nsu', [NfseController::class, 'resetarNsu'])->name('certificado.reset-nsu');
+    Route::post('/buscar', [NfseController::class, 'buscar'])->name('buscar');
+    Route::get('/xml/download', [NfseController::class, 'downloadXml'])->name('xml.download');
+    Route::post('/xml/zip', [NfseController::class, 'downloadZip'])->name('xml.zip');
+    Route::get('/danfse', [NfseController::class, 'danfse'])->name('danfse');
+    Route::get('/danfse-tecnos', [NfseController::class, 'danfseTecnos'])->name('danfse-tecnos');
+});

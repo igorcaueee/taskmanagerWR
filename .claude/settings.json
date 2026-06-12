@@ -42,7 +42,28 @@
       "Bash(php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/app/Console/Commands/PassarTarefasAFazerCommand.php)",
       "Bash(php -l /home/igorcaueee/LaravelProjects/taskmanagerwr/database/migrations/2026_06_09_200000_make_alterado_por_nullable_in_reltarefas_table.php)",
       "Bash(xargs cat)",
-      "Bash(host -t TXT _dmarc.assessoriawr.com)"
+      "Bash(host -t TXT _dmarc.assessoriawr.com)",
+      "WebFetch(domain:www.gov.br)",
+      "WebFetch(domain:adn.producaorestrita.nfse.gov.br)",
+      "WebFetch(domain:adn.nfse.gov.br)",
+      "WebFetch(domain:sefin.producaorestrita.nfse.gov.br)",
+      "WebSearch",
+      "WebFetch(domain:notagateway.com.br)",
+      "WebFetch(domain:www.tabnews.com.br)",
+      "WebFetch(domain:www.notaas.com.br)",
+      "WebFetch(domain:www.dinamicasistemas.com.br)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:nfse-php.netlify.app)",
+      "WebFetch(domain:www.nfse.gov.br)",
+      "WebFetch(domain:danfse.producaorestrita.nfse.gov.br)",
+      "Bash(grep -v \"^$\")",
+      "WebFetch(domain:teutonia.nfse-tecnos.com.br)",
+      "Bash(curl -sk \"http://teutonia.nfse-tecnos.com.br/Integracao.aspx\")",
+      "Bash(curl -sk \"http://help.nfse-tecnos.com.br/main_ws/contribuinte/consultas/consultanotatomada.aspx\")",
+      "Bash(curl -sk -I \"http://teutonia.nfse-tecnos.com.br/pdf/nfse.aspx\")",
+      "Bash(curl -sk -I \"http://teutonia.nfse-tecnos.com.br/nfse/pdf.aspx\")",
+      "Bash(curl -sk \"http://help.nfse-tecnos.com.br/main_ws/contribuinte/consultas/consultanfseprestador.aspx\")"
     ]
   }
 }

@@ -93,4 +93,9 @@ class Cliente extends Authenticatable
     {
         return $this->hasMany(PortalUsuario::class);
     }
+
+    public function certificadoNfse(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ClienteCertificadoNfse::class);
+    }
 }
