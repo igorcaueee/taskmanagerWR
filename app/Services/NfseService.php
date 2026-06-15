@@ -225,17 +225,57 @@ class NfseService
         $conteudo = file_get_contents($pfxPath);
         $certs    = [];
 
-        if (!openssl_pkcs12_read($conteudo, $certs, $senha)) {
-            throw new \InvalidArgumentException('Senha incorreta ou certificado inválido.');
+        while (openssl_error_string() !== false);
+
+        if (openssl_pkcs12_read($conteudo, $certs, $senha)) {
+            $info = openssl_x509_parse($certs['cert'] ?? '');
+            return !empty($info['validTo_time_t']) ? date('Y-m-d', $info['validTo_time_t']) : null;
         }
 
-        $info = openssl_x509_parse($certs['cert'] ?? '');
-
-        if (!empty($info['validTo_time_t'])) {
-            return date('Y-m-d', $info['validTo_time_t']);
+        $erroOpenssl = '';
+        while ($err = openssl_error_string()) {
+            $erroOpenssl .= $err;
         }
 
-        return null;
+        // Certificado com criptografia legada (RC2/3DES) — incompatível com OpenSSL 3.0 sem -legacy
+        if (str_contains($erroOpenssl, 'unsupported') || str_contains($erroOpenssl, 'legacy')) {
+            Log::info('[Certificado] Algoritmo legado detectado, tentando via CLI com -legacy');
+            return $this->validarCertificadoLegacy($pfxPath, $senha);
+        }
+
+        throw new \InvalidArgumentException('Senha incorreta ou certificado inválido.');
+    }
+
+    private function validarCertificadoLegacy(string $pfxPath, string $senha): ?string
+    {
+        $tmpPem = tempnam(sys_get_temp_dir(), 'nfse_v_');
+
+        try {
+            $cmd    = sprintf(
+                'openssl pkcs12 -legacy -in %s -passin pass:%s -clcerts -nokeys -out %s 2>&1',
+                escapeshellarg($pfxPath),
+                escapeshellarg($senha),
+                escapeshellarg($tmpPem)
+            );
+            exec($cmd, $output, $exitCode);
+
+            if ($exitCode !== 0) {
+                Log::error('[Certificado] CLI legacy falhou', ['saida' => implode("\n", $output)]);
+                throw new \InvalidArgumentException('Senha incorreta ou certificado inválido.');
+            }
+
+            $cert = openssl_x509_read(file_get_contents($tmpPem));
+            if (!$cert) {
+                throw new \InvalidArgumentException('Não foi possível ler o certificado após extração legacy.');
+            }
+
+            $info = openssl_x509_parse($cert);
+            return !empty($info['validTo_time_t']) ? date('Y-m-d', $info['validTo_time_t']) : null;
+        } finally {
+            if (file_exists($tmpPem)) {
+                @unlink($tmpPem);
+            }
+        }
     }
 
     // ─── Helpers privados ────────────────────────────────────────────────────
@@ -262,8 +302,20 @@ class NfseService
         $pfxContent = file_get_contents($pfxPath);
         $certs      = [];
 
+        while (openssl_error_string() !== false);
+
         if (!openssl_pkcs12_read($pfxContent, $certs, $senha)) {
-            Log::error('[NFS-e] extrairPem: falha no openssl_pkcs12_read (senha errada ou pfx corrompido)');
+            $erroOpenssl = '';
+            while ($err = openssl_error_string()) {
+                $erroOpenssl .= $err;
+            }
+
+            if (str_contains($erroOpenssl, 'unsupported') || str_contains($erroOpenssl, 'legacy')) {
+                Log::info('[NFS-e] extrairPem: algoritmo legado detectado, usando CLI com -legacy');
+                return $this->extrairPemLegacy($pfxPath, $senha);
+            }
+
+            Log::error('[NFS-e] extrairPem: falha no openssl_pkcs12_read', ['erro' => $erroOpenssl]);
             throw new \RuntimeException('Senha incorreta ou certificado .pfx corrompido.');
         }
 
@@ -280,6 +332,43 @@ class NfseService
         file_put_contents($tmpKey,  $certs['pkey']);
 
         Log::info('[NFS-e] extrairPem: PEM extraído com sucesso', ['tmpCert' => $tmpCert]);
+
+        return [$tmpCert, $tmpKey, [$tmpCert, $tmpKey]];
+    }
+
+    private function extrairPemLegacy(string $pfxPath, string $senha): array
+    {
+        $tmpDir  = sys_get_temp_dir();
+        $tmpCert = tempnam($tmpDir, 'nfse_c_');
+        $tmpKey  = tempnam($tmpDir, 'nfse_k_');
+
+        $cmdCert = sprintf(
+            'openssl pkcs12 -legacy -in %s -passin pass:%s -clcerts -nokeys -out %s 2>&1',
+            escapeshellarg($pfxPath),
+            escapeshellarg($senha),
+            escapeshellarg($tmpCert)
+        );
+        exec($cmdCert, $outCert, $exitCert);
+
+        $cmdKey = sprintf(
+            'openssl pkcs12 -legacy -in %s -passin pass:%s -nocerts -nodes -out %s 2>&1',
+            escapeshellarg($pfxPath),
+            escapeshellarg($senha),
+            escapeshellarg($tmpKey)
+        );
+        exec($cmdKey, $outKey, $exitKey);
+
+        if ($exitCert !== 0 || $exitKey !== 0) {
+            @unlink($tmpCert);
+            @unlink($tmpKey);
+            Log::error('[NFS-e] extrairPemLegacy: falha na extração', [
+                'cert_saida' => implode("\n", $outCert),
+                'key_saida'  => implode("\n", $outKey),
+            ]);
+            throw new \RuntimeException('Falha ao extrair certificado legacy.');
+        }
+
+        Log::info('[NFS-e] extrairPemLegacy: PEM extraído com sucesso (modo legacy)');
 
         return [$tmpCert, $tmpKey, [$tmpCert, $tmpKey]];
     }
