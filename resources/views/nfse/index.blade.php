@@ -306,6 +306,12 @@
         esconderTodosEstados();
         estadoInicial.classList.remove('hidden');
 
+        // Limpa o form do certificado ao trocar de empresa
+        document.getElementById('certFile').value = '';
+        certSenha.value = '';
+        formCertificado.classList.add('hidden');
+        btnToggleCertLabel.textContent = 'Configurar';
+
         if (!clienteId) {
             cardCertificado.classList.add('hidden');
             cardFiltro.classList.add('hidden');

@@ -36,6 +36,9 @@ class ClienteCertificadoNfse extends Model
 
     public function venceEm30Dias(): bool
     {
-        return $this->vencimento && $this->vencimento->diffInDays(now()) <= 30 && !$this->vencido();
+        return $this->vencimento
+            && !$this->vencido()
+            && $this->vencimento->greaterThan(now())
+            && now()->diffInDays($this->vencimento) <= 30;
     }
 }
