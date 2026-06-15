@@ -83,7 +83,7 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-2">
                                 @if ($artigo->status === 'publicado')
-                                    <a href="{{ route('blog.show', $artigo->slug) }}" target="_blank"
+                                    <a href="{{ route('portal.blog.show', $artigo->slug) }}" target="_blank"
                                        class="text-brand hover:text-brand/70 text-xs no-underline" title="Ver no site">
                                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                     </a>

@@ -76,32 +76,51 @@
                 @endif
             </form>
 
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+            <table class="w-full table-fixed divide-y divide-gray-200 dark:divide-slate-700">
+                <colgroup>
+                    <col class="w-[28%]">  {{-- Título --}}
+                    <col class="w-[16%]">  {{-- Cliente --}}
+                    <col class="w-[14%]">  {{-- Departamento --}}
+                    <col class="w-[11%]">  {{-- Etapa --}}
+                    <col class="w-[13%]">  {{-- Responsável --}}
+                    <col class="w-[9%]">   {{-- Vencimento --}}
+                    <col class="w-[6%]">   {{-- Prioridade --}}
+                    <col class="w-[3%]">   {{-- Ações --}}
+                </colgroup>
                 <thead class="bg-gray-50 dark:bg-slate-900">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Título</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Departamento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Etapa</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Responsável</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vencimento</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prioridade</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recorrência</th>
-                        <th class="px-6 py-3"></th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Título</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Departamento</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Etapa</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Responsável</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vencimento</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prioridade</th>
+                        <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse($tarefas as $tarefa)
                         <tr>
-                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-slate-100 font-medium whitespace-nowrap">{{ $tarefa->titulo }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->cliente->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->departamento->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->etapa->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tarefa->responsavel->nome ?? '—' }}</td>
-                            <td class="px-6 py-4 text-sm whitespace-nowrap {{ (is_null($tarefa->data_conclusao) && $tarefa->data_vencimento->lt(now()->startOfDay())) ? 'text-red-600 font-semibold' : 'text-gray-700 dark:text-gray-300' }}">
+                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-slate-100 font-medium overflow-hidden">
+                                <span class="block truncate" title="{{ $tarefa->titulo }}">{{ $tarefa->titulo }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 overflow-hidden">
+                                <span class="block truncate" title="{{ $tarefa->cliente->nome ?? '' }}">{{ \Str::limit($tarefa->cliente->nome ?? '—', 30, '…') }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 overflow-hidden">
+                                <span class="block truncate" title="{{ $tarefa->departamento->nome ?? '' }}">{{ \Str::limit($tarefa->departamento->nome ?? '—', 30, '…') }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 overflow-hidden">
+                                <span class="block truncate" title="{{ $tarefa->etapa->nome ?? '' }}">{{ \Str::limit($tarefa->etapa->nome ?? '—', 30, '…') }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 overflow-hidden">
+                                <span class="block truncate" title="{{ $tarefa->responsavel->nome ?? '' }}">{{ \Str::limit($tarefa->responsavel->nome ?? '—', 30, '…') }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm whitespace-nowrap {{ (is_null($tarefa->data_conclusao) && $tarefa->data_vencimento->lt(now()->startOfDay())) ? 'text-red-600 font-semibold' : 'text-gray-700 dark:text-gray-300' }}">
                                 {{ $tarefa->data_vencimento->format('d/m/Y') }}
                             </td>
-                            <td class="px-6 py-4 text-sm whitespace-nowrap">
+                            <td class="px-4 py-3 text-sm whitespace-nowrap">
                                 @php
                                     $prioridadeMap = [
                                         1 => ['label' => 'Baixa', 'class' => 'bg-gray-100 text-gray-600'],
@@ -116,26 +135,7 @@
                                     {{ $p['label'] }}
                                 </span>
                             </td>
-                            @php
-                                $frequenciaLabels = [
-                                    'semanal'    => ['label' => 'Semanal',    'class' => 'bg-blue-100 text-blue-700'],
-                                    'mensal'     => ['label' => 'Mensal',     'class' => 'bg-purple-100 text-purple-700'],
-                                    'trimestral' => ['label' => 'Trimestral', 'class' => 'bg-indigo-100 text-indigo-700'],
-                                    'semestral'  => ['label' => 'Semestral',  'class' => 'bg-cyan-100 text-cyan-700'],
-                                    'anual'      => ['label' => 'Anual',      'class' => 'bg-teal-100 text-teal-700'],
-                                ];
-                                $freq = $frequenciaLabels[$tarefa->frequencia] ?? null;
-                            @endphp
-                            <td class="px-6 py-4 text-sm whitespace-nowrap">
-                                @if($freq)
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {{ $freq['class'] }}">
-                                        <i class="fa-solid fa-rotate text-[10px]"></i> {{ $freq['label'] }}
-                                    </span>
-                                @else
-                                    <span class="text-gray-400 text-xs">—</span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 text-sm text-right whitespace-nowrap">
+                            <td class="px-4 py-3 text-sm text-right whitespace-nowrap">
                                 @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none border-0 bg-transparent p-0"
@@ -165,7 +165,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">Nenhuma tarefa encontrada.</td>
+                            <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma tarefa encontrada.</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -13,45 +13,115 @@
             </div>
         </div>
 
-        {{-- Filtros de período --}}
+        {{-- Filtros --}}
         <form method="GET" action="{{ route('relatorios') }}" id="form-relatorio"
-              class="bg-white dark:bg-slate-800 rounded shadow px-4 py-3 mb-6 flex flex-wrap gap-3 items-end">
+              class="bg-white dark:bg-slate-800 rounded shadow px-4 py-3 mb-6">
 
-            <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Período</label>
-                <select name="periodo" id="select-periodo"
-                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
-                    <option value="hoje"      @selected(request('periodo') === 'hoje')>Hoje</option>
-                    <option value="semana"    @selected(request('periodo') === 'semana')>Esta semana</option>
-                    <option value="mes"       @selected(request('periodo', 'mes') === 'mes')>Este mês</option>
-                    <option value="trimestre" @selected(request('periodo') === 'trimestre')>Últimos 3 meses</option>
-                    <option value="semestre"  @selected(request('periodo') === 'semestre')>Últimos 6 meses</option>
-                    <option value="ano"       @selected(request('periodo') === 'ano')>Este ano</option>
-                    <option value="personalizado" @selected(request('periodo') === 'personalizado')>Personalizado</option>
-                </select>
-            </div>
-
-            <div id="datas-personalizadas" class="{{ request('periodo') === 'personalizado' ? 'flex' : 'hidden' }} gap-3">
+            <div class="flex flex-wrap gap-3 items-end">
+                {{-- Período --}}
                 <div>
-                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">De</label>
-                    <input type="date" name="data_inicio" value="{{ request('data_inicio') }}"
-                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Período</label>
+                    <select name="periodo" id="select-periodo"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="hoje"          @selected(request('periodo') === 'hoje')>Hoje</option>
+                        <option value="semana"        @selected(request('periodo') === 'semana')>Esta semana</option>
+                        <option value="mes"           @selected(request('periodo', 'mes') === 'mes')>Este mês</option>
+                        <option value="trimestre"     @selected(request('periodo') === 'trimestre')>Últimos 3 meses</option>
+                        <option value="semestre"      @selected(request('periodo') === 'semestre')>Últimos 6 meses</option>
+                        <option value="ano"           @selected(request('periodo') === 'ano')>Este ano</option>
+                        <option value="personalizado" @selected(request('periodo') === 'personalizado')>Personalizado</option>
+                    </select>
                 </div>
+
+                <div id="datas-personalizadas" class="{{ request('periodo') === 'personalizado' ? 'flex' : 'hidden' }} gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">De</label>
+                        <input type="date" name="data_inicio" value="{{ request('data_inicio') }}"
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Até</label>
+                        <input type="date" name="data_fim" value="{{ request('data_fim') }}"
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    </div>
+                </div>
+
+                {{-- Responsável --}}
                 <div>
-                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Até</label>
-                    <input type="date" name="data_fim" value="{{ request('data_fim') }}"
-                           class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
+                    <select name="responsavel_id"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        @foreach($usuarios as $u)
+                            <option value="{{ $u->id }}" @selected($responsavelFiltro == $u->id)>{{ $u->nome }}</option>
+                        @endforeach
+                    </select>
                 </div>
+
+                {{-- Etapa --}}
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Etapa</label>
+                    <select name="etapa_id"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todas</option>
+                        @foreach($etapas as $e)
+                            <option value="{{ $e->id }}" @selected($etapaFiltro == $e->id)>{{ $e->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Departamento --}}
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Departamento</label>
+                    <select name="departamento_id"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        @foreach($departamentos as $d)
+                            <option value="{{ $d->id }}" @selected($departamentoFiltro == $d->id)>{{ $d->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Tipo de tarefa --}}
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
+                    <select name="tipo_tarefa_id"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        @foreach($tiposTarefa as $t)
+                            <option value="{{ $t->id }}" @selected($tipoTarefaFiltro == $t->id)>{{ $t->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Status --}}
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Status</label>
+                    <select name="status"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        <option value="concluida" @selected($statusFiltro === 'concluida')>Concluídas</option>
+                        <option value="pendente"  @selected($statusFiltro === 'pendente')>Pendentes</option>
+                        <option value="vencida"   @selected($statusFiltro === 'vencida')>Vencidas</option>
+                    </select>
+                </div>
+
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-4 py-1.5 bg-brand text-white rounded border-0 text-sm focus:outline-none hover:bg-brand/80">
+                    <i class="fa-solid fa-magnifying-glass"></i> Aplicar
+                </button>
+
+                @if(request()->hasAny(['responsavel_id','etapa_id','departamento_id','tipo_tarefa_id','status']))
+                    <a href="{{ route('relatorios', array_filter(['periodo' => request('periodo'), 'data_inicio' => request('data_inicio'), 'data_fim' => request('data_fim')])) }}"
+                       class="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 border border-gray-300 dark:border-slate-600 rounded">
+                        <i class="fa-solid fa-xmark"></i> Limpar filtros
+                    </a>
+                @endif
+
+                <p class="text-xs text-gray-400 dark:text-slate-500 self-center ml-auto">
+                    {{ $dataInicio->format('d/m/Y') }} — {{ $dataFim->format('d/m/Y') }}
+                </p>
             </div>
-
-            <button type="submit"
-                    class="inline-flex items-center gap-2 px-4 py-1.5 bg-brand text-white rounded border-0 text-sm focus:outline-none hover:bg-brand/80">
-                <i class="fa-solid fa-magnifying-glass"></i> Aplicar
-            </button>
-
-            <p class="text-xs text-gray-400 dark:text-slate-500 self-center ml-auto">
-                {{ $dataInicio->format('d/m/Y') }} — {{ $dataFim->format('d/m/Y') }}
-            </p>
         </form>
 
         {{-- KPI Cards --}}
@@ -152,7 +222,7 @@
         </div>
 
         {{-- Linha 3: Por departamento + Vencidas vs prazo + Por recorrência --}}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6" id="graficos-linha3">
 
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
                 <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
@@ -200,6 +270,131 @@
                     </div>
                 @endif
             </div>
+        </div>
+
+        {{-- Tabela de tarefas --}}
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 mb-6">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <i class="fa-solid fa-list-check mr-1 text-brand"></i> Tarefas do período
+                    <span class="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">({{ $tarefas->total() }} registros)</span>
+                </h2>
+            </div>
+
+            @php
+                $sortUrl = fn(string $col) => request()->fullUrlWithQuery([
+                    'ordem'    => $col,
+                    'direcao'  => ($colunaOrdem === $col && $direcaoOrdem === 'asc') ? 'desc' : 'asc',
+                    'page'     => 1,
+                ]);
+                $sortIcon = fn(string $col) => $colunaOrdem === $col
+                    ? ($direcaoOrdem === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                    : 'fa-sort';
+            @endphp
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-slate-700/50">
+                        <tr>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">
+                                <a href="{{ $sortUrl('titulo') }}" class="inline-flex items-center gap-1 hover:text-brand">
+                                    Título <i class="fa-solid {{ $sortIcon('titulo') }} text-xs"></i>
+                                </a>
+                            </th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Cliente</th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Responsável</th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Etapa</th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                <a href="{{ $sortUrl('data_vencimento') }}" class="inline-flex items-center gap-1 hover:text-brand">
+                                    Vencimento <i class="fa-solid {{ $sortIcon('data_vencimento') }} text-xs"></i>
+                                </a>
+                            </th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                <a href="{{ $sortUrl('data_conclusao') }}" class="inline-flex items-center gap-1 hover:text-brand">
+                                    Conclusão <i class="fa-solid {{ $sortIcon('data_conclusao') }} text-xs"></i>
+                                </a>
+                            </th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                <a href="{{ $sortUrl('prioridade') }}" class="inline-flex items-center gap-1 hover:text-brand">
+                                    Prioridade <i class="fa-solid {{ $sortIcon('prioridade') }} text-xs"></i>
+                                </a>
+                            </th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                        @forelse($tarefas as $tarefa)
+                            @php
+                                $vencida   = ! $tarefa->data_conclusao && $tarefa->data_vencimento?->isPast();
+                                $concluida = (bool) $tarefa->data_conclusao;
+                            @endphp
+                            <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/40">
+                                <td class="px-4 py-2 text-gray-800 dark:text-slate-200 max-w-xs truncate" title="{{ $tarefa->titulo }}">
+                                    {{ $tarefa->titulo }}
+                                </td>
+                                <td class="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    {{ $tarefa->cliente?->nome ?? '—' }}
+                                </td>
+                                <td class="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    {{ $tarefa->responsavel?->nome ?? '—' }}
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    @if($tarefa->etapa)
+                                        <span class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full text-white font-medium"
+                                              style="background-color: {{ $tarefa->etapa->cor ?? '#94a3b8' }}">
+                                            {{ $tarefa->etapa->nome }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400 dark:text-slate-500">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap {{ $vencida ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400' }}">
+                                    {{ $tarefa->data_vencimento?->format('d/m/Y') ?? '—' }}
+                                </td>
+                                <td class="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    {{ $tarefa->data_conclusao?->format('d/m/Y') ?? '—' }}
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    @if($tarefa->prioridade === 'alta')
+                                        <span class="text-xs font-medium text-red-600"><i class="fa-solid fa-circle-exclamation mr-1"></i>Alta</span>
+                                    @elseif($tarefa->prioridade === 'media')
+                                        <span class="text-xs font-medium text-yellow-600"><i class="fa-solid fa-circle mr-1"></i>Média</span>
+                                    @else
+                                        <span class="text-xs font-medium text-gray-400 dark:text-slate-500"><i class="fa-regular fa-circle mr-1"></i>Baixa</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    @if($concluida)
+                                        <span class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                            <i class="fa-solid fa-check-circle"></i> Concluída
+                                        </span>
+                                    @elseif($vencida)
+                                        <span class="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+                                            <i class="fa-solid fa-triangle-exclamation"></i> Vencida
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 text-xs text-blue-500 font-medium">
+                                            <i class="fa-solid fa-clock"></i> Pendente
+                                        </span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400 dark:text-slate-500 italic">
+                                    Nenhuma tarefa encontrada para os filtros selecionados.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if($tarefas->hasPages())
+                <div class="px-5 py-3 border-t border-gray-200 dark:border-slate-700">
+                    {{ $tarefas->links() }}
+                </div>
+            @endif
         </div>
 
     </div>

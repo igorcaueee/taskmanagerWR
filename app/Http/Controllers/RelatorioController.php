@@ -8,6 +8,7 @@ use App\Models\Etapa;
 use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\Tarefa;
+use App\Models\TipoTarefa;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,8 +20,38 @@ class RelatorioController extends Controller
     {
         [$dataInicio, $dataFim] = $this->resolverPeriodo($request);
 
+        // ── Filtros adicionais ─────────────────────────────────────────
+        $responsavelFiltro    = $request->filled('responsavel_id')    ? $request->integer('responsavel_id')    : null;
+        $etapaFiltro          = $request->filled('etapa_id')          ? $request->integer('etapa_id')          : null;
+        $departamentoFiltro   = $request->filled('departamento_id')   ? $request->integer('departamento_id')   : null;
+        $tipoTarefaFiltro     = $request->filled('tipo_tarefa_id')    ? $request->integer('tipo_tarefa_id')    : null;
+        $statusFiltro         = $request->input('status'); // 'concluida' | 'pendente' | 'vencida'
+
+        $aplicarFiltros = function ($q) use ($responsavelFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $statusFiltro): void {
+            if ($responsavelFiltro) {
+                $q->where('responsavel_id', $responsavelFiltro);
+            }
+            if ($etapaFiltro) {
+                $q->where('etapa_id', $etapaFiltro);
+            }
+            if ($departamentoFiltro) {
+                $q->where('departamento_id', $departamentoFiltro);
+            }
+            if ($tipoTarefaFiltro) {
+                $q->where('tipo_tarefa_id', $tipoTarefaFiltro);
+            }
+            if ($statusFiltro === 'concluida') {
+                $q->whereNotNull('data_conclusao');
+            } elseif ($statusFiltro === 'pendente') {
+                $q->whereNull('data_conclusao');
+            } elseif ($statusFiltro === 'vencida') {
+                $q->whereNull('data_conclusao')->where('data_vencimento', '<', now()->startOfDay());
+            }
+        };
+
         $baseQuery = fn () => Tarefa::query()
-            ->whereBetween('data_vencimento', [$dataInicio, $dataFim]);
+            ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
+            ->tap($aplicarFiltros);
 
         // ── KPI cards ──────────────────────────────────────────────────
         $totalTarefas = $baseQuery()->count();
@@ -35,6 +66,7 @@ class RelatorioController extends Controller
             ->count();
 
         $concluidasEstaSemana = Tarefa::query()
+            ->tap($aplicarFiltros)
             ->whereNotNull('data_conclusao')
             ->whereBetween('data_conclusao', [now()->startOfWeek(), now()->endOfWeek()])
             ->count();
@@ -131,7 +163,24 @@ class RelatorioController extends Controller
             ]);
         }
 
-        $usuarios = Usuario::query()->where('status', true)->orderBy('nome')->get();
+        $usuarios      = Usuario::query()->where('status', true)->orderBy('nome')->get();
+        $etapas        = Etapa::query()->orderBy('ordem')->get(['id', 'nome', 'cor']);
+        $departamentos = Departamento::query()->orderBy('nome')->get(['id', 'nome']);
+        $tiposTarefa   = TipoTarefa::query()->orderBy('nome')->get(['id', 'nome']);
+
+        // ── Tabela de tarefas (paginada + ordenável) ───────────────────
+        $colunaOrdem    = in_array($request->input('ordem'), ['titulo', 'data_vencimento', 'data_conclusao', 'prioridade'])
+            ? $request->input('ordem')
+            : 'data_vencimento';
+        $direcaoOrdem   = $request->input('direcao', 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $tarefas = Tarefa::query()
+            ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
+            ->tap($aplicarFiltros)
+            ->with(['responsavel', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
+            ->orderBy($colunaOrdem, $direcaoOrdem)
+            ->paginate(25)
+            ->withQueryString();
 
         return view('relatorios.index', compact(
             'dataInicio',
@@ -148,6 +197,17 @@ class RelatorioController extends Controller
             'porRecorrencia',
             'evolucaoMensal',
             'usuarios',
+            'etapas',
+            'departamentos',
+            'tiposTarefa',
+            'tarefas',
+            'colunaOrdem',
+            'direcaoOrdem',
+            'responsavelFiltro',
+            'etapaFiltro',
+            'departamentoFiltro',
+            'tipoTarefaFiltro',
+            'statusFiltro',
         ));
     }
 
