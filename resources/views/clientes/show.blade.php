@@ -158,8 +158,17 @@
                         </div>
                         <div>
                             <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Venc. Certificado Digital</dt>
-                            <dd class="mt-0.5 text-gray-900 dark:text-slate-100">
-                                {{ $cliente->vencimento_certificado?->format('d/m/Y') ?? '—' }}
+                            <dd class="mt-0.5 flex items-center gap-2">
+                                <span class="text-gray-900 dark:text-slate-100">
+                                    {{ $cliente->vencimento_certificado?->format('d/m/Y') ?? '—' }}
+                                </span>
+                                @if($cliente->certificadoNfse && $cliente->certificadoNfse->arquivo)
+                                    <a href="{{ route('nfse.certificado.download', $cliente->id) }}"
+                                       title="Baixar certificado .pfx"
+                                       class="text-gray-400 hover:text-[#0084aa] dark:hover:text-[#0084aa] transition-colors">
+                                        <i class="fa-solid fa-download text-xs"></i>
+                                    </a>
+                                @endif
                             </dd>
                         </div>
                         <div>

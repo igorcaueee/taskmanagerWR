@@ -83,7 +83,7 @@ class NfseController extends Controller
 
         $pathRelativo = "{$dir}/certificado.pfx";
 
-        // 4. Atualiza ou cria o registro
+        // 4. Atualiza ou cria o registro do certificado NFS-e
         ClienteCertificadoNfse::updateOrCreate(
             ['cliente_id' => $validated['cliente_id']],
             [
@@ -94,6 +94,12 @@ class NfseController extends Controller
                 'vencimento' => $vencimento,
             ]
         );
+
+        // 5. Atualiza o vencimento_certificado no cadastro do cliente
+        if ($vencimento) {
+            Cliente::where('id', $validated['cliente_id'])
+                ->update(['vencimento_certificado' => $vencimento]);
+        }
 
         return response()->json([
             'success'    => true,
@@ -228,6 +234,25 @@ class NfseController extends Controller
         return response()->download($zipPath, 'nfse_xmls.zip', [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
+    }
+
+    // ─── Download do certificado .pfx ────────────────────────────────────────
+
+    public function downloadCertificado(int $clienteId)
+    {
+        $cert = ClienteCertificadoNfse::where('cliente_id', $clienteId)->firstOrFail();
+        $path = storage_path('app/' . $cert->arquivo);
+
+        if (!file_exists($path)) {
+            abort(404, 'Arquivo do certificado não encontrado no servidor.');
+        }
+
+        $nomeCliente = $cert->cliente->nome ?? "cliente_{$clienteId}";
+        $nomeArquivo = \Illuminate\Support\Str::slug($nomeCliente) . '_certificado.pfx';
+
+        return response()->download($path, $nomeArquivo, [
+            'Content-Type' => 'application/x-pkcs12',
+        ]);
     }
 
     // ─── DANFSE via Tecnos Municipal (Teutônia) ──────────────────────────────

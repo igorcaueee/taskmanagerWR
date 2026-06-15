@@ -42,7 +42,8 @@ class NfseService
 
         try {
             $notas            = [];
-            $nsuAtual         = 0; // sempre busca do início
+            $canceledChaves   = []; // chaves de eventos de cancelamento (cross-batch)
+            $nsuAtual         = 0;
             $maxNsuEncontrado = 0;
             $lotes            = 0;
 
@@ -71,6 +72,20 @@ class NfseService
                         $maxNsuEncontrado = $nsuDoc;
                     }
 
+                    $tipo = $doc['TipoDocumento'] ?? 'NFSE';
+
+                    // Eventos de cancelamento: registra a chave e ignora como linha separada
+                    if ($tipo === 'EVENTO' && str_contains($doc['TipoEvento'] ?? '', 'CANCELAMENTO')) {
+                        if (!empty($doc['ChaveAcesso'])) {
+                            $canceledChaves[$doc['ChaveAcesso']] = true;
+                        }
+                        continue;
+                    }
+
+                    if (!in_array($tipo, ['NFSE', 'NENHUM'])) {
+                        continue;
+                    }
+
                     $dataGeracao = substr($doc['DataHoraGeracao'] ?? '', 0, 10);
 
                     if ($dataGeracao && $dataGeracao < $dataInicio) {
@@ -91,6 +106,16 @@ class NfseService
 
                 $nsuAtual = $maxNsuEncontrado + 1;
                 $lotes++;
+            }
+
+            // Atualiza status das NFSes que tiveram evento de cancelamento
+            if (!empty($canceledChaves)) {
+                foreach ($notas as &$nota) {
+                    if (!empty($nota['chaveAcesso']) && isset($canceledChaves[$nota['chaveAcesso']])) {
+                        $nota['status'] = 'CANCELADA';
+                    }
+                }
+                unset($nota);
             }
         } finally {
             foreach ($tempFiles as $f) {

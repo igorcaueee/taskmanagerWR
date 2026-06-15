@@ -97,7 +97,7 @@ class ClienteController extends Controller
 
     public function showCliente(int $id): View
     {
-        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'certificadoNfse'])->findOrFail($id);
         $ultimoIDE = QuestionarioResposta::where('cliente_id', $id)
             ->where('finalizado', true)
             ->latest()

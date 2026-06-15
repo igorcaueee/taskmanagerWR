@@ -228,4 +228,5 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::post('/xml/zip', [NfseController::class, 'downloadZip'])->name('xml.zip');
     Route::get('/danfse', [NfseController::class, 'danfse'])->name('danfse');
     Route::get('/danfse-tecnos', [NfseController::class, 'danfseTecnos'])->name('danfse-tecnos');
+    Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
 });
