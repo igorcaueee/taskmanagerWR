@@ -1047,6 +1047,75 @@
         }
     }
 
+    // ── Duplicar tarefa para outros clientes (kanban) ────────────────────────
+    const clientesData = @json($clientes->map(fn($c) => ['id' => $c->id, 'nome' => $c->nome])->values());
+
+    document.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.btn-duplicar-tarefa');
+        if (!btn) { return; }
+        e.stopPropagation();
+
+        const tarefaId = btn.dataset.tarefaId;
+        const titulo = btn.dataset.tarefaTitulo;
+
+        const clienteOptions = clientesData.map(c =>
+            `<label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
+                <input type="checkbox" name="cliente_ids" value="${c.id}" class="rounded">
+                <span class="text-sm">${c.nome}</span>
+            </label>`
+        ).join('');
+
+        const { value: form, isConfirmed } = await Swal.fire({
+            title: 'Duplicar tarefa',
+            html: `<p class="text-sm text-gray-500 mb-3">Selecione os clientes para os quais deseja duplicar <strong>"${titulo}"</strong>:</p>
+                   <div class="text-left max-h-64 overflow-y-auto border rounded p-2">
+                       <input type="text" id="swal-busca-cliente" placeholder="Buscar cliente..." class="w-full border rounded px-2 py-1 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-brand">
+                       <div id="swal-clientes-lista">${clienteOptions}</div>
+                   </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Duplicar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#4f46e5',
+            didOpen: () => {
+                const busca = document.getElementById('swal-busca-cliente');
+                busca.addEventListener('input', () => {
+                    const q = busca.value.toLowerCase();
+                    document.querySelectorAll('#swal-clientes-lista label').forEach(label => {
+                        label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
+                    });
+                });
+            },
+            preConfirm: () => {
+                const checked = [...document.querySelectorAll('input[name="cliente_ids"]:checked')].map(i => i.value);
+                if (checked.length === 0) {
+                    Swal.showValidationMessage('Selecione pelo menos um cliente.');
+                    return false;
+                }
+                return checked;
+            },
+        });
+
+        if (!isConfirmed || !form) { return; }
+
+        try {
+            const res = await fetch(`/tarefas/${tarefaId}/duplicar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ cliente_ids: form }),
+            });
+
+            if (!res.ok) { throw new Error(); }
+            const data = await res.json();
+            showToast(`${data.count} tarefa(s) duplicada(s) com sucesso!`, 'green');
+        } catch {
+            showToast('Erro ao duplicar tarefa. Tente novamente.', 'red');
+        }
+    });
+
     // ── Excluir tarefa (kanban) ───────────────────────────────────────────────
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.btn-delete-kanban');

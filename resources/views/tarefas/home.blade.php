@@ -143,6 +143,14 @@
                                     <i class="fa-solid fa-pencil"></i>
                                 </button>
 
+                                <button type="button"
+                                        class="text-indigo-500 hover:text-indigo-700 ml-3 focus:outline-none border-0 bg-transparent p-0 btn-duplicar-tarefa"
+                                        title="Duplicar para outros clientes"
+                                        data-tarefa-id="{{ $tarefa->id }}"
+                                        data-tarefa-titulo="{{ $tarefa->titulo }}">
+                                    <i class="fa-solid fa-copy"></i>
+                                </button>
+
                                 <form method="POST" action="{{ route('tarefas.delete', $tarefa->id) }}" class="inline">
                                     @csrf
                                     @method('DELETE')
@@ -167,6 +175,79 @@
 
     @push('scripts')
     <script type="module">
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const clientesData = @json($clientes->map(fn($c) => ['id' => $c->id, 'nome' => $c->nome])->values());
+
+    document.querySelectorAll('.btn-duplicar-tarefa').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const tarefaId = btn.dataset.tarefaId;
+            const titulo = btn.dataset.tarefaTitulo;
+
+            const clienteOptions = clientesData.map(c =>
+                `<label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
+                    <input type="checkbox" name="cliente_ids" value="${c.id}" class="rounded">
+                    <span class="text-sm">${c.nome}</span>
+                </label>`
+            ).join('');
+
+            const { value: form, isConfirmed } = await Swal.fire({
+                title: 'Duplicar tarefa',
+                html: `<p class="text-sm text-gray-500 mb-3">Selecione os clientes para os quais deseja duplicar <strong>"${titulo}"</strong>:</p>
+                       <div class="text-left max-h-64 overflow-y-auto border rounded p-2">
+                           <input type="text" id="swal-busca-cliente" placeholder="Buscar cliente..." class="w-full border rounded px-2 py-1 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-brand">
+                           <div id="swal-clientes-lista">${clienteOptions}</div>
+                       </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Duplicar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#4f46e5',
+                didOpen: () => {
+                    const busca = document.getElementById('swal-busca-cliente');
+                    busca.addEventListener('input', () => {
+                        const q = busca.value.toLowerCase();
+                        document.querySelectorAll('#swal-clientes-lista label').forEach(label => {
+                            label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
+                        });
+                    });
+                },
+                preConfirm: () => {
+                    const checked = [...document.querySelectorAll('input[name="cliente_ids"]:checked')].map(i => i.value);
+                    if (checked.length === 0) {
+                        Swal.showValidationMessage('Selecione pelo menos um cliente.');
+                        return false;
+                    }
+                    return checked;
+                },
+            });
+
+            if (!isConfirmed || !form) { return; }
+
+            try {
+                const res = await fetch(`/tarefas/${tarefaId}/duplicar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ cliente_ids: form }),
+                });
+
+                if (!res.ok) { throw new Error(); }
+                const data = await res.json();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Duplicado!',
+                    text: `${data.count} tarefa(s) criada(s) com sucesso.`,
+                    timer: 2500,
+                    showConfirmButton: false,
+                });
+            } catch {
+                Swal.fire('Erro', 'Não foi possível duplicar a tarefa.', 'error');
+            }
+        });
+    });
+
     document.querySelectorAll('.btn-delete-tarefa').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const titulo = btn.dataset.titulo;

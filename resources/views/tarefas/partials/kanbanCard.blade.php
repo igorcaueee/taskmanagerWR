@@ -75,6 +75,14 @@
                 ondragstart="event.stopPropagation()">
             <i class="fa-solid fa-pen-to-square"></i>
         </button>
+        <button type="button"
+                class="text-xs text-gray-400 dark:text-slate-500 hover:text-indigo-500 border-0 bg-transparent p-0 cursor-pointer btn-duplicar-tarefa"
+                title="Duplicar para outros clientes"
+                data-tarefa-id="{{ $tarefa->id }}"
+                data-tarefa-titulo="{{ $tarefa->titulo }}"
+                ondragstart="event.stopPropagation()">
+            <i class="fa-solid fa-copy"></i>
+        </button>
         <form method="POST" action="{{ route('tarefas.delete', $tarefa->id) }}" class="inline"
               ondragstart="event.stopPropagation()">
             @csrf

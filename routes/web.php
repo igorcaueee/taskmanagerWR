@@ -152,6 +152,7 @@ Route::get('/tarefas/{id}/detalhe', [TarefaController::class, 'detalhe'])->name(
 Route::patch('/tarefas/{id}/etapa', [TarefaController::class, 'updateEtapa'])->name('tarefas.update.etapa')->middleware('auth');
 Route::patch('/tarefas/{id}/ciclo/proximo', [TarefaController::class, 'passarParaProximoCiclo'])->name('tarefas.ciclo.proximo')->middleware('auth');
 Route::delete('/tarefas/{id}', [TarefaController::class, 'delete'])->name('tarefas.delete')->middleware('auth');
+Route::post('/tarefas/{id}/duplicar', [TarefaController::class, 'duplicar'])->name('tarefas.duplicar')->middleware('auth');
 Route::post('/tarefas/{id}/upload', [TarefaController::class, 'uploadArquivo'])->name('tarefas.upload')->middleware('auth');
 Route::get('/tarefas/uploads-portal', [TarefaController::class, 'uploadsPortal'])->name('tarefas.uploads-portal')->middleware('auth');
 Route::get('/tarefas/uploads-portal/{upload}/historico', [TarefaController::class, 'uploadsHistorico'])->name('tarefas.uploads-portal.historico')->middleware('auth');

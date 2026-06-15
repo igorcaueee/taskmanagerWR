@@ -597,6 +597,51 @@ class TarefaController extends Controller
         ]);
     }
 
+    public function duplicar(Request $request, int $id): JsonResponse
+    {
+        $tarefa = Tarefa::findOrFail($id);
+
+        $validator = Validator::make($request->only('cliente_ids'), [
+            'cliente_ids' => ['required', 'array', 'min:1'],
+            'cliente_ids.*' => ['exists:clientes,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $clienteIds = $request->input('cliente_ids');
+        $count = 0;
+
+        foreach ($clienteIds as $clienteId) {
+            $nova = Tarefa::create([
+                'titulo' => $tarefa->titulo,
+                'descricao' => $tarefa->descricao,
+                'tipo_tarefa_id' => $tarefa->tipo_tarefa_id,
+                'cliente_id' => $clienteId,
+                'departamento_id' => $tarefa->departamento_id,
+                'etapa_id' => $tarefa->etapa_id,
+                'responsavel_id' => $tarefa->responsavel_id,
+                'supervisor_id' => $tarefa->supervisor_id,
+                'criado_por' => Auth::id(),
+                'data_vencimento' => $tarefa->data_vencimento,
+                'prioridade' => $tarefa->prioridade,
+                'ciclo_id' => $tarefa->ciclo_id,
+                'frequencia' => $tarefa->frequencia,
+                'recorrente' => $tarefa->recorrente,
+                'requer_envio_arquivo' => $tarefa->requer_envio_arquivo,
+            ]);
+
+            $nova->clientes()->sync([$clienteId]);
+            $count++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
+
     public function uploadArquivo(Request $request, int $id): JsonResponse
     {
         $tarefa = Tarefa::with('cliente')->findOrFail($id);
