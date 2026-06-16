@@ -25,6 +25,12 @@
                 <span class="text-xs text-gray-400 block">Responsável</span>
                 <span class="text-gray-800 dark:text-slate-200 font-medium">{{ $resposta->respondente_nome }}</span>
             </div>
+            @if($resposta->respondente_telefone)
+            <div>
+                <span class="text-xs text-gray-400 block">Telefone</span>
+                <span class="text-gray-800 dark:text-slate-200 font-medium">{{ $resposta->respondente_telefone }}</span>
+            </div>
+            @endif
             @if($resposta->respondente_empresa)
             <div>
                 <span class="text-xs text-gray-400 block">Empresa</span>
@@ -156,6 +162,7 @@
             'resposta_id' => $resposta->id,
             'nome' => $resposta->respondente_nome,
             'email' => $resposta->respondente_email,
+            'telefone' => $resposta->respondente_telefone,
             'empresa' => $resposta->respondente_empresa,
             'faturamento' => $resposta->faturamento_mensal,
             'observacoes' => $observacoesLead,

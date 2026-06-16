@@ -163,10 +163,17 @@
                     <input id="id-nome" type="text" placeholder="Nome completo"
                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-                    <input id="id-email" type="email" placeholder="seu@email.com"
-                           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                        <input id="id-email" type="email" placeholder="seu@email.com"
+                               class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telefone <span class="text-red-500">*</span></label>
+                        <input id="id-telefone" type="text" placeholder="(00) 00000-0000"
+                               class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -301,6 +308,9 @@ async function iniciar() {
     const nome = document.getElementById('id-nome')?.value?.trim();
     if (!nome) { Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe seu nome para continuar.', confirmButtonColor: '#0084AA' }); return; }
 
+    const telefone = document.getElementById('id-telefone')?.value?.trim();
+    if (!telefone) { Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe seu telefone para continuar.', confirmButtonColor: '#0084AA' }); return; }
+
     const btn = document.getElementById('btn-iniciar');
     btn.disabled = true;
     btn.textContent = 'Aguarde...';
@@ -315,6 +325,7 @@ async function iniciar() {
             body: JSON.stringify({
                 nome:          nome,
                 email:         document.getElementById('id-email')?.value || null,
+                telefone:      telefone,
                 empresa:       document.getElementById('id-empresa')?.value || null,
                 segmento:      document.getElementById('id-segmento')?.value || null,
                 faturamento:   fat || null,

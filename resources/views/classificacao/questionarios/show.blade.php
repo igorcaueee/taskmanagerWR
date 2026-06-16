@@ -87,7 +87,8 @@
                         default                       => 'bg-gray-100 dark:bg-gray-700 text-gray-500',
                     };
                 @endphp
-                <tr class="border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/40">
+                <tr class="border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/40 cursor-pointer"
+                    onclick="if (!event.target.closest('.row-actions')) { window.location.href = '{{ route('questionarios.respostas.detalhe', $r->id) }}'; }">
                     <td class="px-4 py-3">
                         <div class="font-medium text-gray-900 dark:text-slate-100">{{ $r->respondente_nome }}</div>
                         @if($r->respondente_email)
@@ -114,13 +115,14 @@
                     </td>
                     <td class="px-4 py-3 text-xs text-gray-400">{{ $r->created_at->format('d/m/Y H:i') }}</td>
                     <td class="px-4 py-3">
-                        <div class="flex gap-2 justify-end items-center">
+                        <div class="flex gap-2 justify-end items-center row-actions">
                             @if(! $r->lead && ! $r->cliente && auth()->user()?->canVerFunil())
                             @php
                                 $urlConverterLead = route('leads.form.create', [
                                     'resposta_id' => $r->id,
                                     'nome' => $r->respondente_nome,
                                     'email' => $r->respondente_email,
+                                    'telefone' => $r->respondente_telefone,
                                     'empresa' => $r->respondente_empresa,
                                     'faturamento' => $r->faturamento_mensal,
                                     'observacoes' => "Diagnóstico IDE: {$r->classificacao} ({$r->pontuacao_total} pts)",
@@ -132,10 +134,6 @@
                                 <i class="fa-solid fa-user-plus"></i> Converter
                             </button>
                             @endif
-                            <a href="{{ route('questionarios.respostas.detalhe', $r->id) }}"
-                               class="text-blue-600 dark:text-blue-400 hover:underline text-xs no-underline">
-                                <i class="fa-solid fa-eye"></i> Ver
-                            </a>
                             <form id="form-del-{{ $r->id }}" method="POST" action="{{ route('questionarios.respostas.delete', $r->id) }}">
                                 @csrf @method('DELETE')
                                 <button type="button"

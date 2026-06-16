@@ -172,6 +172,7 @@ class QuestionarioController extends Controller
         $request->validate([
             'nome'          => 'required|string|max:255',
             'email'         => 'nullable|email|max:255',
+            'telefone'      => 'required|string|max:20',
             'empresa'       => 'nullable|string|max:255',
             'segmento'      => 'nullable|string|max:255',
             'faturamento'   => 'nullable|numeric|min:0',
@@ -186,6 +187,7 @@ class QuestionarioController extends Controller
             'questionario_id'     => $questionario->id,
             'respondente_nome'    => $request->nome,
             'respondente_email'   => $request->email,
+            'respondente_telefone'=> $request->telefone,
             'respondente_empresa' => $request->empresa,
             'respondente_segmento'=> $request->segmento,
             'faturamento_mensal'  => $request->faturamento,

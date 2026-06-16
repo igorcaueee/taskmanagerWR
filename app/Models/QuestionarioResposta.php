@@ -12,7 +12,7 @@ class QuestionarioResposta extends Model
 
     protected $fillable = [
         'questionario_id', 'lead_id', 'cliente_id',
-        'respondente_nome', 'respondente_email', 'respondente_empresa',
+        'respondente_nome', 'respondente_email', 'respondente_telefone', 'respondente_empresa',
         'respondente_segmento', 'faturamento_mensal', 'num_colaboradores',
         'pontuacao_total', 'classificacao', 'token', 'finalizado',
     ];

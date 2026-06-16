@@ -93,7 +93,7 @@ class FunilController extends Controller
         $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
         $etapaDefault = $etapas->first()?->id;
 
-        $prefill = $request->only(['nome', 'email', 'empresa', 'faturamento', 'observacoes']);
+        $prefill = $request->only(['nome', 'email', 'telefone', 'empresa', 'faturamento', 'observacoes']);
         $respostaId = $request->integer('resposta_id') ?: null;
 
         return view('funil.partials.formLead', [
