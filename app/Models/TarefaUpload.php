@@ -20,6 +20,11 @@ class TarefaUpload extends Model
         'arquivo_path',
         'pasta_categoria',
         'pasta_periodo',
+        'tipo_arquivo',
+        'data_vencimento',
+        'valor',
+        'pago_em',
+        'pago_por',
         'tamanho',
         'mime_type',
         'baixado_em',
@@ -31,6 +36,9 @@ class TarefaUpload extends Model
     protected $casts = [
         'baixado_em' => 'datetime',
         'visualizado_em' => 'datetime',
+        'pago_em' => 'datetime',
+        'data_vencimento' => 'date',
+        'valor' => 'decimal:2',
         'tamanho' => 'integer',
     ];
 
@@ -64,6 +72,11 @@ class TarefaUpload extends Model
         return $this->hasMany(TarefaUploadEvento::class, 'tarefa_upload_id')->orderBy('created_at');
     }
 
+    public function pagoPor(): BelongsTo
+    {
+        return $this->belongsTo(PortalUsuario::class, 'pago_por');
+    }
+
     public function foiBaixado(): bool
     {
         return ! is_null($this->baixado_em);
@@ -72,6 +85,31 @@ class TarefaUpload extends Model
     public function foiVisualizado(): bool
     {
         return ! is_null($this->visualizado_em);
+    }
+
+    public function foiPago(): bool
+    {
+        return ! is_null($this->pago_em);
+    }
+
+    public function estaVencido(): bool
+    {
+        return $this->data_vencimento && ! $this->foiPago() && $this->data_vencimento->isPast();
+    }
+
+    public function venceHoje(): bool
+    {
+        return $this->data_vencimento && ! $this->foiPago() && $this->data_vencimento->isToday();
+    }
+
+    public function labelTipoArquivo(): string
+    {
+        return match ($this->tipo_arquivo) {
+            'pagamento' => 'Pagamento',
+            'contrato_social' => 'Contrato Social',
+            'informacao' => 'Informação',
+            default => '—',
+        };
     }
 
     public function tamanhoFormatado(): string

@@ -7,7 +7,9 @@ use App\Models\Cliente;
 use App\Models\PortalUsuario;
 use App\Models\TarefaUpload;
 use App\Models\TarefaUploadEvento;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -55,7 +57,94 @@ class PortalController extends Controller
 
         $arvore = $this->listarArquivosCliente($cliente, $portalUsuario);
 
-        return view('portal.arquivos', compact('cliente', 'arvore', 'portalUsuario'));
+        // Enriquecer arquivos com metadados do banco
+        $uploads = TarefaUpload::where('cliente_id', $cliente->id)
+            ->get()
+            ->keyBy('arquivo_nome');
+
+        return view('portal.arquivos', compact('cliente', 'arvore', 'portalUsuario', 'uploads'));
+    }
+
+    public function agenda(Request $request): View
+    {
+        /** @var PortalUsuario $portalUsuario */
+        $portalUsuario = Auth::guard('portal')->user();
+        $cliente = $portalUsuario->cliente;
+
+        $mes = $request->integer('mes', now()->month);
+        $ano = $request->integer('ano', now()->year);
+
+        if ($mes < 1 || $mes > 12) {
+            $mes = now()->month;
+        }
+
+        $primeiroDia = Carbon::create($ano, $mes, 1);
+        $ultimoDia = $primeiroDia->copy()->endOfMonth();
+
+        // Constrói as semanas do mês (domingo a sábado)
+        $semanas = [];
+        $diaInicio = $primeiroDia->copy()->startOfWeek(Carbon::SUNDAY);
+        $diaFim = $ultimoDia->copy()->endOfWeek(Carbon::SATURDAY);
+        $dia = $diaInicio->copy();
+
+        while ($dia <= $diaFim) {
+            $semana = [];
+            for ($i = 0; $i < 7; $i++) {
+                $semana[] = $dia->copy();
+                $dia->addDay();
+            }
+            $semanas[] = $semana;
+        }
+
+        $mesAnterior = $primeiroDia->copy()->subMonth();
+        $proximoMes = $primeiroDia->copy()->addMonth();
+
+        // Eventos do intervalo exibido no calendário (inclui dias de meses adjacentes nas bordas)
+        $eventosPorDia = TarefaUpload::where('cliente_id', $cliente->id)
+            ->whereNotNull('data_vencimento')
+            ->whereBetween('data_vencimento', [$diaInicio->toDateString(), $diaFim->toDateString()])
+            ->orderBy('data_vencimento')
+            ->get()
+            ->groupBy(fn (TarefaUpload $u) => $u->data_vencimento->format('Y-m-d'));
+
+        $eventosJson = $eventosPorDia->map(fn ($eventos) => $eventos->map(fn (TarefaUpload $e) => [
+            'id' => $e->id,
+            'nome' => $e->arquivo_nome,
+            'tipo' => $e->tipo_arquivo,
+            'tipoLabel' => $e->labelTipoArquivo(),
+            'valor' => $e->valor,
+            'vencimento' => $e->data_vencimento?->format('d/m/Y'),
+            'pago' => $e->foiPago(),
+            'pagoEm' => $e->pago_em?->format('d/m/Y H:i'),
+            'vencido' => $e->estaVencido(),
+            'categoria' => $e->pasta_categoria,
+            'periodo' => $e->pasta_periodo,
+            'path' => trim(($e->pasta_categoria ?? '').'/'.($e->pasta_periodo ?? '').'/'.$e->arquivo_nome, '/'),
+        ]));
+
+        return view('portal.agenda', compact(
+            'cliente', 'portalUsuario', 'primeiroDia', 'semanas', 'mesAnterior', 'proximoMes', 'eventosPorDia', 'eventosJson',
+        ));
+    }
+
+    public function marcarPago(Request $request, TarefaUpload $upload): JsonResponse
+    {
+        /** @var PortalUsuario $portalUsuario */
+        $portalUsuario = Auth::guard('portal')->user();
+
+        abort_unless($upload->cliente_id === $portalUsuario->cliente_id, 403);
+        abort_unless($upload->tipo_arquivo === 'pagamento', 422);
+
+        if ($upload->pago_em) {
+            return response()->json(['error' => 'Arquivo já marcado como pago.'], 422);
+        }
+
+        $upload->update([
+            'pago_em' => now(),
+            'pago_por' => $portalUsuario->id,
+        ]);
+
+        return response()->json(['success' => true, 'pago_em' => $upload->pago_em->format('d/m/Y H:i')]);
     }
 
     public function downloadArquivo(Request $request): BinaryFileResponse

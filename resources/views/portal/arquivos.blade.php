@@ -67,6 +67,7 @@
                             <tbody class="divide-y divide-gray-50 dark:divide-[#334155]">
                                 @foreach ($arquivos as $arquivo)
                                 @php
+                                    $meta          = $uploads[$arquivo['nome']] ?? null;
                                     $isImagem      = in_array($arquivo['extensao'], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                                     $isPdf         = $arquivo['extensao'] === 'pdf';
                                     $isOffice      = in_array($arquivo['extensao'], ['doc', 'docx', 'xls', 'xlsx', 'csv']);
@@ -74,8 +75,12 @@
                                     $tipoViewer    = $isPdf ? 'pdf' : ($isImagem ? 'imagem' : ($isOffice ? 'outro' : null));
                                     $urlVisualizar = route('portal.arquivos.visualizar', ['file' => $arquivo['path']]);
                                     $urlDownload   = route('portal.arquivos.download',   ['file' => $arquivo['path']]);
+                                    $ehPagamento   = $meta && $meta->tipo_arquivo === 'pagamento';
+                                    $foiPago       = $meta && $meta->foiPago();
+                                    $estaVencido   = $meta && $meta->estaVencido();
+                                    $venceHoje     = $meta && $meta->venceHoje();
                                 @endphp
-                                <tr class="hover:bg-gray-50 dark:hover:bg-[#334155]/50 transition">
+                                <tr class="hover:bg-gray-50 dark:hover:bg-[#334155]/50 transition {{ $estaVencido ? 'bg-red-50/50 dark:bg-red-900/10' : '' }}" data-upload-id="{{ $meta?->id }}">
                                     <td class="px-5 py-3 pl-14">
                                         <div class="flex items-center gap-3">
                                             <span class="text-lg">{{ match($arquivo['extensao']) {
@@ -86,13 +91,62 @@
                                                 'zip', 'rar', '7z' => '🗜️',
                                                 default => '📎',
                                             } }}</span>
-                                            <span class="font-medium text-gray-800 dark:text-slate-100">{{ $arquivo['nome'] }}</span>
+                                            <div>
+                                                <span class="font-medium text-gray-800 dark:text-slate-100">{{ $arquivo['nome'] }}</span>
+                                                {{-- Badges de tipo e status --}}
+                                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    @if($meta && $meta->tipo_arquivo)
+                                                        @php
+                                                            $tipoBadge = match($meta->tipo_arquivo) {
+                                                                'pagamento'      => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                                                                'contrato_social'=> 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+                                                                'informacao'     => 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
+                                                                default          => 'bg-gray-100 text-gray-600',
+                                                            };
+                                                        @endphp
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold {{ $tipoBadge }}">
+                                                            {{ $meta->labelTipoArquivo() }}
+                                                        </span>
+                                                    @endif
+                                                    @if($ehPagamento && $meta->valor)
+                                                        <span class="text-[10px] font-semibold text-gray-600 dark:text-slate-400">
+                                                            R$ {{ number_format($meta->valor, 2, ',', '.') }}
+                                                        </span>
+                                                    @endif
+                                                    @if($ehPagamento && $meta->data_vencimento)
+                                                        <span class="text-[10px] {{ $estaVencido ? 'text-red-600 dark:text-red-400 font-semibold' : ($venceHoje ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-gray-500 dark:text-slate-400') }}">
+                                                            Venc. {{ $meta->data_vencimento->format('d/m/Y') }}
+                                                        </span>
+                                                    @endif
+                                                    @if($foiPago)
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                            <i class="fa-solid fa-circle-check text-[9px]"></i> Pago
+                                                        </span>
+                                                    @elseif($estaVencido)
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                            <i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Vencido
+                                                        </span>
+                                                    @elseif($venceHoje)
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                                            <i class="fa-solid fa-bell text-[9px]"></i> Hoje
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-5 py-3 text-gray-500 dark:text-slate-400 text-xs hidden sm:table-cell w-24">{{ $arquivo['tamanho'] }}</td>
                                     <td class="px-5 py-3 text-gray-500 dark:text-slate-400 text-xs hidden md:table-cell w-36">{{ $arquivo['modificado'] }}</td>
-                                    <td class="px-5 py-3 text-right w-20">
+                                    <td class="px-5 py-3 text-right">
                                         <div class="inline-flex items-center gap-3">
+                                            @if($ehPagamento && !$foiPago && $meta)
+                                            <button
+                                                onclick="marcarComoPago({{ $meta->id }}, this)"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition border-0 cursor-pointer whitespace-nowrap"
+                                                title="Marcar como pago">
+                                                <i class="fa-solid fa-check text-xs"></i> Pago
+                                            </button>
+                                            @endif
                                             @if($podeAbrirOlho)
                                             <button
                                                 onclick="abrirVisualizador('{{ $urlVisualizar }}', '{{ $urlDownload }}', '{{ addslashes($arquivo['nome']) }}', '{{ $tipoViewer }}')"
@@ -141,7 +195,10 @@
     <div id="viewer-body" class="flex-1 overflow-auto flex items-center justify-center p-4"></div>
 </div>
 
+@push('scripts')
 <script>
+const csrfToken = '{{ csrf_token() }}';
+
 function toggleCategoria(id) {
     const el = document.getElementById(id);
     const chevrons = document.querySelectorAll('.cat-chevron-' + id.replace('cat-', ''));
@@ -228,6 +285,49 @@ function fecharVisualizador() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { fecharVisualizador(); }
 });
+
+async function marcarComoPago(uploadId, btn) {
+    const result = await Swal.fire({
+        title: 'Confirmar pagamento?',
+        text: 'Esta ação registrará o pagamento com a data e hora atuais.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fa-solid fa-check mr-1"></i> Confirmar',
+        cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`/portal/arquivos/${uploadId}/marcar-pago`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+        if (res.ok) {
+            const row = btn.closest('tr');
+            if (row) {
+                // Remove botão e adiciona badge pago
+                btn.remove();
+                const badgesContainer = row.querySelector('.flex.items-center.gap-1\\.5');
+                if (badgesContainer) {
+                    const badge = document.createElement('span');
+                    badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                    badge.innerHTML = '<i class="fa-solid fa-circle-check text-[9px]"></i> Pago';
+                    badgesContainer.appendChild(badge);
+                }
+            }
+            Swal.fire({ icon: 'success', title: 'Pagamento registrado!', text: `Pago em ${data.pago_em}`, timer: 3000, showConfirmButton: false });
+        } else {
+            Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Não foi possível registrar o pagamento.' });
+        }
+    } catch {
+        Swal.fire({ icon: 'error', title: 'Erro de conexão', text: 'Tente novamente.' });
+    }
+}
 </script>
+@endpush
 
 @endsection

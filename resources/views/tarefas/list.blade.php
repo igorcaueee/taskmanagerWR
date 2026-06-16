@@ -566,6 +566,14 @@
         }
     }
 
+    function onTipoArquivoChange() {
+        const tipo = document.getElementById('swal-tipo-arquivo')?.value;
+        const campos = document.getElementById('swal-pagamento-fields');
+        if (campos) {
+            campos.classList.toggle('hidden', tipo !== 'pagamento');
+        }
+    }
+
     function gerarPeriodoPadrao() {
         const now = new Date();
         const mes = String(now.getMonth() + 1).padStart(2, '0');
@@ -581,6 +589,31 @@
             title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-arrow-up mr-2 text-blue-500"></i>Enviar arquivo ao portal do cliente</span>',
             html: `
                 <p class="text-sm text-gray-500 mb-4">Esta tarefa requer o envio de um arquivo para o portal do cliente.</p>
+
+                <div class="mb-3 text-left">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de arquivo <span class="text-red-500">*</span></label>
+                    <select id="swal-tipo-arquivo" onchange="onTipoArquivoChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="">Selecione o tipo...</option>
+                        <option value="pagamento">💳 Arquivo de Pagamento</option>
+                        <option value="contrato_social">📜 Contrato Social</option>
+                        <option value="informacao">ℹ️ Informação</option>
+                    </select>
+                </div>
+
+                <div id="swal-pagamento-fields" class="mb-3 hidden">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="text-left">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Data de vencimento</label>
+                            <input type="date" id="swal-data-vencimento"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+                        <div class="text-left">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Valor (R$)</label>
+                            <input type="number" id="swal-valor" step="0.01" min="0" placeholder="0,00"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+                    </div>
+                </div>
 
                 <div class="mb-3 text-left">
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Pasta / Categoria <span class="text-red-500">*</span></label>
@@ -654,9 +687,16 @@
             },
             preConfirm: async () => {
                 const fileInput = document.getElementById('swal-file-input');
+                const tipoArquivo = document.getElementById('swal-tipo-arquivo').value.trim();
                 const categoria = document.getElementById('swal-pasta-categoria').value.trim();
                 const periodo = document.getElementById('swal-pasta-periodo').value.trim();
+                const dataVencimento = document.getElementById('swal-data-vencimento')?.value ?? '';
+                const valor = document.getElementById('swal-valor')?.value ?? '';
 
+                if (!tipoArquivo) {
+                    Swal.showValidationMessage('Selecione o tipo de arquivo.');
+                    return false;
+                }
                 if (!categoria) {
                     Swal.showValidationMessage('Selecione a pasta / categoria.');
                     return false;
@@ -684,6 +724,9 @@
                 formData.append('arquivo', fileInput.files[0]);
                 formData.append('pasta_categoria', categoria);
                 formData.append('pasta_periodo', periodo);
+                if (tipoArquivo) formData.append('tipo_arquivo', tipoArquivo);
+                if (tipoArquivo === 'pagamento' && dataVencimento) formData.append('data_vencimento', dataVencimento);
+                if (tipoArquivo === 'pagamento' && valor) formData.append('valor', valor);
 
                 Swal.showLoading();
 

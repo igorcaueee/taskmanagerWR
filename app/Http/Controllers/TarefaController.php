@@ -650,6 +650,9 @@ class TarefaController extends Controller
             'arquivo' => ['required', 'file', 'max:51200'], // 50 MB
             'pasta_categoria' => ['required', 'string', 'in:Contabilidade,Financeiro,Fiscal,Patrimônio,Pessoal'],
             'pasta_periodo' => ['required', 'string', 'max:50', 'regex:/^[\w\s\-\.]+$/u'],
+            'tipo_arquivo' => ['nullable', 'string', 'in:pagamento,contrato_social,informacao'],
+            'data_vencimento' => ['nullable', 'date'],
+            'valor' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if ($validator->fails()) {
@@ -696,6 +699,9 @@ class TarefaController extends Controller
             'arquivo_path' => $caminhoDB,
             'pasta_categoria' => $categoria,
             'pasta_periodo' => $periodo,
+            'tipo_arquivo' => $request->input('tipo_arquivo'),
+            'data_vencimento' => $request->input('data_vencimento'),
+            'valor' => $request->input('valor'),
             'tamanho' => file_exists($destinoAbsoluto) ? filesize($destinoAbsoluto) : 0,
             'mime_type' => $arquivo->getClientMimeType(),
         ]);

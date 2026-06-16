@@ -42,6 +42,8 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/arquivos', [PortalController::class, 'arquivos'])->name('arquivos');
         Route::get('/arquivos/download', [PortalController::class, 'downloadArquivo'])->name('arquivos.download');
         Route::get('/arquivos/visualizar', [PortalController::class, 'visualizarArquivo'])->name('arquivos.visualizar');
+        Route::post('/arquivos/{upload}/marcar-pago', [PortalController::class, 'marcarPago'])->name('arquivos.marcar-pago');
+        Route::get('/agenda', [PortalController::class, 'agenda'])->name('agenda');
     });
 });
 
