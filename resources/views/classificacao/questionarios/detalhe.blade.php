@@ -149,6 +149,25 @@
             <a href="{{ route('clientes.show', $resposta->cliente_id) }}" class="text-blue-600 dark:text-blue-400 hover:underline no-underline">{{ $resposta->cliente->nome }}</a>
         @endif
     </div>
+    @elseif(auth()->user()?->canVerFunil())
+    @php
+        $observacoesLead = "Diagnóstico IDE: {$resposta->classificacao} ({$resposta->pontuacao_total} pts)";
+        $urlConverterLead = route('leads.form.create', [
+            'resposta_id' => $resposta->id,
+            'nome' => $resposta->respondente_nome,
+            'email' => $resposta->respondente_email,
+            'empresa' => $resposta->respondente_empresa,
+            'faturamento' => $resposta->faturamento_mensal,
+            'observacoes' => $observacoesLead,
+        ]);
+    @endphp
+    <div class="mt-4">
+        <button type="button"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 hover:bg-brand/80 text-sm"
+                data-modal-url="{{ $urlConverterLead }}">
+            <i class="fa-solid fa-user-plus"></i> Converter em Lead
+        </button>
+    </div>
     @endif
 </div>
 @endsection

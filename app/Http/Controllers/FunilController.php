@@ -11,6 +11,7 @@ use App\Models\HistoricoFunil;
 use App\Models\Lead;
 use App\Models\Possibilidade;
 use App\Models\Produto;
+use App\Models\QuestionarioResposta;
 use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -84,13 +85,16 @@ class FunilController extends Controller
         return view('funil.leads', compact('leads', 'etapas', 'usuarios', 'podeVerTodos'));
     }
 
-    public function formCreate(): View
+    public function formCreate(Request $request): View
     {
         $etapas = EtapaFunil::orderBy('ordem')->get();
         $usuarios = Usuario::orderBy('nome')->get();
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
         $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
         $etapaDefault = $etapas->first()?->id;
+
+        $prefill = $request->only(['nome', 'email', 'empresa', 'faturamento', 'observacoes']);
+        $respostaId = $request->integer('resposta_id') ?: null;
 
         return view('funil.partials.formLead', [
             'lead' => null,
@@ -99,6 +103,8 @@ class FunilController extends Controller
             'produtos' => $produtos,
             'possibilidades' => $possibilidades,
             'etapaDefault' => $etapaDefault,
+            'prefill' => $prefill,
+            'respostaId' => $respostaId,
         ]);
     }
 
@@ -148,9 +154,17 @@ class FunilController extends Controller
             return Redirect::back()->withErrors($validator)->withInput();
         }
 
-        $lead = Lead::create(array_merge($data, ['origem' => 'manual']));
+        $respostaId = $request->integer('resposta_id') ?: null;
+
+        $lead = Lead::create(array_merge($data, [
+            'origem' => $respostaId ? 'questionario' : 'manual',
+        ]));
         $lead->produtos()->sync($request->input('produtos', []));
         $lead->possibilidades()->sync($request->input('possibilidades', []));
+
+        if ($respostaId) {
+            QuestionarioResposta::whereKey($respostaId)->update(['lead_id' => $lead->id]);
+        }
 
         return Redirect::back()->with('success', 'Lead criado com sucesso.');
     }

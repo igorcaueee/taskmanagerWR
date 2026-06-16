@@ -3,6 +3,8 @@
     $action = $isEditing ? route('leads.update', $lead->id) : route('leads.save');
     $title = $isEditing ? 'Editar Lead' : 'Novo Lead';
     $etapaDefault = $etapaDefault ?? null;
+    $prefill = $prefill ?? [];
+    $respostaId = $respostaId ?? null;
 @endphp
 
 <div class="flex items-center justify-between mb-4">
@@ -24,6 +26,9 @@
     @if($isEditing)
         @method('PUT')
     @endif
+    @if($respostaId)
+        <input type="hidden" name="resposta_id" value="{{ $respostaId }}">
+    @endif
 
     <div class="space-y-4">
         {{-- Nome --}}
@@ -31,7 +36,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome <span class="text-red-500">*</span></label>
             <input name="nome" type="text"
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                   value="{{ old('nome', $isEditing ? $lead->nome : '') }}"
+                   value="{{ old('nome', $isEditing ? $lead->nome : ($prefill['nome'] ?? '')) }}"
                    required>
         </div>
 
@@ -40,7 +45,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
                 <input name="email" type="email"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('email', $isEditing ? $lead->email : '') }}">
+                       value="{{ old('email', $isEditing ? $lead->email : ($prefill['email'] ?? '')) }}">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone <span class="text-red-500">*</span></label>
@@ -55,7 +60,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Empresa</label>
             <input name="empresa" id="empresa-input" type="text" autocomplete="off"
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand"
-                   value="{{ old('empresa', $isEditing ? $lead->empresa : '') }}"
+                   value="{{ old('empresa', $isEditing ? $lead->empresa : ($prefill['empresa'] ?? '')) }}"
                    placeholder="Digite para buscar ou criar nova...">
             <ul id="empresa-dropdown"
                 class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded shadow-lg max-h-48 overflow-y-auto">
@@ -117,7 +122,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Faturamento (R$)</label>
                 <input name="faturamento" type="number" step="0.01" min="0"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('faturamento', $isEditing ? $lead->faturamento : '') }}">
+                       value="{{ old('faturamento', $isEditing ? $lead->faturamento : ($prefill['faturamento'] ?? '')) }}">
             </div>
             @endif
             @if (auth()->user()?->canVerHonorario())
@@ -173,7 +178,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Observações</label>
             <textarea name="observacoes" rows="3"
                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                      placeholder="Notas internas sobre o lead...">{{ old('observacoes', $isEditing ? $lead->observacoes : '') }}</textarea>
+                      placeholder="Notas internas sobre o lead...">{{ old('observacoes', $isEditing ? $lead->observacoes : ($prefill['observacoes'] ?? '')) }}</textarea>
         </div>
     </div>
 

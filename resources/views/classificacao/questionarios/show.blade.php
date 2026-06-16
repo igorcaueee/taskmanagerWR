@@ -114,7 +114,24 @@
                     </td>
                     <td class="px-4 py-3 text-xs text-gray-400">{{ $r->created_at->format('d/m/Y H:i') }}</td>
                     <td class="px-4 py-3">
-                        <div class="flex gap-2 justify-end">
+                        <div class="flex gap-2 justify-end items-center">
+                            @if(! $r->lead && ! $r->cliente && auth()->user()?->canVerFunil())
+                            @php
+                                $urlConverterLead = route('leads.form.create', [
+                                    'resposta_id' => $r->id,
+                                    'nome' => $r->respondente_nome,
+                                    'email' => $r->respondente_email,
+                                    'empresa' => $r->respondente_empresa,
+                                    'faturamento' => $r->faturamento_mensal,
+                                    'observacoes' => "Diagnóstico IDE: {$r->classificacao} ({$r->pontuacao_total} pts)",
+                                ]);
+                            @endphp
+                            <button type="button"
+                                    data-modal-url="{{ $urlConverterLead }}"
+                                    class="text-purple-600 dark:text-purple-400 hover:underline text-xs no-underline bg-transparent border-0 cursor-pointer">
+                                <i class="fa-solid fa-user-plus"></i> Converter
+                            </button>
+                            @endif
                             <a href="{{ route('questionarios.respostas.detalhe', $r->id) }}"
                                class="text-blue-600 dark:text-blue-400 hover:underline text-xs no-underline">
                                 <i class="fa-solid fa-eye"></i> Ver
