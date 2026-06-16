@@ -29,7 +29,7 @@ class LeadCapturaController extends Controller
             'email' => $request->input('email'),
             'telefone' => $request->input('telefone'),
             'empresa' => $request->input('empresa'),
-            'possibilidade' => $request->input('possibilidade'),
+            'mensagem' => $request->input('mensagem'),
             'etapa_funil_id' => $primeiraEtapa->id,
             'origem' => 'formulario',
         ]);

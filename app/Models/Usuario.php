@@ -136,6 +136,12 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
+    // Apenas Diretor gerencia possibilidades
+    public function canGerenciarPossibilidades(): bool
+    {
+        return $this->cargo === 'diretor';
+    }
+
     // Assistente e Auxiliar só editam/deletam tarefas onde são responsáveis
     public function canEditarQualquerTarefa(): bool
     {

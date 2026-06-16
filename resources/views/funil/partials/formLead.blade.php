@@ -150,12 +150,24 @@
             </div>
         @endif
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Possibilidade</label>
-            <textarea name="possibilidade" rows="2"
-                      class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                      placeholder="O que você poderia oferecer a este cliente?">{{ old('possibilidade', $isEditing ? $lead->possibilidade : '') }}</textarea>
-        </div>
+        @if(isset($possibilidades) && $possibilidades->isNotEmpty())
+            @php
+                $possibilidadesSelecionadas = old('possibilidades', $isEditing ? $lead->possibilidades->pluck('id')->toArray() : []);
+            @endphp
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Possibilidades</label>
+                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border dark:border-slate-600 rounded p-3 bg-white dark:bg-slate-700">
+                    @foreach($possibilidades as $possibilidade)
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="checkbox" name="possibilidades[]" value="{{ $possibilidade->id }}"
+                                   class="rounded border-gray-300"
+                                   {{ in_array($possibilidade->id, $possibilidadesSelecionadas) ? 'checked' : '' }}>
+                            {{ $possibilidade->nome }}
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Observações</label>

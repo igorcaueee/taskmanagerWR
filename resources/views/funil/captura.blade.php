@@ -234,8 +234,8 @@
 
                     <div class="mb-6">
                         <label>Como podemos ajudar?</label>
-                        <textarea name="possibilidade" rows="5" placeholder="Descreva brevemente o que você precisa..." style="resize:none;">{{ old('possibilidade') }}</textarea>
-                        @error('possibilidade')<span class="field-error">{{ $message }}</span>@enderror
+                        <textarea name="mensagem" rows="5" placeholder="Descreva brevemente o que você precisa..." style="resize:none;">{{ old('mensagem') }}</textarea>
+                        @error('mensagem')<span class="field-error">{{ $message }}</span>@enderror
                     </div>
 
                     <div class="mb-6">

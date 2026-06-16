@@ -89,28 +89,15 @@
         {{-- Two-column body --}}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-            {{-- Left column: possibilidade + observações --}}
+            {{-- Left column: observações --}}
             <div class="lg:col-span-8 flex flex-col gap-4">
 
-                @if ($lead->possibilidade || $lead->observacoes)
-                    <div class="grid grid-cols-1 {{ ($lead->possibilidade && $lead->observacoes) ? 'md:grid-cols-2' : '' }} gap-4">
-                        @if ($lead->possibilidade)
-                            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
-                                <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-                                    <i class="fa-regular fa-lightbulb mr-1"></i> Possibilidade
-                                </h2>
-                                <p class="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{{ $lead->possibilidade }}</p>
-                            </div>
-                        @endif
-
-                        @if ($lead->observacoes)
-                            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
-                                <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-                                    <i class="fa-regular fa-note-sticky mr-1"></i> Observações
-                                </h2>
-                                <p class="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{{ $lead->observacoes }}</p>
-                            </div>
-                        @endif
+                @if ($lead->observacoes)
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+                        <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+                            <i class="fa-regular fa-note-sticky mr-1"></i> Observações
+                        </h2>
+                        <p class="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{{ $lead->observacoes }}</p>
                     </div>
                 @endif
 
@@ -191,6 +178,22 @@
                             @foreach ($lead->produtos as $produto)
                                 <span class="text-xs px-2.5 py-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-full">
                                     {{ $produto->nome }}
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Possibilidades --}}
+                @if ($lead->possibilidades->isNotEmpty())
+                    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+                        <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
+                            <i class="fa-regular fa-lightbulb mr-1"></i> Possibilidades
+                        </h2>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($lead->possibilidades as $possibilidade)
+                                <span class="text-xs px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full">
+                                    {{ $possibilidade->nome }}
                                 </span>
                             @endforeach
                         </div>

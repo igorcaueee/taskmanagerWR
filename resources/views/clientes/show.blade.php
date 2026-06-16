@@ -264,12 +264,6 @@
                         </div>
                         @endif
                     </dl>
-                    @if($cliente->possibilidade && auth()->user()?->canVerHonorario())
-                        <div class="mt-4">
-                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Possibilidade / Observação</dt>
-                            <dd class="mt-1 text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{{ $cliente->possibilidade }}</dd>
-                        </div>
-                    @endif
                 </div>
                 @endif
 
@@ -283,6 +277,22 @@
                             @foreach($cliente->produtos as $produto)
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand/10 text-brand dark:bg-brand/20 dark:text-blue-300">
                                     {{ $produto->nome }}
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Possibilidades --}}
+                @if($cliente->possibilidades->isNotEmpty())
+                    <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
+                        <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                            <i class="fa-regular fa-lightbulb mr-1"></i> Possibilidades
+                        </h2>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($cliente->possibilidades as $possibilidade)
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                    {{ $possibilidade->nome }}
                                 </span>
                             @endforeach
                         </div>

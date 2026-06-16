@@ -23,7 +23,7 @@ class Lead extends Model
         'cpfcnpj',
         'faturamento',
         'honorario',
-        'possibilidade',
+        'mensagem',
         'etapa_funil_id',
         'responsavel_id',
         'origem',
@@ -60,5 +60,10 @@ class Lead extends Model
     public function produtos(): BelongsToMany
     {
         return $this->belongsToMany(Produto::class, 'lead_produto');
+    }
+
+    public function possibilidades(): BelongsToMany
+    {
+        return $this->belongsToMany(Possibilidade::class, 'lead_possibilidade');
     }
 }

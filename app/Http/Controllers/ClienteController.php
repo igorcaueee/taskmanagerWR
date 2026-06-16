@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\PortalUsuario;
+use App\Models\Possibilidade;
 use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\QuestionarioResposta;
@@ -12,7 +14,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -90,14 +94,15 @@ class ClienteController extends Controller
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
         $segmentacoes = Segmentacao::orderBy('nome')->get();
 
-        return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos, 'segmentacoes' => $segmentacoes]);
+        return view('clientes.partials.formCliente', ['cliente' => null, 'produtos' => $produtos, 'possibilidades' => $possibilidades, 'segmentacoes' => $segmentacoes]);
     }
 
     public function showCliente(int $id): View
     {
-        $cliente = Cliente::with(['produtos', 'socios', 'segmentacao', 'certificadoNfse'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'possibilidades', 'socios', 'segmentacao', 'certificadoNfse'])->findOrFail($id);
         $ultimoIDE = QuestionarioResposta::where('cliente_id', $id)
             ->where('finalizado', true)
             ->latest()
@@ -110,18 +115,19 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $cliente = Cliente::with(['produtos', 'socios'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'possibilidades', 'socios'])->findOrFail($id);
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
         $segmentacoes = Segmentacao::orderBy('nome')->get();
 
-        return view('clientes.partials.formCliente', compact('cliente', 'produtos', 'segmentacoes'));
+        return view('clientes.partials.formCliente', compact('cliente', 'produtos', 'possibilidades', 'segmentacoes'));
     }
 
     public function saveCliente(Request $request): RedirectResponse
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
@@ -141,7 +147,6 @@ class ClienteController extends Controller
             'faturamento' => ['nullable', 'numeric', 'min:0'],
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
-            'possibilidade' => ['nullable', 'string'],
         ], [
             'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
@@ -156,6 +161,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::query()->latest()->first();
         $cliente->produtos()->sync($request->input('produtos', []));
+        $cliente->possibilidades()->sync($request->input('possibilidades', []));
 
         return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente criado com sucesso.');
     }
@@ -166,7 +172,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario', 'possibilidade']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -185,7 +191,6 @@ class ClienteController extends Controller
             'faturamento' => ['nullable', 'numeric', 'min:0'],
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
-            'possibilidade' => ['nullable', 'string'],
         ], [
             'cpfcnpj.unique' => 'Já existe um cliente cadastrado com este CPF/CNPJ.',
         ]);
@@ -199,6 +204,7 @@ class ClienteController extends Controller
         $cliente->update($data);
 
         $cliente->produtos()->sync($request->input('produtos', []));
+        $cliente->possibilidades()->sync($request->input('possibilidades', []));
 
         return Redirect::route('clientes.show', $cliente->id)->with('success', 'Cliente atualizado com sucesso.');
     }
@@ -541,5 +547,118 @@ class ClienteController extends Controller
             ->each(fn ($s, $i) => $s->update(['ordem' => $i + 1]));
 
         return Redirect::route('clientes.quadro.modal', $clienteId)->with('success', 'Sócio removido com sucesso.');
+    }
+
+    public function pastasPortalCliente(int $id): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        $pastas = ['Contabilidade', 'Financeiro', 'Fiscal', 'Patrimônio', 'Pessoal'];
+
+        if ($cliente->pasta_arquivos) {
+            $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
+            $pastaPortal = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal';
+
+            foreach ($pastas as $pasta) {
+                $caminho = $pastaPortal.'/'.$pasta;
+                if (! is_dir($caminho)) {
+                    @mkdir($caminho, 0775, true);
+                }
+            }
+        }
+
+        return response()->json(['pastas' => $pastas]);
+    }
+
+    public function storeUsuarioPortal(Request $request, int $id): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $cliente = Cliente::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'nome' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:100', 'unique:portal_usuarios,username'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'telefone' => ['nullable', 'string', 'max:30'],
+            'password' => ['required', 'string', 'min:6'],
+            'acesso_total' => ['boolean'],
+            'pastas_permitidas' => ['nullable', 'array'],
+            'pastas_permitidas.*' => ['string', 'max:100'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $acessoTotal = $request->boolean('acesso_total', true);
+
+        $usuario = $cliente->portalUsuarios()->create([
+            'nome' => $request->nome,
+            'username' => $request->username,
+            'email' => $request->email,
+            'telefone' => $request->telefone,
+            'password' => Hash::make($request->password),
+            'ativo' => true,
+            'acesso_total' => $acessoTotal,
+            'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
+        ]);
+
+        return response()->json(['usuario' => $usuario, 'mensagem' => 'Usuário criado com sucesso.']);
+    }
+
+    public function updateUsuarioPortal(Request $request, int $clienteId, int $usuarioId): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
+
+        $validator = Validator::make($request->all(), [
+            'nome' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:100', 'unique:portal_usuarios,username,'.$usuarioId],
+            'email' => ['nullable', 'email', 'max:255'],
+            'telefone' => ['nullable', 'string', 'max:30'],
+            'password' => ['nullable', 'string', 'min:6'],
+            'ativo' => ['boolean'],
+            'acesso_total' => ['boolean'],
+            'pastas_permitidas' => ['nullable', 'array'],
+            'pastas_permitidas.*' => ['string', 'max:100'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $acessoTotal = $request->boolean('acesso_total', $usuario->acesso_total);
+
+        $dados = [
+            'nome' => $request->nome,
+            'username' => $request->username,
+            'email' => $request->email,
+            'telefone' => $request->telefone,
+            'ativo' => $request->boolean('ativo', $usuario->ativo),
+            'acesso_total' => $acessoTotal,
+            'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
+        ];
+
+        if ($request->filled('password')) {
+            $dados['password'] = Hash::make($request->password);
+        }
+
+        $usuario->update($dados);
+
+        return response()->json(['usuario' => $usuario->fresh(), 'mensagem' => 'Usuário atualizado com sucesso.']);
+    }
+
+    public function destroyUsuarioPortal(int $clienteId, int $usuarioId): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
+        $usuario->delete();
+
+        return response()->json(['mensagem' => 'Usuário removido com sucesso.']);
     }
 }

@@ -20,7 +20,7 @@ class StoreLeadCapturaRequest extends FormRequest
             'email' => ['nullable', 'email:rfc,dns', 'max:255'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'empresa' => ['nullable', 'string', 'max:255'],
-            'possibilidade' => ['nullable', 'string', 'max:2000'],
+            'mensagem' => ['nullable', 'string', 'max:2000'],
             'g-recaptcha-response' => ['required', 'string'],
         ];
     }
@@ -61,7 +61,7 @@ class StoreLeadCapturaRequest extends FormRequest
             'nome' => strip_tags((string) $this->nome),
             'empresa' => $this->empresa !== null ? strip_tags((string) $this->empresa) : null,
             'telefone' => $this->telefone !== null ? preg_replace('/[^\d\s\(\)\-\+]/', '', (string) $this->telefone) : null,
-            'possibilidade' => $this->possibilidade !== null ? strip_tags((string) $this->possibilidade) : null,
+            'mensagem' => $this->mensagem !== null ? strip_tags((string) $this->mensagem) : null,
         ]);
     }
 }

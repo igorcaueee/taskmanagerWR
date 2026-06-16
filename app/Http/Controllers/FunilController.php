@@ -9,6 +9,7 @@ use App\Models\Etapa;
 use App\Models\EtapaFunil;
 use App\Models\HistoricoFunil;
 use App\Models\Lead;
+use App\Models\Possibilidade;
 use App\Models\Produto;
 use App\Models\Tarefa;
 use App\Models\Usuario;
@@ -88,6 +89,7 @@ class FunilController extends Controller
         $etapas = EtapaFunil::orderBy('ordem')->get();
         $usuarios = Usuario::orderBy('nome')->get();
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
         $etapaDefault = $etapas->first()?->id;
 
         return view('funil.partials.formLead', [
@@ -95,6 +97,7 @@ class FunilController extends Controller
             'etapas' => $etapas,
             'usuarios' => $usuarios,
             'produtos' => $produtos,
+            'possibilidades' => $possibilidades,
             'etapaDefault' => $etapaDefault,
         ]);
     }
@@ -106,13 +109,15 @@ class FunilController extends Controller
             'historico.etapaNova',
             'historico.alteradoPor',
             'produtos',
+            'possibilidades',
         ])->findOrFail($id);
 
         $etapas = EtapaFunil::orderBy('ordem')->get();
         $usuarios = Usuario::orderBy('nome')->get();
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
 
-        return view('funil.partials.formLead', compact('lead', 'etapas', 'usuarios', 'produtos'));
+        return view('funil.partials.formLead', compact('lead', 'etapas', 'usuarios', 'produtos', 'possibilidades'));
     }
 
     public function save(Request $request): RedirectResponse
@@ -120,7 +125,7 @@ class FunilController extends Controller
         $data = $request->only([
             'nome', 'email', 'telefone', 'empresa',
             'tipo', 'cpfcnpj',
-            'faturamento', 'honorario', 'possibilidade',
+            'faturamento', 'honorario', 'mensagem',
             'etapa_funil_id', 'responsavel_id', 'observacoes',
         ]);
 
@@ -133,7 +138,7 @@ class FunilController extends Controller
             'cpfcnpj' => ['nullable', 'string', 'max:18'],
             'faturamento' => ['nullable', 'numeric', 'min:0'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
-            'possibilidade' => ['nullable', 'string'],
+            'mensagem' => ['nullable', 'string'],
             'etapa_funil_id' => ['required', 'exists:etapas_funil,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'observacoes' => ['nullable', 'string'],
@@ -145,6 +150,7 @@ class FunilController extends Controller
 
         $lead = Lead::create(array_merge($data, ['origem' => 'manual']));
         $lead->produtos()->sync($request->input('produtos', []));
+        $lead->possibilidades()->sync($request->input('possibilidades', []));
 
         return Redirect::back()->with('success', 'Lead criado com sucesso.');
     }
@@ -156,7 +162,7 @@ class FunilController extends Controller
         $data = $request->only([
             'nome', 'email', 'telefone', 'empresa',
             'tipo', 'cpfcnpj',
-            'faturamento', 'honorario', 'possibilidade',
+            'faturamento', 'honorario', 'mensagem',
             'etapa_funil_id', 'responsavel_id', 'observacoes',
         ]);
 
@@ -169,7 +175,7 @@ class FunilController extends Controller
             'cpfcnpj' => ['nullable', 'string', 'max:18'],
             'faturamento' => ['nullable', 'numeric', 'min:0'],
             'honorario' => ['nullable', 'numeric', 'min:0'],
-            'possibilidade' => ['nullable', 'string'],
+            'mensagem' => ['nullable', 'string'],
             'etapa_funil_id' => ['required', 'exists:etapas_funil,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
             'observacoes' => ['nullable', 'string'],
@@ -183,6 +189,7 @@ class FunilController extends Controller
 
         $lead->update($data);
         $lead->produtos()->sync($request->input('produtos', []));
+        $lead->possibilidades()->sync($request->input('possibilidades', []));
 
         if ((int) $etapaAnteriorId !== (int) $data['etapa_funil_id']) {
             $descricao = $request->input('descricao_historico');
@@ -278,6 +285,7 @@ class FunilController extends Controller
             'historico.etapaNova',
             'historico.alteradoPor',
             'produtos',
+            'possibilidades',
         ])->findOrFail($id);
 
         return view('funil.show', compact('lead'));
@@ -302,7 +310,7 @@ class FunilController extends Controller
             'faturamento' => $lead->faturamento,
             'servico' => $lead->servico,
             'honorario' => $lead->honorario,
-            'possibilidade' => $lead->possibilidade,
+            'mensagem' => $lead->mensagem,
             'observacoes' => $lead->observacoes,
             'origem' => $lead->origem,
             'responsavel' => $lead->responsavel?->nome,
@@ -327,8 +335,9 @@ class FunilController extends Controller
 
     public function formConversao(int $id): View
     {
-        $lead = Lead::with('produtos')->findOrFail($id);
+        $lead = Lead::with(['produtos', 'possibilidades'])->findOrFail($id);
         $produtos = Produto::where('ativo', true)->orderBy('nome')->get();
+        $possibilidades = Possibilidade::where('ativo', true)->orderBy('nome')->get();
 
         $prefill = [
             'nome' => $lead->empresa ?: $lead->nome,
@@ -339,14 +348,15 @@ class FunilController extends Controller
             'descricao' => $lead->observacoes ?? '',
             'faturamento' => $lead->faturamento ?? '',
             'honorario' => $lead->honorario ?? '',
-            'possibilidade' => $lead->possibilidade ?? '',
             'status' => 'ativo',
             'produtos' => $lead->produtos->pluck('id')->toArray(),
+            'possibilidades' => $lead->possibilidades->pluck('id')->toArray(),
         ];
 
         return view('clientes.partials.formCliente', [
             'cliente' => null,
             'produtos' => $produtos,
+            'possibilidades' => $possibilidades,
             'prefill' => $prefill,
             'overrideAction' => route('leads.converter', $id),
             'formTitle' => 'Converter em cliente',
@@ -368,7 +378,7 @@ class FunilController extends Controller
         $data = $request->only([
             'nome', 'cpfcnpj', 'tipo', 'regime_tributario', 'cidade', 'estado',
             'dataabertura', 'cliente_desde', 'descricao', 'faturamento', 'servico',
-            'honorario', 'possibilidade', 'status', 'fator_r',
+            'honorario', 'status', 'fator_r',
         ]);
 
         $validator = Validator::make($data, [
@@ -384,7 +394,6 @@ class FunilController extends Controller
             'faturamento' => ['required', 'numeric', 'min:0'],
             'servico' => ['nullable', 'string', 'max:255'],
             'honorario' => ['required', 'numeric', 'min:0'],
-            'possibilidade' => ['nullable', 'string'],
             'status' => ['nullable', 'string', 'max:255'],
             'fator_r' => ['nullable'],
         ], [
@@ -415,7 +424,6 @@ class FunilController extends Controller
                 'descricao' => $data['descricao'] ?? $lead->observacoes,
                 'faturamento' => $data['faturamento'] ?? $lead->faturamento,
                 'honorario' => $data['honorario'] ?? $lead->honorario,
-                'possibilidade' => $data['possibilidade'] ?? $lead->possibilidade,
                 'status' => $data['status'] ?? 'ativo',
                 'fator_r' => ! empty($data['fator_r']),
             ]);
@@ -435,6 +443,14 @@ class FunilController extends Controller
         }
         if (! empty($produtosIds)) {
             $cliente->produtos()->sync($produtosIds);
+        }
+
+        $possibilidadesIds = $request->input('possibilidades', []);
+        if (empty($possibilidadesIds)) {
+            $possibilidadesIds = $lead->possibilidades()->pluck('possibilidades.id')->toArray();
+        }
+        if (! empty($possibilidadesIds)) {
+            $cliente->possibilidades()->sync($possibilidadesIds);
         }
 
         $lead->update(['convertido_cliente_id' => $cliente->id]);

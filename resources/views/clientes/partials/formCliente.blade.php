@@ -230,12 +230,6 @@
                 @endif
             </div>
             @endif
-            <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Possibilidade</label>
-                <textarea name="possibilidade" rows="2"
-                          class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                          placeholder="O que você poderia oferecer a este cliente?">{{ old('possibilidade', $isEditing ? $cliente->possibilidade : ($prefill['possibilidade'] ?? '')) }}</textarea>
-            </div>
         </div>
 
         <div>
@@ -272,6 +266,35 @@
                     @endforeach
                 </div>
                 <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Selecione os produtos/serviços que este cliente contrata ou pode contratar.</p>
+            </div>
+        @endif
+
+        @if(isset($possibilidades) && $possibilidades->isNotEmpty())
+            @php
+                $possibilidadesSelecionadas = old('possibilidades', $isEditing ? $cliente->possibilidades->pluck('id')->toArray() : ($prefill['possibilidades'] ?? []));
+            @endphp
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Possibilidades</label>
+                    @if(auth()->user()?->canGerenciarPossibilidades())
+                    <button type="button" id="btn-nova-possibilidade"
+                            title="Nova possibilidade"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs border border-gray-300 dark:border-slate-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800">
+                        <i class="fa-solid fa-plus"></i> Novo
+                    </button>
+                    @endif
+                </div>
+                <div id="lista-possibilidades" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border dark:border-slate-600 rounded p-3 bg-white dark:bg-slate-700">
+                    @foreach($possibilidades as $possibilidade)
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="checkbox" name="possibilidades[]" value="{{ $possibilidade->id }}"
+                                   class="rounded border-gray-300"
+                                   {{ in_array($possibilidade->id, $possibilidadesSelecionadas) ? 'checked' : '' }}>
+                            {{ $possibilidade->nome }}
+                        </label>
+                    @endforeach
+                </div>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Selecione as possibilidades/oportunidades para este cliente.</p>
             </div>
         @endif
 
@@ -340,6 +363,66 @@
                     },
                     error: function (xhr) {
                         const msg = xhr.responseJSON?.error ?? 'Erro ao criar produto.';
+                        Swal.fire({ icon: 'error', title: 'Erro', text: msg, confirmButtonColor: '#dc2626' });
+                    },
+                });
+            });
+        });
+    }
+})();
+</script>
+
+<script>
+(function () {
+    const btnNovaPossibilidade = document.getElementById('btn-nova-possibilidade');
+    if (btnNovaPossibilidade) {
+        btnNovaPossibilidade.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Nova Possibilidade',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome <span class="text-red-500">*</span></label>
+                            <input id="swal-possibilidade-nome" class="swal2-input mt-0 w-full" placeholder="Nome da possibilidade">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                            <input id="swal-possibilidade-descricao" class="swal2-input mt-0 w-full" placeholder="Breve descrição (opcional)">
+                        </div>
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Salvar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2563eb',
+                preConfirm: function () {
+                    const nome = document.getElementById('swal-possibilidade-nome').value.trim();
+                    if (!nome) {
+                        Swal.showValidationMessage('O nome é obrigatório.');
+                        return false;
+                    }
+                    return { nome: nome, descricao: document.getElementById('swal-possibilidade-descricao').value.trim() };
+                },
+            }).then(function (result) {
+                if (!result.isConfirmed) { return; }
+
+                $.ajax({
+                    url: '{{ route('possibilidades.store.inline') }}',
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    data: result.value,
+                    success: function (data) {
+                        const lista = document.getElementById('lista-possibilidades');
+                        const label = document.createElement('label');
+                        label.className = 'inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer';
+                        label.innerHTML = `<input type="checkbox" name="possibilidades[]" value="${data.id}" class="rounded border-gray-300" checked> ${data.nome}`;
+                        lista.appendChild(label);
+                        Swal.fire({ icon: 'success', title: 'Possibilidade criada!', timer: 1500, showConfirmButton: false });
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON?.error ?? 'Erro ao criar possibilidade.';
                         Swal.fire({ icon: 'error', title: 'Erro', text: msg, confirmButtonColor: '#dc2626' });
                     },
                 });

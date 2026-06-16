@@ -16,6 +16,7 @@ use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\PossibilidadeController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
@@ -136,6 +137,14 @@ Route::post('/produtos/save', [ProdutoController::class, 'save'])->name('produto
 Route::post('/produtos/inline', [ProdutoController::class, 'storeInline'])->name('produtos.store.inline')->middleware('auth');
 Route::put('/produtos/{id}', [ProdutoController::class, 'update'])->name('produtos.update')->middleware('auth');
 Route::delete('/produtos/{id}', [ProdutoController::class, 'delete'])->name('produtos.delete')->middleware('auth');
+
+Route::get('/possibilidades', [PossibilidadeController::class, 'showPossibilidades'])->name('possibilidades')->middleware('auth');
+Route::get('/possibilidades/form', [PossibilidadeController::class, 'formCreate'])->name('possibilidades.form.create')->middleware('auth');
+Route::get('/possibilidades/{id}/form', [PossibilidadeController::class, 'formEdit'])->name('possibilidades.form.edit')->middleware('auth');
+Route::post('/possibilidades/save', [PossibilidadeController::class, 'save'])->name('possibilidades.save')->middleware('auth');
+Route::post('/possibilidades/inline', [PossibilidadeController::class, 'storeInline'])->name('possibilidades.store.inline')->middleware('auth');
+Route::put('/possibilidades/{id}', [PossibilidadeController::class, 'update'])->name('possibilidades.update')->middleware('auth');
+Route::delete('/possibilidades/{id}', [PossibilidadeController::class, 'delete'])->name('possibilidades.delete')->middleware('auth');
 // Tipos de Tarefa routes
 Route::get('/tipos-tarefa', [TipoTarefaController::class, 'index'])->name('tipos-tarefa.index')->middleware('auth');
 Route::get('/tipos-tarefa/form', [TipoTarefaController::class, 'formCreate'])->name('tipos-tarefa.form.create')->middleware('auth');

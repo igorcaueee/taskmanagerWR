@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\Departamento;
 use App\Models\Etapa;
+use App\Models\Possibilidade;
 use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\Tarefa;
@@ -221,8 +222,9 @@ class RelatorioController extends Controller
         $estadoFiltro = $request->input('estado');
         $segmentacaoFiltro = $request->filled('segmentacao_id') ? $request->integer('segmentacao_id') : null;
         $fatorRFiltro = $request->input('fator_r');
+        $possibilidadeFiltro = $request->filled('possibilidade_id') ? $request->integer('possibilidade_id') : null;
 
-        $aplicarFiltrosCliente = function ($q) use ($tipoFiltro, $statusFiltro, $regimeFiltro, $estadoFiltro, $segmentacaoFiltro, $fatorRFiltro): void {
+        $aplicarFiltrosCliente = function ($q) use ($tipoFiltro, $statusFiltro, $regimeFiltro, $estadoFiltro, $segmentacaoFiltro, $fatorRFiltro, $possibilidadeFiltro): void {
             if ($tipoFiltro !== null && $tipoFiltro !== '') {
                 $q->where('tipo', $tipoFiltro);
             }
@@ -240,6 +242,9 @@ class RelatorioController extends Controller
             }
             if ($fatorRFiltro !== null && $fatorRFiltro !== '') {
                 $q->where('fator_r', (bool) $fatorRFiltro);
+            }
+            if ($possibilidadeFiltro) {
+                $q->whereHas('possibilidades', fn ($pq) => $pq->where('possibilidades.id', $possibilidadeFiltro));
             }
         };
 
@@ -335,6 +340,7 @@ class RelatorioController extends Controller
 
         // Dados para os selects de filtro
         $segmentacoes = Segmentacao::query()->orderBy('nome')->get(['id', 'nome']);
+        $possibilidades = Possibilidade::query()->orderBy('nome')->get(['id', 'nome']);
         $estados = Cliente::query()
             ->whereNotNull('estado')
             ->where('estado', '!=', '')
@@ -356,6 +362,7 @@ class RelatorioController extends Controller
             'novosPorMes',
             'certificadosAVencer',
             'segmentacoes',
+            'possibilidades',
             'estados',
         ));
     }

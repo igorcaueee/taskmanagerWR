@@ -108,11 +108,22 @@
                 </select>
             </div>
 
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Possibilidade</label>
+                <select name="possibilidade_id"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todas</option>
+                    @foreach($possibilidades as $possibilidade)
+                        <option value="{{ $possibilidade->id }}" @selected(request('possibilidade_id') == $possibilidade->id)>{{ $possibilidade->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             <button type="submit"
                     class="inline-flex items-center gap-2 px-4 py-1.5 bg-brand text-white rounded border-0 text-sm focus:outline-none hover:bg-brand/80">
                 <i class="fa-solid fa-magnifying-glass"></i> Aplicar
             </button>
-            @if(request()->hasAny(['status', 'tipo', 'regime_tributario', 'estado', 'segmentacao_id', 'fator_r']))
+            @if(request()->hasAny(['status', 'tipo', 'regime_tributario', 'estado', 'segmentacao_id', 'fator_r', 'possibilidade_id']))
                 <a href="{{ route('relatorios.clientes', array_filter(['periodo' => request('periodo'), 'data_inicio' => request('data_inicio'), 'data_fim' => request('data_fim')])) }}"
                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800 no-underline">
                     <i class="fa-solid fa-xmark"></i> Limpar filtros

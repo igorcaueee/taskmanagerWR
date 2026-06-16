@@ -36,7 +36,6 @@ class Cliente extends Authenticatable
         'servico',
         'honorario',
         'capital_social',
-        'possibilidade',
         'senha_portal',
         'senha_portal_plain',
         'portal_ativo',
@@ -72,6 +71,11 @@ class Cliente extends Authenticatable
     public function produtos(): BelongsToMany
     {
         return $this->belongsToMany(Produto::class, 'cliente_produto');
+    }
+
+    public function possibilidades(): BelongsToMany
+    {
+        return $this->belongsToMany(Possibilidade::class, 'cliente_possibilidade');
     }
 
     public function socios(): HasMany
