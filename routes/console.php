@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('campanhas:enviar-agendadas')->everyMinute();
 Schedule::command('ciclos:passar-afazer')->weeklyOn(1, '07:00');
+Schedule::command('certificados:verificar')->dailyAt('08:00');
