@@ -20,6 +20,23 @@ class NfseXmlParser
         '7' => '7 - Exigivel Suspensa por Proc. Administrativo',
     ];
 
+    // O portal retorna 'CANCELADA'/'SUBSTITUIDA'/'AUTORIZADA' no JSON de busca,
+    // mas o XML baixado individualmente por NSU ainda pode ter cStat=100 (emissão original).
+    // Este método sobrescreve o cStat com o status real vindo do portal.
+    public static function overrideStatus(array $nota, string $statusPortal): array
+    {
+        $map = [
+            'CANCELADA'   => '101 - NFS-e Cancelada',
+            'SUBSTITUIDA' => '102 - NFS-e Substituida',
+            'AUTORIZADA'  => '100 - NFS-e Gerada',
+        ];
+        $key = strtoupper(trim($statusPortal));
+        if (isset($map[$key])) {
+            $nota['cStat'] = $map[$key];
+        }
+        return $nota;
+    }
+
     public static function parse(string $xmlString): ?array
     {
         $doc = new \DOMDocument();

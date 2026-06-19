@@ -889,6 +889,10 @@
         const nomeEmpresa = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() ?? 'NFS-e';
         const labelOriginal = document.getElementById('btnExportarExcelLabel')?.textContent ?? 'Exportar Excel';
 
+        // Monta mapa NSU → status (portal) para o servidor corrigir o cStat do XML
+        const statuses = {};
+        notasAtuais.forEach(n => { if (n.nsu) statuses[n.nsu] = n.status ?? ''; });
+
         btnExportarExcel.disabled = true;
         btnExportarExcel.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Baixando ${nsusParaExportar.length} nota(s)...`;
 
@@ -899,7 +903,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                 },
-                body: JSON.stringify({ cliente_id: clienteId, nsus: nsusParaExportar, nome: nomeEmpresa }),
+                body: JSON.stringify({ cliente_id: clienteId, nsus: nsusParaExportar, nome: nomeEmpresa, statuses }),
             });
 
             if (!resp.ok) {

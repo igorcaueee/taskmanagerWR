@@ -289,9 +289,11 @@ class NfseController extends Controller
             'nsus'       => 'required|array|min:1|max:200',
             'nsus.*'     => 'required|integer|min:1',
             'nome'       => 'nullable|string|max:100',
+            'statuses'   => 'nullable|array',
         ]);
 
-        $cert = ClienteCertificadoNfse::where('cliente_id', $request->cliente_id)->firstOrFail();
+        $cert     = ClienteCertificadoNfse::where('cliente_id', $request->cliente_id)->firstOrFail();
+        $statuses = $request->input('statuses', []);
 
         $notas = [];
         foreach ($request->nsus as $nsu) {
@@ -299,6 +301,11 @@ class NfseController extends Controller
                 $xml    = $this->nfse->baixarXmlPorNsu($cert, (int) $nsu);
                 $parsed = NfseXmlParser::parse($xml);
                 if ($parsed) {
+                    // Sobrescreve o status com o valor real do portal (o XML original pode ter cStat=100 mesmo cancelada)
+                    $statusPortal = $statuses[(string) $nsu] ?? null;
+                    if ($statusPortal) {
+                        $parsed = NfseXmlParser::overrideStatus($parsed, $statusPortal);
+                    }
                     $notas[] = $parsed;
                 }
             } catch (\Exception $e) {

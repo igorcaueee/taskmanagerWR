@@ -60,23 +60,21 @@ class NfseExport
             'O' => 'Base Calculo PIS/COFINS (R$) (vBCPisCofins)',
             'P' => 'Aliquota PIS (%) (pAliqPis)',
             'Q' => 'Aliquota COFINS (%) (pAliqCofins)',
-            'R' => 'Valor PIS (R$) (vPis)',
-            'S' => 'Valor COFINS (R$) (vCofins)',
-            'T' => 'Tipo Retencao PIS/COFINS (tpRetPisCofins)',
-            'U' => 'Retencao CP (R$) (vRetCP)',
-            'V' => 'Retencao IRRF (R$) (vRetIRRF)',
-            'W' => 'Retencao CSLL (R$) (vRetCSLL)',
-            'X' => 'Valor Servico (vServ)',
-            'Y' => 'Valor Total Retencoes (R$) (vTotalRet)',
-            'Z' => 'Valor Liquido (R$) (vLiq)',
-            'AA' => 'Consulta Publica da NFS-e (infNFSe)',
+            'R' => 'Tipo Retencao PIS/COFINS (tpRetPisCofins)',
+            'S' => 'Retencao CP (R$) (vRetCP)',
+            'T' => 'Retencao IRRF (R$) (vRetIRRF)',
+            'U' => 'Retencao CSLL (R$) (vRetCSLL)',
+            'V' => 'Valor Servico (vServ)',
+            'W' => 'Valor Total Retencoes (R$) (vTotalRet)',
+            'X' => 'Valor Liquido (R$) (vLiq)',
+            'Y' => 'Consulta Publica da NFS-e (infNFSe)',
         ];
 
         foreach ($headers as $col => $label) {
             $sheet->setCellValue("{$col}1", $label);
         }
 
-        $sheet->getStyle('A1:AA1')->applyFromArray([
+        $sheet->getStyle('A1:Y1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F3864']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
@@ -84,7 +82,7 @@ class NfseExport
         $sheet->getRowDimension(1)->setRowHeight(35);
 
         $monetaryFmt = '#,##0.00';
-        $moneyCols   = ['K', 'M', 'O', 'R', 'S', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+        $moneyCols   = ['K', 'M', 'O', 'S', 'T', 'U', 'V', 'W', 'X'];
         $numericCols = ['L', 'P', 'Q'];
 
         $row = 2;
@@ -109,23 +107,21 @@ class NfseExport
                 'O'  => $nota['vBCPisCofins'],
                 'P'  => $nota['pAliqPis'],
                 'Q'  => $nota['pAliqCofins'],
-                'R'  => $nota['vPis'],
-                'S'  => $nota['vCofins'],
-                'T'  => $nota['tpRetPisCofins'],
-                'U'  => $nota['vRetCP'],
-                'V'  => $nota['vRetIRRF'],
-                'W'  => $nota['vRetCSLL'],
-                'X'  => $nota['vServ'],
-                'Y'  => $nota['vTotalRet'],
-                'Z'  => $nota['vLiq'],
-                'AA' => $nota['chaveAcesso'],
+                'R'  => $nota['tpRetPisCofins'],
+                'S'  => $nota['vRetCP'],
+                'T'  => $nota['vRetIRRF'],
+                'U'  => $nota['vRetCSLL'],
+                'V'  => $nota['vServ'],
+                'W'  => $nota['vTotalRet'],
+                'X'  => $nota['vLiq'],
+                'Y'  => $nota['chaveAcesso'],
             ];
 
             foreach ($values as $col => $value) {
                 $sheet->setCellValue("{$col}{$row}", $value);
             }
 
-            $sheet->getStyle("A{$row}:AA{$row}")->applyFromArray([
+            $sheet->getStyle("A{$row}:Y{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ]);
@@ -139,7 +135,7 @@ class NfseExport
 
         // Bordas na tabela completa
         if (count($this->notas)) {
-            $sheet->getStyle("A1:AA" . ($row - 1))->applyFromArray([
+            $sheet->getStyle("A1:Y" . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -155,9 +151,9 @@ class NfseExport
             'E' => 18, 'F' => 30, 'G' => 18, 'H' => 30,
             'I' => 25, 'J' => 35, 'K' => 18, 'L' => 14,
             'M' => 16, 'N' => 12, 'O' => 18, 'P' => 14,
-            'Q' => 16, 'R' => 14, 'S' => 16, 'T' => 30,
-            'U' => 16, 'V' => 16, 'W' => 16, 'X' => 16,
-            'Y' => 20, 'Z' => 16, 'AA' => 50,
+            'Q' => 16, 'R' => 30, 'S' => 16, 'T' => 16,
+            'U' => 16, 'V' => 16, 'W' => 20, 'X' => 16,
+            'Y' => 50,
         ];
         foreach ($widths as $col => $w) {
             $sheet->getColumnDimension($col)->setWidth($w);
