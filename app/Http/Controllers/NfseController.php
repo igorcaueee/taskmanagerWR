@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\NfseExport;
 use App\Models\Cliente;
 use App\Models\ClienteCertificadoNfse;
 use App\Services\NfseService;
+use App\Services\NfseXmlParser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -253,6 +255,29 @@ class NfseController extends Controller
         return response()->download($path, $nomeArquivo, [
             'Content-Type' => 'application/x-pkcs12',
         ]);
+    }
+
+    // ─── Exportar Excel ──────────────────────────────────────────────────────
+
+    public function exportarExcel(Request $request)
+    {
+        $request->validate([
+            'xmls'   => 'required|array|min:1',
+            'xmls.*' => 'required|string',
+            'nome'   => 'nullable|string|max:100',
+        ]);
+
+        $notas = array_values(array_filter(
+            array_map(fn($xml) => NfseXmlParser::parse($xml), $request->xmls)
+        ));
+
+        if (empty($notas)) {
+            return response()->json(['error' => 'Nenhuma nota pôde ser parseada'], 422);
+        }
+
+        $nome = $request->input('nome', 'NFS-e');
+
+        return (new NfseExport($notas))->download("{$nome} - NFS-e.xlsx");
     }
 
     // ─── DANFSE via Tecnos Municipal (Teutônia) ──────────────────────────────
