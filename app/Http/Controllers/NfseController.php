@@ -257,7 +257,7 @@ class NfseController extends Controller
         ]);
     }
 
-    // ─── Exportar Excel ──────────────────────────────────────────────────────
+    // ─── Exportar Excel (por XMLs brutos) ────────────────────────────────────
 
     public function exportarExcel(Request $request)
     {
@@ -273,6 +273,41 @@ class NfseController extends Controller
 
         if (empty($notas)) {
             return response()->json(['error' => 'Nenhuma nota pôde ser parseada'], 422);
+        }
+
+        $nome = $request->input('nome', 'NFS-e');
+
+        return (new NfseExport($notas))->download("{$nome} - NFS-e.xlsx");
+    }
+
+    // ─── Exportar Excel (por NSUs — baixa XMLs server-side) ──────────────────
+
+    public function exportarExcelNsus(Request $request)
+    {
+        $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'nsus'       => 'required|array|min:1|max:200',
+            'nsus.*'     => 'required|integer|min:1',
+            'nome'       => 'nullable|string|max:100',
+        ]);
+
+        $cert = ClienteCertificadoNfse::where('cliente_id', $request->cliente_id)->firstOrFail();
+
+        $notas = [];
+        foreach ($request->nsus as $nsu) {
+            try {
+                $xml    = $this->nfse->baixarXmlPorNsu($cert, (int) $nsu);
+                $parsed = NfseXmlParser::parse($xml);
+                if ($parsed) {
+                    $notas[] = $parsed;
+                }
+            } catch (\Exception $e) {
+                Log::warning("[NFS-e] exportarExcelNsus: falha no NSU {$nsu}", ['msg' => $e->getMessage()]);
+            }
+        }
+
+        if (empty($notas)) {
+            return response()->json(['error' => 'Nenhuma nota pôde ser processada.'], 422);
         }
 
         $nome = $request->input('nome', 'NFS-e');

@@ -197,6 +197,11 @@
                             <i class="fa-solid fa-file-zipper"></i>
                             Baixar selecionados (.zip)
                         </button>
+                        <button type="button" id="btnExportarExcel"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                            <i class="fa-solid fa-file-excel"></i>
+                            <span id="btnExportarExcelLabel">Exportar Excel</span>
+                        </button>
                     </div>
                 </div>
 
@@ -710,9 +715,13 @@
             btnDownloadZip.classList.remove('hidden');
             btnDownloadZip.classList.add('flex');
             btnDownloadZip.innerHTML = `<i class="fa-solid fa-file-zipper"></i> Baixar ${selecionadas.length} XML(s) (.zip)`;
+            const labelEl = document.getElementById('btnExportarExcelLabel');
+            if (labelEl) labelEl.textContent = `Exportar ${selecionadas.length} nota(s) (.xlsx)`;
         } else {
             btnDownloadZip.classList.add('hidden');
             btnDownloadZip.classList.remove('flex');
+            const labelEl = document.getElementById('btnExportarExcelLabel');
+            if (labelEl) labelEl.textContent = 'Exportar Excel';
         }
     }
 
@@ -852,6 +861,64 @@
         } finally {
             this.disabled = false;
             atualizarSelecao();
+        }
+    });
+
+    // ─── Exportar Excel ──────────────────────────────────────────────────────
+    const btnExportarExcel = document.getElementById('btnExportarExcel');
+
+    function resetarBotaoExcel(label) {
+        btnExportarExcel.disabled = false;
+        btnExportarExcel.innerHTML = `<i class="fa-solid fa-file-excel"></i> <span id="btnExportarExcelLabel">${label}</span>`;
+    }
+
+    btnExportarExcel.addEventListener('click', async function () {
+        const clienteId = selectCliente.value;
+        if (!clienteId || !notasAtuais.length) return;
+
+        const selecionadas = [...tabelaNotas.querySelectorAll('.check-nota:checked')].map(cb => parseInt(cb.dataset.nsu));
+        const nsusParaExportar = selecionadas.length > 0
+            ? selecionadas
+            : notasAtuais.filter(n => n.nsu).map(n => n.nsu);
+
+        if (!nsusParaExportar.length) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhuma nota com NSU disponível para exportar.' });
+            return;
+        }
+
+        const nomeEmpresa = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() ?? 'NFS-e';
+        const labelOriginal = document.getElementById('btnExportarExcelLabel')?.textContent ?? 'Exportar Excel';
+
+        btnExportarExcel.disabled = true;
+        btnExportarExcel.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Baixando ${nsusParaExportar.length} nota(s)...`;
+
+        try {
+            const resp = await fetch('/nfse/exportar-excel-nsus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify({ cliente_id: clienteId, nsus: nsusParaExportar, nome: nomeEmpresa }),
+            });
+
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao gerar Excel.' });
+                return;
+            }
+
+            const blob = await resp.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `${nomeEmpresa} - NFS-e.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            resetarBotaoExcel(labelOriginal);
         }
     });
 

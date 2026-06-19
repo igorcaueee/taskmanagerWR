@@ -242,4 +242,5 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/danfse-tecnos', [NfseController::class, 'danfseTecnos'])->name('danfse-tecnos');
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');
+    Route::post('/exportar-excel-nsus', [NfseController::class, 'exportarExcelNsus'])->name('exportar-excel-nsus');
 });
