@@ -89,14 +89,13 @@
 
             <table class="w-full table-fixed divide-y divide-gray-200 dark:divide-slate-700">
                 <colgroup>
-                    <col class="w-[28%]">  {{-- Título --}}
-                    <col class="w-[16%]">  {{-- Cliente --}}
-                    <col class="w-[14%]">  {{-- Departamento --}}
-                    <col class="w-[11%]">  {{-- Etapa --}}
-                    <col class="w-[13%]">  {{-- Responsável --}}
-                    <col class="w-[9%]">   {{-- Vencimento --}}
-                    <col class="w-[6%]">   {{-- Prioridade --}}
-                    <col class="w-[3%]">   {{-- Ações --}}
+                    <col class="w-[30%]">  {{-- Título --}}
+                    <col class="w-[18%]">  {{-- Cliente --}}
+                    <col class="w-[15%]">  {{-- Departamento --}}
+                    <col class="w-[12%]">  {{-- Etapa --}}
+                    <col class="w-[14%]">  {{-- Responsável --}}
+                    <col class="w-[7%]">   {{-- Vencimento --}}
+                    <col class="w-[4%]">   {{-- Ações --}}
                 </colgroup>
                 <thead class="bg-gray-50 dark:bg-slate-900">
                     <tr>
@@ -106,7 +105,6 @@
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Etapa</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Responsável</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vencimento</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prioridade</th>
                         <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
@@ -133,21 +131,6 @@
                             </td>
                             <td class="px-4 py-3 text-sm whitespace-nowrap {{ (is_null($tarefa->data_conclusao) && $tarefa->data_vencimento->lt(now()->startOfDay())) ? 'text-red-600 font-semibold' : 'text-gray-700 dark:text-gray-300' }}">
                                 {{ $tarefa->data_vencimento->format('d/m/Y') }}
-                            </td>
-                            <td class="px-4 py-3 text-sm whitespace-nowrap">
-                                @php
-                                    $prioridadeMap = [
-                                        1 => ['label' => 'Baixa', 'class' => 'bg-gray-100 text-gray-600'],
-                                        2 => ['label' => 'Normal', 'class' => 'bg-blue-100 text-blue-700'],
-                                        3 => ['label' => 'Alta', 'class' => 'bg-yellow-100 text-yellow-700'],
-                                        4 => ['label' => 'Urgente', 'class' => 'bg-orange-100 text-orange-700'],
-                                        5 => ['label' => 'Crítica', 'class' => 'bg-red-100 text-red-700'],
-                                    ];
-                                    $p = $prioridadeMap[$tarefa->prioridade] ?? $prioridadeMap[1];
-                                @endphp
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $p['class'] }}">
-                                    {{ $p['label'] }}
-                                </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-right whitespace-nowrap">
                                 @if ($tarefa->ativo)
@@ -207,7 +190,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma tarefa encontrada.</td>
+                            <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma tarefa encontrada.</td>
                         </tr>
                     @endforelse
                 </tbody>
