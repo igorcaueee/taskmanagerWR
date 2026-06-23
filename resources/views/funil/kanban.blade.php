@@ -32,6 +32,15 @@
                        onchange="document.getElementById('form-filtros-funil').submit()"
                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
             </div>
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
+                <select name="tipo" onchange="document.getElementById('form-filtros-funil').submit()"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    <option value="1" @selected(request('tipo') === '1')>Pessoa Jurídica</option>
+                    <option value="0" @selected(request('tipo') === '0')>Pessoa Física</option>
+                </select>
+            </div>
             @if($podeVerTodos)
                 <div>
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsável</label>

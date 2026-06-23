@@ -152,11 +152,16 @@ class TarefaController extends Controller
             });
         }
 
+        if ($request->filled('tipo_tarefa_id')) {
+            $query->where('tipo_tarefa_id', $request->integer('tipo_tarefa_id'));
+        }
+
         $tarefas = $query->get()->groupBy('etapa_id');
 
         $departamentos = Departamento::orderBy('nome')->get();
         $usuarios = $podeVerTodas ? Usuario::orderBy('nome')->get() : collect();
         $clientes = Cliente::orderBy('nome')->get();
+        $tiposTarefa = TipoTarefa::orderBy('nome')->get();
 
         return view('tarefas.list', compact(
             'tarefas',
@@ -164,6 +169,7 @@ class TarefaController extends Controller
             'departamentos',
             'usuarios',
             'clientes',
+            'tiposTarefa',
             'podeVerTodas',
             'cicloSelecionado',
             'cicloPrev',

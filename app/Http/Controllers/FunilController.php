@@ -44,6 +44,10 @@ class FunilController extends Controller
             });
         }
 
+        if ($request->has('tipo') && $request->input('tipo') !== '') {
+            $query->where('tipo', $request->integer('tipo'));
+        }
+
         $leads = $query->get()->groupBy('etapa_funil_id');
 
         $usuario = Auth::user();

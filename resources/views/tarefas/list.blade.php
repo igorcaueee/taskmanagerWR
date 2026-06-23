@@ -108,6 +108,18 @@
                 </select>
             </div>
 
+            {{-- Filtro Tipo de Tarefa --}}
+            <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
+                <select name="tipo_tarefa_id" onchange="document.getElementById('form-filtros').submit()"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <option value="">Todos</option>
+                    @foreach ($tiposTarefa as $tipo)
+                        <option value="{{ $tipo->id }}" @selected(request('tipo_tarefa_id') == $tipo->id)>{{ $tipo->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- Filtro Empresa --}}
             <div class="relative" id="wrapper-empresa">
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Empresa</label>
