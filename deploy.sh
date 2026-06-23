@@ -35,6 +35,10 @@ npm ci --silent || fail "npm ci falhou"
 npm run build || fail "npm run build falhou"
 ok "Assets gerados"
 
+step "Limpando cache antigo"
+php artisan optimize:clear || fail "optimize:clear falhou"
+ok "Cache limpo"
+
 step "Otimizando a aplicação"
 php artisan optimize || fail "optimize falhou"
 ok "Cache de config, rotas e views gerado"
