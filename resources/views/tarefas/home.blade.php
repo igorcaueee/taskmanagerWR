@@ -89,13 +89,13 @@
 
             <table class="w-full table-fixed divide-y divide-gray-200 dark:divide-slate-700">
                 <colgroup>
-                    <col class="w-[30%]">  {{-- Título --}}
-                    <col class="w-[18%]">  {{-- Cliente --}}
-                    <col class="w-[15%]">  {{-- Departamento --}}
-                    <col class="w-[12%]">  {{-- Etapa --}}
-                    <col class="w-[14%]">  {{-- Responsável --}}
-                    <col class="w-[7%]">   {{-- Vencimento --}}
-                    <col class="w-[4%]">   {{-- Ações --}}
+                    <col class="w-[18%]">  {{-- Título --}}
+                    <col class="w-[20%]">  {{-- Cliente --}}
+                    <col class="w-[14%]">  {{-- Departamento --}}
+                    <col class="w-[11%]">  {{-- Etapa --}}
+                    <col class="w-[15%]">  {{-- Responsável --}}
+                    <col class="w-[10%]">  {{-- Vencimento --}}
+                    <col class="w-[12%]">  {{-- Ações --}}
                 </colgroup>
                 <thead class="bg-gray-50 dark:bg-slate-900">
                     <tr>
