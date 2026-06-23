@@ -83,17 +83,22 @@
                 ondragstart="event.stopPropagation()">
             <i class="fa-solid fa-copy"></i>
         </button>
-        <form method="POST" action="{{ route('tarefas.delete', $tarefa->id) }}" class="inline"
+        @if (auth()->user()->canInativarTarefa($tarefa))
+        <form method="POST" action="{{ route('tarefas.inativar', $tarefa->id) }}" class="inline inativar-tarefa-form"
               ondragstart="event.stopPropagation()">
             @csrf
-            @method('DELETE')
+            <input type="hidden" name="scope" value="unica" class="inativar-scope-input">
             <button type="button"
-                    class="text-xs text-gray-400 dark:text-slate-500 hover:text-red-500 border-0 bg-transparent p-0 cursor-pointer btn-delete-kanban"
+                    class="text-xs text-gray-400 dark:text-slate-500 hover:text-orange-500 border-0 bg-transparent p-0 cursor-pointer btn-inativar-kanban"
                     data-tarefa-titulo="{{ $tarefa->titulo }}"
+                    data-tarefa-id="{{ $tarefa->id }}"
+                    data-recorrente="{{ $tarefa->recorrente ? '1' : '0' }}"
+                    title="Inativar tarefa"
                     ondragstart="event.stopPropagation()">
-                <i class="fa-solid fa-trash"></i>
+                <i class="fa-solid fa-ban"></i>
             </button>
         </form>
+        @endif
         @endif
 
         <button type="button"

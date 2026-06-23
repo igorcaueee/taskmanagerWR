@@ -142,10 +142,22 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // Assistente e Auxiliar só editam/deletam tarefas onde são responsáveis
+    // Assistente e Auxiliar só editam tarefas onde são responsáveis
     public function canEditarQualquerTarefa(): bool
     {
         return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+    }
+
+    // Apenas Diretor, TI ou o criador da tarefa podem inativar
+    public function canInativarTarefa(\App\Models\Tarefa $tarefa): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']) || (int) $tarefa->criado_por === (int) $this->id;
+    }
+
+    // Apenas Diretor e TI podem excluir tarefas permanentemente
+    public function canExcluirTarefa(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
     }
 
     // Diretor e TI gerenciam o blog

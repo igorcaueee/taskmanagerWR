@@ -74,6 +74,17 @@
                     </select>
                 </div>
                 @endif
+                @if(auth()->user()->canExcluirTarefa())
+                <div class="flex items-end">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+                        <input type="checkbox" name="mostrar_inativas" value="1"
+                               @checked($mostrarInativas)
+                               onchange="document.getElementById('form-filtros-home').submit()"
+                               class="rounded border-gray-300 text-brand focus:ring-brand">
+                        Mostrar inativas
+                    </label>
+                </div>
+                @endif
             </form>
 
             <table class="w-full table-fixed divide-y divide-gray-200 dark:divide-slate-700">
@@ -101,9 +112,12 @@
                 </thead>
                 <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse($tarefas as $tarefa)
-                        <tr>
+                        <tr class="{{ ! $tarefa->ativo ? 'opacity-50' : '' }}">
                             <td class="px-4 py-3 text-sm text-gray-900 dark:text-slate-100 font-medium overflow-hidden">
-                                <span class="block truncate" title="{{ $tarefa->titulo }}">{{ $tarefa->titulo }}</span>
+                                <span class="block truncate {{ ! $tarefa->ativo ? 'line-through text-gray-400' : '' }}" title="{{ $tarefa->titulo }}">{{ $tarefa->titulo }}</span>
+                                @if(! $tarefa->ativo)
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400 ml-1">Inativa</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 overflow-hidden">
                                 <span class="block truncate" title="{{ $tarefa->cliente->nome ?? '' }}">{{ \Str::limit($tarefa->cliente->nome ?? '—', 30, '…') }}</span>
@@ -136,30 +150,58 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-right whitespace-nowrap">
-                                @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
-                                <button type="button"
-                                        class="text-brand hover:text-brand/80 focus:outline-none border-0 bg-transparent p-0"
-                                        data-modal-url="{{ route('tarefas.form.edit', $tarefa->id) }}">
-                                    <i class="fa-solid fa-pencil"></i>
-                                </button>
-
-                                <button type="button"
-                                        class="text-indigo-500 hover:text-indigo-700 ml-3 focus:outline-none border-0 bg-transparent p-0 btn-duplicar-tarefa"
-                                        title="Duplicar para outros clientes"
-                                        data-tarefa-id="{{ $tarefa->id }}"
-                                        data-tarefa-titulo="{{ $tarefa->titulo }}">
-                                    <i class="fa-solid fa-copy"></i>
-                                </button>
-
-                                <form method="POST" action="{{ route('tarefas.delete', $tarefa->id) }}" class="inline">
-                                    @csrf
-                                    @method('DELETE')
+                                @if ($tarefa->ativo)
+                                    @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
                                     <button type="button"
-                                            class="text-red-600 hover:text-red-700 ml-3 focus:outline-none border-0 bg-transparent p-0 btn-delete-tarefa"
-                                            data-titulo="{{ $tarefa->titulo }}">
-                                        <i class="fa-solid fa-trash"></i>
+                                            class="text-brand hover:text-brand/80 focus:outline-none border-0 bg-transparent p-0"
+                                            data-modal-url="{{ route('tarefas.form.edit', $tarefa->id) }}">
+                                        <i class="fa-solid fa-pencil"></i>
                                     </button>
-                                </form>
+
+                                    <button type="button"
+                                            class="text-indigo-500 hover:text-indigo-700 ml-3 focus:outline-none border-0 bg-transparent p-0 btn-duplicar-tarefa"
+                                            title="Duplicar para outros clientes"
+                                            data-tarefa-id="{{ $tarefa->id }}"
+                                            data-tarefa-titulo="{{ $tarefa->titulo }}">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                    @endif
+
+                                    @if (auth()->user()->canInativarTarefa($tarefa))
+                                    <form method="POST" action="{{ route('tarefas.inativar', $tarefa->id) }}" class="inline inativar-tarefa-form">
+                                        @csrf
+                                        <input type="hidden" name="scope" value="unica" class="inativar-scope-input">
+                                        <button type="button"
+                                                class="text-orange-500 hover:text-orange-700 ml-3 focus:outline-none border-0 bg-transparent p-0 btn-inativar-tarefa"
+                                                data-titulo="{{ $tarefa->titulo }}"
+                                                data-tarefa-id="{{ $tarefa->id }}"
+                                                data-recorrente="{{ $tarefa->recorrente ? '1' : '0' }}"
+                                                title="Inativar tarefa">
+                                            <i class="fa-solid fa-ban"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                @else
+                                    @if (auth()->user()->canExcluirTarefa())
+                                    <form method="POST" action="{{ route('tarefas.ativar', $tarefa->id) }}" class="inline">
+                                        @csrf
+                                        <button type="submit"
+                                                class="text-green-600 hover:text-green-700 focus:outline-none border-0 bg-transparent p-0"
+                                                title="Reativar tarefa">
+                                            <i class="fa-solid fa-rotate-left"></i>
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('tarefas.delete', $tarefa->id) }}" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="button"
+                                                class="text-red-600 hover:text-red-700 ml-3 focus:outline-none border-0 bg-transparent p-0 btn-delete-tarefa"
+                                                data-titulo="{{ $tarefa->titulo }}">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                    @endif
                                 @endif
                             </td>
                         </tr>
@@ -248,13 +290,58 @@
         });
     });
 
+    document.querySelectorAll('.btn-inativar-tarefa').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const titulo = btn.dataset.titulo;
+            const recorrente = btn.dataset.recorrente === '1';
+            const form = btn.closest('form');
+
+            if (recorrente) {
+                const { value: scope } = await Swal.fire({
+                    title: 'Inativar tarefa recorrente',
+                    html: `<p class="text-sm text-gray-600 mb-4">A tarefa <strong>"${titulo}"</strong> é recorrente. O que deseja inativar?</p>`,
+                    input: 'radio',
+                    inputOptions: {
+                        'unica': 'Apenas esta ocorrência',
+                        'futuras': 'Esta e todas as futuras',
+                    },
+                    inputValue: 'unica',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f97316',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Inativar',
+                    cancelButtonText: 'Cancelar',
+                    inputValidator: (value) => {
+                        if (!value) return 'Selecione uma opção.';
+                    },
+                });
+                if (!scope) return;
+                form.querySelector('.inativar-scope-input').value = scope;
+            } else {
+                const result = await Swal.fire({
+                    title: 'Inativar tarefa?',
+                    text: `A tarefa "${titulo}" será inativada. Você poderá reativá-la depois.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f97316',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sim, inativar',
+                    cancelButtonText: 'Cancelar',
+                });
+                if (!result.isConfirmed) return;
+            }
+
+            form.submit();
+        });
+    });
+
     document.querySelectorAll('.btn-delete-tarefa').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const titulo = btn.dataset.titulo;
             const form = btn.closest('form');
 
             Swal.fire({
-                title: 'Excluir tarefa?',
+                title: 'Excluir permanentemente?',
                 text: `Tem certeza que deseja excluir "${titulo}"? Esta ação não pode ser desfeita.`,
                 icon: 'warning',
                 showCancelButton: true,

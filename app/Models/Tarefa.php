@@ -34,6 +34,9 @@ class Tarefa extends Model
         'ciclo_id',
         'passou_ciclo',
         'requer_envio_arquivo',
+        'ativo',
+        'inativado_por',
+        'inativado_em',
     ];
 
     protected $casts = [
@@ -41,10 +44,12 @@ class Tarefa extends Model
         'data_conclusao' => 'datetime',
         'data_proxima_geracao' => 'date',
         'data_fim_recorrencia' => 'date',
+        'inativado_em' => 'datetime',
         'atrasada' => 'boolean',
         'recorrente' => 'boolean',
         'passou_ciclo' => 'boolean',
         'requer_envio_arquivo' => 'boolean',
+        'ativo' => 'boolean',
     ];
 
     public function cliente(): BelongsTo
@@ -105,5 +110,15 @@ class Tarefa extends Model
     public function tipoTarefa(): BelongsTo
     {
         return $this->belongsTo(TipoTarefa::class);
+    }
+
+    public function inativadoPor(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'inativado_por');
+    }
+
+    public function scopeAtivos($query)
+    {
+        return $query->where('ativo', true);
     }
 }

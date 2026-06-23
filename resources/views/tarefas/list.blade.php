@@ -1216,29 +1216,52 @@
         }
     });
 
-    // ── Excluir tarefa (kanban) ───────────────────────────────────────────────
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.btn-delete-kanban');
+    // ── Inativar tarefa (kanban) ──────────────────────────────────────────────
+    document.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.btn-inativar-kanban');
         if (!btn) { return; }
         e.stopPropagation();
 
         const titulo = btn.dataset.tarefaTitulo;
+        const recorrente = btn.dataset.recorrente === '1';
         const form = btn.closest('form');
 
-        Swal.fire({
-            title: 'Excluir tarefa?',
-            text: `Tem certeza que deseja excluir "${titulo}"? Esta ação não pode ser desfeita.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sim, excluir',
-            cancelButtonText: 'Cancelar',
-        }).then(function (result) {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
+        if (recorrente) {
+            const { value: scope } = await Swal.fire({
+                title: 'Inativar tarefa recorrente',
+                html: `<p class="text-sm text-gray-600 mb-4">A tarefa <strong>"${titulo}"</strong> é recorrente. O que deseja inativar?</p>`,
+                input: 'radio',
+                inputOptions: {
+                    'unica': 'Apenas esta ocorrência',
+                    'futuras': 'Esta e todas as futuras',
+                },
+                inputValue: 'unica',
+                showCancelButton: true,
+                confirmButtonColor: '#f97316',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Inativar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (value) => {
+                    if (!value) return 'Selecione uma opção.';
+                },
+            });
+            if (!scope) return;
+            form.querySelector('.inativar-scope-input').value = scope;
+        } else {
+            const result = await Swal.fire({
+                title: 'Inativar tarefa?',
+                text: `A tarefa "${titulo}" será inativada. Você poderá reativá-la depois.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f97316',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sim, inativar',
+                cancelButtonText: 'Cancelar',
+            });
+            if (!result.isConfirmed) return;
+        }
+
+        form.submit();
     });
 
     // ── Passar para próximo ciclo ─────────────────────────────────────────────

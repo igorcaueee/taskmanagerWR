@@ -29,8 +29,14 @@ class TarefaController extends Controller
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
 
+        $mostrarInativas = $request->boolean('mostrar_inativas');
+
         $query = Tarefa::with(['cliente', 'clientes', 'departamento', 'etapa', 'responsavel'])
             ->orderBy('data_vencimento');
+
+        if (! $mostrarInativas) {
+            $query->where('ativo', true);
+        }
 
         if (! $podeVerTodas) {
             $query->where('responsavel_id', $usuario->id);
@@ -69,7 +75,7 @@ class TarefaController extends Controller
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
         $usuarios = $podeVerTodas ? Usuario::orderBy('nome')->get() : collect();
 
-        return view('tarefas.home', compact('tarefas', 'clientes', 'etapas', 'usuarios', 'podeVerTodas'));
+        return view('tarefas.home', compact('tarefas', 'clientes', 'etapas', 'usuarios', 'podeVerTodas', 'mostrarInativas'));
     }
 
     public function showTarefasList(Request $request): View
@@ -93,6 +99,7 @@ class TarefaController extends Controller
         $cicloNext = $cicloSelecionado->proximo();
 
         $query = Tarefa::with(['cliente', 'clientes', 'departamento', 'etapa', 'responsavel', 'ciclo'])
+            ->where('ativo', true)
             ->orderBy('passou_ciclo', 'desc')
             ->orderBy('data_vencimento');
 
@@ -423,13 +430,73 @@ class TarefaController extends Controller
         $tarefa = Tarefa::findOrFail($id);
 
         $usuario = Auth::user();
-        if (! $usuario->canEditarQualquerTarefa() && (int) $tarefa->responsavel_id !== (int) $usuario->id) {
+        if (! $usuario->canExcluirTarefa()) {
             abort(403);
         }
 
         $tarefa->delete();
 
         return Redirect::back()->with('success', 'Tarefa excluída com sucesso.');
+    }
+
+    public function inativar(Request $request, int $id): RedirectResponse
+    {
+        $tarefa = Tarefa::findOrFail($id);
+        $usuario = Auth::user();
+
+        if (! $usuario->canInativarTarefa($tarefa)) {
+            abort(403);
+        }
+
+        $scope = $request->input('scope', 'unica');
+
+        $tarefasParaInativar = collect([$tarefa]);
+
+        if ($scope === 'futuras' && $tarefa->recorrente) {
+            $originalId = $tarefa->tarefa_original_id ?? $tarefa->id;
+            $futuras = Tarefa::where(function ($q) use ($originalId) {
+                $q->where('id', $originalId)->orWhere('tarefa_original_id', $originalId);
+            })
+                ->where('data_vencimento', '>=', $tarefa->data_vencimento)
+                ->where('ativo', true)
+                ->get();
+
+            $tarefasParaInativar = $futuras;
+        }
+
+        $now = now();
+        foreach ($tarefasParaInativar as $t) {
+            $t->update([
+                'ativo' => false,
+                'inativado_por' => $usuario->id,
+                'inativado_em' => $now,
+            ]);
+        }
+
+        $count = $tarefasParaInativar->count();
+        $mensagem = $count > 1
+            ? "{$count} tarefas inativadas com sucesso."
+            : 'Tarefa inativada com sucesso.';
+
+        return Redirect::back()->with('success', $mensagem);
+    }
+
+    public function ativar(int $id): RedirectResponse
+    {
+        $tarefa = Tarefa::findOrFail($id);
+        $usuario = Auth::user();
+
+        if (! $usuario->canExcluirTarefa()) {
+            abort(403);
+        }
+
+        $tarefa->update([
+            'ativo' => true,
+            'inativado_por' => null,
+            'inativado_em' => null,
+        ]);
+
+        return Redirect::back()->with('success', 'Tarefa reativada com sucesso.');
     }
 
     public function updateEtapa(Request $request, int $id): JsonResponse
