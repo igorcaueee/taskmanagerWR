@@ -112,7 +112,7 @@
                     @forelse($tarefas as $tarefa)
                         <tr class="{{ ! $tarefa->ativo ? 'opacity-50' : '' }}">
                             <td class="px-4 py-3 text-sm text-gray-900 dark:text-slate-100 font-medium overflow-hidden">
-                                <span class="block truncate {{ ! $tarefa->ativo ? 'line-through text-gray-400' : '' }}" title="{{ $tarefa->titulo }}">{{ $tarefa->titulo }}</span>
+                                <span class="block truncate {{ ! $tarefa->ativo ? 'line-through text-gray-400' : '' }}" title="{{ $tarefa->titulo }}">{{ \Str::limit($tarefa->titulo, 20, '…') }}</span>
                                 @if(! $tarefa->ativo)
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400 ml-1">Inativa</span>
                                 @endif
