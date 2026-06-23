@@ -114,7 +114,27 @@
     });
 }());
 </script>
+
             <span class="hidden sm:block text-sm text-gray-600 dark:text-slate-400">{{ auth()->user()?->nome }}</span>
+
+            {{-- Notificações --}}
+            <div class="relative" id="notif-wrapper">
+                <button id="notif-btn" title="Notificações"
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 border-0 bg-transparent cursor-pointer relative">
+                    <i class="fa-solid fa-bell text-sm"></i>
+                    <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center leading-none"></span>
+                </button>
+
+                <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 z-50 overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                        <span class="text-sm font-semibold text-gray-700 dark:text-slate-200">Notificações</span>
+                        <button id="notif-mark-all" class="text-xs text-[#0084AA] hover:underline">Marcar todas como lidas</button>
+                    </div>
+                    <ul id="notif-list" class="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-700">
+                        <li class="px-4 py-6 text-center text-xs text-gray-400 dark:text-slate-500" id="notif-empty">Nenhuma notificação.</li>
+                    </ul>
+                </div>
+            </div>
 
             {{-- Dark mode toggle --}}
             <button id="dark-mode-toggle" title="Alternar modo escuro"
@@ -175,5 +195,106 @@
             overlay.classList.add('hidden');
         });
     }
+}());
+
+(function () {
+    const btn      = document.getElementById('notif-btn');
+    const dropdown = document.getElementById('notif-dropdown');
+    const badge    = document.getElementById('notif-badge');
+    const list     = document.getElementById('notif-list');
+    const empty    = document.getElementById('notif-empty');
+    const markAll  = document.getElementById('notif-mark-all');
+
+    function formatRelTime(dateStr) {
+        const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+        if (diff < 60)   return 'agora mesmo';
+        if (diff < 3600) return Math.floor(diff / 60) + ' min atrás';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h atrás';
+        return Math.floor(diff / 86400) + 'd atrás';
+    }
+
+    function renderNotificacoes(data) {
+        const { notificacoes, nao_lidas } = data;
+
+        if (nao_lidas > 0) {
+            badge.textContent = nao_lidas > 9 ? '9+' : nao_lidas;
+            badge.classList.remove('hidden');
+            badge.style.display = 'flex';
+        } else {
+            badge.classList.add('hidden');
+            badge.style.display = '';
+        }
+
+        if (!notificacoes.length) {
+            empty.classList.remove('hidden');
+            list.innerHTML = '';
+            list.appendChild(empty);
+            return;
+        }
+
+        empty.classList.add('hidden');
+        list.innerHTML = '';
+
+        notificacoes.forEach(function (n) {
+            const li = document.createElement('li');
+            li.className = 'flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ' +
+                (n.lida ? 'hover:bg-gray-50 dark:hover:bg-slate-700/50' : 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30');
+
+            const iconBg  = n.lida ? 'bg-gray-100 dark:bg-slate-700' : 'bg-[#0084AA]';
+            const iconClr = n.lida ? 'text-gray-400 dark:text-slate-500' : 'text-white';
+
+            li.innerHTML =
+                '<div class="mt-0.5 w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ' + iconBg + '">' +
+                    '<i class="fa-solid fa-bell text-xs ' + iconClr + '"></i>' +
+                '</div>' +
+                '<div class="flex-1 min-w-0">' +
+                    '<p class="text-xs text-gray-700 dark:text-slate-200 leading-snug">' + n.mensagem + '</p>' +
+                    '<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">' + formatRelTime(n.created_at) + '</p>' +
+                '</div>';
+
+            li.addEventListener('click', function () {
+                if (!n.lida) {
+                    fetch('{{ route("notificacoes.marcar-lida", ":id") }}'.replace(':id', n.id), {
+                        method: 'PATCH',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                    }).then(function () { carregar(); });
+                }
+            });
+
+            list.appendChild(li);
+        });
+    }
+
+    function carregar() {
+        fetch('{{ route("notificacoes.index") }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.json(); })
+        .then(renderNotificacoes)
+        .catch(function () {});
+    }
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+        if (!dropdown.classList.contains('hidden')) { carregar(); }
+    });
+
+    markAll.addEventListener('click', function (e) {
+        e.stopPropagation();
+        fetch('{{ route("notificacoes.marcar-todas-lidas") }}', {
+            method: 'PATCH',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+        }).then(function () { carregar(); });
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('notif-wrapper').contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    carregar();
+    setInterval(carregar, 60000);
 }());
 </script>

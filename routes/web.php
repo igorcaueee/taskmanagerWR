@@ -5,6 +5,7 @@ use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
@@ -191,6 +192,12 @@ Route::get('/arquivos/portal-usuarios/{clienteId}', [FileExplorerController::cla
 // Chatbot routes
 Route::post('/chatbot/mensagem', [ChatbotController::class, 'message'])->name('chatbot.message')->middleware('auth');
 Route::delete('/chatbot/historico', [ChatbotController::class, 'clear'])->name('chatbot.clear')->middleware('auth');
+// Notificações
+Route::middleware('auth')->prefix('notificacoes')->name('notificacoes.')->group(function () {
+    Route::get('/', [NotificacaoController::class, 'index'])->name('index');
+    Route::patch('/{id}/lida', [NotificacaoController::class, 'marcarLida'])->name('marcar-lida');
+    Route::patch('/marcar-todas-lidas', [NotificacaoController::class, 'marcarTodasLidas'])->name('marcar-todas-lidas');
+});
 // Blog admin (interno)
 Route::get('/admin/blog', [BlogController::class, 'index'])->name('blog.admin.index')->middleware(['auth', 'admin']);
 Route::get('/admin/blog/criar', [BlogController::class, 'formCreate'])->name('blog.admin.form.create')->middleware(['auth', 'admin']);

@@ -6,6 +6,7 @@ use App\Models\Ciclo;
 use App\Models\Cliente;
 use App\Models\Departamento;
 use App\Models\Etapa;
+use App\Models\Notificacao;
 use App\Models\RelTarefa;
 use App\Models\Tarefa;
 use App\Models\TarefaUpload;
@@ -296,6 +297,18 @@ class TarefaController extends Controller
 
             if ($frequencia !== 'nenhuma') {
                 $this->gerarOcorrenciasParaUmAno($tarefa, Carbon::parse($dataFimRecorrencia));
+            }
+
+            // Notifica o colaborador quando recebe uma tarefa não-recorrente de outro usuário
+            $responsavelId = $data['responsavel_id'] ?? null;
+            if ($frequencia === 'nenhuma' && $responsavelId && (int) $responsavelId !== (int) Auth::id()) {
+                $criador = Auth::user();
+                Notificacao::create([
+                    'usuario_id' => $responsavelId,
+                    'tipo'       => 'tarefa_atribuida',
+                    'mensagem'   => "{$criador->nome} atribuiu a tarefa \"{$data['titulo']}\" a você.",
+                    'tarefa_id'  => $tarefa->id,
+                ]);
             }
         }
 
