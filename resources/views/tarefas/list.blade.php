@@ -563,6 +563,10 @@
             if (result.requer_envio_arquivo) {
                 await mostrarUploadArquivo(tarefaId, result.cliente_id);
             }
+
+            if (result.ultima_recorrencia) {
+                await mostrarDialogRenovacaoRecorrencia(result.tarefa_id);
+            }
         } catch {
             const originalCol = document.querySelector(`.kanban-column[data-etapa-id="${etapaOrigem}"]`);
             if (originalCol && cardToMove) {
@@ -575,6 +579,47 @@
             updateCount(novaEtapaId, -1);
             updateCount(etapaOrigem, 1);
             showToast('Erro ao atualizar etapa. Tente novamente.', 'red');
+        }
+    }
+
+    async function mostrarDialogRenovacaoRecorrencia(tarefaId) {
+        const result = await Swal.fire({
+            title: 'Série de tarefas concluída!',
+            html: `
+                <p class="text-sm text-gray-600 mb-2">Esta era a <strong>última tarefa</strong> da série recorrente.</p>
+                <p class="text-sm text-gray-500">O que deseja fazer com essa recorrência?</p>
+            `,
+            icon: 'info',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-rotate-right mr-1"></i> Renovar por mais 1 ano',
+            denyButtonText: '<i class="fa-solid fa-pen mr-1"></i> Editar recorrência',
+            cancelButtonText: 'Encerrar série',
+            confirmButtonColor: '#2563eb',
+            denyButtonColor: '#6b7280',
+            cancelButtonColor: '#dc2626',
+            reverseButtons: false,
+            allowOutsideClick: false,
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/tarefas/${tarefaId}/renovar-recorrencia`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+                if (!res.ok) throw new Error();
+                showToast('Recorrência renovada por mais 1 ano!', 'green');
+                setTimeout(() => location.reload(), 1500);
+            } catch {
+                showToast('Erro ao renovar recorrência. Tente novamente.', 'red');
+            }
+        } else if (result.isDenied) {
+            window.openModal(`/tarefas/${tarefaId}/form`);
         }
     }
 
