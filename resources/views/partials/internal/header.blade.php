@@ -295,6 +295,6 @@
     });
 
     carregar();
-    setInterval(carregar, 60000);
+    setInterval(carregar, 15000);
 }());
 </script>

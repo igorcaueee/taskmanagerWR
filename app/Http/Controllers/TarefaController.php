@@ -302,13 +302,17 @@ class TarefaController extends Controller
             // Notifica o colaborador quando recebe uma tarefa não-recorrente de outro usuário
             $responsavelId = $data['responsavel_id'] ?? null;
             if ($frequencia === 'nenhuma' && $responsavelId && (int) $responsavelId !== (int) Auth::id()) {
-                $criador = Auth::user();
-                Notificacao::create([
-                    'usuario_id' => $responsavelId,
-                    'tipo'       => 'tarefa_atribuida',
-                    'mensagem'   => "{$criador->nome} atribuiu a tarefa \"{$data['titulo']}\" a você.",
-                    'tarefa_id'  => $tarefa->id,
-                ]);
+                try {
+                    $criador = Auth::user();
+                    Notificacao::create([
+                        'usuario_id' => $responsavelId,
+                        'tipo'       => 'tarefa_atribuida',
+                        'mensagem'   => "{$criador->nome} atribuiu a tarefa \"{$data['titulo']}\" a você.",
+                        'tarefa_id'  => $tarefa->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Falha ao criar notificação: ' . $e->getMessage());
+                }
             }
         }
 
