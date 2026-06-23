@@ -49,7 +49,7 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título <span class="text-red-500">*</span></label>
             <input name="titulo" type="text"
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    value="{{ old('titulo', $isEditing ? $tarefa->titulo : '') }}"
@@ -130,9 +130,11 @@
                 $podeMudarResponsavel = $podeMudarResponsavel ?? true;
             @endphp
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Responsável</label>
-                <select name="responsavel_id" class="mt-1 block w-full border rounded px-3 py-2 {{ $isEditing && !$podeMudarResponsavel ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ $isEditing && !$podeMudarResponsavel ? 'disabled' : '' }}>
-                    <option value="">— Sem responsável —</option>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Responsável @if(!$isEditing)<span class="text-red-500">*</span>@endif
+                </label>
+                <select name="responsavel_id" class="mt-1 block w-full border rounded px-3 py-2 {{ $isEditing && !$podeMudarResponsavel ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ $isEditing && !$podeMudarResponsavel ? 'disabled' : '' }} {{ !$isEditing ? 'required' : '' }}>
+                    <option value="">— Selecione o responsável —</option>
                     @foreach($usuarios as $usuario)
                         <option value="{{ $usuario->id }}"
                             {{ old('responsavel_id', $isEditing ? $tarefa->responsavel_id : '') == $usuario->id ? 'selected' : '' }}>
@@ -147,9 +149,11 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Supervisor</label>
-            <select name="supervisor_id" class="mt-1 block w-full border rounded px-3 py-2 {{ $isEditing && !$podeMudarResponsavel ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ $isEditing && !$podeMudarResponsavel ? 'disabled' : '' }}>
-                <option value="">— Sem supervisor —</option>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Supervisor @if(!$isEditing)<span class="text-red-500">*</span>@endif
+            </label>
+            <select name="supervisor_id" class="mt-1 block w-full border rounded px-3 py-2 {{ $isEditing && !$podeMudarResponsavel ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ $isEditing && !$podeMudarResponsavel ? 'disabled' : '' }} {{ !$isEditing ? 'required' : '' }}>
+                <option value="">— Selecione o supervisor —</option>
                 @foreach($usuarios as $usuario)
                     <option value="{{ $usuario->id }}"
                         {{ old('supervisor_id', $isEditing ? $tarefa->supervisor_id : '') == $usuario->id ? 'selected' : '' }}>
@@ -164,7 +168,7 @@
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Vencimento</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Vencimento <span class="text-red-500">*</span></label>
                 <input name="data_vencimento" type="date"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('data_vencimento', $isEditing ? $tarefa->data_vencimento->format('Y-m-d') : '') }}"
