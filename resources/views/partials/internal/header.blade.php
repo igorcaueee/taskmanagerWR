@@ -153,6 +153,13 @@
     </div>
 </header>
 
+{{-- Container de toasts de notificação --}}
+<div id="notif-toast-container" class="fixed bottom-6 right-6 z-9999 flex flex-col gap-2 items-end pointer-events-none">
+</div>
+<style>
+    #notif-toast-container > * { pointer-events: auto; }
+</style>
+
 {{-- Espaçador para compensar o header fixo --}}
 <div class="h-16"></div>
 
@@ -265,12 +272,67 @@
         });
     }
 
+    // IDs já vistos nesta sessão — evita toast no primeiro carregamento
+    let idsConhecidos = null;
+
+    function showToast(mensagem) {
+        const container = document.getElementById('notif-toast-container');
+        const toast = document.createElement('div');
+        toast.className = [
+            'flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border',
+            'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600',
+            'text-sm text-gray-800 dark:text-slate-100',
+            'transition-all duration-300 opacity-0 translate-y-2',
+        ].join(' ');
+        toast.style.maxWidth = '320px';
+        toast.innerHTML =
+            '<div class="w-8 h-8 rounded-full bg-[#0084AA] flex-shrink-0 flex items-center justify-center">' +
+                '<i class="fa-solid fa-bell text-white text-xs"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-0.5">Nova tarefa atribuída</p>' +
+                '<p class="text-xs text-gray-600 dark:text-slate-300 leading-snug">' + mensagem + '</p>' +
+            '</div>' +
+            '<button class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 flex-shrink-0 text-xs mt-0.5" onclick="this.closest(\'.notif-toast\').remove()">✕</button>';
+        toast.classList.add('notif-toast');
+
+        container.appendChild(toast);
+
+        // Animação entrada
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            });
+        });
+
+        // Auto-dismiss em 5s
+        setTimeout(function () {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(function () { toast.remove(); }, 300);
+        }, 5000);
+    }
+
     function carregar() {
         fetch('{{ route("notificacoes.index") }}', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(function (r) { return r.json(); })
-        .then(renderNotificacoes)
+        .then(function (data) {
+            const novosIds = data.notificacoes.map(function (n) { return n.id; });
+
+            if (idsConhecidos !== null) {
+                // Detecta notificações que ainda não conhecíamos
+                data.notificacoes.forEach(function (n) {
+                    if (!idsConhecidos.includes(n.id) && !n.lida) {
+                        showToast(n.mensagem);
+                    }
+                });
+            }
+
+            idsConhecidos = novosIds;
+            renderNotificacoes(data);
+        })
         .catch(function () {});
     }
 
