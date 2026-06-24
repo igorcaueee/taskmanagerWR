@@ -251,13 +251,20 @@ class TarefaController extends Controller
             $u->id => ['id' => $u->departamento_id, 'nome' => $u->departamento?->nome ?? '—'],
         ]);
 
-        $podeMudarResponsavel = (int) Auth::id() === (int) $tarefa->supervisor_id;
+        $authUsuario = Auth::user();
+        $podeMudarResponsavel = (int) $authUsuario->id === (int) $tarefa->supervisor_id;
+
+        $podeTransferirNoDepartamento = ! $podeMudarResponsavel
+            && $authUsuario->departamento_id !== null
+            && (int) $authUsuario->departamento_id === (int) $tarefa->departamento_id;
+
+        $responsaveisDepartamento = $usuarios->where('departamento_id', $authUsuario->departamento_id)->values();
 
         $selectedClienteIds = $tarefa->clientes->pluck('id')->toArray();
 
         $tiposTarefa = TipoTarefa::orderBy('nome')->get();
 
-        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'selectedClienteIds', 'tiposTarefa'));
+        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'podeTransferirNoDepartamento', 'responsaveisDepartamento', 'selectedClienteIds', 'tiposTarefa'));
     }
 
     public function save(Request $request): RedirectResponse
@@ -392,11 +399,22 @@ class TarefaController extends Controller
         $etapaAnteriorId = $tarefa->etapa_id;
         $responsavelAnteriorId = $tarefa->responsavel_id;
 
-        $podeMudarResponsavel = (int) Auth::id() === (int) $tarefa->supervisor_id;
+        $podeMudarResponsavel = (int) $usuario->id === (int) $tarefa->supervisor_id;
 
-        $novoResponsavelId = $podeMudarResponsavel
-            ? ($data['responsavel_id'] ?? null)
-            : $tarefa->responsavel_id;
+        $podeTransferirNoDepartamento = ! $podeMudarResponsavel
+            && $usuario->departamento_id !== null
+            && (int) $usuario->departamento_id === (int) $tarefa->departamento_id;
+
+        if ($podeMudarResponsavel) {
+            $novoResponsavelId = $data['responsavel_id'] ?? null;
+        } elseif ($podeTransferirNoDepartamento) {
+            $candidato = Usuario::find($data['responsavel_id'] ?? null);
+            $novoResponsavelId = ($candidato && (int) $candidato->departamento_id === (int) $usuario->departamento_id)
+                ? $candidato->id
+                : $tarefa->responsavel_id;
+        } else {
+            $novoResponsavelId = $tarefa->responsavel_id;
+        }
 
         $departamentoId = Usuario::find($novoResponsavelId)?->departamento_id
             ?? $tarefa->departamento_id

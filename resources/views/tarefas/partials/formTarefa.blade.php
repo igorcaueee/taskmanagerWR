@@ -128,22 +128,27 @@
 
             @php
                 $podeMudarResponsavel = $podeMudarResponsavel ?? true;
+                $podeTransferirNoDepartamento = $podeTransferirNoDepartamento ?? false;
+                $podeAlterarResponsavel = $podeMudarResponsavel || $podeTransferirNoDepartamento;
+                $listaResponsaveis = ($isEditing && $podeTransferirNoDepartamento) ? $responsaveisDepartamento : $usuarios;
             @endphp
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Responsável @if(!$isEditing)<span class="text-red-500">*</span>@endif
                 </label>
-                <select name="responsavel_id" class="mt-1 block w-full border rounded px-3 py-2 {{ $isEditing && !$podeMudarResponsavel ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ $isEditing && !$podeMudarResponsavel ? 'disabled' : '' }} {{ !$isEditing ? 'required' : '' }}>
+                <select name="responsavel_id" class="mt-1 block w-full border rounded px-3 py-2 {{ $isEditing && !$podeAlterarResponsavel ? 'bg-gray-100 cursor-not-allowed' : '' }}" {{ $isEditing && !$podeAlterarResponsavel ? 'disabled' : '' }} {{ !$isEditing ? 'required' : '' }}>
                     <option value="">— Selecione o responsável —</option>
-                    @foreach($usuarios as $usuario)
-                        <option value="{{ $usuario->id }}"
-                            {{ old('responsavel_id', $isEditing ? $tarefa->responsavel_id : '') == $usuario->id ? 'selected' : '' }}>
-                            {{ $usuario->nome }}
+                    @foreach($listaResponsaveis as $usuarioOpt)
+                        <option value="{{ $usuarioOpt->id }}"
+                            {{ old('responsavel_id', $isEditing ? $tarefa->responsavel_id : '') == $usuarioOpt->id ? 'selected' : '' }}>
+                            {{ $usuarioOpt->nome }}
                         </option>
                     @endforeach
                 </select>
-                @if ($isEditing && !$podeMudarResponsavel)
+                @if ($isEditing && !$podeAlterarResponsavel)
                     <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Apenas o supervisor da tarefa pode alterar o responsável.</p>
+                @elseif ($isEditing && $podeTransferirNoDepartamento)
+                    <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Você pode transferir para colaboradores do seu departamento.</p>
                 @endif
             </div>
         </div>
