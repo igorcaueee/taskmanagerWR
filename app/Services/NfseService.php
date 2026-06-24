@@ -542,12 +542,14 @@ class NfseService
      */
     private function normalizarDoc(array $doc): array
     {
-        $dadosXml = [];
+        $dadosXml   = [];
+        $xmlContent = null;
 
         if (!empty($doc['ArquivoXml'])) {
             try {
-                $xml      = $this->descomprimirXml($doc['ArquivoXml']);
-                $dadosXml = $this->extrairDadosXml($xml);
+                $xml        = $this->descomprimirXml($doc['ArquivoXml']);
+                $xmlContent = $xml;
+                $dadosXml   = $this->extrairDadosXml($xml);
             } catch (\Throwable) {
                 // Se falhar, retorna apenas os dados do envelope
             }
@@ -568,6 +570,7 @@ class NfseService
             'imPrestador'   => $dadosXml['imPrestador'] ?? null,
             'cnpjPrestador' => $dadosXml['cnpjPrestador'] ?? null,
             'prestadorNome' => $this->utf8Safe($dadosXml['prestadorNome'] ?? null),
+            'xmlContent'    => $xmlContent,
         ];
     }
 

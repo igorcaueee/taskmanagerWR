@@ -199,7 +199,43 @@ class NfseController extends Controller
     }
 
     /**
+     * Gera um .zip com os XMLs enviados diretamente pelo frontend (sem re-fetch da API).
+     * Cada item: { nsu: int, xml: string }
+     */
+    public function downloadZipXmls(Request $request)
+    {
+        $request->validate([
+            'items'       => 'required|array|min:1|max:200',
+            'items.*.nsu' => 'required|integer|min:1',
+            'items.*.xml' => 'required|string|min:1',
+        ]);
+
+        $zipPath = storage_path('app/temp/nfse_' . time() . '_' . rand(1000, 9999) . '.zip');
+
+        if (!is_dir(dirname($zipPath))) {
+            mkdir(dirname($zipPath), 0755, true);
+        }
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+            return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
+        }
+
+        foreach ($request->items as $item) {
+            $zip->addFromString("nfse_nsu{$item['nsu']}.xml", $item['xml']);
+        }
+
+        $zip->close();
+
+        return response()->download($zipPath, 'nfse_xmls.zip', [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
      * Gera um .zip com os XMLs de múltiplas NFS-e selecionadas (por NSU).
+     * Mantido como fallback para notas sem xmlContent no frontend.
      */
     public function downloadZip(Request $request)
     {
@@ -210,7 +246,7 @@ class NfseController extends Controller
         ]);
 
         $cert    = ClienteCertificadoNfse::where('cliente_id', $validated['cliente_id'])->firstOrFail();
-        $zipPath = storage_path('app/temp/nfse_' . time() . '.zip');
+        $zipPath = storage_path('app/temp/nfse_' . time() . '_' . rand(1000, 9999) . '.zip');
 
         if (!is_dir(dirname($zipPath))) {
             mkdir(dirname($zipPath), 0755, true);

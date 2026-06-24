@@ -828,26 +828,37 @@
 
     // ─── Download ZIP (múltiplos NSUs) ───────────────────────────────────────
     btnDownloadZip.addEventListener('click', async function () {
-        const clienteId = selectCliente.value;
-        const nsus      = [...tabelaNotas.querySelectorAll('.check-nota:checked')].map(cb => parseInt(cb.dataset.nsu));
+        const clienteId  = selectCliente.value;
+        const checkboxes = [...tabelaNotas.querySelectorAll('.check-nota:checked')];
 
-        if (!nsus.length) return;
+        // Monta lista de {nsu, xml} usando o cache da busca (sem re-fetch da API)
+        const items = checkboxes.map(cb => {
+            const nsu  = parseInt(cb.dataset.nsu);
+            const nota = notasAtuais.find(n => n.nsu == nsu);
+            return nota?.xmlContent ? { nsu, xml: nota.xmlContent } : null;
+        }).filter(Boolean);
+
+        if (!items.length) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhum XML disponível para as notas selecionadas.' });
+            return;
+        }
 
         this.disabled = true;
         this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando ZIP...';
 
         try {
-            const resp = await fetch('/nfse/xml/zip', {
+            const resp = await fetch('/nfse/xml/zip-xmls', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                 },
-                body: JSON.stringify({ cliente_id: clienteId, nsus }),
+                body: JSON.stringify({ items }),
             });
 
             if (!resp.ok) {
-                Swal.fire({ icon: 'error', title: 'Erro', text: 'Falha ao gerar ZIP.' });
+                const data = await resp.json().catch(() => ({}));
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao gerar ZIP.' });
                 return;
             }
 
@@ -858,6 +869,8 @@
             a.download = 'nfse_xmls.zip';
             a.click();
             URL.revokeObjectURL(url);
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
         } finally {
             this.disabled = false;
             atualizarSelecao();
