@@ -80,6 +80,7 @@
                 title="Duplicar para outros clientes"
                 data-tarefa-id="{{ $tarefa->id }}"
                 data-tarefa-titulo="{{ $tarefa->titulo }}"
+                data-responsavel-id="{{ $tarefa->responsavel_id ?? '' }}"
                 ondragstart="event.stopPropagation()">
             <i class="fa-solid fa-copy"></i>
         </button>

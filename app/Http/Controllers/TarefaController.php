@@ -755,9 +755,10 @@ class TarefaController extends Controller
     {
         $tarefa = Tarefa::findOrFail($id);
 
-        $validator = Validator::make($request->only('cliente_ids'), [
+        $validator = Validator::make($request->only('cliente_ids', 'responsavel_id'), [
             'cliente_ids' => ['required', 'array', 'min:1'],
             'cliente_ids.*' => ['exists:clientes,id'],
+            'responsavel_id' => ['nullable', 'exists:usuarios,id'],
         ]);
 
         if ($validator->fails()) {
@@ -765,6 +766,7 @@ class TarefaController extends Controller
         }
 
         $clienteIds = $request->input('cliente_ids');
+        $responsavelId = $request->input('responsavel_id') ?? $tarefa->responsavel_id;
         $count = 0;
 
         foreach ($clienteIds as $clienteId) {
@@ -775,7 +777,7 @@ class TarefaController extends Controller
                 'cliente_id' => $clienteId,
                 'departamento_id' => $tarefa->departamento_id,
                 'etapa_id' => $tarefa->etapa_id,
-                'responsavel_id' => $tarefa->responsavel_id,
+                'responsavel_id' => $responsavelId,
                 'supervisor_id' => $tarefa->supervisor_id,
                 'criado_por' => Auth::id(),
                 'data_vencimento' => $tarefa->data_vencimento,

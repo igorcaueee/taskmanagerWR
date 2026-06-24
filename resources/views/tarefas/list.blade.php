@@ -1151,6 +1151,7 @@
 
     // ── Duplicar tarefa para outros clientes (kanban) ────────────────────────
     const clientesData = @json($clientes->map(fn($c) => ['id' => $c->id, 'nome' => $c->nome])->values());
+    const usuariosData = @json($usuarios->map(fn($u) => ['id' => $u->id, 'nome' => $u->nome])->values());
 
     document.addEventListener('click', async function (e) {
         const btn = e.target.closest('.btn-duplicar-tarefa');
@@ -1159,6 +1160,7 @@
 
         const tarefaId = btn.dataset.tarefaId;
         const titulo = btn.dataset.tarefaTitulo;
+        const responsavelAtualId = btn.dataset.responsavelId ?? '';
 
         const clienteOptions = clientesData.map(c =>
             `<label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
@@ -1167,9 +1169,20 @@
             </label>`
         ).join('');
 
+        const usuarioOptions = usuariosData.map(u =>
+            `<option value="${u.id}" ${String(u.id) === String(responsavelAtualId) ? 'selected' : ''}>${u.nome}</option>`
+        ).join('');
+
         const { value: form, isConfirmed } = await Swal.fire({
             title: 'Duplicar tarefa',
             html: `<p class="text-sm text-gray-500 mb-3">Selecione os clientes para os quais deseja duplicar <strong>"${titulo}"</strong>:</p>
+                   <div class="text-left mb-3">
+                       <label class="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                       <select id="swal-responsavel" class="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                           <option value="">Manter o mesmo responsável</option>
+                           ${usuarioOptions}
+                       </select>
+                   </div>
                    <div class="text-left max-h-64 overflow-y-auto border rounded p-2">
                        <input type="text" id="swal-busca-cliente" placeholder="Buscar cliente..." class="w-full border rounded px-2 py-1 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-brand">
                        <div id="swal-clientes-lista">${clienteOptions}</div>
@@ -1193,7 +1206,8 @@
                     Swal.showValidationMessage('Selecione pelo menos um cliente.');
                     return false;
                 }
-                return checked;
+                const responsavelId = document.getElementById('swal-responsavel').value;
+                return { cliente_ids: checked, responsavel_id: responsavelId || null };
             },
         });
 
@@ -1207,7 +1221,7 @@
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ cliente_ids: form }),
+                body: JSON.stringify({ cliente_ids: form.cliente_ids, responsavel_id: form.responsavel_id }),
             });
 
             if (!res.ok) { throw new Error(); }
