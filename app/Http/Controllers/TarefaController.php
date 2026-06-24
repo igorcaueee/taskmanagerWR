@@ -81,7 +81,8 @@ class TarefaController extends Controller
     public function showTarefasList(Request $request): View
     {
         $usuario = Auth::user();
-        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
+        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti']);
+        $isSupervisor = $usuario->cargo === 'supervisor';
 
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
 
@@ -103,8 +104,18 @@ class TarefaController extends Controller
             ->orderBy('passou_ciclo', 'desc')
             ->orderBy('data_vencimento');
 
-        if (! $podeVerTodas) {
+        if ($isSupervisor) {
+            $query->where('departamento_id', $usuario->departamento_id);
+        } elseif (! $podeVerTodas) {
             $query->where('responsavel_id', $usuario->id);
+        }
+
+        // Para supervisor: pré-seleciona ele mesmo quando nenhum filtro de responsável foi escolhido
+        $responsavelFiltroId = null;
+        if ($isSupervisor) {
+            $responsavelFiltroId = $request->filled('responsavel_id')
+                ? $request->integer('responsavel_id')
+                : $usuario->id;
         }
 
         // Filtro por data de vencimento (substitui o filtro de ciclo quando ativo)
@@ -134,12 +145,16 @@ class TarefaController extends Controller
             });
         }
 
-        if ($request->filled('departamento_id')) {
+        if ($podeVerTodas && $request->filled('departamento_id')) {
             $query->where('departamento_id', $request->integer('departamento_id'));
         }
 
         if ($podeVerTodas && $request->filled('responsavel_id')) {
             $query->where('responsavel_id', $request->integer('responsavel_id'));
+        }
+
+        if ($isSupervisor && $responsavelFiltroId) {
+            $query->where('responsavel_id', $responsavelFiltroId);
         }
 
         if ($request->filled('recorrencia')) {
@@ -167,7 +182,11 @@ class TarefaController extends Controller
         $tarefas = $query->get()->groupBy('etapa_id');
 
         $departamentos = Departamento::orderBy('nome')->get();
-        $usuarios = $podeVerTodas ? Usuario::orderBy('nome')->get() : collect();
+        $usuarios = $podeVerTodas
+            ? Usuario::orderBy('nome')->get()
+            : ($isSupervisor
+                ? Usuario::where('departamento_id', $usuario->departamento_id)->orderBy('nome')->get()
+                : collect());
         $clientes = Cliente::orderBy('nome')->get();
         $tiposTarefa = TipoTarefa::orderBy('nome')->get();
 
@@ -179,6 +198,8 @@ class TarefaController extends Controller
             'clientes',
             'tiposTarefa',
             'podeVerTodas',
+            'isSupervisor',
+            'responsavelFiltroId',
             'cicloSelecionado',
             'cicloPrev',
             'cicloNext',

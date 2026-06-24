@@ -74,6 +74,7 @@
         {{-- Filters --}}
         <form method="GET" action="{{ route('tarefas.list') }}" id="form-filtros" class="flex flex-wrap gap-3 mb-5 items-end">
             <input type="hidden" name="ciclo_id" value="{{ $cicloSelecionado->id }}">
+            @if ($podeVerTodas)
             <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Departamento</label>
                 <select name="departamento_id" onchange="document.getElementById('form-filtros').submit()"
@@ -84,14 +85,15 @@
                     @endforeach
                 </select>
             </div>
-            @if ($podeVerTodas)
+            @endif
+            @if ($podeVerTodas || $isSupervisor)
             <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Responsável</label>
                 <select name="responsavel_id" onchange="document.getElementById('form-filtros').submit()"
                         class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     <option value="">Todos</option>
                     @foreach ($usuarios as $usr)
-                        <option value="{{ $usr->id }}" @selected(request('responsavel_id') == $usr->id)>{{ $usr->nome }}</option>
+                        <option value="{{ $usr->id }}" @selected(($responsavelFiltroId ?? request('responsavel_id')) == $usr->id)>{{ $usr->nome }}</option>
                     @endforeach
                 </select>
             </div>
