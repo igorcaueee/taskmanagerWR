@@ -9,7 +9,18 @@
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-list-check"></i> Tarefas</h1>
                 <p class="text-gray-700 dark:text-gray-300">Aqui você pode visualizar e gerenciar suas tarefas.</p>
             </div>
-            <div>
+            <div class="flex items-center gap-2">
+                @if($mostrarInativas && auth()->user()->canExcluirTarefa())
+                <form method="POST" action="{{ route('tarefas.delete-all-inativas') }}" id="form-delete-all-inativas">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded border-0 focus:outline-none hover:bg-red-700"
+                            id="btn-delete-all-inativas">
+                        <i class="fa-solid fa-trash"></i> Excluir todas inativas
+                    </button>
+                </form>
+                @endif
                 <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80"
                         data-modal-url="{{ route('tarefas.form.create') }}">
@@ -196,6 +207,37 @@
                     @endforelse
                 </tbody>
             </table>
+            @if($tarefas->hasPages())
+            <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-slate-700">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Mostrando {{ $tarefas->firstItem() }}–{{ $tarefas->lastItem() }} de {{ $tarefas->total() }} tarefa(s)
+                </p>
+                <div class="flex items-center gap-1">
+                    {{-- Anterior --}}
+                    @if($tarefas->onFirstPage())
+                        <span class="px-3 py-1.5 text-sm rounded border border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-600 cursor-default select-none">‹</span>
+                    @else
+                        <a href="{{ $tarefas->previousPageUrl() }}" class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">‹</a>
+                    @endif
+
+                    {{-- Páginas --}}
+                    @foreach($tarefas->getUrlRange(1, $tarefas->lastPage()) as $page => $url)
+                        @if($page == $tarefas->currentPage())
+                            <span class="px-3 py-1.5 text-sm rounded border border-brand bg-brand text-white select-none">{{ $page }}</span>
+                        @else
+                            <a href="{{ $url }}" class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">{{ $page }}</a>
+                        @endif
+                    @endforeach
+
+                    {{-- Próximo --}}
+                    @if($tarefas->hasMorePages())
+                        <a href="{{ $tarefas->nextPageUrl() }}" class="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">›</a>
+                    @else
+                        <span class="px-3 py-1.5 text-sm rounded border border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-600 cursor-default select-none">›</span>
+                    @endif
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -341,6 +383,26 @@
             form.submit();
         });
     });
+
+    const btnDeleteAllInativas = document.getElementById('btn-delete-all-inativas');
+    if (btnDeleteAllInativas) {
+        btnDeleteAllInativas.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Excluir todas as inativas?',
+                text: 'Todas as tarefas inativas serão excluídas permanentemente. Esta ação não pode ser desfeita.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sim, excluir todas',
+                cancelButtonText: 'Cancelar',
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    document.getElementById('form-delete-all-inativas').submit();
+                }
+            });
+        });
+    }
 
     document.querySelectorAll('.btn-delete-tarefa').forEach(function (btn) {
         btn.addEventListener('click', function () {

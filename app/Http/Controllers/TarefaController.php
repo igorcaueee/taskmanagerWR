@@ -69,7 +69,7 @@ class TarefaController extends Controller
             }
         }
 
-        $tarefas = $query->get();
+        $tarefas = $query->paginate(20)->withQueryString();
 
         $clientes = Cliente::orderBy('nome')->get();
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
@@ -476,6 +476,19 @@ class TarefaController extends Controller
         $tarefa->delete();
 
         return Redirect::back()->with('success', 'Tarefa excluída com sucesso.');
+    }
+
+    public function deleteAllInativas(): RedirectResponse
+    {
+        $usuario = Auth::user();
+        if (! $usuario->canExcluirTarefa()) {
+            abort(403);
+        }
+
+        $count = Tarefa::where('ativo', false)->count();
+        Tarefa::where('ativo', false)->delete();
+
+        return Redirect::back()->with('success', "{$count} tarefa(s) inativa(s) excluída(s) com sucesso.");
     }
 
     public function inativar(Request $request, int $id): RedirectResponse
