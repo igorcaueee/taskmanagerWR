@@ -295,25 +295,34 @@
             const form = btn.closest('form');
 
             if (recorrente) {
-                const { value: scope } = await Swal.fire({
+                const { isConfirmed, value: scope } = await Swal.fire({
                     title: 'Inativar tarefa recorrente',
-                    html: `<p class="text-sm text-gray-600 mb-4">A tarefa <strong>"${titulo}"</strong> é recorrente. O que deseja inativar?</p>`,
-                    input: 'radio',
-                    inputOptions: {
-                        'unica': 'Apenas esta ocorrência',
-                        'futuras': 'Esta e todas as futuras',
-                    },
-                    inputValue: 'unica',
+                    html: `
+                        <p class="swal2-html-container" style="font-size:0.9rem;color:#6b7280;margin-bottom:1.2rem;">
+                            A tarefa <strong>"${titulo}"</strong> é recorrente. O que deseja inativar?
+                        </p>
+                        <div style="display:flex;flex-direction:column;gap:0.6rem;text-align:left;">
+                            <label style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;border:2px solid #e5e7eb;border-radius:8px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#f97316'" onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e5e7eb'">
+                                <input type="radio" name="swal-scope" value="unica" checked style="accent-color:#f97316;width:1rem;height:1rem;flex-shrink:0;">
+                                <span style="font-size:0.95rem;color:#374151;">Apenas esta ocorrência</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;border:2px solid #e5e7eb;border-radius:8px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#f97316'" onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e5e7eb'">
+                                <input type="radio" name="swal-scope" value="futuras" style="accent-color:#f97316;width:1rem;height:1rem;flex-shrink:0;">
+                                <span style="font-size:0.95rem;color:#374151;">Esta e todas as futuras</span>
+                            </label>
+                        </div>`,
                     showCancelButton: true,
                     confirmButtonColor: '#f97316',
                     cancelButtonColor: '#6b7280',
                     confirmButtonText: 'Inativar',
                     cancelButtonText: 'Cancelar',
-                    inputValidator: (value) => {
-                        if (!value) return 'Selecione uma opção.';
+                    preConfirm: () => {
+                        const selected = document.querySelector('input[name="swal-scope"]:checked');
+                        if (!selected) { Swal.showValidationMessage('Selecione uma opção.'); return false; }
+                        return selected.value;
                     },
                 });
-                if (!scope) return;
+                if (!isConfirmed || !scope) return;
                 form.querySelector('.inativar-scope-input').value = scope;
             } else {
                 const result = await Swal.fire({
