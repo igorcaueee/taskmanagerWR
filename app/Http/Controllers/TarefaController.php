@@ -277,12 +277,14 @@ class TarefaController extends Controller
             'requer_envio_arquivo',
         ]);
 
-        $tiposComData = ! empty($data['tipo_tarefa_ids'])
+        $temTipos = ! empty($data['tipo_tarefa_ids']);
+
+        $tiposComData = $temTipos
             ? TipoTarefa::whereIn('id', $data['tipo_tarefa_ids'])->whereNotNull('data_vencimento')->count() === count($data['tipo_tarefa_ids'])
             : false;
 
         $validator = Validator::make($data, [
-            'titulo' => ['required', 'string', 'max:255'],
+            'titulo' => [$temTipos ? 'nullable' : 'required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
             'cliente_ids' => ['nullable', 'array'],
             'cliente_ids.*' => ['exists:clientes,id'],
@@ -323,7 +325,11 @@ class TarefaController extends Controller
                 $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
                     ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
                     : $dataReferencia;
-                $existe = Tarefa::where('titulo', $data['titulo'])
+                $tipoCheck = $tipoId ? $tiposMap->get($tipoId) : null;
+                $tituloCheck = ($tipoCheck && ($tipoCheck->titulo_padrao || $tipoCheck->nome))
+                    ? ($tipoCheck->titulo_padrao ?? $tipoCheck->nome)
+                    : ($data['titulo'] ?? '');
+                $existe = Tarefa::where('titulo', $tituloCheck)
                     ->where('responsavel_id', $data['responsavel_id'])
                     ->where('data_vencimento', $dataParaTipo)
                     ->where('cliente_id', $clienteId)
@@ -352,9 +358,17 @@ class TarefaController extends Controller
                     ? Carbon::parse($dataParaTipo)->addYear()->toDateString()
                     : null;
 
+                $tipo = $tipoId ? $tiposMap->get($tipoId) : null;
+                $tituloFinal = ($tipo && ($tipo->titulo_padrao || $tipo->nome))
+                    ? ($tipo->titulo_padrao ?? $tipo->nome)
+                    : ($data['titulo'] ?? '');
+                $descricaoFinal = $tipo
+                    ? ($tipo->descricao ?? $data['descricao'] ?? null)
+                    : ($data['descricao'] ?? null);
+
                 $tarefa = Tarefa::create([
-                    'titulo' => $data['titulo'],
-                    'descricao' => $data['descricao'] ?? null,
+                    'titulo' => $tituloFinal,
+                    'descricao' => $descricaoFinal,
                     'tipo_tarefa_id' => $tipoId,
                     'cliente_id' => $clienteId,
                     'departamento_id' => $departamentoId,

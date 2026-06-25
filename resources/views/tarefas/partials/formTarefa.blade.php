@@ -91,19 +91,29 @@
         </div>
         @endif
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título <span class="text-red-500">*</span></label>
-            <input name="titulo" type="text"
-                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                   value="{{ old('titulo', $isEditing ? $tarefa->titulo : '') }}"
-                   required>
+        <div id="titulo-descricao-wrapper">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título <span class="text-red-500">*</span></label>
+                <input name="titulo" id="input-titulo" type="text"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                       value="{{ old('titulo', $isEditing ? $tarefa->titulo : '') }}"
+                       {{ $isEditing ? 'required' : '' }}>
+            </div>
+
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
+                <textarea name="descricao" rows="3"
+                          class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">{{ old('descricao', $isEditing ? $tarefa->descricao : '') }}</textarea>
+            </div>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-            <textarea name="descricao" rows="3"
-                      class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">{{ old('descricao', $isEditing ? $tarefa->descricao : '') }}</textarea>
+        @if(!$isEditing)
+        <div id="titulo-descricao-tipo-hint" class="hidden p-3 rounded-lg border border-brand/30 bg-brand/5 dark:bg-brand/10">
+            <p class="text-sm text-brand dark:text-brand font-medium">
+                <i class="fa-solid fa-tag mr-1"></i> Título e descrição serão preenchidos automaticamente pelo tipo de cada tarefa.
+            </p>
         </div>
+        @endif
 
         @php
             $selectedClienteIds = $selectedClienteIds ?? old('cliente_ids', $isEditing ? $tarefa->clientes->pluck('id')->toArray() : []);
@@ -491,31 +501,45 @@ function atualizarDisplayTipoMulti() {
         display.textContent = nomes.join(', ');
         display.className = 'text-gray-900 dark:text-slate-200 truncate';
     }
-    atualizarVisibilidadeDataVencimento(checked);
+    atualizarVisibilidadeCamposTipo(checked);
 }
 
-function atualizarVisibilidadeDataVencimento(checked) {
-    const wrapper = document.getElementById('data-vencimento-wrapper');
-    const input = document.getElementById('input-data-vencimento');
-    const asterisk = document.getElementById('data-venc-asterisk');
-    const hint = document.getElementById('data-venc-tipo-hint');
-    if (!wrapper || !input) return;
+function atualizarVisibilidadeCamposTipo(checked) {
+    // --- Título e Descrição ---
+    const titDescWrapper = document.getElementById('titulo-descricao-wrapper');
+    const titDescHint = document.getElementById('titulo-descricao-tipo-hint');
+    const inputTitulo = document.getElementById('input-titulo');
 
-    // Verifica se algum tipo selecionado NÃO tem data definida (precisaria de data manual)
+    if (titDescWrapper) {
+        if (checked.length > 0) {
+            titDescWrapper.style.display = 'none';
+            if (titDescHint) titDescHint.classList.remove('hidden');
+            if (inputTitulo) inputTitulo.removeAttribute('required');
+        } else {
+            titDescWrapper.style.display = '';
+            if (titDescHint) titDescHint.classList.add('hidden');
+            if (inputTitulo) inputTitulo.setAttribute('required', '');
+        }
+    }
+
+    // --- Data de Vencimento ---
+    const dataWrapper = document.getElementById('data-vencimento-wrapper');
+    const dataInput = document.getElementById('input-data-vencimento');
+    const hint = document.getElementById('data-venc-tipo-hint');
+    if (!dataWrapper || !dataInput) return;
+
     const algumSemData = checked.some(function (c) { return !c.closest('li').dataset.dataVencimento; });
 
     if (checked.length > 0 && !algumSemData) {
-        // Todos os tipos têm data: esconde o campo
-        wrapper.querySelector('input').style.display = 'none';
-        wrapper.querySelector('label').style.display = 'none';
+        dataWrapper.querySelector('input').style.display = 'none';
+        dataWrapper.querySelector('label').style.display = 'none';
         if (hint) hint.classList.remove('hidden');
-        input.removeAttribute('required');
+        dataInput.removeAttribute('required');
     } else {
-        // Sem tipo ou algum tipo sem data: mostra o campo
-        wrapper.querySelector('input').style.display = '';
-        wrapper.querySelector('label').style.display = '';
+        dataWrapper.querySelector('input').style.display = '';
+        dataWrapper.querySelector('label').style.display = '';
         if (hint) hint.classList.add('hidden');
-        if (checked.length === 0) input.setAttribute('required', '');
+        if (checked.length === 0) dataInput.setAttribute('required', '');
     }
 }
 
