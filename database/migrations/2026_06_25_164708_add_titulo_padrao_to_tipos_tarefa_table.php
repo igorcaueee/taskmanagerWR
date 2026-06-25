@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('tipos_tarefa', 'titulo_padrao')) {
+            return;
+        }
+
         Schema::table('tipos_tarefa', function (Blueprint $table) {
             $table->string('titulo_padrao')->nullable()->after('nome');
         });
