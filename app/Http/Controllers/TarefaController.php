@@ -306,6 +306,25 @@ class TarefaController extends Controller
             ? Carbon::parse($data['data_vencimento'])->addYear()->toDateString()
             : null;
 
+        $duplicatas = [];
+        foreach ($clienteIds as $clienteId) {
+            $existe = Tarefa::where('titulo', $data['titulo'])
+                ->where('responsavel_id', $data['responsavel_id'])
+                ->where('data_vencimento', $data['data_vencimento'])
+                ->where('cliente_id', $clienteId)
+                ->where('ativo', true)
+                ->exists();
+            if ($existe) {
+                $duplicatas[] = $clienteId;
+            }
+        }
+
+        if (! empty($duplicatas)) {
+            return Redirect::back()
+                ->withInput()
+                ->withErrors(['titulo' => 'Já existe uma tarefa com esse título, responsável e data de vencimento para o(s) cliente(s) selecionado(s). Verifique se a tarefa já foi criada.']);
+        }
+
         foreach ($clienteIds as $clienteId) {
             $tarefa = Tarefa::create([
                 'titulo' => $data['titulo'],
@@ -489,6 +508,46 @@ class TarefaController extends Controller
         Tarefa::where('ativo', false)->delete();
 
         return Redirect::back()->with('success', "{$count} tarefa(s) inativa(s) excluída(s) com sucesso.");
+    }
+
+    public function contarDuplicatas(): \Illuminate\Http\JsonResponse
+    {
+        $usuario = Auth::user();
+        if (! $usuario->canExcluirTarefa()) {
+            abort(403);
+        }
+
+        $total = Tarefa::selectRaw('COUNT(*) - COUNT(DISTINCT CONCAT(titulo, "|", COALESCE(responsavel_id,""), "|", data_vencimento, "|", COALESCE(cliente_id,""))) as duplicadas')
+            ->value('duplicadas');
+
+        return response()->json(['total' => (int) $total]);
+    }
+
+    public function deletarDuplicatas(): RedirectResponse
+    {
+        $usuario = Auth::user();
+        if (! $usuario->canExcluirTarefa()) {
+            abort(403);
+        }
+
+        // Agrupa por título + responsável + data_vencimento + cliente_id, mantém o mais antigo
+        $grupos = Tarefa::selectRaw('titulo, responsavel_id, data_vencimento, cliente_id, MIN(id) as id_manter, COUNT(*) as total')
+            ->groupBy('titulo', 'responsavel_id', 'data_vencimento', 'cliente_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        $totalExcluidas = 0;
+        foreach ($grupos as $grupo) {
+            $excluidas = Tarefa::where('titulo', $grupo->titulo)
+                ->where('responsavel_id', $grupo->responsavel_id)
+                ->where('data_vencimento', $grupo->data_vencimento)
+                ->where('cliente_id', $grupo->cliente_id)
+                ->where('id', '!=', $grupo->id_manter)
+                ->delete();
+            $totalExcluidas += $excluidas;
+        }
+
+        return Redirect::back()->with('success', "{$totalExcluidas} tarefa(s) duplicada(s) excluída(s) com sucesso.");
     }
 
     public function inativar(Request $request, int $id): RedirectResponse

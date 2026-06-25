@@ -21,6 +21,17 @@
                     </button>
                 </form>
                 @endif
+                @if(auth()->user()->canExcluirTarefa())
+                <form method="POST" action="{{ route('tarefas.delete-duplicatas') }}" id="form-delete-duplicatas">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded border-0 focus:outline-none hover:bg-orange-700"
+                            id="btn-delete-duplicatas">
+                        <i class="fa-solid fa-copy"></i> Excluir duplicatas
+                    </button>
+                </form>
+                @endif
                 <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80"
                         data-modal-url="{{ route('tarefas.form.create') }}">
@@ -399,6 +410,57 @@
             }).then(function (result) {
                 if (result.isConfirmed) {
                     document.getElementById('form-delete-all-inativas').submit();
+                }
+            });
+        });
+    }
+
+    const btnDeleteDuplicatas = document.getElementById('btn-delete-duplicatas');
+    if (btnDeleteDuplicatas) {
+        btnDeleteDuplicatas.addEventListener('click', async function () {
+            btnDeleteDuplicatas.disabled = true;
+            btnDeleteDuplicatas.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
+
+            let total = null;
+            try {
+                const res = await fetch('{{ route('tarefas.count-duplicatas') }}');
+                const json = await res.json();
+                total = json.total;
+            } catch (e) {
+                // silently ignore, proceed without count
+            } finally {
+                btnDeleteDuplicatas.disabled = false;
+                btnDeleteDuplicatas.innerHTML = '<i class="fa-solid fa-copy"></i> Excluir duplicatas';
+            }
+
+            const textoContagem = total !== null
+                ? (total === 0
+                    ? 'Nenhuma tarefa duplicada foi encontrada.'
+                    : `Foram encontradas <strong>${total}</strong> tarefa(s) duplicada(s). Serão mantidas apenas as versões mais antigas (mesmo título, responsável, data e cliente).`)
+                : 'Serão mantidas apenas as versões mais antigas de cada tarefa duplicada (mesmo título, responsável, data e cliente).';
+
+            if (total === 0) {
+                Swal.fire({
+                    title: 'Nenhuma duplicata encontrada',
+                    text: 'Não há tarefas duplicadas para excluir.',
+                    icon: 'info',
+                    confirmButtonColor: '#6b7280',
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Excluir tarefas duplicadas?',
+                html: textoContagem + '<br><small style="color:#6b7280">Esta ação não pode ser desfeita.</small>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ea580c',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sim, excluir duplicatas',
+                cancelButtonText: 'Cancelar',
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    document.getElementById('form-delete-duplicatas').submit();
                 }
             });
         });

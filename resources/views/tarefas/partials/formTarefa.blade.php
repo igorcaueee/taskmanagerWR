@@ -241,7 +241,7 @@
         <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent dark:bg-transparent">
             Cancelar
         </button>
-        <button type="submit" class="px-4 py-2 bg-brand text-white rounded border-0 hover:bg-brand/80">
+        <button type="submit" id="formTarefaSubmitBtn" class="px-4 py-2 bg-brand text-white rounded border-0 hover:bg-brand/80">
             Salvar
         </button>
     </div>
@@ -255,7 +255,15 @@
     const markDirty = function () { window._modalHasChanges = true; };
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
-    form.addEventListener('submit', function () { window._modalHasChanges = false; });
+    form.addEventListener('submit', function () {
+        window._modalHasChanges = false;
+        const btn = document.getElementById('formTarefaSubmitBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+            btn.classList.add('opacity-60', 'cursor-not-allowed');
+        }
+    });
 })();
 </script>
 

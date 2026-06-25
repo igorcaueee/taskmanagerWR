@@ -165,6 +165,8 @@ Route::patch('/tarefas/{id}/etapa', [TarefaController::class, 'updateEtapa'])->n
 Route::patch('/tarefas/{id}/ciclo/proximo', [TarefaController::class, 'passarParaProximoCiclo'])->name('tarefas.ciclo.proximo')->middleware('auth');
 Route::delete('/tarefas/{id}', [TarefaController::class, 'delete'])->name('tarefas.delete')->middleware('auth');
 Route::delete('/tarefas-inativas/excluir-todas', [TarefaController::class, 'deleteAllInativas'])->name('tarefas.delete-all-inativas')->middleware('auth');
+Route::delete('/tarefas-duplicadas/excluir-todas', [TarefaController::class, 'deletarDuplicatas'])->name('tarefas.delete-duplicatas')->middleware('auth');
+Route::get('/tarefas-duplicadas/contar', [TarefaController::class, 'contarDuplicatas'])->name('tarefas.count-duplicatas')->middleware('auth');
 Route::post('/tarefas/{id}/inativar', [TarefaController::class, 'inativar'])->name('tarefas.inativar')->middleware('auth');
 Route::post('/tarefas/{id}/ativar', [TarefaController::class, 'ativar'])->name('tarefas.ativar')->middleware('auth');
 Route::post('/tarefas/{id}/duplicar', [TarefaController::class, 'duplicar'])->name('tarefas.duplicar')->middleware('auth');
