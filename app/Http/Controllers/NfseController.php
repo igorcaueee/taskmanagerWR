@@ -298,14 +298,23 @@ class NfseController extends Controller
     public function exportarExcel(Request $request)
     {
         $request->validate([
-            'xmls'   => 'required|array|min:1',
-            'xmls.*' => 'required|string',
-            'nome'   => 'nullable|string|max:100',
+            'xmls'      => 'required|array|min:1',
+            'xmls.*'    => 'required|string',
+            'nome'      => 'nullable|string|max:100',
+            'statuses'  => 'nullable|array',
         ]);
 
-        $notas = array_values(array_filter(
-            array_map(fn($xml) => NfseXmlParser::parse($xml), $request->xmls)
-        ));
+        $statuses = $request->input('statuses', []);
+
+        $notas = array_values(array_filter(array_map(function ($xml, $idx) use ($statuses) {
+            $parsed = NfseXmlParser::parse($xml);
+            if (!$parsed) return null;
+            $statusPortal = $statuses[(string) $idx] ?? null;
+            if ($statusPortal) {
+                $parsed = NfseXmlParser::overrideStatus($parsed, $statusPortal);
+            }
+            return $parsed;
+        }, $request->xmls, array_keys($request->xmls))));
 
         if (empty($notas)) {
             return response()->json(['error' => 'Nenhuma nota pôde ser parseada'], 422);

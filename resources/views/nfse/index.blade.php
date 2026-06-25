@@ -889,34 +889,35 @@
         const clienteId = selectCliente.value;
         if (!clienteId || !notasAtuais.length) return;
 
-        const selecionadas = [...tabelaNotas.querySelectorAll('.check-nota:checked')].map(cb => parseInt(cb.dataset.nsu));
-        const nsusParaExportar = selecionadas.length > 0
-            ? selecionadas
-            : notasAtuais.filter(n => n.nsu).map(n => n.nsu);
+        const selecionadasNsus = [...tabelaNotas.querySelectorAll('.check-nota:checked')].map(cb => parseInt(cb.dataset.nsu));
+        const notasParaExportar = selecionadasNsus.length > 0
+            ? notasAtuais.filter(n => selecionadasNsus.includes(n.nsu))
+            : notasAtuais.filter(n => n.xmlContent);
 
-        if (!nsusParaExportar.length) {
-            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhuma nota com NSU disponível para exportar.' });
+        if (!notasParaExportar.length) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhuma nota com XML disponível para exportar.' });
             return;
         }
 
-        const nomeEmpresa = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() ?? 'NFS-e';
+        const nomeEmpresa   = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() ?? 'NFS-e';
         const labelOriginal = document.getElementById('btnExportarExcelLabel')?.textContent ?? 'Exportar Excel';
 
-        // Monta mapa NSU → status (portal) para o servidor corrigir o cStat do XML
+        // Monta arrays paralelos de XMLs e statuses (índice → status para o servidor corrigir cStat)
+        const xmls     = notasParaExportar.map(n => n.xmlContent);
         const statuses = {};
-        notasAtuais.forEach(n => { if (n.nsu) statuses[n.nsu] = n.status ?? ''; });
+        notasParaExportar.forEach((n, i) => { statuses[i] = n.status ?? ''; });
 
         btnExportarExcel.disabled = true;
-        btnExportarExcel.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Baixando ${nsusParaExportar.length} nota(s)...`;
+        btnExportarExcel.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Gerando ${notasParaExportar.length} nota(s)...`;
 
         try {
-            const resp = await fetch('/nfse/exportar-excel-nsus', {
+            const resp = await fetch('/nfse/exportar-excel', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                 },
-                body: JSON.stringify({ cliente_id: clienteId, nsus: nsusParaExportar, nome: nomeEmpresa, statuses }),
+                body: JSON.stringify({ xmls, statuses, nome: nomeEmpresa }),
             });
 
             if (!resp.ok) {
