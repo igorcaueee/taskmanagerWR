@@ -26,6 +26,7 @@
     @endif
 
     <div class="space-y-4">
+        @if($isEditing)
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 <i class="fa-solid fa-tag mr-1 text-brand"></i> Tipo de Tarefa
@@ -37,7 +38,7 @@
                     <option value="{{ $tipo->id }}"
                             data-data-vencimento="{{ $tipo->data_vencimento ? $tipo->data_vencimento->format('Y-m-d') : '' }}"
                             data-titulo-padrao="{{ $tipo->titulo_padrao ?? '' }}"
-                            {{ old('tipo_tarefa_id', $isEditing ? $tarefa->tipo_tarefa_id : '') == $tipo->id ? 'selected' : '' }}>
+                            {{ old('tipo_tarefa_id', $tarefa->tipo_tarefa_id) == $tipo->id ? 'selected' : '' }}>
                         {{ $tipo->nome }}
                     </option>
                 @endforeach
@@ -47,6 +48,48 @@
                 Ao selecionar um tipo com data padrão, a data de vencimento será preenchida automaticamente.
             </p>
         </div>
+        @else
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <i class="fa-solid fa-tag mr-1 text-brand"></i> Tipo de Tarefa
+                <span class="text-gray-400 font-normal">(pode selecionar mais de um)</span>
+            </label>
+            <div class="relative mt-1" id="tipo-multi-wrapper">
+                <button type="button" id="tipo-multi-trigger"
+                    class="w-full flex items-center justify-between border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-left text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+                    onclick="toggleTipoMultiDropdown()">
+                    <span id="tipo-multi-display" class="text-gray-400 truncate">— Sem tipo —</span>
+                    <i class="fa-solid fa-chevron-down text-gray-400 text-xs ml-2 flex-shrink-0"></i>
+                </button>
+
+                <div id="tipo-multi-dropdown"
+                    class="absolute z-50 mt-1 w-full bg-white dark:bg-slate-700 border dark:border-slate-600 rounded shadow-lg hidden"
+                    style="max-height: 280px;">
+                    <ul id="tipo-multi-list" class="overflow-y-auto" style="max-height: 280px;">
+                        @foreach($tiposTarefa as $tipo)
+                            <li data-label="{{ $tipo->nome }}"
+                                data-data-vencimento="{{ $tipo->data_vencimento ? $tipo->data_vencimento->format('Y-m-d') : '' }}"
+                                data-titulo-padrao="{{ $tipo->titulo_padrao ?? '' }}"
+                                class="tipo-multi-option flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600"
+                                onclick="toggleTipoCheck({{ $tipo->id }}, this)">
+                                <input type="checkbox" name="tipo_tarefa_ids[]" value="{{ $tipo->id }}"
+                                    id="chk_tipo_{{ $tipo->id }}"
+                                    class="rounded border-gray-300 text-brand focus:ring-brand"
+                                    onclick="event.stopPropagation()">
+                                <label for="chk_tipo_{{ $tipo->id }}" class="cursor-pointer flex-1" onclick="event.stopPropagation(); toggleTipoCheck({{ $tipo->id }}, this.closest('li'))">
+                                    {{ $tipo->nome }}
+                                </label>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                Ao selecionar um tipo, a data e título serão preenchidos automaticamente. Com múltiplos tipos, será criada uma tarefa por tipo.
+            </p>
+        </div>
+        @endif
 
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título <span class="text-red-500">*</span></label>
@@ -172,12 +215,21 @@
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Vencimento <span class="text-red-500">*</span></label>
-                <input name="data_vencimento" type="date"
+            <div id="data-vencimento-wrapper">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Data de Vencimento
+                    @if($isEditing)<span class="text-red-500">*</span>@else<span id="data-venc-asterisk" class="text-red-500">*</span>@endif
+                </label>
+                <input name="data_vencimento" id="input-data-vencimento" type="date"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('data_vencimento', $isEditing ? $tarefa->data_vencimento->format('Y-m-d') : '') }}"
-                       required>
+                       {{ $isEditing ? 'required' : '' }}>
+                @if(!$isEditing)
+                <p id="data-venc-tipo-hint" class="text-xs text-blue-500 dark:text-blue-400 mt-1 hidden">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Cada tarefa usará a data de vencimento do seu tipo.
+                </p>
+                @endif
             </div>
 
             <div>
@@ -383,23 +435,103 @@ document.addEventListener('click', function (e) {
 
 // --- Auto-fill título e data de vencimento pelo tipo de tarefa ---
 (function () {
-    const selectTipo = document.getElementById('tipo_tarefa_id');
     const inputData = document.querySelector('[name="data_vencimento"]');
     const inputTitulo = document.querySelector('[name="titulo"]');
-    if (!selectTipo) return;
 
-    selectTipo.addEventListener('change', function () {
-        const selected = selectTipo.options[selectTipo.selectedIndex];
-        const dataVenc = selected.dataset.dataVencimento;
-        const tituloPadrao = selected.dataset.tituloPadrao;
-        if (dataVenc && inputData) {
-            inputData.value = dataVenc;
-        }
-        if (tituloPadrao && inputTitulo && !inputTitulo.value.trim()) {
-            inputTitulo.value = tituloPadrao;
-        }
+    // Modo edição: single select
+    const selectTipo = document.getElementById('tipo_tarefa_id');
+    if (selectTipo) {
+        selectTipo.addEventListener('change', function () {
+            const selected = selectTipo.options[selectTipo.selectedIndex];
+            const dataVenc = selected.dataset.dataVencimento;
+            const tituloPadrao = selected.dataset.tituloPadrao;
+            if (dataVenc && inputData) inputData.value = dataVenc;
+            if (tituloPadrao && inputTitulo && !inputTitulo.value.trim()) inputTitulo.value = tituloPadrao;
+        });
+        return;
+    }
+
+    // Modo criação: multi-select — auto-fill somente quando exatamente 1 tipo estiver selecionado
+    document.addEventListener('change', function (e) {
+        if (!e.target.name || e.target.name !== 'tipo_tarefa_ids[]') return;
+        const checados = Array.from(document.querySelectorAll('#tipo-multi-list input[type="checkbox"]:checked'));
+        if (checados.length !== 1) return;
+        const li = checados[0].closest('li');
+        if (!li) return;
+        const dataVenc = li.dataset.dataVencimento;
+        const tituloPadrao = li.dataset.tituloPadrao;
+        if (dataVenc && inputData) inputData.value = dataVenc;
+        if (tituloPadrao && inputTitulo && !inputTitulo.value.trim()) inputTitulo.value = tituloPadrao;
     });
 }());
+
+// --- Multi-select tipo de tarefa (create mode) ---
+function toggleTipoMultiDropdown() {
+    const dropdown = document.getElementById('tipo-multi-dropdown');
+    if (!dropdown) return;
+    dropdown.classList.toggle('hidden');
+}
+
+function toggleTipoCheck(id, li) {
+    const chk = document.getElementById('chk_tipo_' + id);
+    if (!chk) return;
+    chk.checked = !chk.checked;
+    atualizarDisplayTipoMulti();
+}
+
+function atualizarDisplayTipoMulti() {
+    const checked = Array.from(document.querySelectorAll('#tipo-multi-list input[type="checkbox"]:checked'));
+    const display = document.getElementById('tipo-multi-display');
+    if (!display) return;
+    if (checked.length === 0) {
+        display.textContent = '— Sem tipo —';
+        display.className = 'text-gray-400 truncate';
+    } else {
+        const nomes = checked.map(function (c) { return c.closest('li').dataset.label; });
+        display.textContent = nomes.join(', ');
+        display.className = 'text-gray-900 dark:text-slate-200 truncate';
+    }
+    atualizarVisibilidadeDataVencimento(checked);
+}
+
+function atualizarVisibilidadeDataVencimento(checked) {
+    const wrapper = document.getElementById('data-vencimento-wrapper');
+    const input = document.getElementById('input-data-vencimento');
+    const asterisk = document.getElementById('data-venc-asterisk');
+    const hint = document.getElementById('data-venc-tipo-hint');
+    if (!wrapper || !input) return;
+
+    // Verifica se algum tipo selecionado NÃO tem data definida (precisaria de data manual)
+    const algumSemData = checked.some(function (c) { return !c.closest('li').dataset.dataVencimento; });
+
+    if (checked.length > 0 && !algumSemData) {
+        // Todos os tipos têm data: esconde o campo
+        wrapper.querySelector('input').style.display = 'none';
+        wrapper.querySelector('label').style.display = 'none';
+        if (hint) hint.classList.remove('hidden');
+        input.removeAttribute('required');
+    } else {
+        // Sem tipo ou algum tipo sem data: mostra o campo
+        wrapper.querySelector('input').style.display = '';
+        wrapper.querySelector('label').style.display = '';
+        if (hint) hint.classList.add('hidden');
+        if (checked.length === 0) input.setAttribute('required', '');
+    }
+}
+
+document.addEventListener('change', function (e) {
+    if (e.target.name === 'tipo_tarefa_ids[]') {
+        atualizarDisplayTipoMulti();
+    }
+});
+
+document.addEventListener('click', function (e) {
+    const wrapper = document.getElementById('tipo-multi-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        const dd = document.getElementById('tipo-multi-dropdown');
+        if (dd) dd.classList.add('hidden');
+    }
+});
 
 // --- Departamento por responsável ---
 (function () {

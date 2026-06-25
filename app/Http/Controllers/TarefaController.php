@@ -272,21 +272,26 @@ class TarefaController extends Controller
     public function save(Request $request): RedirectResponse
     {
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_ids', 'tipo_tarefa_id',
+            'titulo', 'descricao', 'cliente_ids', 'tipo_tarefa_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
             'requer_envio_arquivo',
         ]);
+
+        $tiposComData = ! empty($data['tipo_tarefa_ids'])
+            ? TipoTarefa::whereIn('id', $data['tipo_tarefa_ids'])->whereNotNull('data_vencimento')->count() === count($data['tipo_tarefa_ids'])
+            : false;
 
         $validator = Validator::make($data, [
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
             'cliente_ids' => ['nullable', 'array'],
             'cliente_ids.*' => ['exists:clientes,id'],
-            'tipo_tarefa_id' => ['nullable', 'exists:tipos_tarefa,id'],
+            'tipo_tarefa_ids' => ['nullable', 'array'],
+            'tipo_tarefa_ids.*' => ['exists:tipos_tarefa,id'],
             'etapa_id' => ['required', 'exists:etapas,id'],
             'responsavel_id' => ['required', 'exists:usuarios,id'],
             'supervisor_id' => ['required', 'exists:usuarios,id'],
-            'data_vencimento' => ['required', 'date'],
+            'data_vencimento' => [$tiposComData ? 'nullable' : 'required', 'date'],
             'prioridade' => ['required', 'integer', 'min:1', 'max:5'],
             'frequencia' => ['nullable', 'in:nenhuma,semanal,mensal,trimestral,semestral,anual'],
         ]);
@@ -300,79 +305,99 @@ class TarefaController extends Controller
         $departamentoId = Usuario::find($data['responsavel_id'] ?? null)?->departamento_id
             ?? Departamento::orderBy('id')->value('id');
 
-        $cicloId = Ciclo::findOrCreateForDate(Carbon::parse($data['data_vencimento']))->id;
-
         $clienteIds = ! empty($data['cliente_ids']) ? $data['cliente_ids'] : [null];
+        $tipoIds    = ! empty($data['tipo_tarefa_ids']) ? $data['tipo_tarefa_ids'] : [null];
 
-        $dataFimRecorrencia = $frequencia !== 'nenhuma'
-            ? Carbon::parse($data['data_vencimento'])->addYear()->toDateString()
-            : null;
+        // Carrega os tipos selecionados para usar suas datas individuais
+        $tiposMap = ! empty($data['tipo_tarefa_ids'])
+            ? TipoTarefa::whereIn('id', $data['tipo_tarefa_ids'])->get()->keyBy('id')
+            : collect();
+
+        // Data de referência: usa a do form; se não houver (todos os tipos têm data), usa a do primeiro tipo
+        $dataReferencia = $data['data_vencimento']
+            ?? ($tiposMap->first()?->data_vencimento?->format('Y-m-d') ?? now()->toDateString());
 
         $duplicatas = [];
         foreach ($clienteIds as $clienteId) {
-            $existe = Tarefa::where('titulo', $data['titulo'])
-                ->where('responsavel_id', $data['responsavel_id'])
-                ->where('data_vencimento', $data['data_vencimento'])
-                ->where('cliente_id', $clienteId)
-                ->where('ativo', true)
-                ->exists();
-            if ($existe) {
-                $duplicatas[] = $clienteId;
+            foreach ($tipoIds as $tipoId) {
+                $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
+                    ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
+                    : $dataReferencia;
+                $existe = Tarefa::where('titulo', $data['titulo'])
+                    ->where('responsavel_id', $data['responsavel_id'])
+                    ->where('data_vencimento', $dataParaTipo)
+                    ->where('cliente_id', $clienteId)
+                    ->where('tipo_tarefa_id', $tipoId)
+                    ->where('ativo', true)
+                    ->exists();
+                if ($existe) {
+                    $duplicatas[] = ['cliente_id' => $clienteId, 'tipo_id' => $tipoId];
+                }
             }
         }
 
         if (! empty($duplicatas)) {
             return Redirect::back()
                 ->withInput()
-                ->withErrors(['titulo' => 'Já existe uma tarefa com esse título, responsável e data de vencimento para o(s) cliente(s) selecionado(s). Verifique se a tarefa já foi criada.']);
+                ->withErrors(['titulo' => 'Já existe uma tarefa com esse título, responsável e data de vencimento para o(s) cliente(s) e tipo(s) selecionado(s). Verifique se a tarefa já foi criada.']);
         }
 
         foreach ($clienteIds as $clienteId) {
-            $tarefa = Tarefa::create([
-                'titulo' => $data['titulo'],
-                'descricao' => $data['descricao'] ?? null,
-                'tipo_tarefa_id' => $data['tipo_tarefa_id'] ?? null,
-                'cliente_id' => $clienteId,
-                'departamento_id' => $departamentoId,
-                'etapa_id' => $data['etapa_id'],
-                'responsavel_id' => $data['responsavel_id'] ?? null,
-                'supervisor_id' => $data['supervisor_id'] ?? null,
-                'criado_por' => Auth::id(),
-                'data_vencimento' => $data['data_vencimento'],
-                'prioridade' => $data['prioridade'],
-                'ciclo_id' => $cicloId,
-                'frequencia' => $frequencia,
-                'recorrente' => $frequencia !== 'nenhuma',
-                'data_fim_recorrencia' => $dataFimRecorrencia,
-                'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
-            ]);
+            foreach ($tipoIds as $tipoId) {
+                $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
+                    ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
+                    : $dataReferencia;
+                $cicloParaTipo = Ciclo::findOrCreateForDate(Carbon::parse($dataParaTipo))->id;
+                $dataFimParaTipo = $frequencia !== 'nenhuma'
+                    ? Carbon::parse($dataParaTipo)->addYear()->toDateString()
+                    : null;
 
-            if ($clienteId !== null) {
-                $tarefa->clientes()->sync([$clienteId]);
-            }
+                $tarefa = Tarefa::create([
+                    'titulo' => $data['titulo'],
+                    'descricao' => $data['descricao'] ?? null,
+                    'tipo_tarefa_id' => $tipoId,
+                    'cliente_id' => $clienteId,
+                    'departamento_id' => $departamentoId,
+                    'etapa_id' => $data['etapa_id'],
+                    'responsavel_id' => $data['responsavel_id'] ?? null,
+                    'supervisor_id' => $data['supervisor_id'] ?? null,
+                    'criado_por' => Auth::id(),
+                    'data_vencimento' => $dataParaTipo,
+                    'prioridade' => $data['prioridade'],
+                    'ciclo_id' => $cicloParaTipo,
+                    'frequencia' => $frequencia,
+                    'recorrente' => $frequencia !== 'nenhuma',
+                    'data_fim_recorrencia' => $dataFimParaTipo,
+                    'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
+                ]);
 
-            if ($frequencia !== 'nenhuma') {
-                $this->gerarOcorrenciasParaUmAno($tarefa, Carbon::parse($dataFimRecorrencia));
-            }
+                if ($clienteId !== null) {
+                    $tarefa->clientes()->sync([$clienteId]);
+                }
 
-            // Notifica o colaborador quando recebe uma tarefa não-recorrente de outro usuário
-            $responsavelId = $data['responsavel_id'] ?? null;
-            if ($frequencia === 'nenhuma' && $responsavelId && (int) $responsavelId !== (int) Auth::id()) {
-                try {
-                    $criador = Auth::user();
-                    Notificacao::create([
-                        'usuario_id' => $responsavelId,
-                        'tipo'       => 'tarefa_atribuida',
-                        'mensagem'   => "{$criador->nome} atribuiu a tarefa \"{$data['titulo']}\" a você.",
-                        'tarefa_id'  => $tarefa->id,
-                    ]);
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error('Falha ao criar notificação: ' . $e->getMessage());
+                if ($frequencia !== 'nenhuma') {
+                    $this->gerarOcorrenciasParaUmAno($tarefa, Carbon::parse($dataFimParaTipo));
+                }
+
+                // Notifica o colaborador quando recebe uma tarefa não-recorrente de outro usuário
+                $responsavelId = $data['responsavel_id'] ?? null;
+                if ($frequencia === 'nenhuma' && $responsavelId && (int) $responsavelId !== (int) Auth::id()) {
+                    try {
+                        $criador = Auth::user();
+                        Notificacao::create([
+                            'usuario_id' => $responsavelId,
+                            'tipo'       => 'tarefa_atribuida',
+                            'mensagem'   => "{$criador->nome} atribuiu a tarefa \"{$data['titulo']}\" a você.",
+                            'tarefa_id'  => $tarefa->id,
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::error('Falha ao criar notificação: ' . $e->getMessage());
+                    }
                 }
             }
         }
 
-        $count = count($clienteIds);
+        $count = count($clienteIds) * count($tipoIds);
         $mensagem = $count > 1
             ? "{$count} tarefas criadas com sucesso."
             : 'Tarefa criada com sucesso.';
