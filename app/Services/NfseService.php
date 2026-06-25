@@ -34,7 +34,7 @@ class NfseService
     public function buscarPorPeriodo(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
-        $cnpj     = preg_replace('/\D/', '', $certificado->cliente->cpfcnpj ?? '');
+        $cnpj     = preg_replace('/[.\-\/\s]/', '', $certificado->cliente->cpfcnpj ?? '');
         $base     = $this->baseUrl($certificado);
 
         // Extrai PEM uma única vez — reutilizado em todos os lotes do loop
@@ -615,7 +615,7 @@ class NfseService
         $remessa = htmlspecialchars(
             '<ConsultarNfseServicoPrestadoEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">'
             . '<Prestador>'
-            .   '<CpfCnpj><Cnpj>' . preg_replace('/\D/', '', $cnpjPrestador) . '</Cnpj></CpfCnpj>'
+            .   '<CpfCnpj><Cnpj>' . preg_replace('/[.\-\/\s]/', '', $cnpjPrestador) . '</Cnpj></CpfCnpj>'
             .   '<InscricaoMunicipal>' . htmlspecialchars($imPrestador) . '</InscricaoMunicipal>'
             . '</Prestador>'
             . '<NumeroNfse>' . htmlspecialchars($numero) . '</NumeroNfse>'

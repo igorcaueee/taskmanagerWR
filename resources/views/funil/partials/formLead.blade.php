@@ -359,16 +359,17 @@
     if (!selectTipo) { return; }
 
     function applyMask(value, tipo) {
-        const digits = value.replace(/\D/g, '');
-
         if (tipo === '1') {
-            return digits
-                .slice(0, 14)
-                .replace(/^(\d{2})(\d)/, '$1.$2')
-                .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-                .replace(/\.(\d{3})(\d)/, '.$1/$2')
-                .replace(/(\d{4})(\d)/, '$1-$2');
+            // CNPJ alfanumérico: AA.AAA.AAA/AAAA-AA
+            const chars = value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 14);
+            return chars
+                .replace(/^([A-Z0-9]{2})([A-Z0-9])/, '$1.$2')
+                .replace(/^([A-Z0-9]{2})\.([A-Z0-9]{3})([A-Z0-9])/, '$1.$2.$3')
+                .replace(/\.([A-Z0-9]{3})([A-Z0-9])/, '.$1/$2')
+                .replace(/([A-Z0-9]{4})([A-Z0-9])/, '$1-$2');
         } else {
+            // CPF: 000.000.000-00
+            const digits = value.replace(/\D/g, '');
             return digits
                 .slice(0, 11)
                 .replace(/^(\d{3})(\d)/, '$1.$2')
@@ -382,7 +383,7 @@
 
         if (tipo === '1') {
             labelCpfCnpj.textContent = 'CNPJ';
-            inputCpfCnpj.placeholder = '00.000.000/0000-00';
+            inputCpfCnpj.placeholder = '00.000.000/0000-00 ou AA.AAA.AAA/AAAA-AA';
             inputCpfCnpj.maxLength = 18;
         } else {
             labelCpfCnpj.textContent = 'CPF';

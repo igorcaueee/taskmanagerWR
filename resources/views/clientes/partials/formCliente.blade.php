@@ -489,18 +489,17 @@
     const labelCpfCnpj = document.getElementById('label-cpfcnpj');
 
     function applyMask(value, tipo) {
-        const digits = value.replace(/\D/g, '');
-
         if (tipo === '1') {
-            // CNPJ: 00.000.000/0000-00
-            return digits
-                .slice(0, 14)
-                .replace(/^(\d{2})(\d)/, '$1.$2')
-                .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-                .replace(/\.(\d{3})(\d)/, '.$1/$2')
-                .replace(/(\d{4})(\d)/, '$1-$2');
+            // CNPJ alfanumérico: AA.AAA.AAA/AAAA-AA
+            const chars = value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 14);
+            return chars
+                .replace(/^([A-Z0-9]{2})([A-Z0-9])/, '$1.$2')
+                .replace(/^([A-Z0-9]{2})\.([A-Z0-9]{3})([A-Z0-9])/, '$1.$2.$3')
+                .replace(/\.([A-Z0-9]{3})([A-Z0-9])/, '.$1/$2')
+                .replace(/([A-Z0-9]{4})([A-Z0-9])/, '$1-$2');
         } else {
             // CPF: 000.000.000-00
+            const digits = value.replace(/\D/g, '');
             return digits
                 .slice(0, 11)
                 .replace(/^(\d{3})(\d)/, '$1.$2')
@@ -517,7 +516,7 @@
 
         if (tipo === '1') {
             labelCpfCnpj.textContent = 'CNPJ';
-            inputCpfCnpj.placeholder = '00.000.000/0000-00';
+            inputCpfCnpj.placeholder = '00.000.000/0000-00 ou AA.AAA.AAA/AAAA-AA';
             inputCpfCnpj.maxLength = 18;
             regimeWrapper.classList.remove('hidden');
             if (selectRegime) { selectRegime.required = true; }
@@ -535,23 +534,23 @@
     selectTipo.addEventListener('change', updateField);
 
     inputCpfCnpj.addEventListener('input', function () {
-        // Count digits before cursor so we can restore position after masking
-        const digitsBeforeCursor = this.value.slice(0, this.selectionStart).replace(/\D/g, '').length;
+        // Count alphanumeric chars before cursor so we can restore position after masking
+        const charsBeforeCursor = this.value.slice(0, this.selectionStart).replace(/[^A-Z0-9]/gi, '').length;
         this.value = applyMask(this.value, selectTipo.value);
 
-        // Walk the masked value and find the position after the same number of digits
-        let digits = 0;
+        // Walk the masked value and find the position after the same number of alphanumeric chars
+        let count = 0;
         let newPos = this.value.length;
         for (let i = 0; i < this.value.length; i++) {
-            if (/\d/.test(this.value[i])) {
-                digits++;
+            if (/[A-Z0-9]/i.test(this.value[i])) {
+                count++;
             }
-            if (digits === digitsBeforeCursor) {
+            if (count === charsBeforeCursor) {
                 newPos = i + 1;
                 break;
             }
         }
-        if (digitsBeforeCursor === 0) { newPos = 0; }
+        if (charsBeforeCursor === 0) { newPos = 0; }
         this.setSelectionRange(newPos, newPos);
     });
 
