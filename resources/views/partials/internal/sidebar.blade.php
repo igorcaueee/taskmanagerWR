@@ -35,8 +35,10 @@
 
             <div id="submenu-cadastros" class="hidden pl-3 mt-1 space-y-1">
                 <a href="/clientes" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-regular fa-building"></i> Clientes</a>
+                @if (auth()->user()?->canVerProdutosPossibilidades())
                 <a href="/produtos" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
                 <a href="/possibilidades" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-regular fa-lightbulb"></i> Possibilidades</a>
+                @endif
                 <a href="/tarefas" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
                 <a href="{{ route('tipos-tarefa.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-tags"></i> Tipos de Tarefa</a>
                 @if (auth()->user()?->canVerColaboradores())
@@ -57,6 +59,7 @@
             </div>
         </div>
         @endif
+        @if (auth()->user()?->canVerRelatorios())
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-relatorios">
                 <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-chart-bar"></i> Relatórios</span>
@@ -74,5 +77,6 @@
                 <a href="{{ route('relatorios.geolocalizacao') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-map-location-dot"></i> Geolocalização</a>
             </div>
         </div>
+        @endif
     </nav>
 </div>

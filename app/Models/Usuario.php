@@ -183,4 +183,16 @@ class Usuario extends Authenticatable
     {
         return in_array($this->cargo, ['diretor', 'ti']);
     }
+
+    // Assistente e Auxiliar não veem o menu de Relatórios
+    public function canVerRelatorios(): bool
+    {
+        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+    }
+
+    // Assistente e Auxiliar não veem Produtos e Possibilidades no menu Cadastros
+    public function canVerProdutosPossibilidades(): bool
+    {
+        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+    }
 }
