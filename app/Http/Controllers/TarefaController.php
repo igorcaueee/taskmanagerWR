@@ -75,7 +75,9 @@ class TarefaController extends Controller
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();
         $usuarios = $podeVerTodas ? Usuario::orderBy('nome')->get() : collect();
 
-        return view('tarefas.home', compact('tarefas', 'clientes', 'etapas', 'usuarios', 'podeVerTodas', 'mostrarInativas'));
+        $tiposTarefa = TipoTarefa::orderBy('nome')->get();
+
+        return view('tarefas.home', compact('tarefas', 'clientes', 'etapas', 'usuarios', 'podeVerTodas', 'mostrarInativas', 'tiposTarefa'));
     }
 
     public function showTarefasList(Request $request): View
@@ -845,10 +847,11 @@ class TarefaController extends Controller
     {
         $tarefa = Tarefa::findOrFail($id);
 
-        $validator = Validator::make($request->only('cliente_ids', 'responsavel_id'), [
+        $validator = Validator::make($request->only('cliente_ids', 'responsavel_id', 'tipo_tarefa_id'), [
             'cliente_ids' => ['required', 'array', 'min:1'],
             'cliente_ids.*' => ['exists:clientes,id'],
             'responsavel_id' => ['nullable', 'exists:usuarios,id'],
+            'tipo_tarefa_id' => ['nullable', 'exists:tipos_tarefa,id'],
         ]);
 
         if ($validator->fails()) {
@@ -857,13 +860,14 @@ class TarefaController extends Controller
 
         $clienteIds = $request->input('cliente_ids');
         $responsavelId = $request->input('responsavel_id') ?? $tarefa->responsavel_id;
+        $tipoTarefaId = $request->input('tipo_tarefa_id') ?? $tarefa->tipo_tarefa_id;
         $count = 0;
 
         foreach ($clienteIds as $clienteId) {
             $nova = Tarefa::create([
                 'titulo' => $tarefa->titulo,
                 'descricao' => $tarefa->descricao,
-                'tipo_tarefa_id' => $tarefa->tipo_tarefa_id,
+                'tipo_tarefa_id' => $tipoTarefaId,
                 'cliente_id' => $clienteId,
                 'departamento_id' => $tarefa->departamento_id,
                 'etapa_id' => $tarefa->etapa_id,

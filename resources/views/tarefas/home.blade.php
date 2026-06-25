@@ -168,7 +168,8 @@
                                             title="Duplicar para outros clientes"
                                             data-tarefa-id="{{ $tarefa->id }}"
                                             data-tarefa-titulo="{{ $tarefa->titulo }}"
-                                            data-responsavel-id="{{ $tarefa->responsavel_id ?? '' }}">
+                                            data-responsavel-id="{{ $tarefa->responsavel_id ?? '' }}"
+                                            data-tipo-tarefa-id="{{ $tarefa->tipo_tarefa_id ?? '' }}">
                                         <i class="fa-solid fa-copy"></i>
                                     </button>
                                     @endif
@@ -257,12 +258,14 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const clientesData = @json($clientes->map(fn($c) => ['id' => $c->id, 'nome' => $c->nome])->values());
     const usuariosData = @json($usuarios->map(fn($u) => ['id' => $u->id, 'nome' => $u->nome])->values());
+    const tiposTarefaData = @json($tiposTarefa->map(fn($t) => ['id' => $t->id, 'nome' => $t->nome])->values());
 
     document.querySelectorAll('.btn-duplicar-tarefa').forEach(function (btn) {
         btn.addEventListener('click', async function () {
             const tarefaId = btn.dataset.tarefaId;
             const titulo = btn.dataset.tarefaTitulo;
             const responsavelAtualId = btn.dataset.responsavelId ?? '';
+            const tipoTarefaAtualId = btn.dataset.tipoTarefaId ?? '';
 
             const clienteOptions = clientesData.map(c =>
                 `<label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
@@ -275,9 +278,20 @@
                 `<option value="${u.id}" ${String(u.id) === String(responsavelAtualId) ? 'selected' : ''}>${u.nome}</option>`
             ).join('');
 
+            const tipoOptions = tiposTarefaData.map(t =>
+                `<option value="${t.id}" ${String(t.id) === String(tipoTarefaAtualId) ? 'selected' : ''}>${t.nome}</option>`
+            ).join('');
+
             const { value: form, isConfirmed } = await Swal.fire({
                 title: 'Duplicar tarefa',
                 html: `<p class="text-sm text-gray-500 mb-3">Selecione os clientes para os quais deseja duplicar <strong>"${titulo}"</strong>:</p>
+                       <div class="text-left mb-3">
+                           <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                           <select id="swal-tipo" class="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                               <option value="">Manter o mesmo tipo</option>
+                               ${tipoOptions}
+                           </select>
+                       </div>
                        <div class="text-left mb-3">
                            <label class="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
                            <select id="swal-responsavel" class="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
@@ -309,7 +323,8 @@
                         return false;
                     }
                     const responsavelId = document.getElementById('swal-responsavel').value;
-                    return { cliente_ids: checked, responsavel_id: responsavelId || null };
+                    const tipoId = document.getElementById('swal-tipo').value;
+                    return { cliente_ids: checked, responsavel_id: responsavelId || null, tipo_tarefa_id: tipoId || null };
                 },
             });
 
@@ -323,7 +338,7 @@
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({ cliente_ids: form.cliente_ids, responsavel_id: form.responsavel_id }),
+                    body: JSON.stringify({ cliente_ids: form.cliente_ids, responsavel_id: form.responsavel_id, tipo_tarefa_id: form.tipo_tarefa_id }),
                 });
 
                 if (!res.ok) { throw new Error(); }
