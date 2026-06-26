@@ -23,10 +23,7 @@ use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\TipoTarefaController;
-use App\Http\Controllers\ContaAzulController;
-use App\Http\Controllers\FinanceiroController;
 use App\Http\Controllers\NfseController;
-use App\Http\Controllers\ProdutoFinanceiroController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
@@ -244,34 +241,6 @@ Route::get('/ideias/{id}/form', [IdeiaController::class, 'formEdit'])->name('ide
 Route::post('/ideias/save', [IdeiaController::class, 'store'])->name('ideias.store')->middleware('auth');
 Route::patch('/ideias/{id}/status', [IdeiaController::class, 'updateStatus'])->name('ideias.update-status')->middleware('auth');
 Route::delete('/ideias/{id}', [IdeiaController::class, 'destroy'])->name('ideias.destroy')->middleware('auth');
-
-// ─── Financeiro + Conta Azul ──────────────────────────────────────────────────
-Route::middleware('auth')->group(function () {
-    // OAuth2 callback (sem prefixo de empresa)
-    Route::get('/conta-azul/callback', [ContaAzulController::class, 'callback'])->name('conta-azul.callback');
-
-    // Ações por empresa
-    Route::get('/clientes/{cliente}/conta-azul/conectar', [ContaAzulController::class, 'redirect'])->name('conta-azul.redirect');
-    Route::post('/clientes/{cliente}/conta-azul/sincronizar', [ContaAzulController::class, 'sincronizarAgora'])->name('conta-azul.sincronizar');
-    Route::delete('/clientes/{cliente}/conta-azul/desconectar', [ContaAzulController::class, 'desconectar'])->name('conta-azul.desconectar');
-
-    // Dashboard financeiro
-    Route::prefix('financeiro')->name('financeiro.')->group(function () {
-        Route::get('/',           [FinanceiroController::class, 'dashboard'])->name('dashboard');
-        Route::get('/lancamentos', [FinanceiroController::class, 'lancamentos'])->name('lancamentos');
-        Route::get('/contas',      [FinanceiroController::class, 'contas'])->name('contas');
-
-        // Produtos financeiros
-        Route::prefix('produtos')->name('produtos.')->group(function () {
-            Route::get('/',                            [ProdutoFinanceiroController::class, 'index'])->name('index');
-            Route::get('/criar',                       [ProdutoFinanceiroController::class, 'create'])->name('create');
-            Route::post('/',                           [ProdutoFinanceiroController::class, 'store'])->name('store');
-            Route::get('/{produtoFinanceiro}/editar',  [ProdutoFinanceiroController::class, 'edit'])->name('edit');
-            Route::put('/{produtoFinanceiro}',         [ProdutoFinanceiroController::class, 'update'])->name('update');
-            Route::delete('/{produtoFinanceiro}',      [ProdutoFinanceiroController::class, 'destroy'])->name('destroy');
-        });
-    });
-});
 
 // NFS-e Portal Nacional
 Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {

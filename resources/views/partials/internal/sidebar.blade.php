@@ -59,22 +59,6 @@
             </div>
         </div>
         @endif
-        @if (auth()->user()?->canGerenciarFinanceiro())
-        <div>
-            <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-financeiro">
-                <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-chart-pie" style="color:#0084aa"></i> Financeiro</span>
-                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
-            <div id="submenu-financeiro" class="hidden pl-3 mt-1 space-y-1">
-                <a href="{{ route('financeiro.dashboard') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
-                <a href="{{ route('financeiro.lancamentos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-invoice-dollar"></i> Lançamentos</a>
-                <a href="{{ route('financeiro.contas') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-building-columns"></i> Contas Financeiras</a>
-                <a href="{{ route('financeiro.produtos.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-boxes-stacked"></i> Produtos</a>
-            </div>
-        </div>
-        @endif
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-apps">
                 <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-table-cells-large"></i> Apps</span>

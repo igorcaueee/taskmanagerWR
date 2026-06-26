@@ -7,8 +7,6 @@ use App\Http\Middleware\EnsureDiretor;
 use App\Http\Middleware\EnsureEmailMarketing;
 use App\Http\Middleware\PortalAuth;
 use App\Http\Middleware\SecurityHeaders;
-use App\Jobs\SincronizarEmpresaContaAzul;
-use App\Models\Cliente;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,13 +20,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('certificados:verificar')->dailyAt('08:00');
-
-        // Sincroniza Conta Azul a cada 2 horas para empresas conectadas
-        $schedule->call(function () {
-            Cliente::where('conta_azul_conectada', true)->each(
-                fn (Cliente $c) => SincronizarEmpresaContaAzul::dispatch($c->id)
-            );
-        })->everyTwoHours()->name('conta-azul:sync-all')->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');

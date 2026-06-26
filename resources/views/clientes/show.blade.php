@@ -667,9 +667,6 @@
     </script>
     @endpush
 
-    {{-- Card de integração Conta Azul --}}
-    @include('partials.financeiro.conta-azul-card')
-
     @if(session('success') || session('error'))
         @push('scripts')
         <script type="module">

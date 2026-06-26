@@ -26,7 +26,7 @@ class LeadFactory extends Factory
             'faturamento' => $this->faker->optional()->randomFloat(2, 10000, 500000),
             'servico' => $this->faker->optional()->words(3, true),
             'honorario' => $this->faker->optional()->randomFloat(2, 500, 10000),
-            'mensagem' => $this->faker->optional()->sentence(),
+            'possibilidade' => $this->faker->optional()->sentence(),
             'etapa_funil_id' => EtapaFunil::inRandomOrder()->first()?->id ?? 1,
             'responsavel_id' => null,
             'origem' => $this->faker->randomElement(['manual', 'formulario']),
