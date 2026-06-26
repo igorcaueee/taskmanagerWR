@@ -112,12 +112,17 @@ class TarefaController extends Controller
             $query->where('responsavel_id', $usuario->id);
         }
 
-        // Para supervisor: pré-seleciona ele mesmo quando nenhum filtro de responsável foi escolhido
+        // Para supervisor: pré-seleciona ele mesmo na primeira visita (sem parâmetro na URL).
+        // Se o parâmetro existe mas vazio (""), o usuário escolheu "Todos" explicitamente.
         $responsavelFiltroId = null;
         if ($isSupervisor) {
-            $responsavelFiltroId = $request->filled('responsavel_id')
-                ? $request->integer('responsavel_id')
-                : $usuario->id;
+            if ($request->has('responsavel_id')) {
+                $responsavelFiltroId = $request->filled('responsavel_id')
+                    ? $request->integer('responsavel_id')
+                    : null;
+            } else {
+                $responsavelFiltroId = $usuario->id;
+            }
         }
 
         // Filtro por data de vencimento (substitui o filtro de ciclo quando ativo)
