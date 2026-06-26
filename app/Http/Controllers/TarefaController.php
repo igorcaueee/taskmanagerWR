@@ -338,7 +338,6 @@ class TarefaController extends Controller
                     ->where('responsavel_id', $data['responsavel_id'])
                     ->where('data_vencimento', $dataParaTipo)
                     ->where('cliente_id', $clienteId)
-                    ->where('tipo_tarefa_id', $tipoId)
                     ->where('ativo', true)
                     ->exists();
                 if ($existe) {
