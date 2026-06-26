@@ -51,6 +51,7 @@ class RelatorioController extends Controller
         };
 
         $baseQuery = fn () => Tarefa::query()
+            ->where('ativo', true)
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->tap($aplicarFiltros);
 
@@ -67,6 +68,7 @@ class RelatorioController extends Controller
             ->count();
 
         $concluidasEstaSemana = Tarefa::query()
+            ->where('ativo', true)
             ->tap($aplicarFiltros)
             ->whereNotNull('data_conclusao')
             ->whereBetween('data_conclusao', [now()->startOfWeek(), now()->endOfWeek()])
@@ -153,10 +155,12 @@ class RelatorioController extends Controller
             $evolucaoMensal->push([
                 'mes' => $mes->translatedFormat('M/Y'),
                 'total' => Tarefa::query()
+                    ->where('ativo', true)
                     ->whereYear('data_vencimento', $mes->year)
                     ->whereMonth('data_vencimento', $mes->month)
                     ->count(),
                 'concluidas' => Tarefa::query()
+                    ->where('ativo', true)
                     ->whereNotNull('data_conclusao')
                     ->whereYear('data_conclusao', $mes->year)
                     ->whereMonth('data_conclusao', $mes->month)
@@ -176,6 +180,7 @@ class RelatorioController extends Controller
         $direcaoOrdem   = $request->input('direcao', 'asc') === 'desc' ? 'desc' : 'asc';
 
         $tarefas = Tarefa::query()
+            ->where('ativo', true)
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->tap($aplicarFiltros)
             ->with(['responsavel', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
@@ -257,6 +262,7 @@ class RelatorioController extends Controller
 
         // Clientes com mais tarefas no período
         $clientesComMaisTarefas = Tarefa::query()
+            ->where('ativo', true)
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->whereHas('cliente', $aplicarFiltrosCliente)
             ->selectRaw('cliente_id, count(*) as total')
@@ -272,6 +278,7 @@ class RelatorioController extends Controller
 
         // Clientes com mais tarefas concluídas no período
         $clientesComMaisConcluidas = Tarefa::query()
+            ->where('ativo', true)
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->whereNotNull('data_conclusao')
             ->whereHas('cliente', $aplicarFiltrosCliente)
@@ -288,6 +295,7 @@ class RelatorioController extends Controller
 
         // Clientes com tarefas vencidas
         $clientesComVencidas = Tarefa::query()
+            ->where('ativo', true)
             ->whereNull('data_conclusao')
             ->where('data_vencimento', '<', now()->startOfDay())
             ->whereHas('cliente', $aplicarFiltrosCliente)
@@ -377,6 +385,7 @@ class RelatorioController extends Controller
 
         // Tarefas concluídas por colaborador no período
         $concluidasPorColab = Tarefa::query()
+            ->where('ativo', true)
             ->whereBetween('data_conclusao', [$dataInicio, $dataFim])
             ->whereNotNull('data_conclusao')
             ->selectRaw('responsavel_id, count(*) as total')
@@ -391,6 +400,7 @@ class RelatorioController extends Controller
 
         // Total de tarefas abertas por colaborador
         $abertasPorColab = Tarefa::query()
+            ->where('ativo', true)
             ->whereNull('data_conclusao')
             ->selectRaw('responsavel_id, count(*) as total')
             ->groupBy('responsavel_id')
@@ -404,6 +414,7 @@ class RelatorioController extends Controller
 
         // Tarefas vencidas por colaborador
         $vencidasPorColab = Tarefa::query()
+            ->where('ativo', true)
             ->whereNull('data_conclusao')
             ->where('data_vencimento', '<', now()->startOfDay())
             ->selectRaw('responsavel_id, count(*) as total')
@@ -418,6 +429,7 @@ class RelatorioController extends Controller
 
         // Evolução de conclusões por colaborador (top 5) nos últimos 12 meses
         $topColabs = Tarefa::query()
+            ->where('ativo', true)
             ->whereNotNull('data_conclusao')
             ->selectRaw('responsavel_id, count(*) as total')
             ->groupBy('responsavel_id')
@@ -432,6 +444,7 @@ class RelatorioController extends Controller
             $entry = ['mes' => $mes->translatedFormat('M/Y')];
             foreach ($topColabs as $colab) {
                 $entry[$colab->responsavel->nome ?? 'N/A'] = Tarefa::query()
+                    ->where('ativo', true)
                     ->whereNotNull('data_conclusao')
                     ->where('responsavel_id', $colab->responsavel_id)
                     ->whereYear('data_conclusao', $mes->year)
