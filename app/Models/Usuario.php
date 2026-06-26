@@ -190,6 +190,12 @@ class Usuario extends Authenticatable
         return ! in_array($this->cargo, ['assistente', 'auxiliar']);
     }
 
+    // Apenas Diretor e TI acessam o módulo financeiro / Conta Azul
+    public function canGerenciarFinanceiro(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
+
     // Assistente e Auxiliar não veem Produtos e Possibilidades no menu Cadastros
     public function canVerProdutosPossibilidades(): bool
     {
