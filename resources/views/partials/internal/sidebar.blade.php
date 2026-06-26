@@ -59,6 +59,21 @@
             </div>
         </div>
         @endif
+        <div>
+            <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-apps">
+                <span class="text-sm text-gray-700 dark:text-gray-300"><i class="fa-solid fa-table-cells-large"></i> Apps</span>
+                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+            <div id="submenu-apps" class="hidden pl-3 mt-1 space-y-1">
+                <a href="https://charming-fiscal-flow-hub.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-chart-pie"></i> WR Dashboard Fiscal</a>
+                <a href="https://fiery-smart-ledger-sync.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-scale-balanced"></i> ConciliaAI</a>
+                <a href="https://wr-payroll-flow.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-coins"></i> WR Custos</a>
+                <a href="https://conferencia-fiscal.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-invoice"></i> Conferência Fiscal</a>
+                <a href="https://time-trace-pro.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-clock"></i> TimeTrace AI</a>
+            </div>
+        </div>
         @if (auth()->user()?->canVerRelatorios())
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-relatorios">
