@@ -444,6 +444,86 @@ class ClienteController extends Controller
         ]);
     }
 
+    public function exportClientes(Request $request): Response
+    {
+        $query = Cliente::orderBy('nome');
+
+        if ($request->filled('busca')) {
+            $busca = '%'.$request->string('busca').'%';
+            $query->where(function ($q) use ($busca) {
+                $q->where('nome', 'like', $busca)
+                    ->orWhere('cpfcnpj', 'like', $busca)
+                    ->orWhere('cidade', 'like', $busca)
+                    ->orWhere('estado', 'like', $busca)
+                    ->orWhere('regime_tributario', 'like', $busca);
+            });
+        }
+
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->input('tipo'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('regime_tributario')) {
+            $query->where('regime_tributario', $request->input('regime_tributario'));
+        }
+
+        $clientes = $query->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Clientes');
+
+        $headers = [
+            'Nome', 'CPF/CNPJ', 'Tipo', 'Regime Tributário', 'Cidade', 'Estado',
+            'Status', 'Cliente Desde', 'Data Abertura', 'Faturamento',
+            'Serviço', 'Honorário', 'Fator R', 'Atividade',
+        ];
+
+        foreach ($headers as $i => $header) {
+            $cell = chr(65 + $i).'1';
+            $sheet->setCellValue($cell, $header);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->getColumnDimensionByColumn($i + 1)->setAutoSize(true);
+        }
+
+        foreach ($clientes as $row => $c) {
+            $rowNum = $row + 2;
+            $sheet->setCellValue('A'.$rowNum, $c->nome);
+            $sheet->setCellValue('B'.$rowNum, $c->cpfcnpj);
+            $sheet->setCellValue('C'.$rowNum, $c->tipo == 1 ? 'PJ' : ($c->tipo == 0 ? 'PF' : ''));
+            $sheet->setCellValue('D'.$rowNum, $c->regime_tributario);
+            $sheet->setCellValue('E'.$rowNum, $c->cidade);
+            $sheet->setCellValue('F'.$rowNum, $c->estado);
+            $sheet->setCellValue('G'.$rowNum, $c->status);
+            $sheet->setCellValue('H'.$rowNum, $c->cliente_desde ? $c->cliente_desde->format('d/m/Y') : '');
+            $sheet->setCellValue('I'.$rowNum, $c->dataabertura ? $c->dataabertura->format('d/m/Y') : '');
+            $sheet->setCellValue('J'.$rowNum, $c->faturamento);
+            $sheet->setCellValue('K'.$rowNum, $c->servico);
+            $sheet->setCellValue('L'.$rowNum, $c->honorario);
+            $sheet->setCellValue('M'.$rowNum, $c->fator_r ? 'Sim' : 'Não');
+            $sheet->setCellValue('N'.$rowNum, $c->atividade);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="clientes.xlsx"',
+        ]);
+    }
+
     // ── Quadro Societário ──────────────────────────────────────────────
 
     public function quadroSocietario(int $id): View
