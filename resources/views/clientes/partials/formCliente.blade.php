@@ -139,30 +139,29 @@
             </div>
         </div>
 
-        <div id="regime-tributario-wrapper" class="grid grid-cols-2 gap-4{{ $isPJ ? '' : ' hidden' }}">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regime Tributário</label>
-                <select name="regime_tributario" id="select-regime" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                        {{ $isPJ ? 'required' : '' }}>
-                    <option value="">— Selecione —</option>
-                    @php $regimeAtual = mb_strtolower(old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? ''))); @endphp
-                    @foreach(['Simples Nacional' => 'SIMPLES NACIONAL', 'Lucro Presumido' => 'LUCRO PRESUMIDO', 'Lucro Real' => 'LUCRO REAL', 'MEI' => 'MEI', 'Associação' => 'ASSOCIACAO'] as $value => $label)
-                        <option value="{{ $value }}"
-                            {{ $regimeAtual === mb_strtolower($value) ? 'selected' : '' }}>
-                            {{ $label }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i> Vencimento do Certificado
-                </label>
-                <input name="vencimento_certificado" type="date"
-                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('vencimento_certificado', $isEditing ? $cliente->vencimento_certificado?->format('Y-m-d') : ($prefill['vencimento_certificado'] ?? '')) }}">
-                <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Tarefa criada 30 dias antes do vencimento.</p>
-            </div>
+        <div id="regime-tributario-wrapper" class="{{ $isPJ ? '' : 'hidden' }}">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regime Tributário</label>
+            <select name="regime_tributario" id="select-regime" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                    {{ $isPJ ? 'required' : '' }}>
+                <option value="">— Selecione —</option>
+                @php $regimeAtual = mb_strtolower(old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? ''))); @endphp
+                @foreach(['Simples Nacional' => 'SIMPLES NACIONAL', 'Lucro Presumido' => 'LUCRO PRESUMIDO', 'Lucro Real' => 'LUCRO REAL', 'MEI' => 'MEI', 'Associação' => 'ASSOCIACAO'] as $value => $label)
+                    <option value="{{ $value }}"
+                        {{ $regimeAtual === mb_strtolower($value) ? 'selected' : '' }}>
+                        {{ $label }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i> Vencimento do Certificado
+            </label>
+            <input name="vencimento_certificado" type="date"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                   value="{{ old('vencimento_certificado', $isEditing ? $cliente->vencimento_certificado?->format('Y-m-d') : ($prefill['vencimento_certificado'] ?? '')) }}">
+            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Tarefa criada 30 dias antes do vencimento.</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -525,7 +524,7 @@
             inputCpfCnpj.placeholder = '000.000.000-00';
             inputCpfCnpj.maxLength = 14;
             regimeWrapper.classList.add('hidden');
-            if (selectRegime) { selectRegime.required = false; }
+            if (selectRegime) { selectRegime.required = false; selectRegime.value = ''; }
         }
 
         inputCpfCnpj.value = applyMask(inputCpfCnpj.value, tipo);
