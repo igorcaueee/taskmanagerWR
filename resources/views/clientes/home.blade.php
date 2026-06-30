@@ -81,6 +81,7 @@
                         <option value="Lucro Presumido"  @selected(request('regime_tributario') === 'Lucro Presumido')>LUCRO PRESUMIDO</option>
                         <option value="Lucro Real"       @selected(request('regime_tributario') === 'Lucro Real')>LUCRO REAL</option>
                         <option value="MEI"              @selected(request('regime_tributario') === 'MEI')>MEI</option>
+                        <option value="Associação"       @selected(request('regime_tributario') === 'Associação')>ASSOCIACAO</option>
                     </select>
                 </div>
                 <div>
