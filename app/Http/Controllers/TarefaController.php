@@ -555,6 +555,58 @@ class TarefaController extends Controller
         return Redirect::back()->with('success', "{$count} tarefa(s) inativa(s) excluída(s) com sucesso.");
     }
 
+    public function checkDuplicata(Request $request): JsonResponse
+    {
+        $clienteIds  = $request->input('cliente_ids', []);
+        $tipoIds     = $request->input('tipo_tarefa_ids', []);
+        $responsavelId = $request->input('responsavel_id');
+        $titulo      = trim($request->input('titulo', ''));
+
+        if (! $responsavelId) {
+            return response()->json(['duplicatas' => []]);
+        }
+
+        $tiposMap = ! empty($tipoIds)
+            ? TipoTarefa::whereIn('id', $tipoIds)->get()->keyBy('id')
+            : collect();
+
+        $clienteIdsToCheck = ! empty($clienteIds) ? $clienteIds : [null];
+        $tipoIdsToCheck    = ! empty($tipoIds)    ? $tipoIds    : [null];
+
+        $duplicatas = [];
+
+        foreach ($clienteIdsToCheck as $clienteId) {
+            foreach ($tipoIdsToCheck as $tipoId) {
+                $tipo        = $tipoId ? $tiposMap->get($tipoId) : null;
+                $tituloCheck = ($tipo && ($tipo->titulo_padrao || $tipo->nome))
+                    ? ($tipo->titulo_padrao ?? $tipo->nome)
+                    : $titulo;
+
+                if (! $tituloCheck) {
+                    continue;
+                }
+
+                $existentes = Tarefa::with(['cliente', 'etapa'])
+                    ->where('titulo', $tituloCheck)
+                    ->where('responsavel_id', $responsavelId)
+                    ->where('cliente_id', $clienteId)
+                    ->where('ativo', true)
+                    ->get();
+
+                foreach ($existentes as $tarefa) {
+                    $duplicatas[] = [
+                        'titulo'          => $tarefa->titulo,
+                        'cliente'         => $tarefa->cliente?->nome ?? '—',
+                        'etapa'           => $tarefa->etapa?->nome ?? '—',
+                        'data_vencimento' => $tarefa->data_vencimento?->format('d/m/Y') ?? '—',
+                    ];
+                }
+            }
+        }
+
+        return response()->json(['duplicatas' => $duplicatas]);
+    }
+
     public function contarDuplicatas(): \Illuminate\Http\JsonResponse
     {
         $usuario = Auth::user();

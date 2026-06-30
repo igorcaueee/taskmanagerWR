@@ -317,6 +317,92 @@
     const markDirty = function () { window._modalHasChanges = true; };
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
+
+    @if(!$isEditing)
+    let _confirmedSubmit = false;
+
+    form.addEventListener('submit', async function (e) {
+        if (_confirmedSubmit) {
+            _confirmedSubmit = false;
+            window._modalHasChanges = false;
+            const btn = document.getElementById('formTarefaSubmitBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Salvando...';
+                btn.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+            return;
+        }
+
+        e.preventDefault();
+
+        const responsavelId  = form.querySelector('[name="responsavel_id"]')?.value ?? '';
+        const titulo         = form.querySelector('[name="titulo"]')?.value ?? '';
+        const clienteIds     = Array.from(form.querySelectorAll('[name="cliente_ids[]"]:checked')).map(c => c.value);
+        const tipoIds        = Array.from(form.querySelectorAll('[name="tipo_tarefa_ids[]"]:checked')).map(t => t.value);
+
+        if (!responsavelId) {
+            _confirmedSubmit = true;
+            form.submit();
+            return;
+        }
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const body = new URLSearchParams();
+            body.append('_token', csrfToken);
+            body.append('responsavel_id', responsavelId);
+            body.append('titulo', titulo);
+            clienteIds.forEach(id => body.append('cliente_ids[]', id));
+            tipoIds.forEach(id => body.append('tipo_tarefa_ids[]', id));
+
+            const res  = await fetch('{{ route("tarefas.check-duplicata") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': csrfToken },
+                body: body.toString(),
+            });
+            const data = await res.json();
+
+            if (data.duplicatas && data.duplicatas.length > 0) {
+                const linhas = data.duplicatas.map(d =>
+                    `<tr>
+                        <td class="py-1 pr-3 text-sm font-medium text-gray-800">${d.titulo}</td>
+                        <td class="py-1 pr-3 text-sm text-gray-600">${d.cliente}</td>
+                        <td class="py-1 pr-3 text-sm text-gray-600">${d.data_vencimento}</td>
+                        <td class="py-1 text-sm"><span class="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">${d.etapa}</span></td>
+                    </tr>`
+                ).join('');
+
+                const result = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Tarefa já existe!',
+                    html: `<p class="text-sm text-gray-600 mb-3">Já existe${data.duplicatas.length > 1 ? 'm' : ''} <strong>${data.duplicatas.length}</strong> tarefa${data.duplicatas.length > 1 ? 's' : ''} ativa${data.duplicatas.length > 1 ? 's' : ''} com o mesmo título, responsável e empresa:</p>
+                           <div class="overflow-x-auto">
+                             <table class="w-full text-left">
+                               <thead><tr class="text-xs text-gray-400 uppercase border-b">
+                                 <th class="pb-1 pr-3">Título</th><th class="pb-1 pr-3">Empresa</th><th class="pb-1 pr-3">Vencimento</th><th class="pb-1">Etapa</th>
+                               </tr></thead>
+                               <tbody>${linhas}</tbody>
+                             </table>
+                           </div>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Criar mesmo assim',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6b7280',
+                    width: 600,
+                });
+
+                if (!result.isConfirmed) { return; }
+            }
+        } catch (_) {
+            // Se a verificação falhar, permite o submit normalmente
+        }
+
+        _confirmedSubmit = true;
+        form.submit();
+    });
+    @else
     form.addEventListener('submit', function () {
         window._modalHasChanges = false;
         const btn = document.getElementById('formTarefaSubmitBtn');
@@ -326,6 +412,7 @@
             btn.classList.add('opacity-60', 'cursor-not-allowed');
         }
     });
+    @endif
 })();
 </script>
 
