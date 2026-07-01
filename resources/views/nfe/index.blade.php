@@ -176,6 +176,21 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Paginação --}}
+                <div class="px-5 py-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
+                    <span class="text-xs text-gray-500 dark:text-slate-400" id="paginaInfo"></span>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" id="btnPaginaAnterior"
+                                class="px-2.5 py-1 text-xs rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-[#0084aa] hover:text-[#0084aa] disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-600 transition-colors">
+                            <i class="fa-solid fa-chevron-left"></i> Anterior
+                        </button>
+                        <button type="button" id="btnPaginaProxima"
+                                class="px-2.5 py-1 text-xs rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-[#0084aa] hover:text-[#0084aa] disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-600 transition-colors">
+                            Próxima <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
     </div>
@@ -213,25 +228,28 @@
     const btnDownloadZip = document.getElementById('btnDownloadZip');
     const filtroTipo     = document.getElementById('filtroTipo');
 
-    let docsAtuais = [];
+    let docsAtuais  = [];
+    let paginaAtual = 1;
+    const porPagina = 50;
+    const selecionados = new Set(); // nsu (string) dos documentos marcados, persiste entre páginas
+
+    const btnPaginaAnterior = document.getElementById('btnPaginaAnterior');
+    const btnPaginaProxima  = document.getElementById('btnPaginaProxima');
+    const paginaInfo        = document.getElementById('paginaInfo');
+
+    function docsFiltrados() {
+        const tipo = filtroTipo.value;
+        return tipo ? docsAtuais.filter(d => d.tipo === tipo) : docsAtuais;
+    }
 
     function atualizarResumo() {
-        const tipo = filtroTipo.value;
-        let visiveis = 0, soma = 0;
+        const filtrados = docsFiltrados();
+        const soma = filtrados.reduce((acc, d) => acc + (parseFloat(d.valor) || 0), 0);
 
-        tabelaDocs.querySelectorAll('tr').forEach(tr => {
-            const mostrar = !tipo || tr.dataset.tipo === tipo;
-            tr.style.display = mostrar ? '' : 'none';
-            if (mostrar) {
-                visiveis++;
-                soma += parseFloat(tr.dataset.valor) || 0;
-            }
-        });
-
-        totalDocs.textContent = visiveis;
+        totalDocs.textContent = filtrados.length;
 
         const rowTotal = document.getElementById('rowTotalValor');
-        if (visiveis > 0) {
+        if (filtrados.length > 0) {
             document.getElementById('totalValor').textContent = soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             rowTotal.classList.remove('hidden');
         } else {
@@ -239,7 +257,44 @@
         }
     }
 
-    filtroTipo.addEventListener('change', atualizarResumo);
+    filtroTipo.addEventListener('change', function () {
+        paginaAtual = 1;
+        renderizarPaginaAtual();
+    });
+
+    btnPaginaAnterior.addEventListener('click', function () {
+        if (paginaAtual > 1) {
+            paginaAtual--;
+            renderizarPaginaAtual();
+        }
+    });
+
+    btnPaginaProxima.addEventListener('click', function () {
+        const totalPaginas = Math.max(1, Math.ceil(docsFiltrados().length / porPagina));
+        if (paginaAtual < totalPaginas) {
+            paginaAtual++;
+            renderizarPaginaAtual();
+        }
+    });
+
+    function renderizarPaginaAtual() {
+        const filtrados     = docsFiltrados();
+        const totalPaginas  = Math.max(1, Math.ceil(filtrados.length / porPagina));
+        paginaAtual = Math.min(Math.max(paginaAtual, 1), totalPaginas);
+
+        const inicio = (paginaAtual - 1) * porPagina;
+        const pagina = filtrados.slice(inicio, inicio + porPagina);
+
+        renderizarTabela(pagina);
+        atualizarResumo();
+        atualizarSelecao();
+
+        paginaInfo.textContent = filtrados.length > 0
+            ? `Página ${paginaAtual} de ${totalPaginas} (${filtrados.length} no total)`
+            : 'Nenhum documento';
+        btnPaginaAnterior.disabled = paginaAtual <= 1;
+        btnPaginaProxima.disabled  = paginaAtual >= totalPaginas;
+    }
 
     // ─── Seleção de empresa ──────────────────────────────────────────────────
     selectCliente.addEventListener('change', async function () {
@@ -381,6 +436,7 @@
             }
 
             docsAtuais = data.documentos ?? [];
+            selecionados.clear();
 
             if (docsAtuais.length === 0) {
                 estadoVazio.classList.remove('hidden');
@@ -388,9 +444,9 @@
             }
 
             filtroTipo.value = '';
-            renderizarTabela(docsAtuais);
+            paginaAtual = 1;
             estadoResultados.classList.remove('hidden');
-            atualizarResumo();
+            renderizarPaginaAtual();
 
         } catch (e) {
             esconderTodosEstados();
@@ -421,13 +477,15 @@
                 ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">CT-e</span>'
                 : '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">NF-e</span>';
 
+            const marcado = selecionados.has(String(nsu));
+
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors';
             tr.dataset.tipo  = tipo;
             tr.dataset.valor = doc.valor ?? 0;
             tr.innerHTML = `
                 <td class="px-4 py-3">
-                    <input type="checkbox" class="check-doc rounded text-[#0084aa]" data-nsu="${nsu}" ${!temXml ? 'disabled' : ''}>
+                    <input type="checkbox" class="check-doc rounded text-[#0084aa]" data-nsu="${nsu}" ${!temXml ? 'disabled' : ''} ${marcado ? 'checked' : ''}>
                 </td>
                 <td class="px-4 py-3">${tipoBadge}</td>
                 <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">${numero}</td>
@@ -452,7 +510,14 @@
         });
 
         tabelaDocs.querySelectorAll('.check-doc').forEach(cb => {
-            cb.addEventListener('change', atualizarSelecao);
+            cb.addEventListener('change', function () {
+                if (this.checked) {
+                    selecionados.add(this.dataset.nsu);
+                } else {
+                    selecionados.delete(this.dataset.nsu);
+                }
+                atualizarSelecao();
+            });
         });
     }
 
@@ -466,20 +531,32 @@
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
     }
 
-    // ─── Seleção múltipla ────────────────────────────────────────────────────
+    // ─── Seleção múltipla (persiste entre páginas via Set de NSUs) ────────────
     checkTodos.addEventListener('change', function () {
-        tabelaDocs.querySelectorAll('.check-doc:not([disabled])').forEach(cb => {
-            cb.checked = this.checked;
+        const marcarTodas = this.checked;
+
+        docsFiltrados().forEach(doc => {
+            if (!doc.xmlContent) return;
+            const nsu = String(doc.nsu);
+            if (marcarTodas) {
+                selecionados.add(nsu);
+            } else {
+                selecionados.delete(nsu);
+            }
         });
+
+        tabelaDocs.querySelectorAll('.check-doc:not([disabled])').forEach(cb => {
+            cb.checked = marcarTodas;
+        });
+
         atualizarSelecao();
     });
 
     function atualizarSelecao() {
-        const selecionadas = [...tabelaDocs.querySelectorAll('.check-doc:checked')];
-        if (selecionadas.length > 0) {
+        if (selecionados.size > 0) {
             btnDownloadZip.classList.remove('hidden');
             btnDownloadZip.classList.add('flex');
-            btnDownloadZip.innerHTML = `<i class="fa-solid fa-file-zipper"></i> Baixar ${selecionadas.length} XML(s) (.zip)`;
+            btnDownloadZip.innerHTML = `<i class="fa-solid fa-file-zipper"></i> Baixar ${selecionados.size} XML(s) (.zip)`;
         } else {
             btnDownloadZip.classList.add('hidden');
             btnDownloadZip.classList.remove('flex');
@@ -503,13 +580,10 @@
         URL.revokeObjectURL(url);
     }
 
-    // ─── Download ZIP (múltiplos) ─────────────────────────────────────────────
+    // ─── Download ZIP (múltiplos, considerando seleção em todas as páginas) ──
     btnDownloadZip.addEventListener('click', async function () {
-        const checkboxes = [...tabelaDocs.querySelectorAll('.check-doc:checked')];
-
-        const items = checkboxes.map(cb => {
-            const nsu = cb.dataset.nsu;
-            const doc = docsAtuais.find(d => String(d.nsu) === String(nsu));
+        const items = [...selecionados].map(nsu => {
+            const doc = docsAtuais.find(d => String(d.nsu) === nsu);
             return doc?.xmlContent ? { nsu, xml: doc.xmlContent } : null;
         }).filter(Boolean);
 
