@@ -173,9 +173,44 @@ class NfeService
             }
         }
 
+        $documentos = $this->deduplicarPorChave($documentos);
+
         Log::info('[NF-e] buscarPorPeriodo: concluído', ['total_documentos' => count($documentos)]);
 
         return $documentos;
+    }
+
+    /**
+     * A Sefaz pode distribuir o mesmo documento mais de uma vez sob NSUs diferentes
+     * (ex.: resumo resNFe/resCTe e, separadamente, o XML completo procNFe/procCTe).
+     * Deduplica por chave de acesso, mantendo a versão com mais campos preenchidos.
+     */
+    private function deduplicarPorChave(array $documentos): array
+    {
+        $porChave = [];
+        $semChave = [];
+
+        foreach ($documentos as $doc) {
+            $chave = $doc['chaveAcesso'] ?? null;
+
+            if (!$chave) {
+                $semChave[] = $doc;
+                continue;
+            }
+
+            $score = (int) !empty($doc['numero']) + (int) !empty($doc['dataEmissao'])
+                + (int) !empty($doc['emitenteNome']) + (int) !empty($doc['valor']);
+
+            if (!isset($porChave[$chave]) || $score > $porChave[$chave]['_score']) {
+                $doc['_score'] = $score;
+                $porChave[$chave] = $doc;
+            }
+        }
+
+        return array_map(function ($doc) {
+            unset($doc['_score']);
+            return $doc;
+        }, [...array_values($porChave), ...$semChave]);
     }
 
     private function cUFAutor(ClienteCertificadoNfse $certificado): int
@@ -324,15 +359,36 @@ XML;
         $obj = new \SimpleXMLElement($xml);
         $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
 
+        $chave  = $get('chNFe') ?: $get('chCTe');
+        $numero = $get('nNF') ?: $get('nCT');
+
+        // resNFe/resCTe (resumo) não trazem nNF/nCT — o número do documento fica embutido
+        // na própria chave de acesso (posições 26 a 34, 1-indexed).
+        if (!$numero && $chave && strlen($chave) === 44) {
+            $numero = (string) (int) substr($chave, 25, 9);
+        }
+
+        $dataEmissao   = $get('dhEmi');
+        $emitenteNome  = $get('xNome');
+        $valor         = $get('vNF') ?: $get('vCT');
+
+        if (!$dataEmissao && !$emitenteNome && !$valor) {
+            Log::warning('[NF-e] normalizarDocumento: campos vazios após parse', [
+                'nsu'       => $nsu,
+                'schema'    => $schema,
+                'xmlSample' => substr($xml, 0, 600),
+            ]);
+        }
+
         return [
             'nsu'          => $nsu,
             'tipo'         => $tipoDoc,
-            'chaveAcesso'  => $get('chNFe') ?: $get('chCTe'),
-            'numero'       => $get('nNF') ?: $get('nCT'),
-            'dataEmissao'  => $get('dhEmi'),
-            'emitenteNome' => $this->utf8Safe($get('xNome')),
+            'chaveAcesso'  => $chave,
+            'numero'       => $numero,
+            'dataEmissao'  => $dataEmissao,
+            'emitenteNome' => $this->utf8Safe($emitenteNome),
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
-            'valor'        => $get('vNF') ?: $get('vCT'),
+            'valor'        => $valor,
             'situacao'     => $get('cSitDFe'),
             'xmlContent'   => $xml,
         ];
