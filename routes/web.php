@@ -23,6 +23,7 @@ use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\TipoTarefaController;
+use App\Http\Controllers\AcessoExternoController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
@@ -258,4 +259,19 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');
     Route::post('/exportar-excel-nsus', [NfseController::class, 'exportarExcelNsus'])->name('exportar-excel-nsus');
+});
+
+
+// Acesso externo — restrito a Diretor e TI
+Route::prefix('admin/acesso-externo')->name('acesso-externo.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/', [AcessoExternoController::class, 'index'])->name('index');
+
+    // Redes permitidas
+    Route::post('/redes', [AcessoExternoController::class, 'storeRede'])->name('redes.store');
+    Route::patch('/redes/{rede}/toggle', [AcessoExternoController::class, 'toggleRede'])->name('redes.toggle');
+    Route::delete('/redes/{rede}', [AcessoExternoController::class, 'destroyRede'])->name('redes.destroy');
+
+    // Liberações por usuário
+    Route::post('/liberacoes', [AcessoExternoController::class, 'storeLiberacao'])->name('liberacoes.store');
+    Route::delete('/liberacoes/{liberacao}', [AcessoExternoController::class, 'revogarLiberacao'])->name('liberacoes.revogar');
 });

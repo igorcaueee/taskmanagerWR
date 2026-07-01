@@ -195,4 +195,10 @@ class Usuario extends Authenticatable
     {
         return ! in_array($this->cargo, ['assistente', 'auxiliar']);
     }
+
+    // Diretor e TI gerenciam restrições de acesso por rede e liberações externas
+    public function canGerenciarAcessoExterno(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
 }

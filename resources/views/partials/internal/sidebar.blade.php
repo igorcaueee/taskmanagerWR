@@ -11,6 +11,9 @@
             <a href="{{ route('blog.admin.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-newspaper"></i> Blog</a>
             <a href="{{ route('email-campanhas.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-envelope-open-text"></i> News Letter EMAIL</a>
         @endif
+        @if (auth()->user()?->canGerenciarAcessoExterno())
+            <a href="{{ route('acesso-externo.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-shield-halved" style="color:#0084aa"></i> Acesso Externo</a>
+        @endif
         @if (auth()->user()?->canVerFunil())
         <div>
             <button type="button" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline flex items-center justify-between submenu-toggle focus:outline-none focus:ring-0 bg-transparent border-0 appearance-none" aria-expanded="false" data-target="submenu-comercial">

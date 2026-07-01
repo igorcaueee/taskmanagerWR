@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureColaboradoresAccess;
 use App\Http\Middleware\EnsureColaboradoresEdit;
 use App\Http\Middleware\EnsureDiretor;
 use App\Http\Middleware\EnsureEmailMarketing;
+use App\Http\Middleware\EnsureNetworkAccess;
 use App\Http\Middleware\PortalAuth;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Console\Scheduling\Schedule;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->append(SecurityHeaders::class);
+        $middleware->web(append: EnsureNetworkAccess::class);
         $middleware->alias([
             'diretor' => EnsureDiretor::class,
             'email-marketing' => EnsureEmailMarketing::class,
