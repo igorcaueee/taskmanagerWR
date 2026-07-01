@@ -169,7 +169,7 @@ class NfseXmlParser
             'vRetIRRF'       => $vRetIRRF,
             'vRetCSLL'       => $vRetCSLL,
             'vServ'          => $float('vServ') ?: $float('ValorServicos'),
-            'vTotalRet'      => $vRetCP + $vRetIRRF + $vRetCSLL + $vPis + $vCofins,
+            'vTotalRet'      => $vRetCP + $vRetIRRF + $vRetCSLL,
             'vLiq'           => $float('vLiq') ?: $float('ValorLiquidoNfse'),
             'chaveAcesso'    => $chave,
         ];

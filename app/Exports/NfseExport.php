@@ -229,37 +229,28 @@ class NfseExport
         })(), false), 'vServ'));
 
         $issRetidas   = array_filter($ativas, fn($n) => $this->issRetido($n));
-        $pisNotas     = array_filter($this->notas, fn($n) => $n['vPis'] > 0);
-        $cofinsNotas  = array_filter($this->notas, fn($n) => $n['vCofins'] > 0);
         $cpNotas      = array_filter($this->notas, fn($n) => $n['vRetCP'] > 0);
         $irrfNotas    = array_filter($this->notas, fn($n) => $n['vRetIRRF'] > 0);
-        $csllNotas    = array_filter($this->notas, fn($n) => $n['vRetCSLL'] > 0);
+        $crfNotas     = array_filter($this->notas, fn($n) => $n['vRetCSLL'] > 0);
 
         $somaServ    = array_sum(array_column(array_values($ativas), 'vServ'));
         $somaIss     = array_sum(array_column(array_values($issRetidas), 'vISSQN'));
-        $somaPis     = array_sum(array_column(array_values($this->notas), 'vPis'));
-        $somaCofins  = array_sum(array_column(array_values($this->notas), 'vCofins'));
         $somaCP      = array_sum(array_column(array_values($this->notas), 'vRetCP'));
         $somaIRRF    = array_sum(array_column(array_values($this->notas), 'vRetIRRF'));
-        $somaCSLL    = array_sum(array_column(array_values($this->notas), 'vRetCSLL'));
-        $totalRet    = $somaIss + $somaPis + $somaCofins + $somaCP + $somaIRRF + $somaCSLL;
+        $somaCRF     = array_sum(array_column(array_values($this->notas), 'vRetCSLL'));
+        $totalRet    = $somaIss + $somaCP + $somaIRRF + $somaCRF;
 
-        $numIss    = implode(', ', array_column(array_values($issRetidas), 'nNFSe'));
-        $numPis    = implode(', ', array_column(array_values($pisNotas), 'nNFSe'));
-        $numCofins = implode(', ', array_column(array_values($cofinsNotas), 'nNFSe'));
-        $numCP     = implode(', ', array_column(array_values($cpNotas), 'nNFSe'));
-        $numIRRF   = implode(', ', array_column(array_values($irrfNotas), 'nNFSe'));
-        $numCSLL   = implode(', ', array_column(array_values($csllNotas), 'nNFSe'));
+        $numIss  = implode(', ', array_column(array_values($issRetidas), 'nNFSe'));
+        $numCP   = implode(', ', array_column(array_values($cpNotas), 'nNFSe'));
+        $numIRRF = implode(', ', array_column(array_values($irrfNotas), 'nNFSe'));
+        $numCRF  = implode(', ', array_column(array_values($crfNotas), 'nNFSe'));
 
         $tableRows = [
-            6  => ['Total de Servicos (notas ativas)',       $somaServ,   ''],
-            7  => ['Total ISS Retido',                       $somaIss,    $numIss],
-            8  => ['Total PIS',                              $somaPis,    $numPis],
-            9  => ['Total COFINS',                           $somaCofins, $numCofins],
-            10 => ['Total PIS + COFINS',                     $somaPis + $somaCofins, ''],
-            11 => ['Retencao CP (Contrib. Previdenciaria)',  $somaCP,     $numCP],
-            12 => ['Retencao IRRF',                          $somaIRRF,   $numIRRF],
-            13 => ['Retencao CSLL',                          $somaCSLL,   $numCSLL],
+            6  => ['Total de Servicos (notas ativas)',       $somaServ, ''],
+            7  => ['Total ISS Retido',                       $somaIss,  $numIss],
+            8  => ['Retencao CP (Contrib. Previdenciaria)',  $somaCP,   $numCP],
+            9  => ['Retencao IRRF',                          $somaIRRF, $numIRRF],
+            10 => ['Retencao CRF (PIS/COFINS/CSLL Retidos)', $somaCRF,  $numCRF],
         ];
 
         $moneyFmt = '#,##0.00';
@@ -275,40 +266,40 @@ class NfseExport
             $sheet->getStyle("B{$rowNum}")->getNumberFormat()->setFormatCode($moneyFmt);
         }
 
-        // Linha 14: Total de retenções
-        $sheet->setCellValue('A14', 'TOTAL RETENCOES');
-        $sheet->setCellValue('B14', $totalRet);
-        $sheet->getStyle('A14:C14')->applyFromArray([
+        // Linha 11: Total de retenções
+        $sheet->setCellValue('A11', 'TOTAL RETENCOES');
+        $sheet->setCellValue('B11', $totalRet);
+        $sheet->getStyle('A11:C11')->applyFromArray([
             'font' => ['bold' => true],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $ambar]],
         ]);
-        $sheet->getStyle('B14')->getNumberFormat()->setFormatCode($moneyFmt);
+        $sheet->getStyle('B11')->getNumberFormat()->setFormatCode($moneyFmt);
 
         // Bordas bloco 2
-        $sheet->getStyle('A5:C14')->applyFromArray([
+        $sheet->getStyle('A5:C11')->applyFromArray([
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'B0B8C1']]],
         ]);
 
         // ── Bloco 3: Detalhamento por nota ────────────────────────────────────
 
-        $sheet->getRowDimension(15)->setRowHeight(8);
+        $sheet->getRowDimension(12)->setRowHeight(8);
 
-        $sheet->mergeCells('A16:K16');
-        $sheet->setCellValue('A16', 'DETALHAMENTO POR NOTA');
-        $sheet->getStyle('A16')->applyFromArray([
+        $sheet->mergeCells('A13:I13');
+        $sheet->setCellValue('A13', 'DETALHAMENTO POR NOTA');
+        $sheet->getStyle('A13')->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['rgb' => $branco]],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $azulEscuro]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
-        $sheet->getRowDimension(16)->setRowHeight(22);
+        $sheet->getRowDimension(13)->setRowHeight(22);
 
-        $detHeaders = ['N. Nota', 'Situacao', 'Prestador', 'Tomador', 'Valor Servico', 'ISS Retido', 'PIS', 'COFINS', 'CP', 'IRRF', 'CSLL'];
-        $detCols    = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+        $detHeaders = ['N. Nota', 'Situacao', 'Prestador', 'Tomador', 'Valor Servico', 'ISS Retido', 'CP', 'IRRF', 'CRF'];
+        $detCols    = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
         foreach ($detCols as $i => $col) {
-            $sheet->setCellValue("{$col}17", $detHeaders[$i]);
+            $sheet->setCellValue("{$col}14", $detHeaders[$i]);
         }
-        $sheet->getStyle('A17:K17')->applyFromArray([
+        $sheet->getStyle('A14:I14')->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['rgb' => $branco]],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $azulMedio]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -316,11 +307,10 @@ class NfseExport
 
         $notasComRetencao = array_filter($this->notas, fn($n) =>
             ($this->issRetido($n)) ||
-            $n['vPis'] > 0 || $n['vCofins'] > 0 ||
             $n['vRetCP'] > 0 || $n['vRetIRRF'] > 0 || $n['vRetCSLL'] > 0
         );
 
-        $detRow = 18;
+        $detRow = 15;
         foreach ($notasComRetencao as $nota) {
             $bg = ($detRow % 2 === 0) ? $azulClaro : $branco;
             $issRetidoValor = $this->issRetido($nota) ? $nota['vISSQN'] : 0;
@@ -331,26 +321,24 @@ class NfseExport
             $sheet->setCellValue("D{$detRow}", $nota['tomaNome'] ?: $nota['tomaCNPJ']);
             $sheet->setCellValue("E{$detRow}", $nota['vServ']);
             $sheet->setCellValue("F{$detRow}", $issRetidoValor);
-            $sheet->setCellValue("G{$detRow}", $nota['vPis']);
-            $sheet->setCellValue("H{$detRow}", $nota['vCofins']);
-            $sheet->setCellValue("I{$detRow}", $nota['vRetCP']);
-            $sheet->setCellValue("J{$detRow}", $nota['vRetIRRF']);
-            $sheet->setCellValue("K{$detRow}", $nota['vRetCSLL']);
+            $sheet->setCellValue("G{$detRow}", $nota['vRetCP']);
+            $sheet->setCellValue("H{$detRow}", $nota['vRetIRRF']);
+            $sheet->setCellValue("I{$detRow}", $nota['vRetCSLL']);
 
-            $sheet->getStyle("A{$detRow}:K{$detRow}")->applyFromArray([
+            $sheet->getStyle("A{$detRow}:I{$detRow}")->applyFromArray([
                 'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ]);
 
-            foreach (['E', 'F', 'G', 'H', 'I', 'J', 'K'] as $col) {
+            foreach (['E', 'F', 'G', 'H', 'I'] as $col) {
                 $sheet->getStyle("{$col}{$detRow}")->getNumberFormat()->setFormatCode($moneyFmt);
             }
 
             $detRow++;
         }
 
-        if ($detRow > 18) {
-            $sheet->getStyle("A17:K" . ($detRow - 1))->applyFromArray([
+        if ($detRow > 15) {
+            $sheet->getStyle("A14:I" . ($detRow - 1))->applyFromArray([
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'B0B8C1']]],
             ]);
         }
@@ -365,8 +353,6 @@ class NfseExport
         $sheet->getColumnDimension('G')->setWidth(14);
         $sheet->getColumnDimension('H')->setWidth(14);
         $sheet->getColumnDimension('I')->setWidth(14);
-        $sheet->getColumnDimension('J')->setWidth(14);
-        $sheet->getColumnDimension('K')->setWidth(14);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
