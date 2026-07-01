@@ -40,6 +40,8 @@ class Usuario extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
+        'data_nascimento' => 'date',
+        'data_registro' => 'date',
         'google_token_expires_at' => 'datetime',
         'google_last_synced_at' => 'datetime',
     ];

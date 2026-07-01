@@ -65,8 +65,8 @@
                                 <span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
                                     {{ strtoupper(substr($colab->nome, 0, 1)) }}
                                 </span>
-                                <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">{{ $colab->nome }}</span>
-                                <span class="text-xs font-semibold text-amber-600 flex-shrink-0">{{ $colab->anos_empresa }} {{ $colab->anos_empresa === 1 ? 'ano' : 'anos' }}</span>
+                                <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 min-w-0" title="{{ $colab->nome }}">{{ $colab->nome }}</span>
+                                <span class="text-xs font-semibold text-amber-600 flex-shrink-0">{{ $colab->anos_empresa }} {{ $colab->anos_empresa == 1 ? 'ano' : 'anos' }}</span>
                             </li>
                         @endforeach
                     </ul>

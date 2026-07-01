@@ -50,7 +50,7 @@ class DashboardController extends Controller
             ->orderBy('data_registro')
             ->get()
             ->map(function ($usuario) {
-                $usuario->anos_empresa = now()->diffInYears($usuario->data_registro);
+                $usuario->anos_empresa = (int) $usuario->data_registro->diffInYears(now());
 
                 return $usuario;
             });
