@@ -625,11 +625,11 @@ XML;
             )[0] ?? ''));
 
             // Valor: tenta campos em ordem de prioridade
-            $valor = $get('vServico')
+            $valor = $get('vServ')
+                ?: $get('ValorServicos')
                 ?: $get('vTotalNfse')
                 ?: $get('vNfse')
                 ?: $get('vLiq')
-                ?: $get('ValorServicos')
                 ?: $get('ValorLiquidoNfse');
 
             // Emitente: cidade, IM, CNPJ e nome (para detecção de município e chamada Tecnos)
