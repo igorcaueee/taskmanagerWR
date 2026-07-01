@@ -50,6 +50,15 @@ Route::prefix('portal')->name('portal.')->group(function () {
     });
 });
 
+// Diagnóstico temporário de IP (remover após confirmar)
+Route::get('/debug-ip', function () {
+    return response()->json([
+        'ip_detectado'       => request()->ip(),
+        'x_forwarded_for'    => request()->header('X-Forwarded-For'),
+        'remote_addr'        => $_SERVER['REMOTE_ADDR'] ?? null,
+    ]);
+});
+
 // Authentication routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
