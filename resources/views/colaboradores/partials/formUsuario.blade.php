@@ -92,14 +92,14 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
                 <input name="data_nascimento" type="date"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('data_nascimento', $isEditing ? $colab->data_nascimento : '') }}">
+                       value="{{ old('data_nascimento', $isEditing && $colab->data_nascimento ? $colab->data_nascimento->format('Y-m-d') : '') }}">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Registro</label>
                 <input name="data_registro" type="date"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('data_registro', $isEditing ? $colab->data_registro : now()->toDateString()) }}">
+                       value="{{ old('data_registro', $isEditing ? ($colab->data_registro ? $colab->data_registro->format('Y-m-d') : '') : now()->toDateString()) }}">
             </div>
         </div>
 
