@@ -56,6 +56,17 @@ class NfeService
         $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
         $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
 
+        Log::info('[NF-e] buscarPorPeriodo: iniciando', [
+            'cliente_id'    => $certificado->cliente_id,
+            'cnpj'          => $cnpj,
+            'cUFAutor'      => $cUFAutor,
+            'tpAmb'         => $tpAmb,
+            'endpoint'      => $endpoint,
+            'nsu_inicial'   => (int) $certificado->ultimo_nsu_nfe,
+            'data_inicio'   => $dataInicio,
+            'data_fim'      => $dataFim,
+        ]);
+
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
         try {
@@ -67,6 +78,16 @@ class NfeService
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cUFAutor, $cnpj, $nsuAtual, $pemCert, $pemKey);
 
                 $cStat = $resp['cStat'] ?? '';
+
+                Log::info('[NF-e] buscarPorPeriodo: lote recebido', [
+                    'lote'       => $lotes,
+                    'nsu_usado'  => $nsuAtual,
+                    'cStat'      => $cStat,
+                    'xMotivo'    => $resp['xMotivo'] ?? null,
+                    'ultNSU'     => $resp['ultNSU'] ?? null,
+                    'maxNSU'     => $resp['maxNSU'] ?? null,
+                    'qtd_docs'   => count($resp['docs'] ?? []),
+                ]);
 
                 // 656 = consumo indevido (mesmo ultNSU repetido/consultas em excesso) — a Sefaz
                 // bloqueia o CNPJ por um tempo. Não adianta retentar automaticamente.
@@ -103,6 +124,14 @@ class NfeService
 
                     $dataEmissao = substr($doc['dataEmissao'] ?? '', 0, 10);
 
+                    Log::info('[NF-e] buscarPorPeriodo: doc no lote', [
+                        'nsu'         => $doc['nsu'] ?? null,
+                        'tipo'        => $doc['tipo'] ?? null,
+                        'numero'      => $doc['numero'] ?? null,
+                        'dataEmissao' => $dataEmissao ?: null,
+                        'emitente'    => $doc['emitenteNome'] ?? null,
+                    ]);
+
                     if ($dataEmissao && $dataEmissao < $dataInicio) {
                         continue;
                     }
@@ -135,6 +164,8 @@ class NfeService
                 @unlink($f);
             }
         }
+
+        Log::info('[NF-e] buscarPorPeriodo: concluído', ['total_documentos' => count($documentos)]);
 
         return $documentos;
     }
@@ -211,10 +242,12 @@ XML;
         unset($ch);
 
         Log::info('[NF-e] requisicaoSoap: resposta recebida', [
-            'httpCode'  => $httpCode,
-            'curlErrNo' => $curlErrNo,
-            'curlError' => $curlError ?: null,
-            'bodyLen'   => is_string($resposta) ? strlen($resposta) : 'false',
+            'httpCode'   => $httpCode,
+            'curlErrNo'  => $curlErrNo,
+            'curlError'  => $curlError ?: null,
+            'bodyLen'    => is_string($resposta) ? strlen($resposta) : 'false',
+            // Amostra do início do corpo — cStat/xMotivo/ultNSU/maxNSU vêm antes dos docZip (base64 grande)
+            'bodySample' => is_string($resposta) ? substr($resposta, 0, 800) : null,
         ]);
 
         if ($resposta === false) {
