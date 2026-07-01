@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClienteCertificadoNfse;
+use App\Services\Concerns\LidaComCertificadoPfx;
 use Illuminate\Support\Facades\Log;
 
 /** Exceção interna sinaliza HTTP 429 para o retry do loop de NSU. */
@@ -10,6 +11,8 @@ class RateLimitException extends \RuntimeException {}
 
 class NfseService
 {
+    use LidaComCertificadoPfx;
+
     // Endpoints ADN Contribuinte
     const BASE_PRODUCAO    = 'https://adn.nfse.gov.br/contribuintes';
     const BASE_HOMOLOGACAO = 'https://adn.producaorestrita.nfse.gov.br/contribuintes';
@@ -190,34 +193,6 @@ class NfseService
     }
 
     /**
-     * Descomprime o ArquivoXml que vem como GZip em Base64.
-     */
-    public function descomprimirXml(string $xmlBase64Gzip): string
-    {
-        $binario = base64_decode($xmlBase64Gzip, true);
-
-        if ($binario === false) {
-            return $xmlBase64Gzip; // Pode já ser XML puro
-        }
-
-        $xml = @gzdecode($binario);
-
-        if ($xml === false) {
-            $xml = @gzinflate(substr($binario, 10, -8));
-        }
-
-        if ($xml === false) {
-            $xml = @gzuncompress($binario);
-        }
-
-        if ($xml === false) {
-            throw new \RuntimeException('Falha ao descomprimir o ArquivoXml recebido da API NFS-e.');
-        }
-
-        return $xml;
-    }
-
-    /**
      * Valida o .pfx + senha via OpenSSL e retorna a data de vencimento.
      */
     public function validarCertificado(string $pfxPath, string $senha): ?string
@@ -283,94 +258,6 @@ class NfseService
     private function baseUrl(ClienteCertificadoNfse $certificado): string
     {
         return $certificado->ambiente === 'producao' ? self::BASE_PRODUCAO : self::BASE_HOMOLOGACAO;
-    }
-
-    /**
-     * Extrai cert + chave do .pfx para arquivos PEM temporários.
-     * PEM é mais compatível com diferentes builds de cURL/OpenSSL que P12 direto.
-     * Retorna [caminhoCert, caminhoKey, [arquivosParaRemover]].
-     */
-    private function extrairPem(string $pfxPath, string $senha): array
-    {
-        Log::info('[NFS-e] extrairPem: iniciando', ['pfx' => $pfxPath]);
-
-        if (!file_exists($pfxPath)) {
-            Log::error('[NFS-e] extrairPem: arquivo não encontrado', ['pfx' => $pfxPath]);
-            throw new \RuntimeException("Arquivo de certificado não encontrado: {$pfxPath}");
-        }
-
-        $pfxContent = file_get_contents($pfxPath);
-        $certs      = [];
-
-        while (openssl_error_string() !== false);
-
-        if (!openssl_pkcs12_read($pfxContent, $certs, $senha)) {
-            $erroOpenssl = '';
-            while ($err = openssl_error_string()) {
-                $erroOpenssl .= $err;
-            }
-
-            if (str_contains($erroOpenssl, 'unsupported') || str_contains($erroOpenssl, 'legacy')) {
-                Log::info('[NFS-e] extrairPem: algoritmo legado detectado, usando CLI com -legacy');
-                return $this->extrairPemLegacy($pfxPath, $senha);
-            }
-
-            Log::error('[NFS-e] extrairPem: falha no openssl_pkcs12_read', ['erro' => $erroOpenssl]);
-            throw new \RuntimeException('Senha incorreta ou certificado .pfx corrompido.');
-        }
-
-        $tmpDir  = sys_get_temp_dir();
-        $tmpCert = @tempnam($tmpDir, 'nfse_c_');
-        $tmpKey  = @tempnam($tmpDir, 'nfse_k_');
-
-        if ($tmpCert === false || $tmpKey === false) {
-            Log::error('[NFS-e] extrairPem: falha ao criar arquivos temporários', ['tmpDir' => $tmpDir]);
-            throw new \RuntimeException("Não foi possível criar arquivos temporários em {$tmpDir}.");
-        }
-
-        file_put_contents($tmpCert, $certs['cert']);
-        file_put_contents($tmpKey,  $certs['pkey']);
-
-        Log::info('[NFS-e] extrairPem: PEM extraído com sucesso', ['tmpCert' => $tmpCert]);
-
-        return [$tmpCert, $tmpKey, [$tmpCert, $tmpKey]];
-    }
-
-    private function extrairPemLegacy(string $pfxPath, string $senha): array
-    {
-        $tmpDir  = sys_get_temp_dir();
-        $tmpCert = tempnam($tmpDir, 'nfse_c_');
-        $tmpKey  = tempnam($tmpDir, 'nfse_k_');
-
-        $cmdCert = sprintf(
-            'openssl pkcs12 -legacy -in %s -passin pass:%s -clcerts -nokeys -out %s 2>&1',
-            escapeshellarg($pfxPath),
-            escapeshellarg($senha),
-            escapeshellarg($tmpCert)
-        );
-        exec($cmdCert, $outCert, $exitCert);
-
-        $cmdKey = sprintf(
-            'openssl pkcs12 -legacy -in %s -passin pass:%s -nocerts -nodes -out %s 2>&1',
-            escapeshellarg($pfxPath),
-            escapeshellarg($senha),
-            escapeshellarg($tmpKey)
-        );
-        exec($cmdKey, $outKey, $exitKey);
-
-        if ($exitCert !== 0 || $exitKey !== 0) {
-            @unlink($tmpCert);
-            @unlink($tmpKey);
-            Log::error('[NFS-e] extrairPemLegacy: falha na extração', [
-                'cert_saida' => implode("\n", $outCert),
-                'key_saida'  => implode("\n", $outKey),
-            ]);
-            throw new \RuntimeException('Falha ao extrair certificado legacy.');
-        }
-
-        Log::info('[NFS-e] extrairPemLegacy: PEM extraído com sucesso (modo legacy)');
-
-        return [$tmpCert, $tmpKey, [$tmpCert, $tmpKey]];
     }
 
     /**
@@ -558,7 +445,7 @@ class NfseService
         return [
             'nsu'           => $doc['NSU'] ?? null,
             'chaveAcesso'   => $doc['ChaveAcesso'] ?? null,
-            'dataEmissao'   => $doc['DataHoraGeracao'] ?? null,
+            'dataEmissao'   => $dadosXml['dataEmissao'] ?? ($doc['DataHoraGeracao'] ?? null),
             'tipoDocumento' => $doc['TipoDocumento'] ?? null,
             'tipoEvento'    => $doc['TipoEvento'] ?? null,
             'numero'        => $this->utf8Safe($dadosXml['numero'] ?? null),
@@ -708,7 +595,11 @@ XML;
             $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
 
             // Número da NFS-e
-            $numero = $get('nNfse');
+            $numero = $get('nNFSe') ?: $get('Numero');
+
+            // Data de emissão real da NFS-e (a DataHoraGeracao do envelope é apenas
+            // quando o ADN processou o documento, podendo divergir da emissão)
+            $dhEmi = $get('dhEmi') ?: $get('DataEmissao');
 
             // Tomador: nome
             $tomadorNome = $get('xNome');
@@ -746,6 +637,7 @@ XML;
 
             return [
                 'numero'        => $numero ?: null,
+                'dataEmissao'   => $dhEmi ?: null,
                 'tomadorNome'   => $tomadorNome ?: null,
                 'tomadorDoc'    => $tomadorCnpj ?: ($tomadorCpf ?: null),
                 'valorServico'  => $valor !== '' ? (float) str_replace(',', '.', $valor) : null,

@@ -15,13 +15,15 @@ class ClienteCertificadoNfse extends Model
         'senha',
         'ambiente',
         'ultimo_nsu',
+        'ultimo_nsu_nfe',
         'vencimento',
     ];
 
     protected $casts = [
-        'senha'      => 'encrypted',
-        'vencimento' => 'date',
-        'ultimo_nsu' => 'integer',
+        'senha'          => 'encrypted',
+        'vencimento'     => 'date',
+        'ultimo_nsu'     => 'integer',
+        'ultimo_nsu_nfe' => 'integer',
     ];
 
     public function cliente(): BelongsTo

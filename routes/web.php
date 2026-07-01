@@ -24,6 +24,7 @@ use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\TipoTarefaController;
 use App\Http\Controllers\AcessoExternoController;
+use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
@@ -259,6 +260,13 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');
     Route::post('/exportar-excel-nsus', [NfseController::class, 'exportarExcelNsus'])->name('exportar-excel-nsus');
+});
+
+// NF-e / CT-e — Distribuição DFe (Ambiente Nacional)
+Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
+    Route::get('/', [NfeController::class, 'index'])->name('index');
+    Route::post('/buscar', [NfeController::class, 'buscar'])->name('buscar');
+    Route::post('/xml/zip-xmls', [NfeController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
 });
 
 
