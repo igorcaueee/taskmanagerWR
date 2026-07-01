@@ -89,12 +89,20 @@ class NfeService
                     'qtd_docs'   => count($resp['docs'] ?? []),
                 ]);
 
-                // 656 = consumo indevido (mesmo ultNSU repetido/consultas em excesso) — a Sefaz
-                // bloqueia o CNPJ por um tempo. Não adianta retentar automaticamente.
+                // 656 = consumo indevido — geralmente porque outro sistema (contábil, ERP etc.)
+                // já consome a distribuição deste CNPJ e a Sefaz está bem à frente do NSU que
+                // tínhamos (0 na primeira consulta). A própria resposta de rejeição já traz o
+                // ultNSU correto — persistimos aqui para autocalibrar a próxima tentativa.
                 if ($cStat === '656') {
+                    if (!empty($resp['ultNSU'])) {
+                        $certificado->update(['ultimo_nsu_nfe' => (int) $resp['ultNSU']]);
+                    }
+
                     throw new \RuntimeException(
-                        'A Sefaz bloqueou temporariamente as consultas deste certificado por uso indevido do NSU '
-                        . '(reenvio do mesmo ultNSU). ' . ($resp['xMotivo'] ?: 'Aguarde o tempo indicado pela Sefaz antes de tentar novamente.')
+                        'A Sefaz rejeitou a consulta por "consumo indevido" — provavelmente porque outro sistema '
+                        . '(contábil, ERP etc.) já consulta a distribuição de DF-e deste CNPJ, e a sequência de NSU '
+                        . 'da Sefaz está à frente da nossa. Sincronizamos o NSU correto' . (!empty($resp['ultNSU']) ? " ({$resp['ultNSU']})" : '')
+                        . ' para a próxima tentativa. ' . ($resp['xMotivo'] ?: 'Aguarde o tempo indicado pela Sefaz antes de tentar novamente.')
                     );
                 }
 
