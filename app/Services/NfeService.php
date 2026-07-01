@@ -59,18 +59,30 @@ class NfeService
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
         try {
-            $documentos       = [];
-            $nsuAtual         = (int) $certificado->ultimo_nsu_nfe;
-            $maxNsuEncontrado = $nsuAtual;
-            $lotes            = 0;
+            $documentos = [];
+            $nsuAtual   = (int) $certificado->ultimo_nsu_nfe;
+            $lotes      = 0;
 
             while ($lotes < self::MAX_LOTES) {
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cUFAutor, $cnpj, $nsuAtual, $pemCert, $pemKey);
 
                 $cStat = $resp['cStat'] ?? '';
 
-                // 137 = nenhum documento localizado (fim da paginação)
+                // 656 = consumo indevido (mesmo ultNSU repetido/consultas em excesso) — a Sefaz
+                // bloqueia o CNPJ por um tempo. Não adianta retentar automaticamente.
+                if ($cStat === '656') {
+                    throw new \RuntimeException(
+                        'A Sefaz bloqueou temporariamente as consultas deste certificado por uso indevido do NSU '
+                        . '(reenvio do mesmo ultNSU). ' . ($resp['xMotivo'] ?: 'Aguarde o tempo indicado pela Sefaz antes de tentar novamente.')
+                    );
+                }
+
+                // 137 = nenhum documento localizado (já está em dia com o servidor)
                 if ($cStat === '137') {
+                    // ultNSU da resposta confirma o ponto em que ficamos "em dia" — persiste mesmo sem documentos.
+                    if (isset($resp['ultNSU'])) {
+                        $certificado->update(['ultimo_nsu_nfe' => (int) $resp['ultNSU']]);
+                    }
                     break;
                 }
 
@@ -78,21 +90,13 @@ class NfeService
                     throw new \RuntimeException("Distribuição DFe retornou cStat {$cStat}: " . ($resp['xMotivo'] ?? 'motivo desconhecido'));
                 }
 
-                $lote = $resp['docs'] ?? [];
-
-                if (empty($lote)) {
-                    break;
+                if ($resp['ultNSU'] === null || $resp['maxNSU'] === null) {
+                    throw new \RuntimeException('Resposta cStat 138 sem ultNSU/maxNSU — não é possível paginar com segurança.');
                 }
 
                 $passouFim = false;
 
-                foreach ($lote as $doc) {
-                    $nsuDoc = (int) ($doc['nsu'] ?? 0);
-
-                    if ($nsuDoc > $maxNsuEncontrado) {
-                        $maxNsuEncontrado = $nsuDoc;
-                    }
-
+                foreach ($resp['docs'] as $doc) {
                     if ($doc['tipo'] === 'evento') {
                         continue; // eventos (cancelamento, manifestação) não viram linha própria por ora
                     }
@@ -111,15 +115,21 @@ class NfeService
                     $documentos[] = $doc;
                 }
 
-                if ($passouFim) {
+                // Avança pelo ultNSU retornado pela própria Sefaz (não pelo NSU do último doc do lote) —
+                // é o valor que o protocolo exige usar na próxima consulta.
+                $nsuAtual = (int) $resp['ultNSU'];
+                $maxNSU   = (int) $resp['maxNSU'];
+
+                // Persiste a cada lote processado, não só no final — evita reconsultar o mesmo
+                // ultNSU (e levar novo bloqueio de "consumo indevido") caso um lote seguinte falhe.
+                $certificado->update(['ultimo_nsu_nfe' => $nsuAtual]);
+
+                if ($passouFim || $nsuAtual >= $maxNSU) {
                     break;
                 }
 
-                $nsuAtual = $maxNsuEncontrado + 1;
                 $lotes++;
             }
-
-            $certificado->update(['ultimo_nsu_nfe' => $maxNsuEncontrado]);
         } finally {
             foreach ($tempFiles as $f) {
                 @unlink($f);
@@ -231,10 +241,12 @@ XML;
         libxml_use_internal_errors(true);
         $obj = new \SimpleXMLElement($soapXml);
 
-        $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
+        $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='retDistDFeInt']/*[local-name()='{$tag}']")[0] ?? ''));
 
         $cStat   = $get('cStat');
         $xMotivo = $get('xMotivo');
+        $ultNSU  = $get('ultNSU');
+        $maxNSU  = $get('maxNSU');
 
         $docs = [];
 
@@ -246,7 +258,13 @@ XML;
             $docs[] = $this->normalizarDocumento($nsu, $schema, $xml);
         }
 
-        return ['cStat' => $cStat, 'xMotivo' => $xMotivo, 'docs' => $docs];
+        return [
+            'cStat'   => $cStat,
+            'xMotivo' => $xMotivo,
+            'ultNSU'  => $ultNSU !== '' ? (int) $ultNSU : null,
+            'maxNSU'  => $maxNSU !== '' ? (int) $maxNSU : null,
+            'docs'    => $docs,
+        ];
     }
 
     /**
