@@ -607,9 +607,11 @@ XML;
             // Número da NFS-e
             $numero = $get('nNFSe') ?: $get('Numero');
 
-            // Data de emissão real da NFS-e (a DataHoraGeracao do envelope é apenas
-            // quando o ADN processou o documento, podendo divergir da emissão)
-            $dhEmi = $get('dhEmi') ?: $get('DataEmissao');
+            // Data/hora de emissão da NFS-e propriamente dita (dhProc, em infNFSe).
+            // Diferente de dhEmi (emissão da DPS, o documento enviado pelo prestador)
+            // e de dCompet (competência) — é o campo que o DANFSe rotula como
+            // "Data e Hora da emissão da NFS-e" e que deve valer para o filtro/exibição.
+            $dhEmi = $get('dhProc') ?: ($get('dhEmi') ?: $get('DataEmissao'));
 
             // Tomador: nome
             $tomadorNome = $get('xNome');
