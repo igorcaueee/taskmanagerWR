@@ -128,7 +128,10 @@
                 <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 z-50 overflow-hidden">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-700">
                         <span class="text-sm font-semibold text-gray-700 dark:text-slate-200">Notificações</span>
-                        <button id="notif-mark-all" class="text-xs text-[#0084AA] hover:underline">Marcar todas como lidas</button>
+                        <button id="notif-mark-all" type="button" title="Marcar todas como lidas"
+                            class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-brand hover:bg-gray-100 dark:hover:bg-slate-700 border-0 bg-transparent p-0 cursor-pointer focus:outline-none">
+                            <i class="fa-solid fa-check-double text-xs"></i>
+                        </button>
                     </div>
                     <ul id="notif-list" class="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-700">
                         <li class="px-4 py-6 text-center text-xs text-gray-400 dark:text-slate-500" id="notif-empty">Nenhuma notificação.</li>
@@ -260,11 +263,22 @@
                 '</div>';
 
             li.addEventListener('click', function () {
+                const irParaTarefa = function () {
+                    if (n.tarefa_id) {
+                        window.location.href = '{{ route("tarefas.list") }}?tarefa_id=' + n.tarefa_id;
+                    }
+                };
+
                 if (!n.lida) {
                     fetch('{{ route("notificacoes.marcar-lida", ":id") }}'.replace(':id', n.id), {
                         method: 'PATCH',
                         headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-                    }).then(function () { carregar(); });
+                    }).then(function () {
+                        carregar();
+                        irParaTarefa();
+                    });
+                } else {
+                    irParaTarefa();
                 }
             });
 
@@ -293,7 +307,7 @@
                 '<p class="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-0.5">Nova tarefa atribuída</p>' +
                 '<p class="text-xs text-gray-600 dark:text-slate-300 leading-snug">' + mensagem + '</p>' +
             '</div>' +
-            '<button class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 flex-shrink-0 text-xs mt-0.5" onclick="this.closest(\'.notif-toast\').remove()">✕</button>';
+            '<button type="button" title="Fechar" class="shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-slate-300 dark:hover:bg-slate-700 border-0 bg-transparent p-0 cursor-pointer focus:outline-none" onclick="this.closest(\'.notif-toast\').remove()"><i class="fa-solid fa-xmark text-xs"></i></button>';
         toast.classList.add('notif-toast');
 
         container.appendChild(toast);

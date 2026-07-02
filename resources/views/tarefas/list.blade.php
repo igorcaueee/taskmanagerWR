@@ -1352,6 +1352,19 @@
         }
     });
 
+    // ── Abertura automática do modal via notificação (?tarefa_id=) ─────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        const params = new URLSearchParams(window.location.search);
+        const tarefaId = params.get('tarefa_id');
+        if (!tarefaId) { return; }
 
+        activeTarefaId = tarefaId;
+        openDetailModal(tarefaId);
+
+        params.delete('tarefa_id');
+        const newQuery = params.toString();
+        const newUrl = window.location.pathname + (newQuery ? '?' + newQuery : '') + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+    });
 </script>
 @endpush

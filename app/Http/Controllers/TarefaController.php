@@ -525,6 +525,21 @@ class TarefaController extends Controller
             ]);
         }
 
+        // Notifica o novo responsável quando a tarefa é transferida para ele por outro usuário
+        if ($responsavelMudou && $novoResponsavelId && (int) $novoResponsavelId !== (int) Auth::id()) {
+            try {
+                $criador = Auth::user();
+                Notificacao::create([
+                    'usuario_id' => $novoResponsavelId,
+                    'tipo'       => 'tarefa_atribuida',
+                    'mensagem'   => "{$criador->nome} transferiu a tarefa \"{$data['titulo']}\" para você.",
+                    'tarefa_id'  => $tarefa->id,
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Falha ao criar notificação: ' . $e->getMessage());
+            }
+        }
+
         return Redirect::back()->with('success', 'Tarefa atualizada com sucesso.');
     }
 
