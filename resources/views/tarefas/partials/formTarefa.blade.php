@@ -289,7 +289,7 @@
     </div>
 
     {{-- Envio de arquivo ao finalizar --}}
-    <div class="flex items-start gap-3 p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+    <div class="flex items-start gap-3 p-3 mt-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
         <input type="checkbox" name="requer_envio_arquivo" id="requer_envio_arquivo" value="1"
                class="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand"
                {{ old('requer_envio_arquivo', $isEditing ? $tarefa->requer_envio_arquivo : false) ? 'checked' : '' }}>
