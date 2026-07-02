@@ -12,6 +12,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="description" content="WR Assessoria - Área Interna">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="app-version" content="{{ appBuildVersion() }}">
 
         <title>@yield('title', 'Painel — WR Assessoria')</title>
         @include('partials.head')

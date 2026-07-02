@@ -373,4 +373,40 @@
     carregar();
     setInterval(carregar, 15000);
 }());
+
+// Aviso de nova versão do sistema disponível
+(function () {
+    const versaoAtual = document.querySelector('meta[name="app-version"]')?.content;
+    if (!versaoAtual) { return; }
+
+    let avisado = false;
+
+    function verificarVersao() {
+        if (avisado) { return; }
+
+        fetch('{{ route('system.version') }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.version && data.version !== versaoAtual) {
+                avisado = true;
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sistema atualizado',
+                    text: 'Uma nova versão está disponível. Atualize a página para continuar.',
+                    confirmButtonText: 'Atualizar agora',
+                    confirmButtonColor: '#0084AA',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then(function () {
+                    window.location.reload();
+                });
+            }
+        })
+        .catch(function () {});
+    }
+
+    setInterval(verificarVersao, 5 * 60 * 1000);
+}());
 </script>

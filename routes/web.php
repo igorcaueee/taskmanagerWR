@@ -206,6 +206,8 @@ Route::middleware('auth')->prefix('notificacoes')->name('notificacoes.')->group(
     Route::patch('/{id}/lida', [NotificacaoController::class, 'marcarLida'])->name('marcar-lida');
     Route::patch('/marcar-todas-lidas', [NotificacaoController::class, 'marcarTodasLidas'])->name('marcar-todas-lidas');
 });
+// Versão do build (usado para avisar o usuário sobre atualizações do sistema)
+Route::get('/api/system/version', fn () => response()->json(['version' => appBuildVersion()]))->name('system.version')->middleware('auth');
 // Blog admin (interno)
 Route::get('/admin/blog', [BlogController::class, 'index'])->name('blog.admin.index')->middleware(['auth', 'admin']);
 Route::get('/admin/blog/criar', [BlogController::class, 'formCreate'])->name('blog.admin.form.create')->middleware(['auth', 'admin']);
