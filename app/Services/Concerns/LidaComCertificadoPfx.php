@@ -54,7 +54,16 @@ trait LidaComCertificadoPfx
             throw new \RuntimeException("Não foi possível criar arquivos temporários em {$tmpDir}.");
         }
 
-        file_put_contents($tmpCert, $certs['cert']);
+        // Inclui a cadeia intermediária (extracerts) junto do certificado folha —
+        // sem ela, ACs cujo intermediário não é conhecido de antemão pelo servidor
+        // causam falha de validação da cadeia (HTTP 400 "Erro Cadeia de Certificação")
+        // no handshake mTLS.
+        $conteudoCert = $certs['cert'];
+        foreach ($certs['extracerts'] ?? [] as $extraCert) {
+            $conteudoCert .= $extraCert;
+        }
+
+        file_put_contents($tmpCert, $conteudoCert);
         file_put_contents($tmpKey,  $certs['pkey']);
 
         Log::info('[Certificado] extrairPem: PEM extraído com sucesso', ['tmpCert' => $tmpCert]);
@@ -68,8 +77,11 @@ trait LidaComCertificadoPfx
         $tmpCert = tempnam($tmpDir, 'cert_c_');
         $tmpKey  = tempnam($tmpDir, 'cert_k_');
 
+        // -chain inclui o certificado folha + a cadeia intermediária (equivalente
+        // ao extracerts do openssl_pkcs12_read) — necessário para o servidor validar
+        // a cadeia de confiança no handshake mTLS.
         $cmdCert = sprintf(
-            'openssl pkcs12 -legacy -in %s -passin pass:%s -clcerts -nokeys -out %s 2>&1',
+            'openssl pkcs12 -legacy -in %s -passin pass:%s -chain -nokeys -out %s 2>&1',
             escapeshellarg($pfxPath),
             escapeshellarg($senha),
             escapeshellarg($tmpCert)
