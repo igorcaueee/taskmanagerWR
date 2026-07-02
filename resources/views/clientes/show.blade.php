@@ -175,6 +175,13 @@
                             <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Regime Tributário</dt>
                             <dd class="mt-0.5 text-gray-900 dark:text-slate-100">
                                 {{ $cliente->regime_tributario ? mb_strtoupper($cliente->regime_tributario) : '—' }}
+                                @if($cliente->historicoRegimeTributario->isNotEmpty())
+                                    @php $ultimaMudancaRegime = $cliente->historicoRegimeTributario->first(); @endphp
+                                    <span class="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                        Anterior: {{ $ultimaMudancaRegime->regime_anterior ? mb_strtoupper($ultimaMudancaRegime->regime_anterior) : '—' }}
+                                        em {{ $ultimaMudancaRegime->created_at->format('d/m/Y') }}
+                                    </span>
+                                @endif
                             </dd>
                         </div>
                         <div>
@@ -211,6 +218,32 @@
                         </div>
                     </dl>
                 </div>
+
+                {{-- Histórico de Regime Tributário --}}
+                @if($cliente->historicoRegimeTributario->isNotEmpty())
+                    <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
+                        <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                            <i class="fa-solid fa-clock-rotate-left mr-1"></i> Histórico de Regime Tributário
+                        </h2>
+                        <ul class="space-y-2 text-sm">
+                            @foreach($cliente->historicoRegimeTributario as $historicoRegime)
+                                <li class="flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                                    <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0">
+                                        {{ $historicoRegime->created_at->format('d/m/Y H:i') }}
+                                    </span>
+                                    <span>
+                                        {{ $historicoRegime->regime_anterior ? mb_strtoupper($historicoRegime->regime_anterior) : '—' }}
+                                        <i class="fa-solid fa-arrow-right mx-1 text-xs text-gray-400"></i>
+                                        {{ $historicoRegime->regime_novo ? mb_strtoupper($historicoRegime->regime_novo) : '—' }}
+                                    </span>
+                                    <span class="text-xs text-gray-400 dark:text-gray-500">
+                                        ({{ $historicoRegime->alteradoPor?->nome ?? '—' }})
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
                 {{-- Descrição --}}
                 @if($cliente->descricao)

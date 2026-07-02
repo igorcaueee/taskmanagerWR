@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\HistoricoRegimeTributario;
 use App\Models\PortalUsuario;
 use App\Models\Possibilidade;
 use App\Models\Produto;
@@ -102,7 +103,7 @@ class ClienteController extends Controller
 
     public function showCliente(int $id): View
     {
-        $cliente = Cliente::with(['produtos', 'possibilidades', 'socios', 'segmentacao', 'certificadoNfse'])->findOrFail($id);
+        $cliente = Cliente::with(['produtos', 'possibilidades', 'socios', 'segmentacao', 'certificadoNfse', 'historicoRegimeTributario.alteradoPor'])->findOrFail($id);
         $ultimoIDE = QuestionarioResposta::where('cliente_id', $id)
             ->where('finalizado', true)
             ->latest()
@@ -201,7 +202,18 @@ class ClienteController extends Controller
 
         $data['fator_r'] = isset($data['fator_r']);
 
+        $regimeAnterior = $cliente->regime_tributario;
+
         $cliente->update($data);
+
+        if ($regimeAnterior !== $cliente->regime_tributario) {
+            HistoricoRegimeTributario::create([
+                'cliente_id' => $cliente->id,
+                'regime_anterior' => $regimeAnterior,
+                'regime_novo' => $cliente->regime_tributario,
+                'alterado_por' => auth()->id(),
+            ]);
+        }
 
         $cliente->produtos()->sync($request->input('produtos', []));
         $cliente->possibilidades()->sync($request->input('possibilidades', []));

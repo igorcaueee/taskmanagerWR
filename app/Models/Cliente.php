@@ -102,4 +102,9 @@ class Cliente extends Authenticatable
     {
         return $this->hasOne(ClienteCertificadoNfse::class);
     }
+
+    public function historicoRegimeTributario(): HasMany
+    {
+        return $this->hasMany(HistoricoRegimeTributario::class)->orderByDesc('created_at');
+    }
 }
