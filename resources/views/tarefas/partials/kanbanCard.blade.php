@@ -11,11 +11,12 @@
     $prioridadeLabel = $prioridadeLabels[$tarefa->prioridade] ?? $tarefa->prioridade;
     $estaAtrasada = is_null($tarefa->data_conclusao) && $tarefa->data_vencimento->lt(now()->startOfDay());
     $estaConcluida = ! is_null($tarefa->data_conclusao);
+    $ehTarefaNova = in_array($tarefa->id, session('novas_tarefas_ids', []));
 @endphp
 
-<div class="kanban-card rounded-lg shadow-sm border p-2 cursor-grab active:cursor-grabbing select-none
+<div class="kanban-card rounded-lg shadow-sm border p-2 cursor-grab active:cursor-grabbing select-none {{ $ehTarefaNova ? 'kanban-card-nova' : '' }}
     {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700' }}"
-     style="border-left: 4px solid {{ $tarefa->etapa->cor ?? '#6b7280' }};"
+     style="border-left: 4px solid {{ $tarefa->etapa->cor ?? '#6b7280' }} !important;"
      draggable="true"
      data-tarefa-id="{{ $tarefa->id }}"
      data-etapa-id="{{ $tarefa->etapa_id }}"

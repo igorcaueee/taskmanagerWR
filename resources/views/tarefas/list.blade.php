@@ -313,6 +313,23 @@
     .kanban-column.drag-over {
         border-radius: 0 0 0.75rem 0.75rem;
     }
+    .kanban-card-nova {
+        animation: kanban-card-piscar 0.85s ease-in-out infinite;
+        position: relative;
+        z-index: 1;
+    }
+    @keyframes kanban-card-piscar {
+        0%, 100% {
+            box-shadow: inset 0 0 0 3px rgba(37, 99, 235, 1), 0 0 14px 3px rgba(37, 99, 235, 0.9);
+            background-color: rgba(37, 99, 235, 0.35);
+            transform: scale(1.035);
+        }
+        50% {
+            box-shadow: inset 0 0 0 3px rgba(37, 99, 235, 0.15), 0 0 0 0 rgba(37, 99, 235, 0);
+            background-color: transparent;
+            transform: scale(1);
+        }
+    }
 </style>
 <script>
     const updateEtapaUrl = (id) => `/tarefas/${id}/etapa`;
@@ -1017,7 +1034,12 @@
                         <i class="fa-solid fa-circle-exclamation mr-1" style="font-size:0.6rem"></i>${h.observacao}
                     </p>`;
                 }
-                if (h.responsavel_novo) {
+                if (h.eh_criacao) {
+                    item += `<p class="text-xs text-gray-700 mt-0.5">
+                        <i class="fa-solid fa-user-plus text-gray-400 mr-1" style="font-size:0.6rem"></i>
+                        Criado por <span class="font-semibold">${h.alterado_por ?? 'desconhecido'}</span>
+                    </p>`;
+                } else if (h.responsavel_novo) {
                     item += `<p class="text-xs text-gray-700 mt-0.5">
                         <i class="fa-solid fa-user-pen text-gray-400 mr-1" style="font-size:0.6rem"></i>
                         <span class="font-semibold">${h.responsavel_anterior ?? 'Nenhum'}</span>

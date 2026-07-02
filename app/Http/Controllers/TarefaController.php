@@ -325,6 +325,7 @@ class TarefaController extends Controller
             ?? ($tiposMap->first()?->data_vencimento?->format('Y-m-d') ?? now()->toDateString());
 
         $duplicatas = [];
+        $novasTarefasIds = [];
         foreach ($clienteIds as $clienteId) {
             foreach ($tipoIds as $tipoId) {
                 $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
@@ -389,6 +390,17 @@ class TarefaController extends Controller
                     'requer_envio_arquivo' => ! empty($data['requer_envio_arquivo']),
                 ]);
 
+                $novasTarefasIds[] = $tarefa->id;
+
+                RelTarefa::create([
+                    'tarefa_id' => $tarefa->id,
+                    'etapa_anterior_id' => null,
+                    'etapa_nova_id' => $data['etapa_id'],
+                    'responsavel_anterior_id' => null,
+                    'responsavel_novo_id' => $data['responsavel_id'] ?? null,
+                    'alterado_por' => Auth::id(),
+                ]);
+
                 if ($clienteId !== null) {
                     $tarefa->clientes()->sync([$clienteId]);
                 }
@@ -420,7 +432,11 @@ class TarefaController extends Controller
             ? "{$count} tarefas criadas com sucesso."
             : 'Tarefa criada com sucesso.';
 
-        return Redirect::back()->with('success', $mensagem);
+        $redirectUrl = $request->headers->get('referer') ?? route('tarefas.list');
+
+        return redirect($redirectUrl)
+            ->with('success', $mensagem)
+            ->with('novas_tarefas_ids', $novasTarefasIds);
     }
 
     public function update(Request $request, int $id): RedirectResponse
@@ -946,6 +962,7 @@ class TarefaController extends Controller
                 'etapa_nova_cor' => $r->etapaNova?->cor ?? '#6b7280',
                 'responsavel_anterior' => $r->responsavelAnterior?->nome,
                 'responsavel_novo' => $r->responsavelNovo?->nome,
+                'eh_criacao' => is_null($r->etapa_anterior_id) && is_null($r->responsavel_anterior_id),
                 'alterado_por' => $r->alteradoPor?->nome,
                 'observacao' => $r->observacao,
                 'data' => $r->created_at->format('d/m/Y H:i'),
