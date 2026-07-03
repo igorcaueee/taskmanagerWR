@@ -778,10 +778,15 @@ class TarefaController extends Controller
             $ultimaRecorrencia = ! $temProxima;
         }
 
+        $isRenovacaoCertificado = $isFinalizado
+            && $tarefa->cliente_id
+            && str_starts_with($tarefa->titulo, 'Renovação de Certificado');
+
         return response()->json([
             'success' => true,
             'finalizado' => $isFinalizado,
             'requer_envio_arquivo' => $isFinalizado && $tarefa->requer_envio_arquivo,
+            'renovacao_certificado' => $isRenovacaoCertificado,
             'cliente_id' => $tarefa->cliente_id,
             'ultima_recorrencia' => $ultimaRecorrencia,
             'tarefa_id' => $tarefa->id,

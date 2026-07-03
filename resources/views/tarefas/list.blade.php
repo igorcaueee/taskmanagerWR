@@ -579,6 +579,10 @@
 
             showToast('Etapa atualizada com sucesso!', 'green');
 
+            if (result.renovacao_certificado) {
+                await mostrarModalRenovacaoCertificado(result.cliente_id);
+            }
+
             if (result.requer_envio_arquivo) {
                 await mostrarUploadArquivo(tarefaId, result.cliente_id);
             }
@@ -639,6 +643,82 @@
             }
         } else if (result.isDenied) {
             window.openModal(`/tarefas/${tarefaId}/form`);
+        }
+    }
+
+    async function mostrarModalRenovacaoCertificado(clienteId) {
+        const result = await Swal.fire({
+            title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-shield mr-2 text-blue-500"></i>Atualizar certificado digital do cliente</span>',
+            html: `
+                <p class="text-sm text-gray-500 mb-4">Esta tarefa é de renovação de certificado. Aproveite para já enviar o novo certificado do cliente.</p>
+
+                <div class="mb-3 text-left">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Arquivo do certificado (.pfx/.p12) <span class="text-red-500">*</span></label>
+                    <input type="file" id="swal-cert-arquivo" accept=".pfx,.p12"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+
+                <div class="mb-3 text-left">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Senha do certificado <span class="text-red-500">*</span></label>
+                    <input type="password" id="swal-cert-senha"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+
+                <div class="mb-1 text-left">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Ambiente <span class="text-red-500">*</span></label>
+                    <select id="swal-cert-ambiente" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="producao">Produção</option>
+                        <option value="homologacao">Homologação</option>
+                    </select>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-upload mr-1"></i> Enviar certificado',
+            cancelButtonText: 'Enviar depois',
+            confirmButtonColor: '#0084AA',
+            preConfirm: async () => {
+                const fileInput = document.getElementById('swal-cert-arquivo');
+                const senha = document.getElementById('swal-cert-senha').value;
+                const ambiente = document.getElementById('swal-cert-ambiente').value;
+
+                if (!fileInput.files.length) {
+                    Swal.showValidationMessage('Selecione o arquivo do certificado.');
+                    return false;
+                }
+                if (!senha) {
+                    Swal.showValidationMessage('Informe a senha do certificado.');
+                    return false;
+                }
+
+                const formData = new FormData();
+                formData.append('cliente_id', clienteId);
+                formData.append('certificado', fileInput.files[0]);
+                formData.append('senha', senha);
+                formData.append('ambiente', ambiente);
+
+                Swal.showLoading();
+
+                try {
+                    const res = await fetch('{{ route('nfse.certificado.salvar') }}', {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: formData,
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        Swal.showValidationMessage(data.error ?? 'Erro ao enviar o certificado.');
+                        return false;
+                    }
+                    return data;
+                } catch {
+                    Swal.showValidationMessage('Erro de conexão ao enviar o certificado.');
+                    return false;
+                }
+            },
+        });
+
+        if (result.isConfirmed && result.value) {
+            showToast('Certificado atualizado com sucesso!', 'green');
         }
     }
 
