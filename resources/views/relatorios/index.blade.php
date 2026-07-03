@@ -355,7 +355,8 @@
                             @php
                                 $concluida = (bool) $tarefa->data_conclusao;
                                 $concluidaAtrasada = $concluida && $tarefa->data_vencimento && $tarefa->data_conclusao->gt($tarefa->data_vencimento);
-                                $vencida   = (! $concluida && $tarefa->data_vencimento?->isPast()) || $concluidaAtrasada;
+                                $vencida   = ! $concluida && $tarefa->data_vencimento?->isPast();
+                                $dataVencidaVisual = $vencida || $concluidaAtrasada;
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/40">
                                 <td class="px-4 py-2 text-gray-800 dark:text-slate-200 max-w-xs truncate" title="{{ $tarefa->titulo }}">
@@ -377,7 +378,7 @@
                                         <span class="text-gray-400 dark:text-slate-500">—</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-2 whitespace-nowrap {{ $vencida ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400' }}">
+                                <td class="px-4 py-2 whitespace-nowrap {{ $dataVencidaVisual ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400' }}">
                                     {{ $tarefa->data_vencimento?->format('d/m/Y') ?? '—' }}
                                 </td>
                                 <td class="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
@@ -393,13 +394,13 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 whitespace-nowrap">
-                                    @if($vencida)
-                                        <span class="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
-                                            <i class="fa-solid fa-triangle-exclamation"></i> Vencida
-                                        </span>
-                                    @elseif($concluida)
+                                    @if($concluida)
                                         <span class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
                                             <i class="fa-solid fa-check-circle"></i> Concluída
+                                        </span>
+                                    @elseif($vencida)
+                                        <span class="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+                                            <i class="fa-solid fa-triangle-exclamation"></i> Vencida
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1 text-xs text-blue-500 font-medium">
