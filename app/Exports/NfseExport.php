@@ -29,7 +29,8 @@ class NfseExport
 
         $this->buildDados($spreadsheet, 'Emitidas', $emitidas, true);
         $this->buildDados($spreadsheet, 'Recebidas', $recebidas, false);
-        $this->buildResumo($spreadsheet);
+        $this->buildResumo($spreadsheet, 'Resumo Emitidas', 'Emitidas', $emitidas);
+        $this->buildResumo($spreadsheet, 'Resumo Recebidas', 'Recebidas', $recebidas);
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -171,10 +172,10 @@ class NfseExport
 
     // ─── Aba Resumo ───────────────────────────────────────────────────────────
 
-    private function buildResumo(Spreadsheet $spreadsheet): void
+    private function buildResumo(Spreadsheet $spreadsheet, string $tituloAba, string $label, array $notas): void
     {
         $sheet = $spreadsheet->createSheet();
-        $sheet->setTitle('Resumo');
+        $sheet->setTitle($tituloAba);
 
         $azulEscuro = '1F3864';
         $azulMedio  = '2E75B6';
@@ -182,16 +183,16 @@ class NfseExport
         $ambar      = 'FFD966';
         $branco     = 'FFFFFF';
 
-        $ativas     = array_filter($this->notas, fn($n) => !$this->isCancelada($n));
-        $canceladas = array_filter($this->notas, fn($n) => $this->isCancelada($n));
-        $totalNota  = count($this->notas);
+        $ativas     = array_filter($notas, fn($n) => !$this->isCancelada($n));
+        $canceladas = array_filter($notas, fn($n) => $this->isCancelada($n));
+        $totalNota  = count($notas);
         $qtdAtivas  = count($ativas);
         $qtdCanceladas = count($canceladas);
 
         // ── Bloco 1: Cabeçalho ────────────────────────────────────────────────
 
         $sheet->mergeCells('A1:E1');
-        $sheet->setCellValue('A1', 'RESUMO DE RETENCOES - NFS-e');
+        $sheet->setCellValue('A1', 'RESUMO DE RETENCOES - NFS-e (' . strtoupper($label) . ')');
         $sheet->getStyle('A1')->applyFromArray([
             'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => $branco]],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $azulEscuro]],
@@ -238,15 +239,15 @@ class NfseExport
         })(), false), 'vServ'));
 
         $issRetidas   = array_filter($ativas, fn($n) => $this->issRetido($n));
-        $cpNotas      = array_filter($this->notas, fn($n) => $n['vRetCP'] > 0);
-        $irrfNotas    = array_filter($this->notas, fn($n) => $n['vRetIRRF'] > 0);
-        $crfNotas     = array_filter($this->notas, fn($n) => $n['vRetCSLL'] > 0);
+        $cpNotas      = array_filter($notas, fn($n) => $n['vRetCP'] > 0);
+        $irrfNotas    = array_filter($notas, fn($n) => $n['vRetIRRF'] > 0);
+        $crfNotas     = array_filter($notas, fn($n) => $n['vRetCSLL'] > 0);
 
         $somaServ    = array_sum(array_column(array_values($ativas), 'vServ'));
         $somaIss     = array_sum(array_column(array_values($issRetidas), 'vISSQN'));
-        $somaCP      = array_sum(array_column(array_values($this->notas), 'vRetCP'));
-        $somaIRRF    = array_sum(array_column(array_values($this->notas), 'vRetIRRF'));
-        $somaCRF     = array_sum(array_column(array_values($this->notas), 'vRetCSLL'));
+        $somaCP      = array_sum(array_column(array_values($notas), 'vRetCP'));
+        $somaIRRF    = array_sum(array_column(array_values($notas), 'vRetIRRF'));
+        $somaCRF     = array_sum(array_column(array_values($notas), 'vRetCSLL'));
         $totalRet    = $somaIss + $somaCP + $somaIRRF + $somaCRF;
 
         $numIss  = implode(', ', array_column(array_values($issRetidas), 'nNFSe'));
@@ -314,7 +315,7 @@ class NfseExport
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
 
-        $notasComRetencao = array_filter($this->notas, fn($n) =>
+        $notasComRetencao = array_filter($notas, fn($n) =>
             ($this->issRetido($n)) ||
             $n['vRetCP'] > 0 || $n['vRetIRRF'] > 0 || $n['vRetCSLL'] > 0
         );
