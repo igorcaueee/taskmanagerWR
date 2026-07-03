@@ -33,6 +33,11 @@
                     @endforeach
                 </select>
 
+                {{-- CNPJ do cliente selecionado --}}
+                <p id="clienteCnpj" class="hidden mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    CNPJ: <span id="clienteCnpjValor" class="font-medium text-gray-700 dark:text-slate-300"></span>
+                </p>
+
                 {{-- Status do certificado --}}
                 <div id="certStatus" class="hidden mt-3">
                     <div id="certOk" class="hidden items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
@@ -243,6 +248,8 @@
 
     // Elementos
     const selectCliente   = document.getElementById('selectCliente');
+    const clienteCnpj      = document.getElementById('clienteCnpj');
+    const clienteCnpjValor = document.getElementById('clienteCnpjValor');
     const cardCertificado = document.getElementById('cardCertificado');
     const cardFiltro      = document.getElementById('cardFiltro');
     const certStatus      = document.getElementById('certStatus');
@@ -277,6 +284,17 @@
 
     let notasAtuais      = [];
     let cnpjClienteAtual = '';
+
+    function formatarCnpjCpf(valor) {
+        const digitos = (valor || '').replace(/\D/g, '');
+        if (digitos.length === 14) {
+            return digitos.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        if (digitos.length === 11) {
+            return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        return valor || '';
+    }
 
     function atualizarResumo() {
         const tipo = filtroTipo.value;
@@ -321,8 +339,13 @@
             cardCertificado.classList.add('hidden');
             cardFiltro.classList.add('hidden');
             certStatus.classList.add('hidden');
+            clienteCnpj.classList.add('hidden');
             return;
         }
+
+        const cnpjSelecionado = this.options[this.selectedIndex]?.dataset.cnpj ?? '';
+        clienteCnpjValor.textContent = formatarCnpjCpf(cnpjSelecionado);
+        clienteCnpj.classList.remove('hidden');
 
         cardCertificado.classList.remove('hidden');
         cardFiltro.classList.remove('hidden');
