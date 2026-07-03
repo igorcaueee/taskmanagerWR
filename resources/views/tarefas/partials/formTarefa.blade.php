@@ -65,7 +65,13 @@
                 <div id="tipo-multi-dropdown"
                     class="absolute z-50 mt-1 w-full bg-white dark:bg-slate-700 border dark:border-slate-600 rounded shadow-lg hidden"
                     style="max-height: 280px;">
-                    <ul id="tipo-multi-list" class="overflow-y-auto" style="max-height: 280px;">
+                    <div class="p-2 border-b dark:border-slate-600">
+                        <input type="text" id="tipo-multi-search"
+                            placeholder="Buscar tipo..."
+                            class="w-full px-3 py-1.5 text-sm border dark:border-slate-600 rounded bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200 focus:outline-none"
+                            oninput="filtrarTiposMulti(this.value)">
+                    </div>
+                    <ul id="tipo-multi-list" class="overflow-y-auto" style="max-height: 220px;">
                         @foreach($tiposTarefa as $tipo)
                             <li data-label="{{ $tipo->nome }}"
                                 data-data-vencimento="{{ $tipo->data_vencimento ? $tipo->data_vencimento->format('Y-m-d') : '' }}"
@@ -566,7 +572,21 @@ document.addEventListener('click', function (e) {
 function toggleTipoMultiDropdown() {
     const dropdown = document.getElementById('tipo-multi-dropdown');
     if (!dropdown) return;
-    dropdown.classList.toggle('hidden');
+    const isHidden = dropdown.classList.toggle('hidden');
+    if (!isHidden) {
+        const search = document.getElementById('tipo-multi-search');
+        search.value = '';
+        filtrarTiposMulti('');
+        search.focus();
+    }
+}
+
+function filtrarTiposMulti(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('#tipo-multi-list .tipo-multi-option').forEach(function (li) {
+        const label = li.dataset.label.toLowerCase();
+        li.style.display = (!q || label.includes(q)) ? '' : 'none';
+    });
 }
 
 function toggleTipoCheck(id, li) {
