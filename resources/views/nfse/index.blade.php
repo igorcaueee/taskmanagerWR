@@ -917,7 +917,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                 },
-                body: JSON.stringify({ xmls, statuses, nome: nomeEmpresa }),
+                body: JSON.stringify({ xmls, statuses, nome: nomeEmpresa, cnpj_cliente: cnpjClienteAtual }),
             });
 
             if (!resp.ok) {

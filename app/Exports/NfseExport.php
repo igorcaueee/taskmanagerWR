@@ -13,13 +13,22 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class NfseExport
 {
-    public function __construct(private array $notas) {}
+    private string $cnpjCliente;
+
+    public function __construct(private array $notas, string $cnpjCliente = '')
+    {
+        $this->cnpjCliente = preg_replace('/\D/', '', $cnpjCliente);
+    }
 
     public function download(string $filename): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $spreadsheet = new Spreadsheet();
 
-        $this->buildDados($spreadsheet);
+        $emitidas  = array_values(array_filter($this->notas, fn($n) => $this->isEmitida($n)));
+        $recebidas = array_values(array_filter($this->notas, fn($n) => !$this->isEmitida($n)));
+
+        $this->buildDados($spreadsheet, 'Emitidas', $emitidas, true);
+        $this->buildDados($spreadsheet, 'Recebidas', $recebidas, false);
         $this->buildResumo($spreadsheet);
 
         $spreadsheet->setActiveSheetIndex(0);
@@ -35,12 +44,12 @@ class NfseExport
         ]);
     }
 
-    // ─── Aba Dados ────────────────────────────────────────────────────────────
+    // ─── Aba Dados (Emitidas / Recebidas) ──────────────────────────────────────
 
-    private function buildDados(Spreadsheet $spreadsheet): void
+    private function buildDados(Spreadsheet $spreadsheet, string $titulo, array $notas, bool $primeira): void
     {
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Dados');
+        $sheet = $primeira ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+        $sheet->setTitle($titulo);
 
         $headers = [
             'A' => 'Numero (nNFSe)',
@@ -86,7 +95,7 @@ class NfseExport
         $numericCols = ['L', 'P', 'Q'];
 
         $row = 2;
-        foreach ($this->notas as $nota) {
+        foreach ($notas as $nota) {
             $bg = ($row % 2 === 0) ? 'EBF3FB' : 'FFFFFF';
 
             $values = [
@@ -134,7 +143,7 @@ class NfseExport
         }
 
         // Bordas na tabela completa
-        if (count($this->notas)) {
+        if (count($notas)) {
             $sheet->getStyle("A1:Y" . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
@@ -356,6 +365,17 @@ class NfseExport
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private function isEmitida(array $nota): bool
+    {
+        if (!$this->cnpjCliente) {
+            return false;
+        }
+
+        $cnpjPrest = preg_replace('/\D/', '', (string) ($nota['emitDoc'] ?? ''));
+
+        return $cnpjPrest !== '' && $cnpjPrest === $this->cnpjCliente;
+    }
 
     private function isCancelada(array $nota): bool
     {

@@ -298,10 +298,11 @@ class NfseController extends Controller
     public function exportarExcel(Request $request)
     {
         $request->validate([
-            'xmls'      => 'required|array|min:1',
-            'xmls.*'    => 'required|string',
-            'nome'      => 'nullable|string|max:100',
-            'statuses'  => 'nullable|array',
+            'xmls'         => 'required|array|min:1',
+            'xmls.*'       => 'required|string',
+            'nome'         => 'nullable|string|max:100',
+            'statuses'     => 'nullable|array',
+            'cnpj_cliente' => 'nullable|string|max:20',
         ]);
 
         $statuses = $request->input('statuses', []);
@@ -320,9 +321,10 @@ class NfseController extends Controller
             return response()->json(['error' => 'Nenhuma nota pôde ser parseada'], 422);
         }
 
-        $nome = $request->input('nome', 'NFS-e');
+        $nome         = $request->input('nome', 'NFS-e');
+        $cnpjCliente  = $request->input('cnpj_cliente', '');
 
-        return (new NfseExport($notas))->download("{$nome} - NFS-e.xlsx");
+        return (new NfseExport($notas, $cnpjCliente))->download("{$nome} - NFS-e.xlsx");
     }
 
     // ─── Exportar Excel (por NSUs — baixa XMLs server-side) ──────────────────
@@ -364,7 +366,7 @@ class NfseController extends Controller
 
         $nome = $request->input('nome', 'NFS-e');
 
-        return (new NfseExport($notas))->download("{$nome} - NFS-e.xlsx");
+        return (new NfseExport($notas, $cert->cliente->cpfcnpj ?? ''))->download("{$nome} - NFS-e.xlsx");
     }
 
     // ─── DANFSE via Tecnos Municipal (Teutônia) ──────────────────────────────
