@@ -353,8 +353,9 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
                         @forelse($tarefas as $tarefa)
                             @php
-                                $vencida   = ! $tarefa->data_conclusao && $tarefa->data_vencimento?->isPast();
                                 $concluida = (bool) $tarefa->data_conclusao;
+                                $concluidaAtrasada = $concluida && $tarefa->data_vencimento && $tarefa->data_conclusao->gt($tarefa->data_vencimento);
+                                $vencida   = (! $concluida && $tarefa->data_vencimento?->isPast()) || $concluidaAtrasada;
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/40">
                                 <td class="px-4 py-2 text-gray-800 dark:text-slate-200 max-w-xs truncate" title="{{ $tarefa->titulo }}">
@@ -392,13 +393,13 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 whitespace-nowrap">
-                                    @if($concluida)
-                                        <span class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                            <i class="fa-solid fa-check-circle"></i> Concluída
-                                        </span>
-                                    @elseif($vencida)
+                                    @if($vencida)
                                         <span class="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
                                             <i class="fa-solid fa-triangle-exclamation"></i> Vencida
+                                        </span>
+                                    @elseif($concluida)
+                                        <span class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                            <i class="fa-solid fa-check-circle"></i> Concluída
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1 text-xs text-blue-500 font-medium">
