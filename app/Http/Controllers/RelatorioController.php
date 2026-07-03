@@ -26,9 +26,10 @@ class RelatorioController extends Controller
         $etapaFiltro          = $request->filled('etapa_id')          ? $request->integer('etapa_id')          : null;
         $departamentoFiltro   = $request->filled('departamento_id')   ? $request->integer('departamento_id')   : null;
         $tipoTarefaFiltro     = $request->filled('tipo_tarefa_id')    ? $request->integer('tipo_tarefa_id')    : null;
+        $clienteFiltro        = $request->filled('cliente_id')        ? $request->integer('cliente_id')        : null;
         $statusFiltro         = $request->input('status'); // 'concluida' | 'pendente' | 'vencida'
 
-        $aplicarFiltros = function ($q) use ($responsavelFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $statusFiltro): void {
+        $aplicarFiltros = function ($q) use ($responsavelFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $clienteFiltro, $statusFiltro): void {
             if ($responsavelFiltro) {
                 $q->where('responsavel_id', $responsavelFiltro);
             }
@@ -40,6 +41,9 @@ class RelatorioController extends Controller
             }
             if ($tipoTarefaFiltro) {
                 $q->where('tipo_tarefa_id', $tipoTarefaFiltro);
+            }
+            if ($clienteFiltro) {
+                $q->where('cliente_id', $clienteFiltro);
             }
             if ($statusFiltro === 'concluida') {
                 $q->whereNotNull('data_conclusao');
@@ -172,6 +176,7 @@ class RelatorioController extends Controller
         $etapas        = Etapa::query()->orderBy('ordem')->get(['id', 'nome', 'cor']);
         $departamentos = Departamento::query()->orderBy('nome')->get(['id', 'nome']);
         $tiposTarefa   = TipoTarefa::query()->orderBy('nome')->get(['id', 'nome']);
+        $clientes      = Cliente::query()->orderBy('nome')->get(['id', 'nome']);
 
         // ── Tabela de tarefas (paginada + ordenável) ───────────────────
         $colunaOrdem    = in_array($request->input('ordem'), ['titulo', 'data_vencimento', 'data_conclusao', 'prioridade'])
@@ -206,6 +211,7 @@ class RelatorioController extends Controller
             'etapas',
             'departamentos',
             'tiposTarefa',
+            'clientes',
             'tarefas',
             'colunaOrdem',
             'direcaoOrdem',
@@ -213,6 +219,7 @@ class RelatorioController extends Controller
             'etapaFiltro',
             'departamentoFiltro',
             'tipoTarefaFiltro',
+            'clienteFiltro',
             'statusFiltro',
         ));
     }

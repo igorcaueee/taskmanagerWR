@@ -94,6 +94,34 @@
                     </select>
                 </div>
 
+                {{-- Cliente --}}
+                <div class="relative" id="wrapper-cliente">
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Cliente</label>
+                    <input type="hidden" name="cliente_id" id="cliente-id-hidden" value="{{ $clienteFiltro }}">
+                    <div class="relative">
+                        <input type="text" id="cliente-search"
+                               placeholder="Buscar cliente..."
+                               autocomplete="off"
+                               value="{{ $clienteFiltro ? $clientes->firstWhere('id', $clienteFiltro)?->nome : '' }}"
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-56">
+                        @if($clienteFiltro)
+                            <button type="button" id="cliente-clear"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full bg-gray-400 hover:bg-gray-500 dark:bg-slate-500 dark:hover:bg-slate-400 text-white transition-colors">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        @endif
+                    </div>
+                    <ul id="cliente-dropdown"
+                        class="hidden absolute z-50 mt-1 min-w-full w-80 max-h-64 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg text-sm">
+                        @foreach($clientes as $cli)
+                            <li class="cliente-opcao px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200"
+                                data-id="{{ $cli->id }}" data-nome="{{ $cli->nome }}">
+                                {{ $cli->nome }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
                 {{-- Status --}}
                 <div>
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Status</label>
@@ -111,7 +139,7 @@
                     <i class="fa-solid fa-magnifying-glass"></i> Aplicar
                 </button>
 
-                @if(request()->hasAny(['responsavel_id','etapa_id','departamento_id','tipo_tarefa_id','status']))
+                @if(request()->hasAny(['responsavel_id','etapa_id','departamento_id','tipo_tarefa_id','cliente_id','status']))
                     <a href="{{ route('relatorios', array_filter(['periodo' => request('periodo'), 'data_inicio' => request('data_inicio'), 'data_fim' => request('data_fim')])) }}"
                        class="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 border border-gray-300 dark:border-slate-600 rounded">
                         <i class="fa-solid fa-xmark"></i> Limpar filtros
@@ -409,6 +437,58 @@
         datas.classList.toggle('hidden', this.value !== 'personalizado');
         datas.classList.toggle('flex',   this.value === 'personalizado');
     });
+
+    // ── Busca de cliente (autocomplete) ─────────────────────────────────
+    (function () {
+        const input    = document.getElementById('cliente-search');
+        const hidden   = document.getElementById('cliente-id-hidden');
+        const dropdown = document.getElementById('cliente-dropdown');
+        const clearBtn = document.getElementById('cliente-clear');
+        const opcoes   = dropdown ? dropdown.querySelectorAll('.cliente-opcao') : [];
+
+        if (!input) return;
+
+        function filtrar(termo) {
+            if (termo.length < 3) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            let visiveis = 0;
+            opcoes.forEach(op => {
+                const match = op.dataset.nome.toLowerCase().includes(termo.toLowerCase());
+                op.classList.toggle('hidden', !match);
+                if (match) visiveis++;
+            });
+            dropdown.classList.toggle('hidden', visiveis === 0);
+        }
+
+        input.addEventListener('input', () => { filtrar(input.value); hidden.value = ''; });
+
+        opcoes.forEach(op => {
+            op.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                input.value  = op.dataset.nome;
+                hidden.value = op.dataset.id;
+                dropdown.classList.add('hidden');
+                document.getElementById('form-relatorio').submit();
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('wrapper-cliente')?.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                if (!hidden.value) input.value = '';
+            }
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                input.value  = '';
+                hidden.value = '';
+                document.getElementById('form-relatorio').submit();
+            });
+        }
+    })();
 
     // ── Palette helper ─────────────────────────────────────────────────
     const palette = [
