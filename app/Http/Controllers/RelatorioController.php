@@ -406,10 +406,11 @@ class RelatorioController extends Controller
                 'total' => $t->total,
             ]);
 
-        // Total de tarefas abertas por colaborador
+        // Total de tarefas abertas por colaborador (a vencer dentro do período)
         $abertasPorColab = Tarefa::query()
             ->where('ativo', true)
             ->whereNull('data_conclusao')
+            ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->selectRaw('responsavel_id, count(*) as total')
             ->groupBy('responsavel_id')
             ->with('responsavel')
@@ -420,10 +421,11 @@ class RelatorioController extends Controller
                 'total' => $t->total,
             ]);
 
-        // Tarefas vencidas por colaborador
+        // Tarefas vencidas por colaborador (vencimento dentro do período e já ultrapassado)
         $vencidasPorColab = Tarefa::query()
             ->where('ativo', true)
             ->whereNull('data_conclusao')
+            ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->where('data_vencimento', '<', now()->startOfDay())
             ->selectRaw('responsavel_id, count(*) as total')
             ->groupBy('responsavel_id')
