@@ -125,6 +125,39 @@
             </div>
         </div>
 
+        {{-- Linha 3: Horas trabalhadas + Evolução mensal de horas --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                    <i class="fa-regular fa-clock mr-1 text-brand"></i> Horas trabalhadas por colaborador no período
+                </h2>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-3">
+                    Considera apenas tarefas concluídas no período: tempo entre a tarefa entrar em "Andamento" e ser concluída.
+                </p>
+                @if($horasPorColab->isEmpty())
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
+                @else
+                    <div style="position:relative;height:240px">
+                        <canvas id="chartHoras"></canvas>
+                    </div>
+                @endif
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                    <i class="fa-solid fa-chart-line mr-1 text-brand"></i> Evolução mensal de horas — top 5 colaboradores
+                </h2>
+                @if($evolucaoHorasColabs->isEmpty() || $nomesTopHoras->isEmpty())
+                    <p class="text-sm text-gray-400 dark:text-slate-500 italic">Nenhum dado disponível.</p>
+                @else
+                    <div style="position:relative;height:240px">
+                        <canvas id="chartEvolucaoHoras"></canvas>
+                    </div>
+                @endif
+            </div>
+        </div>
+
     </div>
 @endsection
 
@@ -245,6 +278,62 @@
             plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
             scales: {
                 y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+        },
+    });
+    @endif
+
+    @if($horasPorColab->isNotEmpty())
+    new Chart(document.getElementById('chartHoras'), {
+        type: 'bar',
+        data: {
+            labels: @json($horasPorColab->pluck('nome')),
+            datasets: [{
+                label: 'Horas',
+                data: @json($horasPorColab->pluck('horas')),
+                backgroundColor: '#8b5cf6',
+                borderRadius: 4,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true },
+                y: { ticks: { font: { size: 12 } } },
+            },
+        },
+    });
+    @endif
+
+    @if($evolucaoHorasColabs->isNotEmpty() && $nomesTopHoras->isNotEmpty())
+    const mesesHoras = @json($evolucaoHorasColabs->pluck('mes'));
+    const nomesHoras = @json($nomesTopHoras->values());
+    const coresHoras = palette.slice(0, nomesHoras.length);
+
+    const datasetsHoras = nomesHoras.map((nome, i) => ({
+        label: nome,
+        data: @json($evolucaoHorasColabs).map(entry => entry[nome] ?? 0),
+        borderColor: coresHoras[i],
+        backgroundColor: coresHoras[i] + '22',
+        tension: 0.3,
+        fill: false,
+        pointRadius: 3,
+    }));
+
+    new Chart(document.getElementById('chartEvolucaoHoras'), {
+        type: 'line',
+        data: { labels: mesesHoras, datasets: datasetsHoras },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+            scales: {
+                y: { beginAtZero: true },
             },
         },
     });

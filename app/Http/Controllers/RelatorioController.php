@@ -11,6 +11,7 @@ use App\Models\Segmentacao;
 use App\Models\Tarefa;
 use App\Models\TipoTarefa;
 use App\Models\Usuario;
+use App\Services\TempoTrabalhoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
@@ -461,6 +462,44 @@ class RelatorioController extends Controller
             $evolucaoColabs->push($entry);
         }
 
+        // ── Horas trabalhadas por colaborador (tarefas concluídas: tempo entre entrar em "Andamento" e a conclusão) ──
+        $tempoService = app(TempoTrabalhoService::class);
+        $horasPorColab = $tempoService->horasPorColaborador($dataInicio, $dataFim);
+
+        // Evolução mensal de horas (últimos 12 meses, top 5 por total de horas)
+        $inicioEvolucaoHoras = now()->subMonths(11)->startOfMonth();
+        $fimEvolucaoHoras = now()->endOfMonth();
+        $resumoMensalHoras = $tempoService->resumoMensalPorColaborador($inicioEvolucaoHoras, $fimEvolucaoHoras);
+
+        $topColabsPorHoras = $resumoMensalHoras
+            ->groupBy('responsavel_id')
+            ->map(fn ($linhas, $responsavelId) => [
+                'responsavel_id' => (int) $responsavelId,
+                'segundos' => $linhas->sum('segundos'),
+            ])
+            ->sortByDesc('segundos')
+            ->take(5)
+            ->values();
+
+        $nomesTopHoras = Usuario::query()
+            ->whereIn('id', $topColabsPorHoras->pluck('responsavel_id'))
+            ->pluck('nome', 'id');
+
+        $evolucaoHorasColabs = collect();
+        for ($i = 11; $i >= 0; $i--) {
+            $mes = now()->subMonths($i)->startOfMonth();
+            $entry = ['mes' => $mes->translatedFormat('M/Y')];
+            foreach ($topColabsPorHoras as $colab) {
+                $segundosDoMes = $resumoMensalHoras
+                    ->where('responsavel_id', $colab['responsavel_id'])
+                    ->where('ano', $mes->year)
+                    ->where('mes', $mes->month)
+                    ->sum('segundos');
+                $entry[$nomesTopHoras[$colab['responsavel_id']] ?? 'N/A'] = round($segundosDoMes / 3600, 1);
+            }
+            $evolucaoHorasColabs->push($entry);
+        }
+
         return view('relatorios.colaboradores', compact(
             'dataInicio',
             'dataFim',
@@ -472,6 +511,9 @@ class RelatorioController extends Controller
             'vencidasPorColab',
             'topColabs',
             'evolucaoColabs',
+            'horasPorColab',
+            'nomesTopHoras',
+            'evolucaoHorasColabs',
         ));
     }
 
