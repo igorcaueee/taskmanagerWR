@@ -269,6 +269,11 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/', [NfeController::class, 'index'])->name('index');
     Route::post('/buscar', [NfeController::class, 'buscar'])->name('buscar');
     Route::post('/xml/zip-xmls', [NfeController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
+
+    // NF-e / NFC-e — webservice de contabilistas (SEFAZ-RS)
+    Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
+    Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
+    Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
 });
 
 

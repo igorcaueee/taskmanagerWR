@@ -14,6 +14,72 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulte e baixe XMLs de NF-e e CT-e diretamente do webservice nacional (NFeDistribuicaoDFe), usando o certificado já cadastrado na tela de NFS-e.</p>
     </div>
 
+    {{-- ─── Webservice de contabilistas (SEFAZ-RS) — NF-e e NFC-e ──────────── --}}
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+                <h2 class="font-semibold text-gray-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice text-[#0084aa]"></i> Busca via Contabilidade (SEFAZ-RS)
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    Usa o certificado digital da própria contabilidade (webservice de contabilistas da SEFAZ-RS) para trazer NF-e e NFC-e de qualquer cliente que tenha autorizado o acesso via e-CAC — sem precisar do certificado individual de cada empresa.
+                </p>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer whitespace-nowrap">
+                <input type="checkbox" id="checkModoRs" class="rounded text-[#0084aa]">
+                Usar busca via contabilidade
+            </label>
+        </div>
+
+        <div id="certContabilidadeStatus" class="mt-3 space-y-2">
+            <div id="certRsOk" class="hidden items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Certificado da contabilidade configurado — vence <strong id="certRsVencimento"></strong></span>
+            </div>
+            <div id="certRsAlert" class="hidden items-center gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Certificado da contabilidade vence em breve: <strong id="certRsVencimentoAlert"></strong></span>
+            </div>
+            <div id="certRsExpired" class="hidden items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+                <i class="fa-solid fa-circle-xmark"></i>
+                <span>Certificado da contabilidade <strong>vencido</strong>! Atualize-o antes de consultar.</span>
+            </div>
+            <div id="certRsNone" class="hidden items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-700 rounded-lg px-3 py-2 flex-wrap">
+                <i class="fa-solid fa-key"></i>
+                <span>Nenhum certificado da contabilidade configurado.</span>
+                <button type="button" id="btnAbrirUploadRs" class="ml-auto underline text-[#0084aa] bg-transparent border-0">Cadastrar agora</button>
+            </div>
+        </div>
+
+        {{-- Form de upload do certificado da contabilidade --}}
+        <div id="formUploadRs" class="hidden mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Certificado (.pfx)</label>
+                <input type="file" id="inputCertRs" accept=".pfx,.p12"
+                       class="w-full text-sm text-gray-600 dark:text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#0084aa] file:text-white file:text-xs">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Senha</label>
+                <input type="password" id="inputSenhaRs"
+                       class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Ambiente</label>
+                <select id="selectAmbienteRs"
+                        class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                    <option value="producao">Produção</option>
+                    <option value="homologacao">Homologação</option>
+                </select>
+            </div>
+            <div class="md:col-span-4">
+                <button type="button" id="btnSalvarCertRs"
+                        class="py-2 px-4 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors">
+                    Salvar certificado
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- ─── Linha de topo: cards de configuração ──────────────────────────── --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 
@@ -143,6 +209,7 @@
                                 class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
                             <option value="">Todos os tipos</option>
                             <option value="nfe">NF-e</option>
+                            <option value="nfce">NFC-e</option>
                             <option value="cte">CT-e</option>
                         </select>
                         <button type="button" id="btnDownloadZip"
@@ -215,6 +282,87 @@
     const dataInicio = document.getElementById('dataInicio');
     const dataFim    = document.getElementById('dataFim');
     const btnBuscar  = document.getElementById('btnBuscar');
+
+    // ─── Busca via contabilidade (SEFAZ-RS) ────────────────────────────────────
+    const checkModoRs     = document.getElementById('checkModoRs');
+    const certRsOk        = document.getElementById('certRsOk');
+    const certRsAlert     = document.getElementById('certRsAlert');
+    const certRsExpired   = document.getElementById('certRsExpired');
+    const certRsNone      = document.getElementById('certRsNone');
+    const btnAbrirUploadRs = document.getElementById('btnAbrirUploadRs');
+    const formUploadRs     = document.getElementById('formUploadRs');
+    const inputCertRs      = document.getElementById('inputCertRs');
+    const inputSenhaRs     = document.getElementById('inputSenhaRs');
+    const selectAmbienteRs = document.getElementById('selectAmbienteRs');
+    const btnSalvarCertRs  = document.getElementById('btnSalvarCertRs');
+
+    async function carregarStatusCertRs() {
+        const resp = await fetch('/nfe/rs/certificado', { headers: { 'Accept': 'application/json' } });
+        const data = await resp.json();
+
+        [certRsOk, certRsAlert, certRsExpired, certRsNone].forEach(el => el.classList.add('hidden'));
+
+        if (!data.configurado || !data.arquivo_ok) {
+            certRsNone.classList.remove('hidden');
+            return;
+        }
+
+        if (data.vencido) {
+            certRsExpired.classList.remove('hidden');
+        } else if (data.alerta) {
+            certRsAlert.classList.remove('hidden');
+            document.getElementById('certRsVencimentoAlert').textContent = data.vencimento;
+        } else {
+            certRsOk.classList.remove('hidden');
+            document.getElementById('certRsVencimento').textContent = data.vencimento;
+        }
+    }
+
+    btnAbrirUploadRs?.addEventListener('click', function () {
+        formUploadRs.classList.toggle('hidden');
+    });
+
+    btnSalvarCertRs.addEventListener('click', async function () {
+        if (!inputCertRs.files[0] || !inputSenhaRs.value) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione o arquivo .pfx e informe a senha.' });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('certificado', inputCertRs.files[0]);
+        formData.append('senha', inputSenhaRs.value);
+        formData.append('ambiente', selectAmbienteRs.value);
+
+        this.disabled = true;
+        this.textContent = 'Salvando...';
+
+        try {
+            const resp = await fetch('/nfe/rs/certificado', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF },
+                body: formData,
+            });
+            const data = await resp.json();
+
+            if (!resp.ok || data.error) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao salvar certificado.' });
+                return;
+            }
+
+            Swal.fire({ icon: 'success', title: 'Sucesso', text: data.message });
+            inputSenhaRs.value = '';
+            inputCertRs.value = '';
+            formUploadRs.classList.add('hidden');
+            await carregarStatusCertRs();
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            this.disabled = false;
+            this.textContent = 'Salvar certificado';
+        }
+    });
+
+    carregarStatusCertRs();
 
     const estadoInicial    = document.getElementById('estadoInicial');
     const estadoLoading    = document.getElementById('estadoLoading');
@@ -310,7 +458,20 @@
         }
 
         cardFiltro.classList.remove('hidden');
+
+        if (checkModoRs.checked) {
+            certStatus.classList.add('hidden'); // status do certificado é o da contabilidade, já exibido acima
+            return;
+        }
+
         await carregarStatusCertificado(clienteId);
+    });
+
+    checkModoRs.addEventListener('change', function () {
+        certStatus.classList.add('hidden');
+        if (selectCliente.value && !this.checked) {
+            carregarStatusCertificado(selectCliente.value);
+        }
     });
 
     async function carregarStatusCertificado(clienteId) {
@@ -398,7 +559,9 @@
             const controller = new AbortController();
             const timeoutId  = setTimeout(() => controller.abort(), 300_000); // 5 min
 
-            const resp = await fetch('/nfe/buscar', {
+            const url = checkModoRs.checked ? '/nfe/rs/buscar' : '/nfe/buscar';
+
+            const resp = await fetch(url, {
                 method: 'POST',
                 signal: controller.signal,
                 headers: {
@@ -473,9 +636,12 @@
             const valor  = doc.valor != null && doc.valor !== '' ? formatarMoeda(parseFloat(doc.valor)) : '-';
             const temXml = !!doc.xmlContent;
 
-            const tipoBadge = tipo === 'cte'
-                ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">CT-e</span>'
-                : '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">NF-e</span>';
+            const badgesPorTipo = {
+                cte:  '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">CT-e</span>',
+                nfce: '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">NFC-e</span>',
+                nfe:  '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">NF-e</span>',
+            };
+            const tipoBadge = badgesPorTipo[tipo] ?? badgesPorTipo.nfe;
 
             const marcado = selecionados.has(String(nsu));
 
