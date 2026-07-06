@@ -77,8 +77,11 @@ class NfeController extends Controller
             'items'       => 'required|array|min:1|max:200',
             'items.*.nsu' => 'required',
             'items.*.xml' => 'required|string|min:1',
+            'nome'        => 'nullable|string',
         ]);
 
+        $nomeEmpresa = trim((string) $request->input('nome', ''));
+        $nomeArquivo = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFe-CTe') . '.zip';
         $zipPath = storage_path('app/temp/nfe_' . time() . '_' . rand(1000, 9999) . '.zip');
 
         if (!is_dir(dirname($zipPath))) {
@@ -97,7 +100,7 @@ class NfeController extends Controller
 
         $zip->close();
 
-        return response()->download($zipPath, 'nfe_xmls.zip', [
+        return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
     }

@@ -208,8 +208,11 @@ class NfseController extends Controller
             'items'       => 'required|array|min:1|max:200',
             'items.*.nsu' => 'required|integer|min:1',
             'items.*.xml' => 'required|string|min:1',
+            'nome'        => 'nullable|string',
         ]);
 
+        $nomeEmpresa   = trim((string) $request->input('nome', ''));
+        $nomeArquivo   = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFS-e') . '.zip';
         $zipPath = storage_path('app/temp/nfse_' . time() . '_' . rand(1000, 9999) . '.zip');
 
         if (!is_dir(dirname($zipPath))) {
@@ -228,7 +231,7 @@ class NfseController extends Controller
 
         $zip->close();
 
-        return response()->download($zipPath, 'nfse_xmls.zip', [
+        return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
     }
@@ -245,7 +248,8 @@ class NfseController extends Controller
             'nsus.*'     => 'required|integer|min:1',
         ]);
 
-        $cert    = ClienteCertificadoNfse::where('cliente_id', $validated['cliente_id'])->firstOrFail();
+        $cert        = ClienteCertificadoNfse::where('cliente_id', $validated['cliente_id'])->firstOrFail();
+        $nomeArquivo = ($cert->cliente->nome ?? 'NFS-e') . '.zip';
         $zipPath = storage_path('app/temp/nfse_' . time() . '_' . rand(1000, 9999) . '.zip');
 
         if (!is_dir(dirname($zipPath))) {
@@ -269,7 +273,7 @@ class NfseController extends Controller
 
         $zip->close();
 
-        return response()->download($zipPath, 'nfse_xmls.zip', [
+        return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
     }

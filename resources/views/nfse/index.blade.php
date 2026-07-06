@@ -868,6 +868,8 @@
             return;
         }
 
+        const nomeEmpresa = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() || 'NFS-e';
+
         this.disabled = true;
         this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando ZIP...';
 
@@ -878,7 +880,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                 },
-                body: JSON.stringify({ items }),
+                body: JSON.stringify({ items, nome: nomeEmpresa }),
             });
 
             if (!resp.ok) {
@@ -891,7 +893,7 @@
             const url  = URL.createObjectURL(blob);
             const a    = document.createElement('a');
             a.href     = url;
-            a.download = 'nfse_xmls.zip';
+            a.download = `${nomeEmpresa}.zip`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
