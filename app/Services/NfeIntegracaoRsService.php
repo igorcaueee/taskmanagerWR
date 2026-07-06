@@ -181,6 +181,11 @@ XML;
             CURLOPT_SSLCERT        => $pemCert,
             CURLOPT_SSLKEY         => $pemKey,
             CURLOPT_SSL_VERIFYPEER => true,
+            // O servidor da SEFAZ-RS usa um certificado TLS emitido pela cadeia
+            // ICP-Brasil (AC SERPRO SSLv1 -> AC Raiz v10), que não está no bundle
+            // de CAs padrão do sistema — sem isso, o cURL falha com #60 "unable
+            // to get local issuer certificate".
+            CURLOPT_CAINFO         => resource_path('certificados-icp-brasil/dfe-rs-ca-bundle.pem'),
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: text/xml; charset=utf-8',
                 'SOAPAction: "' . self::SOAP_ACTION . '"',
