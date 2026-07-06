@@ -726,8 +726,10 @@
 
     // ─── Seleção múltipla ────────────────────────────────────────────────────
     checkTodos.addEventListener('change', function () {
-        tabelaNotas.querySelectorAll('.check-nota:not([disabled])').forEach(cb => {
-            cb.checked = this.checked;
+        tabelaNotas.querySelectorAll('tr').forEach(tr => {
+            if (tr.style.display === 'none') return;
+            const cb = tr.querySelector('.check-nota:not([disabled])');
+            if (cb) cb.checked = this.checked;
         });
         atualizarSelecao();
     });
@@ -913,9 +915,16 @@
         if (!clienteId || !notasAtuais.length) return;
 
         const selecionadasNsus = [...tabelaNotas.querySelectorAll('.check-nota:checked')].map(cb => parseInt(cb.dataset.nsu));
+        const nsusVisiveis = new Set(
+            [...tabelaNotas.querySelectorAll('tr')]
+                .filter(tr => tr.style.display !== 'none')
+                .map(tr => tr.querySelector('.check-nota')?.dataset.nsu)
+                .filter(Boolean)
+                .map(Number)
+        );
         const notasParaExportar = selecionadasNsus.length > 0
             ? notasAtuais.filter(n => selecionadasNsus.includes(n.nsu))
-            : notasAtuais.filter(n => n.xmlContent);
+            : notasAtuais.filter(n => n.xmlContent && nsusVisiveis.has(n.nsu));
 
         if (!notasParaExportar.length) {
             Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhuma nota com XML disponível para exportar.' });
