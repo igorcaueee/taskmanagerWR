@@ -349,7 +349,9 @@ XML;
      */
     private function normalizarDocumento(string $nsu, string $schema, string $xml): array
     {
-        if (str_starts_with($schema, 'resEvento')) {
+        // Cobre tanto o resumo (resEvento) quanto o evento completo (procEventoNFe/procEventoCTe),
+        // que a Sefaz também retorna via docZip (ex.: Ciência da Operação, tpEvento 210210).
+        if (str_contains($schema, 'Evento')) {
             return ['nsu' => $nsu, 'tipo' => 'evento', 'xmlContent' => $xml];
         }
 
