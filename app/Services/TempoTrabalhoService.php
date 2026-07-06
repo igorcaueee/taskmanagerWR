@@ -13,7 +13,8 @@ class TempoTrabalhoService
     /**
      * Soma, por colaborador, as horas trabalhadas nas tarefas concluídas dentro do período:
      * para cada tarefa, o tempo entre ela entrar numa etapa que conta como trabalho
-     * (ex.: "Andamento") e ser concluída.
+     * (ex.: "Andamento") e ser concluída — recortado para não contar tempo anterior
+     * ao início do período consultado.
      *
      * @return Collection<int, array{nome: string, horas: float}>
      */
@@ -21,9 +22,10 @@ class TempoTrabalhoService
     {
         $segundosPorResponsavel = [];
 
-        foreach ($this->duracoesDasConcluidas($inicio, $fim) as $duracao) {
-            $segundosPorResponsavel[$duracao['responsavel_id']] =
-                ($segundosPorResponsavel[$duracao['responsavel_id']] ?? 0) + $duracao['segundos'];
+        foreach ($this->intervalosTrabalhados($inicio, $fim) as $intervalo) {
+            $segundos = $intervalo['inicio']->diffInSeconds($intervalo['fim'], true);
+            $segundosPorResponsavel[$intervalo['responsavel_id']] =
+                ($segundosPorResponsavel[$intervalo['responsavel_id']] ?? 0) + $segundos;
         }
 
         $nomes = Usuario::query()
@@ -40,7 +42,9 @@ class TempoTrabalhoService
     }
 
     /**
-     * Mesma soma, mas particionada por mês de conclusão, para alimentar gráficos de evolução.
+     * Mesma soma, mas com cada intervalo trabalhado particionado por mês (uma tarefa que
+     * ficou meses em "Andamento" tem seu tempo dividido entre os meses que ela atravessou,
+     * em vez de jogar tudo no mês da conclusão), para alimentar gráficos de evolução.
      *
      * @return Collection<int, array{responsavel_id: int, ano: int, mes: int, segundos: int}>
      */
@@ -48,9 +52,11 @@ class TempoTrabalhoService
     {
         $totais = []; // "responsavel_id|ano|mes" => segundos
 
-        foreach ($this->duracoesDasConcluidas($inicio, $fim) as $duracao) {
-            $chave = "{$duracao['responsavel_id']}|{$duracao['ano']}|{$duracao['mes']}";
-            $totais[$chave] = ($totais[$chave] ?? 0) + $duracao['segundos'];
+        foreach ($this->intervalosTrabalhados($inicio, $fim) as $intervalo) {
+            foreach ($this->particionarPorMes($intervalo['inicio'], $intervalo['fim']) as $parte) {
+                $chave = "{$intervalo['responsavel_id']}|{$parte['ano']}|{$parte['mes']}";
+                $totais[$chave] = ($totais[$chave] ?? 0) + $parte['segundos'];
+            }
         }
 
         return collect($totais)->map(function ($segundos, $chave) {
@@ -66,13 +72,15 @@ class TempoTrabalhoService
     }
 
     /**
-     * Para cada tarefa concluída dentro do período, calcula quantos segundos se
-     * passaram desde que ela entrou numa etapa que conta como trabalho (ex.: "Andamento")
-     * até a data de conclusão.
+     * Para cada tarefa concluída dentro do período, retorna o intervalo (responsavel_id,
+     * início, fim) entre ela entrar numa etapa que conta como trabalho e ser concluída.
+     * O início é recortado para nunca ser anterior ao início do período consultado —
+     * assim, tarefas que já estavam em "Andamento" antes do período não têm esse tempo
+     * anterior contabilizado.
      *
-     * @return array<int, array{responsavel_id: int, segundos: int, ano: int, mes: int}>
+     * @return array<int, array{responsavel_id: int, inicio: Carbon, fim: Carbon}>
      */
-    private function duracoesDasConcluidas(Carbon $inicio, Carbon $fim): array
+    private function intervalosTrabalhados(Carbon $inicio, Carbon $fim): array
     {
         $etapasQueContam = Etapa::query()
             ->where('computa_tempo_trabalho', true)
@@ -100,15 +108,45 @@ class TempoTrabalhoService
                 continue;
             }
 
+            $inicioEfetivo = $inicioTrabalho->max($inicio);
+
+            if ($inicioEfetivo->greaterThanOrEqualTo($tarefa->data_conclusao)) {
+                continue;
+            }
+
             $resultado[] = [
                 'responsavel_id' => $tarefa->responsavel_id,
-                'segundos' => $inicioTrabalho->diffInSeconds($tarefa->data_conclusao, true),
-                'ano' => $tarefa->data_conclusao->year,
-                'mes' => $tarefa->data_conclusao->month,
+                'inicio' => $inicioEfetivo,
+                'fim' => $tarefa->data_conclusao,
             ];
         }
 
         return $resultado;
+    }
+
+    /**
+     * Divide o intervalo [$inicio, $fim] nas fatias correspondentes a cada mês que ele atravessa.
+     *
+     * @return array<int, array{ano: int, mes: int, segundos: int}>
+     */
+    private function particionarPorMes(Carbon $inicio, Carbon $fim): array
+    {
+        $partes = [];
+        $cursor = $inicio->copy();
+
+        while ($cursor->lessThan($fim)) {
+            $fimDoMes = $cursor->copy()->endOfMonth()->min($fim);
+
+            $partes[] = [
+                'ano' => $cursor->year,
+                'mes' => $cursor->month,
+                'segundos' => $cursor->diffInSeconds($fimDoMes, true),
+            ];
+
+            $cursor = $fimDoMes->equalTo($fim) ? $fim->copy() : $fimDoMes->copy()->addSecond();
+        }
+
+        return $partes;
     }
 
     /**
