@@ -17,13 +17,10 @@ use Illuminate\Support\Facades\Log;
  * consultado, não por certificado, e o retorno vem em um único lote compactado
  * (loteDistComp) em vez de docZip individuais.
  *
- * ATENÇÃO: o SOAPAction/namespace exatos do envelope não puderam ser
- * confirmados via WSDL (protegido por mTLS, só acessível com certificado
- * válido). Os valores abaixo são a melhor estimativa a partir do schema
- * público (distNFeRS_v1.00.xsd) e precisam ser calibrados na primeira chamada
- * real — o log de 'requisicaoSoap: resposta recebida' mostra o corpo cru
- * retornado pela Sefaz, que costuma indicar o SOAPAction esperado em caso de
- * erro.
+ * SOAPAction e nomes de elementos confirmados via WSDL real (baixado com o
+ * certificado da contabilidade através de buscarWsdl()): operação
+ * nfeIntegracaoContab, wrapper nfeDadosMsgDownload, namespace
+ * http://www.portalfiscal.inf.br/nfe/wsdl/NFeIntegracao.
  */
 class NfeIntegracaoRsService
 {
@@ -32,56 +29,12 @@ class NfeIntegracaoRsService
     const ENDPOINT_PRODUCAO    = 'https://dfe-servico.svrs.rs.gov.br/WS/NFeIntegracao/NFeIntegracao.asmx';
     const ENDPOINT_HOMOLOGACAO = 'https://dfe-servico-homologacao.svrs.rs.gov.br/WS/NFeIntegracao/NFeIntegracao.asmx';
 
-    const SOAP_ACTION = 'http://tempuri.org/nfeIntegracaoContab';
+    const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeIntegracao/nfeIntegracaoContab';
 
     const CUF_RS = 43;
 
     // Máximo de lotes buscados por requisição (proteção contra loop)
     const MAX_LOTES = 200;
-
-    /**
-     * Diagnóstico: baixa o WSDL real do endpoint usando o certificado da
-     * contabilidade já configurado, para confirmar o SOAPAction/namespace
-     * corretos (o WSDL é protegido por mTLS e não pôde ser inspecionado sem
-     * um certificado válido).
-     */
-    public function buscarWsdl(CertificadoContabilidade $certificado): string
-    {
-        $certPath = storage_path('app/' . $certificado->arquivo);
-        $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
-
-        [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
-
-        try {
-            $ch = curl_init();
-            curl_setopt_array($ch, [
-                CURLOPT_URL            => $endpoint . '?wsdl',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 30,
-                CURLOPT_SSLCERT        => $pemCert,
-                CURLOPT_SSLKEY         => $pemKey,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_CAINFO         => resource_path('certificados-icp-brasil/dfe-rs-ca-bundle.pem'),
-            ]);
-
-            $resposta = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $erro     = curl_error($ch);
-            unset($ch);
-
-            if ($resposta === false) {
-                throw new \RuntimeException("Falha na conexão ao buscar WSDL: {$erro}");
-            }
-
-            Log::info('[NF-e RS] buscarWsdl', ['httpCode' => $httpCode, 'bodyLen' => strlen($resposta)]);
-
-            return $resposta;
-        } finally {
-            foreach ($tempFiles as $f) {
-                @unlink($f);
-            }
-        }
-    }
 
     /**
      * Busca NF-e/NFC-e de um cliente (CNPJ) no intervalo de datas informado,
@@ -184,8 +137,8 @@ class NfeIntegracaoRsService
 <?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
   <soap:Body>
-    <nfeDistDFeInteresse xmlns="http://www.sefazrs.rs.gov.br/">
-      <nfeDadosMsg>
+    <nfeIntegracaoContab xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeIntegracao">
+      <nfeDadosMsgDownload>
         <distNFeRS xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
@@ -198,8 +151,8 @@ class NfeIntegracaoRsService
             <ultNSU>{$ultNSU}</ultNSU>
           </solRel>
         </distNFeRS>
-      </nfeDadosMsg>
-    </nfeDistDFeInteresse>
+      </nfeDadosMsgDownload>
+    </nfeIntegracaoContab>
   </soap:Body>
 </soap:Envelope>
 XML;

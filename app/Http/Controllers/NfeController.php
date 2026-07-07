@@ -184,27 +184,6 @@ class NfeController extends Controller
     }
 
     /**
-     * Diagnóstico temporário: exibe o WSDL real do webservice de contabilistas
-     * (SEFAZ-RS), usando o certificado já configurado, para confirmar o
-     * SOAPAction/namespace corretos do envelope.
-     */
-    public function wsdlRs()
-    {
-        $cert = CertificadoContabilidade::first();
-
-        if (!$cert) {
-            return response('Certificado da contabilidade não configurado.', 422);
-        }
-
-        try {
-            $wsdl = $this->nfeRs->buscarWsdl($cert);
-            return response($wsdl, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
-        } catch (\Throwable $e) {
-            return response('Erro: ' . $e->getMessage(), 500);
-        }
-    }
-
-    /**
      * Gera um .zip com os XMLs enviados diretamente pelo frontend (sem re-fetch da API).
      * Cada item: { nsu: int, xml: string }
      */
