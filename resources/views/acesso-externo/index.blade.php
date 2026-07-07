@@ -11,6 +11,21 @@
         </h1>
     </div>
 
+    {{-- ─── ALERTA DE IPs SUSPEITOS ───────────────────────────────────────────── --}}
+    @if ($ipsSuspeitos->isNotEmpty())
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-8">
+        <p class="text-sm font-semibold text-red-700 dark:text-red-400 mb-2">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            Possível ameaça: os IPs abaixo tiveram 5 ou mais tentativas de acesso bloqueadas nas últimas 24 horas.
+        </p>
+        <ul class="text-sm text-red-600 dark:text-red-400 list-disc list-inside">
+            @foreach ($ipsSuspeitos as $s)
+                <li><span class="font-mono font-medium">{{ $s->ip }}</span> — {{ $s->total }} tentativas</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
     {{-- ─── REDES PERMITIDAS ──────────────────────────────────────────────────── --}}
     <div class="bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-gray-200 dark:border-[#334155] mb-8">
         <div class="px-6 py-4 border-b border-gray-100 dark:border-[#334155] flex items-center gap-2">
@@ -62,7 +77,7 @@
                                         <form method="POST" action="{{ route('acesso-externo.redes.toggle', $rede->id) }}">
                                             @csrf @method('PATCH')
                                             <button type="submit"
-                                                class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                                                class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent transition"
                                                 title="{{ $rede->ativo ? 'Desativar' : 'Ativar' }}">
                                                 {{ $rede->ativo ? 'Desativar' : 'Ativar' }}
                                             </button>
@@ -71,7 +86,7 @@
                                             @csrf @method('DELETE')
                                             <button type="button"
                                                 onclick="confirmarExclusaoRede(this)"
-                                                class="text-xs px-3 py-1 rounded border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                                                class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-slate-600 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent transition">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>
                                         </form>
@@ -160,7 +175,7 @@
                                         @csrf @method('DELETE')
                                         <button type="button"
                                             onclick="confirmarRevogacao(this)"
-                                            class="text-xs px-3 py-1 rounded border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                                            class="text-xs px-3 py-1 rounded border border-gray-300 dark:border-slate-600 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-slate-700 bg-transparent transition">
                                             Revogar
                                         </button>
                                     </form>
@@ -239,6 +254,49 @@
         </div>
     </div>
     @endif
+
+    {{-- ─── TENTATIVAS DE ACESSO BLOQUEADAS ───────────────────────────────────── --}}
+    <div class="bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-gray-200 dark:border-[#334155] mt-8">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-[#334155] flex items-center gap-2">
+            <i class="fa-solid fa-user-secret text-red-500"></i>
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-slate-200">Tentativas de Acesso Bloqueadas</h2>
+        </div>
+        <div class="p-6">
+            <p class="text-sm text-gray-500 dark:text-slate-400 mb-4">
+                Toda vez que um usuário tenta acessar o sistema de fora da rede permitida (e sem liberação ativa), o acesso é negado
+                e a tentativa fica registrada aqui. Mostrando as 100 mais recentes.
+            </p>
+
+            @if ($tentativas->isEmpty())
+                <p class="text-sm text-gray-400 dark:text-slate-500">Nenhuma tentativa bloqueada registrada até o momento.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs uppercase text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-700">
+                                <th class="pb-2 pr-4">Usuário</th>
+                                <th class="pb-2 pr-4">IP</th>
+                                <th class="pb-2 pr-4">URL acessada</th>
+                                <th class="pb-2 pr-4">Navegador / Dispositivo</th>
+                                <th class="pb-2">Data/Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($tentativas as $t)
+                                <tr class="border-b border-gray-50 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/20">
+                                    <td class="py-3 pr-4 font-medium text-gray-800 dark:text-slate-200">{{ $t->usuario?->nome ?? '—' }}</td>
+                                    <td class="py-3 pr-4 font-mono text-gray-700 dark:text-slate-300">{{ $t->ip }}</td>
+                                    <td class="py-3 pr-4 text-gray-500 dark:text-slate-400 text-xs break-all max-w-xs">{{ $t->url ?? '—' }}</td>
+                                    <td class="py-3 pr-4 text-gray-500 dark:text-slate-400 text-xs break-all max-w-xs">{{ $t->user_agent ?? '—' }}</td>
+                                    <td class="py-3 text-gray-500 dark:text-slate-400 text-xs whitespace-nowrap">{{ $t->created_at->format('d/m/Y H:i') }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
 
 </div>
 

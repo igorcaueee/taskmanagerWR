@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LiberacaoAcessoExterno;
 use App\Models\RedePermitida;
+use App\Models\TentativaAcessoBloqueada;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,7 +30,20 @@ class AcessoExternoController extends Controller
             ->orderBy('nome')
             ->get();
 
-        return view('acesso-externo.index', compact('redes', 'liberacoes', 'historico', 'usuarios'));
+        $tentativas = TentativaAcessoBloqueada::with('usuario')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
+        // IPs com 5+ tentativas nas últimas 24h são sinalizados como possível ameaça
+        $ipsSuspeitos = TentativaAcessoBloqueada::where('created_at', '>=', now()->subDay())
+            ->selectRaw('ip, count(*) as total')
+            ->groupBy('ip')
+            ->having('total', '>=', 5)
+            ->orderByDesc('total')
+            ->get();
+
+        return view('acesso-externo.index', compact('redes', 'liberacoes', 'historico', 'usuarios', 'tentativas', 'ipsSuspeitos'));
     }
 
     public function storeRede(Request $request)

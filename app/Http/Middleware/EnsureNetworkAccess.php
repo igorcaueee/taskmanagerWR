@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\TentativaAcessoBloqueada;
 use App\Services\AcessoRedeService;
 use Closure;
 use Illuminate\Http\Request;
@@ -15,6 +16,13 @@ class EnsureNetworkAccess
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check() && ! $this->service->acessoPermitido(Auth::user(), $request->ip())) {
+            TentativaAcessoBloqueada::create([
+                'usuario_id' => Auth::id(),
+                'ip'         => $request->ip(),
+                'url'        => $request->fullUrl(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
