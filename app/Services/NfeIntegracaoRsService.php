@@ -166,6 +166,11 @@ XML;
     {
         Log::info('[NF-e RS] requisicaoSoap: enviando', ['url' => $endpoint]);
 
+        // A Sefaz-RS rejeita (cStat 588) qualquer espaço/quebra de linha entre
+        // tags — o envelope é escrito formatado no código por legibilidade,
+        // mas precisa ser compactado antes de ir para a rede.
+        $envelope = trim(preg_replace('/>\s+</', '><', $envelope));
+
         $ch = curl_init();
 
         curl_setopt_array($ch, [
