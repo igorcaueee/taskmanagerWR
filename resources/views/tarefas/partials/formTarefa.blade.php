@@ -292,6 +292,25 @@
                 </p>
             @endif
         </div>
+
+        @if(!$isEditing)
+        <div id="primeira-execucao-wrapper" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Primeira execução
+            </label>
+            <select name="primeira_execucao" id="input-primeira-execucao" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">
+                <option value="este_mes" {{ old('primeira_execucao', 'este_mes') === 'este_mes' ? 'selected' : '' }}>
+                    Este mês
+                </option>
+                <option value="proximo_mes" {{ old('primeira_execucao') === 'proximo_mes' ? 'selected' : '' }}>
+                    Mês que vem
+                </option>
+            </select>
+            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                Use "Mês que vem" quando o cliente estiver sendo cadastrado agora, mas a primeira cobrança/tarefa só deve ocorrer no próximo ciclo.
+            </p>
+        </div>
+        @endif
     </div>
 
     {{-- Envio de arquivo ao finalizar --}}
@@ -323,6 +342,18 @@
     const markDirty = function () { window._modalHasChanges = true; };
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
+
+    @if(!$isEditing)
+    const selectFrequencia = form.querySelector('[name="frequencia"]');
+    const primeiraExecucaoWrapper = document.getElementById('primeira-execucao-wrapper');
+    if (selectFrequencia && primeiraExecucaoWrapper) {
+        const togglePrimeiraExecucao = function () {
+            primeiraExecucaoWrapper.classList.toggle('hidden', selectFrequencia.value === 'nenhuma');
+        };
+        togglePrimeiraExecucao();
+        selectFrequencia.addEventListener('change', togglePrimeiraExecucao);
+    }
+    @endif
 
     @if(!$isEditing)
     let _confirmedSubmit = false;

@@ -275,7 +275,7 @@ class TarefaController extends Controller
         $data = $request->only([
             'titulo', 'descricao', 'cliente_ids', 'tipo_tarefa_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
-            'requer_envio_arquivo',
+            'requer_envio_arquivo', 'primeira_execucao',
         ]);
 
         $temTipos = ! empty($data['tipo_tarefa_ids']);
@@ -297,6 +297,7 @@ class TarefaController extends Controller
             'data_vencimento' => [$tiposComData ? 'nullable' : 'required', 'date'],
             'prioridade' => ['required', 'integer', 'min:1', 'max:5'],
             'frequencia' => ['nullable', 'in:nenhuma,semanal,mensal,trimestral,semestral,anual'],
+            'primeira_execucao' => ['nullable', 'in:este_mes,proximo_mes'],
         ]);
 
         if ($validator->fails()) {
@@ -304,6 +305,7 @@ class TarefaController extends Controller
         }
 
         $frequencia = $data['frequencia'] ?? 'nenhuma';
+        $primeiraExecucao = $data['primeira_execucao'] ?? 'este_mes';
 
         $departamentoId = Usuario::find($data['responsavel_id'] ?? null)?->departamento_id
             ?? Departamento::orderBy('id')->value('id');
@@ -327,6 +329,9 @@ class TarefaController extends Controller
                 $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
                     ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
                     : $dataReferencia;
+                if ($frequencia !== 'nenhuma' && $primeiraExecucao === 'proximo_mes') {
+                    $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
+                }
                 $tipoCheck = $tipoId ? $tiposMap->get($tipoId) : null;
                 $tituloCheck = ($tipoCheck && ($tipoCheck->titulo_padrao || $tipoCheck->nome))
                     ? ($tipoCheck->titulo_padrao ?? $tipoCheck->nome)
@@ -354,6 +359,9 @@ class TarefaController extends Controller
                 $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
                     ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
                     : $dataReferencia;
+                if ($frequencia !== 'nenhuma' && $primeiraExecucao === 'proximo_mes') {
+                    $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
+                }
                 $cicloParaTipo = Ciclo::findOrCreateForDate(Carbon::parse($dataParaTipo))->id;
                 $dataFimParaTipo = $frequencia !== 'nenhuma'
                     ? Carbon::parse($dataParaTipo)->addYear()->toDateString()
