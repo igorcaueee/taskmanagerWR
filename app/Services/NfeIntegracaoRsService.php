@@ -40,6 +40,50 @@ class NfeIntegracaoRsService
     const MAX_LOTES = 200;
 
     /**
+     * Diagnóstico: baixa o WSDL real do endpoint usando o certificado da
+     * contabilidade já configurado, para confirmar o SOAPAction/namespace
+     * corretos (o WSDL é protegido por mTLS e não pôde ser inspecionado sem
+     * um certificado válido).
+     */
+    public function buscarWsdl(CertificadoContabilidade $certificado): string
+    {
+        $certPath = storage_path('app/' . $certificado->arquivo);
+        $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
+
+        [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
+
+        try {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => $endpoint . '?wsdl',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_SSLCERT        => $pemCert,
+                CURLOPT_SSLKEY         => $pemKey,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_CAINFO         => resource_path('certificados-icp-brasil/dfe-rs-ca-bundle.pem'),
+            ]);
+
+            $resposta = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $erro     = curl_error($ch);
+            unset($ch);
+
+            if ($resposta === false) {
+                throw new \RuntimeException("Falha na conexão ao buscar WSDL: {$erro}");
+            }
+
+            Log::info('[NF-e RS] buscarWsdl', ['httpCode' => $httpCode, 'bodyLen' => strlen($resposta)]);
+
+            return $resposta;
+        } finally {
+            foreach ($tempFiles as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /**
      * Busca NF-e/NFC-e de um cliente (CNPJ) no intervalo de datas informado,
      * usando o certificado da contabilidade.
      */

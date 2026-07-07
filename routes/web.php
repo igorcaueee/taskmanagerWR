@@ -274,6 +274,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
     Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
+    Route::get('/rs/wsdl', [NfeController::class, 'wsdlRs'])->name('rs.wsdl'); // diagnóstico temporário
 });
 
 
