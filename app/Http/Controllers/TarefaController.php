@@ -112,10 +112,10 @@ class TarefaController extends Controller
             $query->where('responsavel_id', $usuario->id);
         }
 
-        // Para supervisor: pré-seleciona ele mesmo na primeira visita (sem parâmetro na URL).
+        // Para supervisor e diretor/ti: pré-seleciona ele mesmo na primeira visita (sem parâmetro na URL).
         // Se o parâmetro existe mas vazio (""), o usuário escolheu "Todos" explicitamente.
         $responsavelFiltroId = null;
-        if ($isSupervisor) {
+        if ($isSupervisor || $podeVerTodas) {
             if ($request->has('responsavel_id')) {
                 $responsavelFiltroId = $request->filled('responsavel_id')
                     ? $request->integer('responsavel_id')
@@ -156,11 +156,7 @@ class TarefaController extends Controller
             $query->where('departamento_id', $request->integer('departamento_id'));
         }
 
-        if ($podeVerTodas && $request->filled('responsavel_id')) {
-            $query->where('responsavel_id', $request->integer('responsavel_id'));
-        }
-
-        if ($isSupervisor && $responsavelFiltroId) {
+        if (($podeVerTodas || $isSupervisor) && $responsavelFiltroId) {
             $query->where('responsavel_id', $responsavelFiltroId);
         }
 
