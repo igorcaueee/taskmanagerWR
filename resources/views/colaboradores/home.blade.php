@@ -95,7 +95,16 @@
                 <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                     @forelse($colaboradores as $colab)
                         <tr>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $colab->nome }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    @if($colab->foto)
+                                        <img src="{{ $colab->foto_url }}" alt="{{ $colab->nome }}" class="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-slate-600">
+                                    @else
+                                        <i class="fa-solid fa-circle-user text-2xl text-gray-300 dark:text-slate-600"></i>
+                                    @endif
+                                    {{ $colab->nome }}
+                                </div>
+                            </td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $colab->email }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $colab->telefone ?? '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $colab->data_nascimento ? \Illuminate\Support\Carbon::parse($colab->data_nascimento)->format('d/m/Y') : '—' }}</td>

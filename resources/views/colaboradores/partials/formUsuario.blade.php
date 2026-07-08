@@ -19,13 +19,40 @@
     </button>
 </div>
 
-<form method="POST" action="{{ $action }}">
+<form method="POST" action="{{ $action }}" enctype="multipart/form-data">
     @csrf
     @if($isEditing)
         @method('PUT')
     @endif
 
     <div class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto</label>
+            <div class="flex items-center gap-4 mt-1">
+                <div class="relative shrink-0" style="width:4rem;height:4rem;">
+                    <img id="foto-preview"
+                         src="{{ $isEditing && $colab->foto ? $colab->foto_url : '' }}"
+                         style="{{ $isEditing && $colab->foto ? '' : 'display:none' }}"
+                         class="h-16 w-16 rounded-full object-cover border border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700"
+                         alt="Foto do colaborador">
+                    <i id="foto-placeholder"
+                       style="{{ $isEditing && $colab->foto ? 'display:none' : '' }}"
+                       class="fa-solid fa-circle-user text-5xl text-gray-300 dark:text-slate-600"></i>
+                    <button type="button" id="foto-remover-btn"
+                            style="{{ $isEditing && $colab->foto ? '' : 'display:none' }}"
+                            class="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center rounded-full bg-gray-800/70 text-white text-xs border-0 hover:bg-gray-800/90"
+                            title="Remover foto">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <input type="hidden" name="remover_foto" id="remover-foto-flag" value="0">
+                <div class="flex-1">
+                    <input id="foto-input" name="foto" type="file" accept="image/*"
+                           class="block w-full text-sm text-gray-700 dark:text-slate-200 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-brand file:text-white hover:file:bg-brand/80">
+                </div>
+            </div>
+        </div>
+
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
             <input name="nome" type="text"
@@ -144,5 +171,36 @@
     form.addEventListener('input', markDirty);
     form.addEventListener('change', markDirty);
     form.addEventListener('submit', function () { window._modalHasChanges = false; });
+
+    const fotoInput = document.getElementById('foto-input');
+    const fotoPreview = document.getElementById('foto-preview');
+    const fotoPlaceholder = document.getElementById('foto-placeholder');
+    const fotoRemoverBtn = document.getElementById('foto-remover-btn');
+    const removerFotoFlag = document.getElementById('remover-foto-flag');
+    if (fotoInput && fotoPreview && fotoPlaceholder) {
+        fotoInput.addEventListener('change', function () {
+            const file = fotoInput.files && fotoInput.files[0];
+            if (!file) { return; }
+            if (removerFotoFlag) { removerFotoFlag.value = '0'; }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                fotoPreview.src = e.target.result;
+                fotoPreview.style.display = '';
+                fotoPlaceholder.style.display = 'none';
+                if (fotoRemoverBtn) { fotoRemoverBtn.style.display = ''; }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    if (fotoRemoverBtn && fotoPreview && fotoPlaceholder && removerFotoFlag) {
+        fotoRemoverBtn.addEventListener('click', function () {
+            removerFotoFlag.value = '1';
+            markDirty();
+            fotoInput.value = '';
+            fotoPreview.style.display = 'none';
+            fotoPlaceholder.style.display = '';
+            fotoRemoverBtn.style.display = 'none';
+        });
+    }
 })();
 </script>

@@ -23,6 +23,7 @@ class Usuario extends Authenticatable
         'email',
         'senha',
         'cargo',
+        'foto',
         'telefone',
         'sexo',
         'data_nascimento',
@@ -68,6 +69,14 @@ class Usuario extends Authenticatable
     public function getNameAttribute(): ?string
     {
         return $this->nome;
+    }
+
+    /**
+     * URL pública da foto do colaborador.
+     */
+    public function getFotoUrlAttribute(): ?string
+    {
+        return $this->foto ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->foto) : null;
     }
 
     /**

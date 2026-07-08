@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
@@ -58,13 +59,14 @@ class UsuarioController extends Controller
      */
     public function saveColab(Request $request)
     {
-        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
+        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'foto', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:usuarios,email'],
             'senha' => ['required', 'string', 'min:8'],
             'cargo' => ['required', 'in:diretor,ti,supervisor,analista,assistente,auxiliar'],
+            'foto' => ['nullable', 'image', 'max:2048'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'sexo' => ['nullable', 'in:masculino,feminino,outro'],
             'data_nascimento' => ['nullable', 'date'],
@@ -73,17 +75,22 @@ class UsuarioController extends Controller
             'departamento_id' => ['nullable', 'exists:departamentos,id'],
         ], [
             'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
+            'foto.image' => 'O arquivo enviado precisa ser uma imagem.',
+            'foto.max' => 'A foto não pode ultrapassar 2MB.',
         ]);
 
         if ($validator->fails()) {
             return Redirect::back()->with('error', $validator->errors()->first())->withInput();
         }
 
+        $foto = $request->hasFile('foto') ? $request->file('foto')->store('colaboradores', 'public') : null;
+
         Usuario::create([
             'nome' => $data['nome'],
             'email' => $data['email'],
             'senha' => Hash::make($data['senha']),
             'cargo' => $data['cargo'],
+            'foto' => $foto,
             'telefone' => $data['telefone'] ?? null,
             'sexo' => $data['sexo'] ?? null,
             'data_nascimento' => $data['data_nascimento'] ?? null,
@@ -102,13 +109,14 @@ class UsuarioController extends Controller
     {
         $usuario = Usuario::findOrFail($id);
 
-        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
+        $data = $request->only(['nome', 'email', 'senha', 'cargo', 'foto', 'remover_foto', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:usuarios,email,'.$id],
             'senha' => ['nullable', 'string', 'min:8'],
             'cargo' => ['required', 'in:diretor,ti,supervisor,analista,assistente,auxiliar'],
+            'foto' => ['nullable', 'image', 'max:2048'],
             'telefone' => ['nullable', 'string', 'max:20'],
             'sexo' => ['nullable', 'in:masculino,feminino,outro'],
             'data_nascimento' => ['nullable', 'date'],
@@ -117,6 +125,8 @@ class UsuarioController extends Controller
             'departamento_id' => ['nullable', 'exists:departamentos,id'],
         ], [
             'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
+            'foto.image' => 'O arquivo enviado precisa ser uma imagem.',
+            'foto.max' => 'A foto não pode ultrapassar 2MB.',
         ]);
 
         if ($validator->fails()) {
@@ -139,6 +149,16 @@ class UsuarioController extends Controller
             $update['senha'] = Hash::make($data['senha']);
         }
 
+        if ($request->hasFile('foto')) {
+            if ($usuario->foto) {
+                Storage::disk('public')->delete($usuario->foto);
+            }
+            $update['foto'] = $request->file('foto')->store('colaboradores', 'public');
+        } elseif ($request->boolean('remover_foto') && $usuario->foto) {
+            Storage::disk('public')->delete($usuario->foto);
+            $update['foto'] = null;
+        }
+
         $usuario->update($update);
 
         return Redirect::back()->with('success', 'Colaborador atualizado com sucesso.');
@@ -150,6 +170,11 @@ class UsuarioController extends Controller
     public function deleteColab(int $id): RedirectResponse
     {
         $usuario = Usuario::findOrFail($id);
+
+        if ($usuario->foto) {
+            Storage::disk('public')->delete($usuario->foto);
+        }
+
         $usuario->delete();
 
         return Redirect::back()->with('success', 'Colaborador excluído com sucesso.');
