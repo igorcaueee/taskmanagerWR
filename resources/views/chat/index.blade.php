@@ -134,6 +134,9 @@
     let conversasCache = new Map();
     let digitandoTimeout = null;
     let ultimoDigitandoEnviado = false;
+    let mensagensRenderizadasIds = new Set();
+    let pollingMensagensInterval = null;
+    let pollingConversasInterval = null;
 
     function whenEchoReady(callback) {
         // window.Echo pode nunca existir (Reverb não configurado no ambiente) —
@@ -242,6 +245,7 @@
 
         mensagensEl.innerHTML = '';
         ultimaDataRenderizada = null;
+        mensagensRenderizadasIds = new Set();
         fetch('{{ url("chat/conversas") }}/' + conversaId + '/mensagens', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(function (data) {
@@ -249,6 +253,12 @@
                 mensagensEl.scrollTop = mensagensEl.scrollHeight;
                 marcarComoLida();
             });
+
+        // Polling como reforço/alternativa ao WebSocket: garante que as
+        // mensagens cheguem mesmo se o Reverb não estiver disponível no
+        // ambiente (ex: bloqueado por proxy/tunnel).
+        if (pollingMensagensInterval) { clearInterval(pollingMensagensInterval); }
+        pollingMensagensInterval = setInterval(function () { pollarMensagens(conversaId); }, 4000);
 
         const dadosConversa = conversasCache.get(conversaId);
         if (dadosConversa) {
@@ -258,6 +268,25 @@
         conversaStatusEl.textContent = '';
 
         carregarConversas();
+    }
+
+    function pollarMensagens(conversaId) {
+        fetch('{{ url("chat/conversas") }}/' + conversaId + '/mensagens', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(function (data) {
+                let novas = false;
+                data.mensagens.forEach(function (m) {
+                    if (!mensagensRenderizadasIds.has(m.id)) {
+                        novas = true;
+                        renderMensagem(m, false);
+                    }
+                });
+                if (novas) {
+                    mensagensEl.scrollTop = mensagensEl.scrollHeight;
+                    marcarComoLida();
+                    carregarConversas();
+                }
+            });
     }
 
     function formatHoraMensagem(dateStr) {
@@ -340,6 +369,11 @@
     }
 
     function renderMensagem(m, animar) {
+        // Evita duplicar a mesma mensagem quando ela chega tanto pelo polling
+        // quanto pelo WebSocket (ou é renderizada localmente ao enviar).
+        if (mensagensRenderizadasIds.has(m.id)) { return; }
+        mensagensRenderizadasIds.add(m.id);
+
         inserirDivisorDataSeNecessario(m.created_at);
 
         const isMine = m.usuario.id === userId;
@@ -585,6 +619,10 @@
             carregarConversas();
         });
     });
+
+    // Polling da lista de conversas (reforço/alternativa ao WebSocket),
+    // mesmo padrão de intervalo usado no sino de notificações do header.
+    pollingConversasInterval = setInterval(carregarConversas, 15000);
 }());
 </script>
 @endpush

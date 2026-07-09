@@ -475,6 +475,10 @@
     } else {
         window.addEventListener('laravel-echo:ready', assinarEcho, { once: true });
     }
+
+    // Polling como reforço/alternativa ao WebSocket (mesmo padrão das
+    // notificações), garante que o badge atualize mesmo sem o Reverb.
+    setInterval(carregar, 15000);
 }());
 
 // Aviso de nova versão do sistema disponível
