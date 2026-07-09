@@ -258,7 +258,7 @@
         // mensagens cheguem mesmo se o Reverb não estiver disponível no
         // ambiente (ex: bloqueado por proxy/tunnel).
         if (pollingMensagensInterval) { clearInterval(pollingMensagensInterval); }
-        pollingMensagensInterval = setInterval(function () { pollarMensagens(conversaId); }, 4000);
+        pollingMensagensInterval = setInterval(function () { pollarMensagens(conversaId); }, 2000);
 
         const dadosConversa = conversasCache.get(conversaId);
         if (dadosConversa) {
