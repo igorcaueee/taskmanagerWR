@@ -1,11 +1,11 @@
 <?php
 
+use App\Http\Controllers\AcessoExternoController;
 use App\Http\Controllers\AgendaController;
-use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ChatbotController;
-use App\Http\Controllers\NotificacaoController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
@@ -15,17 +15,18 @@ use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
+use App\Http\Controllers\NfeController;
+use App\Http\Controllers\NfseController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PossibilidadeController;
 use App\Http\Controllers\ProdutoController;
+use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\TipoTarefaController;
-use App\Http\Controllers\AcessoExternoController;
-use App\Http\Controllers\NfeController;
-use App\Http\Controllers\NfseController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
@@ -206,6 +207,20 @@ Route::middleware('auth')->prefix('notificacoes')->name('notificacoes.')->group(
     Route::patch('/{id}/lida', [NotificacaoController::class, 'marcarLida'])->name('marcar-lida');
     Route::patch('/marcar-todas-lidas', [NotificacaoController::class, 'marcarTodasLidas'])->name('marcar-todas-lidas');
 });
+// Chat interno
+Route::middleware('auth')->prefix('chat')->name('chat.')->group(function () {
+    Route::get('/', [ChatController::class, 'index'])->name('index');
+    Route::get('/conversas', [ChatController::class, 'conversas'])->name('conversas');
+    Route::get('/nao-lidas', [ChatController::class, 'naoLidasTotal'])->name('nao-lidas');
+    Route::get('/conversas/{conversa}/mensagens', [ChatController::class, 'mensagens'])->name('mensagens');
+    Route::post('/conversas/{conversa}/mensagens', [ChatController::class, 'enviarMensagem'])->name('mensagens.store');
+    Route::post('/conversas/individual/{usuario}', [ChatController::class, 'abrirIndividual'])->name('individual');
+    Route::post('/conversas/grupo', [ChatController::class, 'storeGrupo'])->name('grupo.store');
+    Route::patch('/conversas/{conversa}/lida', [ChatController::class, 'marcarLida'])->name('marcar-lida');
+    Route::post('/conversas/{conversa}/digitando', [ChatController::class, 'digitando'])->name('digitando');
+    Route::get('/usuarios', [ChatController::class, 'usuariosParaChat'])->name('usuarios');
+    Route::get('/anexos/{anexo}', [ChatController::class, 'download'])->name('anexo.download');
+});
 // Versão do build (usado para avisar o usuário sobre atualizações do sistema)
 Route::get('/api/system/version', fn () => response()->json(['version' => appBuildVersion()]))->name('system.version')->middleware('auth');
 // Blog admin (interno)
@@ -275,7 +290,6 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
     Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
 });
-
 
 // Acesso externo — restrito a Diretor e TI
 Route::prefix('admin/acesso-externo')->name('acesso-externo.')->middleware(['auth', 'admin'])->group(function () {

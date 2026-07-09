@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class Usuario extends Authenticatable
 {
@@ -76,7 +78,7 @@ class Usuario extends Authenticatable
      */
     public function getFotoUrlAttribute(): ?string
     {
-        return $this->foto ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->foto) : null;
+        return $this->foto ? Storage::disk('public')->url($this->foto) : null;
     }
 
     /**
@@ -103,6 +105,13 @@ class Usuario extends Authenticatable
     public function departamento(): BelongsTo
     {
         return $this->belongsTo(Departamento::class);
+    }
+
+    public function conversas(): BelongsToMany
+    {
+        return $this->belongsToMany(Conversa::class, 'conversa_participantes')
+            ->withPivot(['ultima_mensagem_lida_id', 'lida_em', 'is_admin'])
+            ->withTimestamps();
     }
 
     // Apenas Diretor vê o Funil de Vendas
@@ -160,7 +169,7 @@ class Usuario extends Authenticatable
     }
 
     // Apenas Diretor, TI ou o criador da tarefa podem inativar
-    public function canInativarTarefa(\App\Models\Tarefa $tarefa): bool
+    public function canInativarTarefa(Tarefa $tarefa): bool
     {
         return in_array($this->cargo, ['diretor', 'ti']) || (int) $tarefa->criado_por === (int) $this->id;
     }

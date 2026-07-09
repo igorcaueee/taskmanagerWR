@@ -1,4 +1,5 @@
 import './bootstrap';
+import './echo';
 import Swal from 'sweetalert2';
 window.Swal = Swal;
 

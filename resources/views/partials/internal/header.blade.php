@@ -117,6 +117,13 @@
 
             <span class="hidden sm:block text-sm text-gray-600 dark:text-slate-400">{{ auth()->user()?->nome }}</span>
 
+            {{-- Chat --}}
+            <a href="{{ route('chat.index') }}" title="Chat"
+                class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 relative no-underline">
+                <i class="fa-solid fa-comments text-sm"></i>
+                <span id="chat-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center leading-none"></span>
+            </a>
+
             {{-- Notificações --}}
             <div class="relative" id="notif-wrapper">
                 <button id="notif-btn" title="Notificações"
@@ -372,6 +379,100 @@
 
     carregar();
     setInterval(carregar, 15000);
+}());
+
+// Badge de mensagens não lidas do chat
+(function () {
+    const badge = document.getElementById('chat-badge');
+    if (!badge) { return; }
+
+    function renderBadge(total) {
+        if (total > 0) {
+            badge.textContent = total > 9 ? '9+' : total;
+            badge.classList.remove('hidden');
+            badge.style.display = 'flex';
+        } else {
+            badge.classList.add('hidden');
+            badge.style.display = '';
+        }
+    }
+
+    function carregar() {
+        fetch('{{ route("chat.nao-lidas") }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderBadge(data.nao_lidas); })
+            .catch(function () {});
+    }
+
+    carregar();
+
+    function mostrarToastChat(mensagem) {
+        const container = document.getElementById('notif-toast-container');
+        if (!container) { return; }
+
+        const preview = mensagem.texto
+            ? mensagem.texto
+            : (mensagem.anexos && mensagem.anexos.length ? (mensagem.anexos[0].tipo === 'imagem' ? '📷 Foto' : '📎 Anexo') : '');
+
+        const toast = document.createElement('div');
+        toast.className = [
+            'flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border cursor-pointer',
+            'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600',
+            'text-sm text-gray-800 dark:text-slate-100',
+            'transition-all duration-300 opacity-0 translate-y-2',
+        ].join(' ');
+        toast.style.maxWidth = '320px';
+        toast.innerHTML =
+            '<div class="w-8 h-8 rounded-full bg-[#0084AA] flex-shrink-0 flex items-center justify-center overflow-hidden">' +
+                (mensagem.usuario.foto_url
+                    ? '<img src="' + mensagem.usuario.foto_url + '" class="w-full h-full object-cover">'
+                    : '<i class="fa-solid fa-comments text-white text-xs"></i>') +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-0.5">' + mensagem.usuario.nome + '</p>' +
+                '<p class="text-xs text-gray-600 dark:text-slate-300 leading-snug truncate">' + preview + '</p>' +
+            '</div>' +
+            '<button type="button" title="Fechar" class="shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-slate-300 dark:hover:bg-slate-700 border-0 bg-transparent p-0 cursor-pointer focus:outline-none"><i class="fa-solid fa-xmark text-xs"></i></button>';
+
+        toast.querySelector('button').addEventListener('click', function (e) {
+            e.stopPropagation();
+            toast.remove();
+        });
+        toast.addEventListener('click', function () {
+            window.location.href = '{{ route("chat.index") }}?conversa=' + mensagem.conversa_id;
+        });
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            });
+        });
+
+        setTimeout(function () {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(function () { toast.remove(); }, 300);
+        }, 6000);
+    }
+
+    function assinarEcho() {
+        window.Echo.private('usuario.{{ auth()->id() }}').listen('.mensagem.enviada', function (e) {
+            carregar();
+
+            if (e.mensagem.usuario.id === {{ auth()->id() }}) { return; }
+            if (window.chatConversaAbertaId === e.mensagem.conversa_id) { return; }
+
+            mostrarToastChat(e.mensagem);
+        });
+    }
+
+    if (window.Echo) {
+        assinarEcho();
+    } else {
+        window.addEventListener('laravel-echo:ready', assinarEcho, { once: true });
+    }
 }());
 
 // Aviso de nova versão do sistema disponível

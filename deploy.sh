@@ -47,6 +47,11 @@ step "Reiniciando filas"
 php artisan queue:restart
 ok "Filas reiniciadas"
 
+# O chat interno depende do Laravel Reverb (WebSocket) rodando como processo
+# persistente em produção (ex: supervisor/systemd rodando `php artisan reverb:start`).
+# Esse processo não é gerenciado por este script — reinicie-o manualmente/via
+# supervisor após o deploy se o binário do Reverb tiver sido atualizado.
+
 step "Ajustando permissões do storage"
 sudo chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || \
     chmod -R 775 storage bootstrap/cache
