@@ -136,8 +136,12 @@
     let ultimoDigitandoEnviado = false;
 
     function whenEchoReady(callback) {
+        // window.Echo pode nunca existir (Reverb não configurado no ambiente) —
+        // nesse caso o chat funciona sem tempo real, sem lançar erro.
         if (window.Echo) { callback(window.Echo); return; }
-        window.addEventListener('laravel-echo:ready', () => callback(window.Echo), { once: true });
+        window.addEventListener('laravel-echo:ready', () => {
+            if (window.Echo) { callback(window.Echo); }
+        }, { once: true });
     }
 
     function csrfToken() {

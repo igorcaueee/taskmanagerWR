@@ -458,6 +458,8 @@
     }
 
     function assinarEcho() {
+        if (!window.Echo) { return; }
+
         window.Echo.private('usuario.{{ auth()->id() }}').listen('.mensagem.enviada', function (e) {
             carregar();
 
