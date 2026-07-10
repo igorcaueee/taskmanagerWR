@@ -54,12 +54,24 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Senha</label>
-                    <input
-                        type="password"
-                        name="password"
-                        required
-                        class="block w-full px-4 py-3 border border-gray-300 dark:border-[#475569] dark:bg-[#334155] dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0084AA]/20 focus:border-[#0084AA]"
-                    >
+                    <div class="relative">
+                        <input
+                            type="password"
+                            name="password"
+                            id="password"
+                            required
+                            class="block w-full px-4 py-3 pr-11 border border-gray-300 dark:border-[#475569] dark:bg-[#334155] dark:text-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0084AA]/20 focus:border-[#0084AA]"
+                        >
+                        <button
+                            type="button"
+                            onclick="const i=document.getElementById('password'); const hidden=i.type==='password'; i.type=hidden?'text':'password'; this.querySelector('.icon-eye').classList.toggle('hidden', hidden); this.querySelector('.icon-eye-off').classList.toggle('hidden', !hidden);"
+                            class="absolute inset-y-0 right-0 flex items-center px-3 bg-transparent border-0 appearance-none text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
+                            tabindex="-1"
+                        >
+                            <svg class="icon-eye w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="icon-eye-off hidden w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.68 19.68 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a19.69 19.69 0 0 1-2.68 3.9M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="w-full bg-[#0084AA] hover:bg-[#006e8e] text-white font-semibold py-3 rounded-lg transition text-sm">
                     Entrar

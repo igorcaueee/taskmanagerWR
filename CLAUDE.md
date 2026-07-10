@@ -1,5 +1,9 @@
 # Instruções para o Claude
 
+## Design e CSS
+
+Antes de criar qualquer elemento novo de UI (botões, ícones, inputs, cards, etc.), procure e reutilize o padrão visual que já existe no projeto (classes Tailwind, cores, componentes de outras telas). Nunca deixe elementos com o estilo padrão do navegador (ex: `<button>` sem reset de aparência) — sempre resete `bg`, `border` e `appearance` explicitamente quando o elemento deve ficar "sem fundo"/inline. Elementos novos devem se misturar visualmente com o resto da tela (mesmas cores, espaçamentos, bordas, dark mode) em vez de parecer colados por cima.
+
 ## Fluxo de Commit
 
 Sempre que eu pedir para commitar, salvar, fazer push ou qualquer variação disso, execute o fluxo abaixo **sem pular etapas**.
