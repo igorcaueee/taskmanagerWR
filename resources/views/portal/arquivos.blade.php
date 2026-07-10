@@ -184,7 +184,7 @@
     <div class="flex items-center justify-between px-5 py-3 bg-[#0f172a] border-b border-white/10">
         <span id="viewer-title" class="text-sm font-medium text-slate-200 truncate max-w-xs sm:max-w-md"></span>
         <div class="flex items-center gap-3">
-            <a id="viewer-download-btn" href="#" class="text-xs text-[#0084AA] hover:text-[#38bdf8] flex items-center gap-1 transition">
+            <a id="viewer-download-btn" href="#" class="no-underline text-xs text-[#0084AA] hover:text-[#38bdf8] flex items-center gap-1 transition">
                 <i class="fa-solid fa-download"></i> Baixar
             </a>
             <button onclick="fecharVisualizador()" class="text-slate-400 hover:text-white transition border-0 bg-transparent cursor-pointer text-lg leading-none">

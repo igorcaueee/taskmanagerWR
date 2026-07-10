@@ -15,7 +15,7 @@
 
     {{-- Atalhos --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <a href="{{ route('portal.blog') }}" class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl p-6 shadow-sm hover:border-[#0084AA] hover:shadow-md transition group">
+        <a href="{{ route('portal.blog') }}" class="no-underline bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl p-6 shadow-sm hover:border-[#0084AA] hover:shadow-md transition group">
             <div class="flex items-center gap-4">
                 <div class="bg-blue-50 dark:bg-[#0084AA]/20 text-[#0084AA] rounded-lg p-3 text-2xl group-hover:bg-[#0084AA]/20 transition">📰</div>
                 <div>
@@ -25,7 +25,7 @@
             </div>
         </a>
 
-        <a href="{{ route('portal.arquivos') }}" class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl p-6 shadow-sm hover:border-[#0084AA] hover:shadow-md transition group">
+        <a href="{{ route('portal.arquivos') }}" class="no-underline bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl p-6 shadow-sm hover:border-[#0084AA] hover:shadow-md transition group">
             <div class="flex items-center gap-4">
                 <div class="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg p-3 text-2xl group-hover:bg-green-100 dark:group-hover:bg-green-900/30 transition">📁</div>
                 <div>
@@ -42,7 +42,7 @@
         <h2 class="text-lg font-semibold text-gray-700 dark:text-slate-200 mb-4">Últimas publicações</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             @foreach ($artigos as $artigo)
-            <a href="{{ route('portal.blog.show', $artigo->slug) }}" class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition group">
+            <a href="{{ route('portal.blog.show', $artigo->slug) }}" class="no-underline bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition group">
                 @if ($artigo->imagem_capa)
                     <img src="{{ $artigo->imagem_capa }}" alt="{{ $artigo->titulo }}" class="w-full h-36 object-cover">
                 @endif

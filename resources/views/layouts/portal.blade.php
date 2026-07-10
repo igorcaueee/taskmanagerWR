@@ -36,6 +36,7 @@
                 <a href="{{ route('portal.blog') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.blog*') ? 'text-[#0084AA]' : '' }}">Blog</a>
                 <a href="{{ route('portal.arquivos') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.arquivos*') ? 'text-[#0084AA]' : '' }}">Meus Arquivos</a>
                 <a href="{{ route('portal.agenda') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.agenda') ? 'text-[#0084AA]' : '' }}">Agenda</a>
+                <a href="{{ route('portal.chamados.index') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.chamados*') ? 'text-[#0084AA]' : '' }}">Chamados</a>
             </nav>
 
             <div class="flex items-center gap-3">
@@ -66,6 +67,7 @@
             <a href="{{ route('portal.blog') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.blog*') ? 'text-[#0084AA]' : '' }}">Blog</a>
             <a href="{{ route('portal.arquivos') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.arquivos*') ? 'text-[#0084AA]' : '' }}">Arquivos</a>
             <a href="{{ route('portal.agenda') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.agenda') ? 'text-[#0084AA]' : '' }}">Agenda</a>
+            <a href="{{ route('portal.chamados.index') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.chamados*') ? 'text-[#0084AA]' : '' }}">Chamados</a>
         </div>
     </header>
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tarefa extends Model
 {
@@ -115,6 +116,11 @@ class Tarefa extends Model
     public function inativadoPor(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'inativado_por');
+    }
+
+    public function chamadoDp(): HasOne
+    {
+        return $this->hasOne(ChamadoDp::class);
     }
 
     public function scopeAtivos($query)

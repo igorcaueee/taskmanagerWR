@@ -19,6 +19,7 @@ use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PortalAuthController;
+use App\Http\Controllers\PortalChamadoController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PossibilidadeController;
 use App\Http\Controllers\ProdutoController;
@@ -49,6 +50,10 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/arquivos/visualizar', [PortalController::class, 'visualizarArquivo'])->name('arquivos.visualizar');
         Route::post('/arquivos/{upload}/marcar-pago', [PortalController::class, 'marcarPago'])->name('arquivos.marcar-pago');
         Route::get('/agenda', [PortalController::class, 'agenda'])->name('agenda');
+
+        Route::get('/chamados', [PortalChamadoController::class, 'index'])->name('chamados.index');
+        Route::get('/chamados/novo/{tipo}', [PortalChamadoController::class, 'create'])->name('chamados.create');
+        Route::post('/chamados', [PortalChamadoController::class, 'store'])->name('chamados.store')->middleware('throttle:10,1');
     });
 });
 

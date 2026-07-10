@@ -28,7 +28,7 @@
     @else
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             @foreach ($artigos as $artigo)
-            <a href="{{ route('portal.blog.show', $artigo->slug) }}" class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition group flex flex-col">
+            <a href="{{ route('portal.blog.show', $artigo->slug) }}" class="no-underline bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition group flex flex-col">
                 @if ($artigo->imagem_capa)
                     <img src="{{ $artigo->imagem_capa }}" alt="{{ $artigo->titulo }}" class="w-full h-40 object-cover">
                 @else
