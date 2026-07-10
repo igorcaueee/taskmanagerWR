@@ -505,6 +505,7 @@ class TarefaController extends Controller
             ?? Departamento::orderBy('id')->value('id');
 
         $clienteIds = ! empty($data['cliente_ids']) ? $data['cliente_ids'] : [];
+        $clienteIdAnterior = $tarefa->cliente_id;
 
         $tarefa->update([
             'titulo' => $data['titulo'],
@@ -530,6 +531,25 @@ class TarefaController extends Controller
         ]);
 
         $tarefa->clientes()->sync($clienteIds);
+
+        $clienteMudou = (int) ($clienteIdAnterior ?? 0) !== (int) ($clienteIds[0] ?? 0);
+
+        if ($clienteMudou && $tarefa->recorrente) {
+            $originalId = $tarefa->tarefa_original_id ?? $tarefa->id;
+
+            $futuras = Tarefa::where(function ($q) use ($originalId) {
+                    $q->where('id', $originalId)->orWhere('tarefa_original_id', $originalId);
+                })
+                ->where('id', '!=', $tarefa->id)
+                ->where('data_vencimento', '>', $tarefa->data_vencimento)
+                ->where('ativo', true)
+                ->get();
+
+            foreach ($futuras as $futura) {
+                $futura->update(['cliente_id' => $clienteIds[0] ?? null]);
+                $futura->clientes()->sync($clienteIds);
+            }
+        }
 
         $etapaMudou = (int) $etapaAnteriorId !== (int) $data['etapa_id'];
         $responsavelMudou = (int) ($responsavelAnteriorId ?? 0) !== (int) ($novoResponsavelId ?? 0);
