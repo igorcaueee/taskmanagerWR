@@ -107,7 +107,7 @@ class TarefaController extends Controller
             ->orderBy('data_vencimento');
 
         if ($isSupervisor) {
-            $query->where('departamento_id', $usuario->departamento_id);
+            $query->whereHas('responsavel', fn ($q) => $q->whereNotIn('cargo', ['diretor', 'ti']));
         } elseif (! $podeVerTodas) {
             $query->where('responsavel_id', $usuario->id);
         }
@@ -188,7 +188,7 @@ class TarefaController extends Controller
         $usuarios = $podeVerTodas
             ? Usuario::orderBy('nome')->get()
             : ($isSupervisor
-                ? Usuario::where('departamento_id', $usuario->departamento_id)->orderBy('nome')->get()
+                ? Usuario::whereNotIn('cargo', ['diretor', 'ti'])->orderBy('nome')->get()
                 : collect());
         $clientes = Cliente::orderBy('nome')->get();
         $tiposTarefa = TipoTarefa::orderBy('nome')->get();
