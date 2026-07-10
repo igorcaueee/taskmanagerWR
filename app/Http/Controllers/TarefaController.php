@@ -974,6 +974,7 @@ class TarefaController extends Controller
             'titulo' => $tarefa->titulo,
             'descricao' => $tarefa->descricao,
             'cliente' => $tarefa->cliente?->nome,
+            'cliente_cpfcnpj' => $tarefa->cliente?->cpfcnpj,
             'departamento' => $tarefa->departamento?->nome,
             'etapa' => ['nome' => $tarefa->etapa?->nome, 'cor' => $tarefa->etapa?->cor ?? '#6b7280'],
             'responsavel' => $tarefa->responsavel?->nome,

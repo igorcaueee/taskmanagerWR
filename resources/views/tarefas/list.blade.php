@@ -1148,6 +1148,7 @@
                 {{-- Fields grid --}}
                 <div class="grid grid-cols-2 gap-x-6 gap-y-3 bg-gray-50 rounded-xl p-4">
                     ${tfield('Cliente', t.cliente)}
+                    ${t.cliente ? tfield('CPF/CNPJ', t.cliente_cpfcnpj) : ''}
                     ${tfield('Departamento', t.departamento)}
                     ${tfield('Responsável', t.responsavel)}
                     ${tfield('Supervisor', t.supervisor)}
