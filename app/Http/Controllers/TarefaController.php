@@ -27,7 +27,7 @@ class TarefaController extends Controller
     public function showTarefas(Request $request): View
     {
         $usuario = Auth::user();
-        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
+        $podeVerTodas = $usuario->canVerTodasTarefas();
 
         $mostrarInativas = $request->boolean('mostrar_inativas');
 
@@ -83,7 +83,7 @@ class TarefaController extends Controller
     public function showTarefasList(Request $request): View
     {
         $usuario = Auth::user();
-        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti']);
+        $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor_geral']);
         $isSupervisor = $usuario->cargo === 'supervisor';
 
         $etapas = Etapa::where('visivel', true)->orderBy('ordem')->get();

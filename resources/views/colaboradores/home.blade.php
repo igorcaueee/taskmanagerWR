@@ -7,6 +7,7 @@
         'diretor'    => 'Diretor',
         'ti'         => 'TI',
         'supervisor' => 'Supervisor',
+        'supervisor_geral' => 'Supervisor Geral',
         'analista'   => 'Analista',
         'assistente' => 'Assistente',
         'auxiliar'   => 'Auxiliar',
@@ -62,6 +63,7 @@
                         <option value="diretor"    @selected(request('cargo') === 'diretor')>Diretor</option>
                         <option value="ti"         @selected(request('cargo') === 'ti')>TI</option>
                         <option value="supervisor" @selected(request('cargo') === 'supervisor')>Supervisor</option>
+                        <option value="supervisor_geral" @selected(request('cargo') === 'supervisor_geral')>Supervisor Geral</option>
                         <option value="analista"   @selected(request('cargo') === 'analista')>Analista</option>
                         <option value="assistente" @selected(request('cargo') === 'assistente')>Assistente</option>
                         <option value="auxiliar"   @selected(request('cargo') === 'auxiliar')>Auxiliar</option>

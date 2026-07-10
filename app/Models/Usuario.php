@@ -126,6 +126,12 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti', 'supervisor']);
     }
 
+    // Diretor, TI, Supervisor e Supervisor Geral podem ver as tarefas de todos os usuários
+    public function canVerTodasTarefas(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti', 'supervisor', 'supervisor_geral']);
+    }
+
     // Apenas Diretor e TI podem criar/editar/excluir colaboradores
     public function canEditarColaboradores(): bool
     {
@@ -138,16 +144,16 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // TI, Assistente e Auxiliar não veem faturamento
+    // TI, Assistente, Auxiliar e Supervisor Geral não veem faturamento
     public function canVerFaturamento(): bool
     {
-        return ! in_array($this->cargo, ['ti', 'assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['ti', 'assistente', 'auxiliar', 'supervisor_geral']);
     }
 
-    // Assistente e Auxiliar não podem criar/editar/excluir clientes
+    // Assistente, Auxiliar e Supervisor Geral não podem criar/editar/excluir clientes
     public function canEditarClientes(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
     }
 
     // Apenas Diretor gerencia produtos
@@ -162,10 +168,10 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // Assistente e Auxiliar só editam tarefas onde são responsáveis
+    // Assistente, Auxiliar e Supervisor Geral só editam tarefas onde são responsáveis
     public function canEditarQualquerTarefa(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
     }
 
     // Apenas Diretor, TI ou o criador da tarefa podem inativar
@@ -204,16 +210,16 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
-    // Assistente e Auxiliar não veem o menu de Relatórios
+    // Assistente, Auxiliar e Supervisor Geral não veem o menu de Relatórios
     public function canVerRelatorios(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
     }
 
-    // Assistente e Auxiliar não veem Produtos e Possibilidades no menu Cadastros
+    // Assistente, Auxiliar e Supervisor Geral não veem Produtos e Possibilidades no menu Cadastros
     public function canVerProdutosPossibilidades(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
     }
 
     // Diretor e TI gerenciam restrições de acesso por rede e liberações externas
