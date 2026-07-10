@@ -174,10 +174,10 @@ class Usuario extends Authenticatable
         return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
     }
 
-    // Apenas Diretor, TI ou o criador da tarefa podem inativar
+    // Apenas Diretor, TI, Supervisor Geral ou o criador da tarefa podem inativar
     public function canInativarTarefa(Tarefa $tarefa): bool
     {
-        return in_array($this->cargo, ['diretor', 'ti']) || (int) $tarefa->criado_por === (int) $this->id;
+        return in_array($this->cargo, ['diretor', 'ti', 'supervisor_geral']) || (int) $tarefa->criado_por === (int) $this->id;
     }
 
     // Apenas Diretor e TI podem excluir tarefas permanentemente
