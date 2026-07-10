@@ -307,6 +307,10 @@
                     <i class="fa-solid fa-list-check mr-1 text-brand"></i> Tarefas do período
                     <span class="ml-2 text-xs font-normal text-gray-400 dark:text-slate-500">({{ $tarefas->total() }} registros)</span>
                 </h2>
+                <a href="{{ route('relatorios.tarefas.export', request()->query()) }}"
+                   class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
+                    <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                </a>
             </div>
 
             @php

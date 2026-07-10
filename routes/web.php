@@ -64,6 +64,7 @@ Route::post('/funil/captura', [LeadCapturaController::class, 'store'])->name('fu
 // Colabs routes (use GET for page views so they load in browser)
 Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard')->middleware('auth');
 Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios')->middleware('auth');
+Route::get('/relatorios/tarefas/export', [RelatorioController::class, 'exportTarefas'])->name('relatorios.tarefas.export')->middleware('auth');
 Route::get('/relatorios/clientes', [RelatorioController::class, 'clientes'])->name('relatorios.clientes')->middleware('auth');
 Route::get('/relatorios/colaboradores', [RelatorioController::class, 'colaboradores'])->name('relatorios.colaboradores')->middleware(['auth', 'colaboradores']);
 Route::get('/relatorios/produtos', [RelatorioController::class, 'produtos'])->name('relatorios.produtos')->middleware('auth');

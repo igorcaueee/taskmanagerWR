@@ -225,6 +225,60 @@ class RelatorioController extends Controller
         ));
     }
 
+    public function exportTarefas(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        [$dataInicio, $dataFim] = $this->resolverPeriodo($request);
+
+        $responsavelFiltro    = $request->filled('responsavel_id')    ? $request->integer('responsavel_id')    : null;
+        $etapaFiltro          = $request->filled('etapa_id')          ? $request->integer('etapa_id')          : null;
+        $departamentoFiltro   = $request->filled('departamento_id')   ? $request->integer('departamento_id')   : null;
+        $tipoTarefaFiltro     = $request->filled('tipo_tarefa_id')    ? $request->integer('tipo_tarefa_id')    : null;
+        $clienteFiltro        = $request->filled('cliente_id')        ? $request->integer('cliente_id')        : null;
+        $statusFiltro         = $request->input('status');
+
+        $aplicarFiltros = function ($q) use ($responsavelFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $clienteFiltro, $statusFiltro): void {
+            if ($responsavelFiltro) {
+                $q->where('responsavel_id', $responsavelFiltro);
+            }
+            if ($etapaFiltro) {
+                $q->where('etapa_id', $etapaFiltro);
+            }
+            if ($departamentoFiltro) {
+                $q->where('departamento_id', $departamentoFiltro);
+            }
+            if ($tipoTarefaFiltro) {
+                $q->where('tipo_tarefa_id', $tipoTarefaFiltro);
+            }
+            if ($clienteFiltro) {
+                $q->where('cliente_id', $clienteFiltro);
+            }
+            if ($statusFiltro === 'concluida') {
+                $q->whereNotNull('data_conclusao');
+            } elseif ($statusFiltro === 'pendente') {
+                $q->whereNull('data_conclusao');
+            } elseif ($statusFiltro === 'vencida') {
+                $q->whereNull('data_conclusao')->where('data_vencimento', '<', now()->startOfDay());
+            }
+        };
+
+        $colunaOrdem  = in_array($request->input('ordem'), ['titulo', 'data_vencimento', 'data_conclusao', 'prioridade'])
+            ? $request->input('ordem')
+            : 'data_vencimento';
+        $direcaoOrdem = $request->input('direcao', 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $tarefas = Tarefa::query()
+            ->where('ativo', true)
+            ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
+            ->tap($aplicarFiltros)
+            ->with(['responsavel', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
+            ->orderBy($colunaOrdem, $direcaoOrdem)
+            ->get();
+
+        $export = new \App\Exports\TarefaRelatorioExport($tarefas);
+
+        return $export->download('tarefas_' . $dataInicio->format('Y-m-d') . '_a_' . $dataFim->format('Y-m-d') . '.xlsx');
+    }
+
     public function clientes(Request $request): View
     {
         [$dataInicio, $dataFim] = $this->resolverPeriodo($request);
