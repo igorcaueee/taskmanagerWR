@@ -10,6 +10,7 @@ use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\QuestionarioResposta;
 use App\Models\Socio;
+use App\Models\Tarefa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -236,7 +237,12 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        return view('clientes.partials.formEncerrarCliente', compact('cliente'));
+        $tarefasVigentes = Tarefa::where('cliente_id', $id)
+            ->where('ativo', true)
+            ->whereNull('data_conclusao')
+            ->count();
+
+        return view('clientes.partials.formEncerrarCliente', compact('cliente', 'tarefasVigentes'));
     }
 
     public function encerrarCliente(Request $request, int $id): RedirectResponse
@@ -259,7 +265,29 @@ class ClienteController extends Controller
             'data_encerramento' => Carbon::today(),
         ]);
 
-        return Redirect::route('clientes')->with('success', 'Cliente encerrado com sucesso.');
+        $mensagem = 'Cliente encerrado com sucesso.';
+
+        if ($request->boolean('inativar_tarefas')) {
+            $tarefas = Tarefa::where('cliente_id', $id)
+                ->where('ativo', true)
+                ->whereNull('data_conclusao')
+                ->get();
+
+            $now = Carbon::now();
+            foreach ($tarefas as $tarefa) {
+                $tarefa->update([
+                    'ativo' => false,
+                    'inativado_por' => auth()->id(),
+                    'inativado_em' => $now,
+                ]);
+            }
+
+            if ($tarefas->count() > 0) {
+                $mensagem .= " {$tarefas->count()} tarefa(s) vigente(s) também foram inativadas.";
+            }
+        }
+
+        return Redirect::route('clientes')->with('success', $mensagem);
     }
 
     public function reativarCliente(int $id): RedirectResponse

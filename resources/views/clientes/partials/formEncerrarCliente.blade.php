@@ -29,6 +29,19 @@
             @enderror
         </div>
 
+        @if($tarefasVigentes > 0)
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" name="inativar_tarefas" value="1" class="mt-1">
+                    <span>
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                        Este cliente possui <strong>{{ $tarefasVigentes }}</strong> tarefa(s) vigente(s).
+                        Deseja inativar também {{ $tarefasVigentes > 1 ? 'essas tarefas' : 'essa tarefa' }}?
+                    </span>
+                </label>
+            </div>
+        @endif
+
         <div class="flex items-center justify-end gap-3 pt-2">
             <button type="button" onclick="closeModal()"
                     class="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none">
