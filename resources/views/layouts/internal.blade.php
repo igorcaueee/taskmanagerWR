@@ -85,7 +85,16 @@
         @stack('scripts')
 
         {{-- Chatbot flutuante --}}
-        <div id="chatbot-widget" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        <div id="chatbot-widget" class="fixed top-6 right-6 z-50 flex flex-col items-end gap-3">
+
+            {{-- Toggle button --}}
+            <button
+                id="chatbot-toggle"
+                class="w-14 h-14 rounded-full bg-[#0084AA] hover:bg-[#006e8e] text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+                title="Liri — Assistente de Contabilidade"
+            >
+                <i id="chatbot-toggle-icon" class="fa-solid fa-robot text-xl"></i>
+            </button>
 
             {{-- Painel de chat --}}
             <div id="chatbot-panel" class="hidden flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden" style="width: 384px; height: 520px; min-width: 280px; min-height: 360px; max-width: 680px; max-height: 85vh; position: relative;">
@@ -162,15 +171,6 @@
                     </button>
                 </div>
             </div>
-
-            {{-- Toggle button --}}
-            <button
-                id="chatbot-toggle"
-                class="w-14 h-14 rounded-full bg-[#0084AA] hover:bg-[#006e8e] text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
-                title="Liri — Assistente de Contabilidade"
-            >
-                <i id="chatbot-toggle-icon" class="fa-solid fa-robot text-xl"></i>
-            </button>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"></script>
