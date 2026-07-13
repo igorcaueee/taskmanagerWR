@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\Departamento;
 use App\Models\Etapa;
+use App\Models\NotaEmitente;
+use App\Models\NotaEmitida;
 use App\Models\Possibilidade;
 use App\Models\Produto;
 use App\Models\Segmentacao;
@@ -659,6 +661,62 @@ class RelatorioController extends Controller
             'cidadeFiltro',
             'statusFiltro',
         ));
+    }
+
+    public function notas(Request $request): View
+    {
+        [$dataInicio, $dataFim] = $this->resolverPeriodo($request);
+
+        $buscaFiltro = $request->input('busca');
+
+        $contagens = NotaEmitida::query()
+            ->select('emitente_id')
+            ->selectRaw('COUNT(*) as total')
+            ->where('estornado', false)
+            ->whereBetween('created_at', [$dataInicio, $dataFim])
+            ->groupBy('emitente_id')
+            ->pluck('total', 'emitente_id');
+
+        $totalNotas = $contagens->sum();
+        $totalEmitentesComNotas = $contagens->count();
+
+        $todosEmitentes = NotaEmitente::query()
+            ->whereIn('id', $contagens->keys())
+            ->with('cliente:id,nome')
+            ->get()
+            ->map(fn (NotaEmitente $e) => [
+                'id' => $e->id,
+                'nome' => $e->nome_exibicao,
+                'total' => $contagens[$e->id],
+            ])
+            ->sortByDesc('total')
+            ->values();
+
+        $topEmitentes = $todosEmitentes->take(10);
+
+        $emitentesTabela = $buscaFiltro
+            ? $todosEmitentes->filter(fn ($e) => str_contains(mb_strtolower($e['nome']), mb_strtolower($buscaFiltro)))->values()
+            : $todosEmitentes;
+
+        $porDia = NotaEmitida::query()
+            ->selectRaw('DATE(created_at) as dia, COUNT(*) as total')
+            ->where('estornado', false)
+            ->whereBetween('created_at', [$dataInicio, $dataFim])
+            ->groupBy('dia')
+            ->orderBy('dia')
+            ->get()
+            ->map(fn ($r) => ['dia' => Carbon::parse($r->dia)->format('d/m'), 'total' => $r->total]);
+
+        return view('relatorios.notas', [
+            'emitentesTabela' => $emitentesTabela,
+            'topEmitentes' => $topEmitentes,
+            'porDia' => $porDia,
+            'totalNotas' => $totalNotas,
+            'totalEmitentesComNotas' => $totalEmitentesComNotas,
+            'dataInicio' => $dataInicio,
+            'dataFim' => $dataFim,
+            'busca' => $buscaFiltro,
+        ]);
     }
 
     /** @return array{Carbon, Carbon} */

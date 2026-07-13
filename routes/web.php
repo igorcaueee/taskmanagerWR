@@ -17,6 +17,8 @@ use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
+use App\Http\Controllers\NotaEmitidaController;
+use App\Http\Controllers\NotaEmitenteController;
 use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalChamadoController;
@@ -74,6 +76,7 @@ Route::get('/relatorios/clientes', [RelatorioController::class, 'clientes'])->na
 Route::get('/relatorios/colaboradores', [RelatorioController::class, 'colaboradores'])->name('relatorios.colaboradores')->middleware(['auth', 'colaboradores']);
 Route::get('/relatorios/produtos', [RelatorioController::class, 'produtos'])->name('relatorios.produtos')->middleware('auth');
 Route::get('/relatorios/geolocalizacao', [RelatorioController::class, 'geolocalizacao'])->name('relatorios.geolocalizacao')->middleware('auth');
+Route::get('/relatorios/notas', [RelatorioController::class, 'notas'])->name('relatorios.notas')->middleware('auth');
 Route::get('/agenda', [AgendaController::class, 'showAgenda'])->name('agenda')->middleware('auth');
 Route::get('/agenda/compromisso/form', [AgendaController::class, 'formCompromisso'])->name('agenda.compromisso.form')->middleware('auth');
 Route::post('/agenda/compromisso', [AgendaController::class, 'storeCompromisso'])->name('agenda.compromisso.store')->middleware('auth');
@@ -137,6 +140,19 @@ Route::get('/clientes/{id}/portal/pastas', [ClienteController::class, 'pastasPor
 Route::post('/clientes/{id}/portal/usuarios', [ClienteController::class, 'storeUsuarioPortal'])->name('clientes.portal.usuarios.store')->middleware('auth');
 Route::put('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'updateUsuarioPortal'])->name('clientes.portal.usuarios.update')->middleware('auth');
 Route::delete('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'destroyUsuarioPortal'])->name('clientes.portal.usuarios.destroy')->middleware('auth');
+// Contador de Notas routes
+Route::get('/notas-emitidas', [NotaEmitidaController::class, 'index'])->name('notas-emitidas.index')->middleware('auth');
+Route::post('/notas-emitidas', [NotaEmitidaController::class, 'store'])->name('notas-emitidas.store')->middleware('auth');
+Route::post('/notas-emitidas/estornar', [NotaEmitidaController::class, 'estornar'])->name('notas-emitidas.estornar')->middleware('auth');
+
+// Cadastro de Clientes de Nota (emitentes do Contador de Notas)
+Route::get('/notas-emitidas/clientes', [NotaEmitenteController::class, 'index'])->name('notas-emitidas.emitentes.index')->middleware('auth');
+Route::get('/notas-emitidas/clientes/form', [NotaEmitenteController::class, 'formCreate'])->name('notas-emitidas.emitentes.form.create')->middleware('auth');
+Route::get('/notas-emitidas/clientes/{id}/form', [NotaEmitenteController::class, 'formEdit'])->name('notas-emitidas.emitentes.form.edit')->middleware('auth');
+Route::post('/notas-emitidas/clientes', [NotaEmitenteController::class, 'save'])->name('notas-emitidas.emitentes.save')->middleware('auth');
+Route::put('/notas-emitidas/clientes/{id}', [NotaEmitenteController::class, 'update'])->name('notas-emitidas.emitentes.update')->middleware('auth');
+Route::patch('/notas-emitidas/clientes/{id}/toggle', [NotaEmitenteController::class, 'toggleAtivo'])->name('notas-emitidas.emitentes.toggle')->middleware('auth');
+Route::delete('/notas-emitidas/clientes/{id}', [NotaEmitenteController::class, 'delete'])->name('notas-emitidas.emitentes.delete')->middleware('auth');
 // Segmentações routes
 Route::post('/segmentacoes', [SegmentacaoController::class, 'store'])->name('segmentacoes.store')->middleware('auth');
 // Produtos routes
