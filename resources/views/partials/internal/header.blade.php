@@ -124,6 +124,12 @@
                 <span id="chat-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center leading-none"></span>
             </a>
 
+            {{-- Assistente de IA --}}
+            <button id="chatbot-toggle" type="button" title="Liri — Assistente de Contabilidade"
+                class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 border-0 bg-transparent cursor-pointer">
+                <i id="chatbot-toggle-icon" class="fa-solid fa-robot text-sm"></i>
+            </button>
+
             {{-- Notificações --}}
             <div class="relative" id="notif-wrapper">
                 <button id="notif-btn" title="Notificações"
