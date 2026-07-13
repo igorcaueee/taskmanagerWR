@@ -477,6 +477,28 @@
         digitandoTimeout = setTimeout(() => enviarDigitando(false), 2000);
     });
 
+    inputTexto.addEventListener('paste', function (e) {
+        const itens = Array.from(e.clipboardData ? e.clipboardData.items : []);
+        const imagens = itens.filter(item => item.type && item.type.startsWith('image/'));
+        if (imagens.length === 0) return;
+
+        e.preventDefault();
+
+        const dt = new DataTransfer();
+        Array.from(inputAnexos.files).forEach(f => dt.items.add(f));
+        imagens.forEach(function (item) {
+            const arquivo = item.getAsFile();
+            if (!arquivo) return;
+            const extensao = (arquivo.type.split('/')[1] || 'png').split('+')[0];
+            const nomeArquivo = arquivo.name && arquivo.name !== 'blob'
+                ? arquivo.name
+                : 'print-' + Date.now() + '.' + extensao;
+            dt.items.add(new File([arquivo], nomeArquivo, { type: arquivo.type }));
+        });
+        inputAnexos.files = dt.files;
+        inputAnexos.dispatchEvent(new Event('change'));
+    });
+
     function enviarDigitando(digitando) {
         if (!conversaAtualId || digitando === ultimoDigitandoEnviado) return;
         ultimoDigitandoEnviado = digitando;
