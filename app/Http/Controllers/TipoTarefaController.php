@@ -39,12 +39,11 @@ class TipoTarefaController extends Controller
 
     public function save(Request $request): RedirectResponse
     {
-        $data = $request->only(['nome', 'titulo_padrao', 'descricao', 'data_vencimento']);
+        $data = $request->only(['nome', 'titulo_padrao', 'data_vencimento']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'titulo_padrao' => ['nullable', 'string', 'max:255'],
-            'descricao' => ['nullable', 'string', 'max:500'],
             'data_vencimento' => ['nullable', 'date'],
         ], [
             'nome.required' => 'O nome do tipo é obrigatório.',
@@ -63,12 +62,11 @@ class TipoTarefaController extends Controller
     {
         $tipo = TipoTarefa::findOrFail($id);
 
-        $data = $request->only(['nome', 'titulo_padrao', 'descricao', 'data_vencimento']);
+        $data = $request->only(['nome', 'titulo_padrao', 'data_vencimento']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
             'titulo_padrao' => ['nullable', 'string', 'max:255'],
-            'descricao' => ['nullable', 'string', 'max:500'],
             'data_vencimento' => ['nullable', 'date'],
         ], [
             'nome.required' => 'O nome do tipo é obrigatório.',

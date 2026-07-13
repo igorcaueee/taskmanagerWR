@@ -12,7 +12,6 @@ class TipoTarefa extends Model
     protected $fillable = [
         'nome',
         'titulo_padrao',
-        'descricao',
         'data_vencimento',
     ];
 

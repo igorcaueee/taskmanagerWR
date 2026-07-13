@@ -97,29 +97,19 @@
         </div>
         @endif
 
-        <div id="titulo-descricao-wrapper">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título <span class="text-red-500">*</span></label>
-                <input name="titulo" id="input-titulo" type="text"
-                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       value="{{ old('titulo', $isEditing ? $tarefa->titulo : '') }}"
-                       {{ $isEditing ? 'required' : '' }}>
-            </div>
-
-            <div class="mt-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-                <textarea name="descricao" rows="3"
-                          class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">{{ old('descricao', $isEditing ? $tarefa->descricao : '') }}</textarea>
-            </div>
+        <div id="titulo-wrapper">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Título <span class="text-red-500">*</span></label>
+            <input name="titulo" id="input-titulo" type="text"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                   value="{{ old('titulo', $isEditing ? $tarefa->titulo : '') }}"
+                   {{ $isEditing ? 'required' : '' }}>
         </div>
 
-        @if(!$isEditing)
-        <div id="titulo-descricao-tipo-hint" class="hidden p-3 rounded-lg border border-brand/30 bg-brand/5 dark:bg-brand/10">
-            <p class="text-sm text-brand dark:text-brand font-medium">
-                <i class="fa-solid fa-tag mr-1"></i> Título e descrição serão preenchidos automaticamente pelo tipo de cada tarefa.
-            </p>
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
+            <textarea name="descricao" rows="3"
+                      class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">{{ old('descricao', $isEditing ? $tarefa->descricao : '') }}</textarea>
         </div>
-        @endif
 
         @php
             $selectedClienteIds = $selectedClienteIds ?? old('cliente_ids', $isEditing ? $tarefa->clientes->pluck('id')->toArray() : []);
@@ -240,12 +230,6 @@
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('data_vencimento', $isEditing ? $tarefa->data_vencimento->format('Y-m-d') : '') }}"
                        {{ $isEditing ? 'required' : '' }}>
-                @if(!$isEditing)
-                <p id="data-venc-tipo-hint" class="text-xs text-blue-500 dark:text-blue-400 mt-1 hidden">
-                    <i class="fa-solid fa-circle-info mr-1"></i>
-                    Cada tarefa usará a data de vencimento do seu tipo.
-                </p>
-                @endif
             </div>
 
             <div>
@@ -643,40 +627,56 @@ function atualizarDisplayTipoMulti() {
 }
 
 function atualizarVisibilidadeCamposTipo(checked) {
-    // --- Título e Descrição ---
-    const titDescWrapper = document.getElementById('titulo-descricao-wrapper');
-    const titDescHint = document.getElementById('titulo-descricao-tipo-hint');
+    // --- Título ---
     const inputTitulo = document.getElementById('input-titulo');
 
-    if (titDescWrapper) {
-        if (checked.length > 0) {
-            titDescWrapper.style.display = 'none';
-            if (titDescHint) titDescHint.classList.remove('hidden');
-            if (inputTitulo) inputTitulo.removeAttribute('required');
+    if (inputTitulo) {
+        const algumSemTitulo = checked.some(function (c) { return !c.closest('li').dataset.tituloPadrao; });
+
+        if (checked.length > 0 && !algumSemTitulo) {
+            if (inputTitulo.dataset.locked !== '1') {
+                inputTitulo.dataset.valorAntes = inputTitulo.value;
+                inputTitulo.dataset.locked = '1';
+            }
+            const titulos = Array.from(new Set(checked.map(function (c) { return c.closest('li').dataset.tituloPadrao; })));
+            inputTitulo.value = titulos.join(', ');
+            inputTitulo.setAttribute('readonly', '');
+            inputTitulo.classList.add('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
+            inputTitulo.removeAttribute('required');
         } else {
-            titDescWrapper.style.display = '';
-            if (titDescHint) titDescHint.classList.add('hidden');
-            if (inputTitulo) inputTitulo.setAttribute('required', '');
+            if (inputTitulo.dataset.locked === '1') {
+                inputTitulo.value = inputTitulo.dataset.valorAntes || '';
+                inputTitulo.dataset.locked = '0';
+            }
+            inputTitulo.removeAttribute('readonly');
+            inputTitulo.classList.remove('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
+            if (checked.length === 0) inputTitulo.setAttribute('required', '');
         }
     }
 
     // --- Data de Vencimento ---
-    const dataWrapper = document.getElementById('data-vencimento-wrapper');
     const dataInput = document.getElementById('input-data-vencimento');
-    const hint = document.getElementById('data-venc-tipo-hint');
-    if (!dataWrapper || !dataInput) return;
+    if (!dataInput) return;
 
     const algumSemData = checked.some(function (c) { return !c.closest('li').dataset.dataVencimento; });
+    const datasDistintas = Array.from(new Set(checked.map(function (c) { return c.closest('li').dataset.dataVencimento; })));
 
-    if (checked.length > 0 && !algumSemData) {
-        dataWrapper.querySelector('input').style.display = 'none';
-        dataWrapper.querySelector('label').style.display = 'none';
-        if (hint) hint.classList.remove('hidden');
+    if (checked.length > 0 && !algumSemData && datasDistintas.length === 1) {
+        if (dataInput.dataset.locked !== '1') {
+            dataInput.dataset.valorAntes = dataInput.value;
+            dataInput.dataset.locked = '1';
+        }
+        dataInput.value = datasDistintas[0];
+        dataInput.setAttribute('readonly', '');
+        dataInput.classList.add('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
         dataInput.removeAttribute('required');
     } else {
-        dataWrapper.querySelector('input').style.display = '';
-        dataWrapper.querySelector('label').style.display = '';
-        if (hint) hint.classList.add('hidden');
+        if (dataInput.dataset.locked === '1') {
+            dataInput.value = dataInput.dataset.valorAntes || '';
+            dataInput.dataset.locked = '0';
+        }
+        dataInput.removeAttribute('readonly');
+        dataInput.classList.remove('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
         if (checked.length === 0) dataInput.setAttribute('required', '');
     }
 }

@@ -333,9 +333,9 @@ class TarefaController extends Controller
                     $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
                 }
                 $tipoCheck = $tipoId ? $tiposMap->get($tipoId) : null;
-                $tituloCheck = ($tipoCheck && ($tipoCheck->titulo_padrao || $tipoCheck->nome))
-                    ? ($tipoCheck->titulo_padrao ?? $tipoCheck->nome)
-                    : ($data['titulo'] ?? '');
+                $tituloCheck = $tipoCheck && $tipoCheck->titulo_padrao
+                    ? $tipoCheck->titulo_padrao
+                    : ($data['titulo'] ?? $tipoCheck?->nome ?? '');
                 $existe = Tarefa::where('titulo', $tituloCheck)
                     ->where('responsavel_id', $data['responsavel_id'])
                     ->where('data_vencimento', $dataParaTipo)
@@ -368,16 +368,12 @@ class TarefaController extends Controller
                     : null;
 
                 $tipo = $tipoId ? $tiposMap->get($tipoId) : null;
-                $tituloFinal = ($tipo && ($tipo->titulo_padrao || $tipo->nome))
-                    ? ($tipo->titulo_padrao ?? $tipo->nome)
-                    : ($data['titulo'] ?? '');
-                $descricaoFinal = $tipo
-                    ? ($tipo->descricao ?? $data['descricao'] ?? null)
-                    : ($data['descricao'] ?? null);
-
+                $tituloFinal = $tipo && $tipo->titulo_padrao
+                    ? $tipo->titulo_padrao
+                    : ($data['titulo'] ?? $tipo?->nome ?? '');
                 $tarefa = Tarefa::create([
                     'titulo' => $tituloFinal,
-                    'descricao' => $descricaoFinal,
+                    'descricao' => $data['descricao'] ?? null,
                     'tipo_tarefa_id' => $tipoId,
                     'cliente_id' => $clienteId,
                     'departamento_id' => $departamentoId,
@@ -633,9 +629,9 @@ class TarefaController extends Controller
         foreach ($clienteIdsToCheck as $clienteId) {
             foreach ($tipoIdsToCheck as $tipoId) {
                 $tipo        = $tipoId ? $tiposMap->get($tipoId) : null;
-                $tituloCheck = ($tipo && ($tipo->titulo_padrao || $tipo->nome))
-                    ? ($tipo->titulo_padrao ?? $tipo->nome)
-                    : $titulo;
+                $tituloCheck = $tipo && $tipo->titulo_padrao
+                    ? $tipo->titulo_padrao
+                    : ($titulo ?: ($tipo?->nome ?? ''));
 
                 if (! $tituloCheck) {
                     continue;

@@ -55,13 +55,6 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-            <textarea name="descricao" rows="2"
-                      class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                      placeholder="Descrição opcional sobre este tipo de tarefa...">{{ old('descricao', $isEditing ? $tipo->descricao : '') }}</textarea>
-        </div>
-
-        <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 <i class="fa-regular fa-calendar mr-1 text-brand"></i> Data de Vencimento Padrão
             </label>
