@@ -3,7 +3,7 @@
 @section('title', 'Cadastro de Clientes de Nota — WR Assessoria')
 
 @section('content')
-    <div class="max-w-5xl mx-auto py-6 px-4">
+    <div class="max-w-7xl mx-auto py-6 px-4">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-regular fa-address-card"></i> Clientes de Nota</h1>
@@ -55,7 +55,7 @@
                     @forelse($emitentes as $emitente)
                         <tr class="{{ $emitente->ativo ? '' : 'opacity-60' }}">
                             <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-slate-100 whitespace-nowrap">{{ $emitente->nome_exibicao }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $emitente->cpfcnpj_exibicao ?? '—' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $emitente->cpfcnpj_exibicao ?? '—' }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                                 @if($emitente->cliente_id)
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
