@@ -83,15 +83,31 @@
                 </div>
 
                 {{-- Tipo de tarefa --}}
-                <div>
+                <div class="relative" id="wrapper-tipo">
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
-                    <select name="tipo_tarefa_id"
-                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
-                        <option value="">Todos</option>
+                    <input type="hidden" name="tipo_tarefa_id" id="tipo-id-hidden" value="{{ $tipoTarefaFiltro }}">
+                    <div class="relative">
+                        <input type="text" id="tipo-search"
+                               placeholder="Buscar tipo..."
+                               autocomplete="off"
+                               value="{{ $tipoTarefaFiltro ? $tiposTarefa->firstWhere('id', $tipoTarefaFiltro)?->nome : '' }}"
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-48">
+                        @if($tipoTarefaFiltro)
+                            <button type="button" id="tipo-clear"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full bg-gray-400 hover:bg-gray-500 dark:bg-slate-500 dark:hover:bg-slate-400 text-white transition-colors">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        @endif
+                    </div>
+                    <ul id="tipo-dropdown"
+                        class="hidden absolute z-50 mt-1 min-w-full w-64 max-h-64 overflow-y-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg text-sm">
                         @foreach($tiposTarefa as $t)
-                            <option value="{{ $t->id }}" @selected($tipoTarefaFiltro == $t->id)>{{ $t->nome }}</option>
+                            <li class="tipo-opcao px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200"
+                                data-id="{{ $t->id }}" data-nome="{{ $t->nome }}">
+                                {{ $t->nome }}
+                            </li>
                         @endforeach
-                    </select>
+                    </ul>
                 </div>
 
                 {{-- Cliente --}}
@@ -482,6 +498,55 @@
 
         document.addEventListener('click', (e) => {
             if (!document.getElementById('wrapper-cliente')?.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                if (!hidden.value) input.value = '';
+            }
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                input.value  = '';
+                hidden.value = '';
+                document.getElementById('form-relatorio').submit();
+            });
+        }
+    })();
+
+    // ── Busca de tipo de tarefa (autocomplete) ──────────────────────────
+    (function () {
+        const input    = document.getElementById('tipo-search');
+        const hidden   = document.getElementById('tipo-id-hidden');
+        const dropdown = document.getElementById('tipo-dropdown');
+        const clearBtn = document.getElementById('tipo-clear');
+        const opcoes   = dropdown ? dropdown.querySelectorAll('.tipo-opcao') : [];
+
+        if (!input) return;
+
+        function filtrar(termo) {
+            let visiveis = 0;
+            opcoes.forEach(op => {
+                const match = op.dataset.nome.toLowerCase().includes(termo.toLowerCase());
+                op.classList.toggle('hidden', !match);
+                if (match) visiveis++;
+            });
+            dropdown.classList.toggle('hidden', visiveis === 0);
+        }
+
+        input.addEventListener('input', () => { filtrar(input.value); hidden.value = ''; });
+        input.addEventListener('focus', () => filtrar(input.value));
+
+        opcoes.forEach(op => {
+            op.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                input.value  = op.dataset.nome;
+                hidden.value = op.dataset.id;
+                dropdown.classList.add('hidden');
+                document.getElementById('form-relatorio').submit();
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('wrapper-tipo')?.contains(e.target)) {
                 dropdown.classList.add('hidden');
                 if (!hidden.value) input.value = '';
             }
