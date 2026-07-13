@@ -74,7 +74,7 @@
         {{-- Filters --}}
         <form method="GET" action="{{ route('tarefas.list') }}" id="form-filtros" class="flex flex-wrap gap-3 mb-5 items-end">
             <input type="hidden" name="ciclo_id" value="{{ $cicloSelecionado->id }}">
-            @if ($podeVerTodas)
+            @if ($podeVerTodas || $isSupervisor)
             <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Departamento</label>
                 <select name="departamento_id" onchange="document.getElementById('form-filtros').submit()"
