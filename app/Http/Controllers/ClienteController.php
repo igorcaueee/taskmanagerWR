@@ -207,7 +207,9 @@ class ClienteController extends Controller
 
         $cliente->update($data);
 
-        if ($regimeAnterior !== $cliente->regime_tributario) {
+        $regimeMudou = mb_strtoupper(trim($regimeAnterior ?? '')) !== mb_strtoupper(trim($cliente->regime_tributario ?? ''));
+
+        if ($regimeMudou) {
             HistoricoRegimeTributario::create([
                 'cliente_id' => $cliente->id,
                 'regime_anterior' => $regimeAnterior,
