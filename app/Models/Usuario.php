@@ -168,10 +168,10 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // Assistente, Auxiliar e Supervisor Geral só editam tarefas onde são responsáveis
+    // Assistente e Auxiliar só editam tarefas onde são responsáveis
     public function canEditarQualquerTarefa(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
     }
 
     // Apenas Diretor, TI, Supervisor Geral ou o criador da tarefa podem inativar
