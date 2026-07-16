@@ -120,10 +120,10 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // Diretor, TI e Supervisor podem ver colaboradores
+    // Diretor, TI, Supervisor e Supervisor Geral podem ver colaboradores
     public function canVerColaboradores(): bool
     {
-        return in_array($this->cargo, ['diretor', 'ti', 'supervisor']);
+        return in_array($this->cargo, ['diretor', 'ti', 'supervisor', 'supervisor_geral']);
     }
 
     // Diretor, TI, Supervisor e Supervisor Geral podem ver as tarefas de todos os usuários
@@ -210,10 +210,10 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
-    // Assistente, Auxiliar e Supervisor Geral não veem o menu de Relatórios
+    // Assistente e Auxiliar não veem o menu de Relatórios
     public function canVerRelatorios(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
     }
 
     // Assistente, Auxiliar e Supervisor Geral não veem Produtos e Possibilidades no menu Cadastros
