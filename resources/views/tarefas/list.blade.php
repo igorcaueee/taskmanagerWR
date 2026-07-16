@@ -650,7 +650,7 @@
         const result = await Swal.fire({
             title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-shield mr-2 text-blue-500"></i>Atualizar certificado digital do cliente</span>',
             html: `
-                <p class="text-sm text-gray-500 mb-4">Esta tarefa é de renovação de certificado. Aproveite para já enviar o novo certificado do cliente.</p>
+                <p class="text-sm text-gray-500 mb-4">Esta tarefa envolve o certificado digital do cliente. Aproveite para já enviar o certificado.</p>
 
                 <div class="mb-3 text-left">
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Arquivo do certificado (.pfx/.p12) <span class="text-red-500">*</span></label>

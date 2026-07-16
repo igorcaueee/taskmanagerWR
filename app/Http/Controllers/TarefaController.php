@@ -760,7 +760,7 @@ class TarefaController extends Controller
 
     public function updateEtapa(Request $request, int $id): JsonResponse
     {
-        $tarefa = Tarefa::findOrFail($id);
+        $tarefa = Tarefa::with('tipoTarefa')->findOrFail($id);
 
         $validator = Validator::make($request->only('etapa_id'), [
             'etapa_id' => ['required', 'exists:etapas,id'],
@@ -798,9 +798,12 @@ class TarefaController extends Controller
             $ultimaRecorrencia = ! $temProxima;
         }
 
+        $isTipoCertificadoDigital = $tarefa->tipoTarefa
+            && str_contains(strtolower($tarefa->tipoTarefa->nome), 'certificado digital');
+
         $isRenovacaoCertificado = $isFinalizado
             && $tarefa->cliente_id
-            && str_starts_with($tarefa->titulo, 'Renovação de Certificado');
+            && (str_starts_with($tarefa->titulo, 'Renovação de Certificado') || $isTipoCertificadoDigital);
 
         return response()->json([
             'success' => true,
