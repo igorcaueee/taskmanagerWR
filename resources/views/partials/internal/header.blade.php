@@ -152,6 +152,12 @@
                 </div>
             </div>
 
+            {{-- Som de notificação --}}
+            <button id="notif-sound-toggle" title="Ativar/desativar som de notificação"
+                class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 border-0 bg-transparent cursor-pointer">
+                <i id="notif-sound-icon" class="fa-solid fa-volume-high text-sm"></i>
+            </button>
+
             {{-- Dark mode toggle --}}
             <button id="dark-mode-toggle" title="Alternar modo escuro"
                 class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 border-0 bg-transparent cursor-pointer">
@@ -175,6 +181,92 @@
 <style>
     #notif-toast-container > * { pointer-events: auto; }
 </style>
+
+<script>
+// Som de notificação (sino + chat) — preferência salva no localStorage do navegador
+(function () {
+    const STORAGE_KEY = 'somNotificacaoAtivo';
+    const btn = document.getElementById('notif-sound-toggle');
+    const icon = document.getElementById('notif-sound-icon');
+
+    function ativo() {
+        return localStorage.getItem(STORAGE_KEY) !== '0';
+    }
+
+    function atualizarIcone() {
+        icon.className = 'fa-solid text-sm ' + (ativo() ? 'fa-volume-high' : 'fa-volume-xmark');
+        btn.title = ativo() ? 'Desativar som de notificação' : 'Ativar som de notificação';
+    }
+
+    // Um único AudioContext reaproveitado: navegadores só permitem tocar som
+    // depois de uma interação do usuário na página (autoplay policy), então
+    // ele é criado/destravado no primeiro clique/tecla e reutilizado depois,
+    // já que notificações chegam via WebSocket sem gesto direto do usuário.
+    let audioCtx = null;
+
+    function getAudioCtx() {
+        if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) { return null; }
+            audioCtx = new AudioContextClass();
+        }
+        return audioCtx;
+    }
+
+    function destravarAudio() {
+        const ctx = getAudioCtx();
+        if (ctx && ctx.state === 'suspended') { ctx.resume(); }
+    }
+    document.addEventListener('click', destravarAudio);
+    document.addEventListener('keydown', destravarAudio);
+
+    function emitirBipe(ctx) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.35);
+    }
+
+    window.tocarSomNotificacao = function () {
+        if (!ativo()) { return; }
+
+        try {
+            const ctx = getAudioCtx();
+            if (!ctx) { return; }
+
+            // resume() é assíncrono — só emitir o bipe depois que o contexto
+            // realmente sair de "suspended", senão o som é agendado enquanto
+            // o tempo do contexto ainda está parado e nunca chega a soar.
+            if (ctx.state === 'suspended') {
+                ctx.resume().then(function () { emitirBipe(ctx); })
+                    .catch(function (e) { console.error('[som-notificacao] falha ao retomar audio:', e); });
+            } else {
+                emitirBipe(ctx);
+            }
+        } catch (e) {
+            console.error('[som-notificacao] falha ao tocar:', e);
+        }
+    };
+
+    btn.addEventListener('click', function () {
+        localStorage.setItem(STORAGE_KEY, ativo() ? '0' : '1');
+        atualizarIcone();
+    });
+
+    atualizarIcone();
+}());
+</script>
 
 {{-- Espaçador para compensar o header fixo --}}
 <div class="h-16"></div>
@@ -353,6 +445,7 @@
                 data.notificacoes.forEach(function (n) {
                     if (!idsConhecidos.includes(n.id) && !n.lida) {
                         showToast(n.mensagem);
+                        window.tocarSomNotificacao();
                     }
                 });
             }
@@ -473,6 +566,7 @@
             if (window.chatConversaAbertaId === e.mensagem.conversa_id) { return; }
 
             mostrarToastChat(e.mensagem);
+            window.tocarSomNotificacao();
         });
     }
 

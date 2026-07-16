@@ -234,6 +234,7 @@
                     if (e.mensagem.conversa_id === conversaAtualId && e.mensagem.usuario.id !== userId) {
                         renderMensagem(e.mensagem, true);
                         marcarComoLida();
+                        if (window.tocarSomNotificacao) { window.tocarSomNotificacao(); }
                     }
                     carregarConversas();
                 })
