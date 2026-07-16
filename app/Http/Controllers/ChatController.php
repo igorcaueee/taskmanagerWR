@@ -39,6 +39,7 @@ class ChatController extends Controller
                     'foto_url' => $conversa->fotoUrlParaUsuario($usuario),
                     'ultima_mensagem' => $this->previewMensagem($conversa->ultimaMensagem),
                     'ultima_mensagem_em' => $conversa->ultimaMensagem?->created_at?->toIso8601String(),
+                    'ultima_mensagem_usuario_id' => $conversa->ultimaMensagem?->usuario_id,
                     'nao_lidas' => $conversa->naoLidasPara($usuario),
                 ];
             })

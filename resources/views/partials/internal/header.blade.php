@@ -496,10 +496,47 @@
         }
     }
 
+    // Chave única por mensagem (conversa + timestamp) para não notificar a
+    // mesma mensagem duas vezes caso o WebSocket e o polling peguem as duas.
+    window.mensagensChatNotificadas = window.mensagensChatNotificadas || new Set();
+    const notificadas = window.mensagensChatNotificadas;
+
+    // Última mensagem conhecida de cada conversa — null até a 1ª carga, pra
+    // não disparar toast de coisas que já existiam antes de abrir a página.
+    let ultimasConhecidas = null;
+
     function carregar() {
-        fetch('{{ route("chat.nao-lidas") }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch('{{ route("chat.conversas") }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.json(); })
-            .then(function (data) { renderBadge(data.nao_lidas); })
+            .then(function (data) {
+                const conversas = data.conversas || [];
+
+                renderBadge(conversas.reduce(function (soma, c) { return soma + (c.nao_lidas || 0); }, 0));
+
+                const atuais = new Map(conversas.map(function (c) { return [c.id, c.ultima_mensagem_em]; }));
+
+                if (ultimasConhecidas !== null) {
+                    conversas.forEach(function (c) {
+                        if (!c.ultima_mensagem_em) { return; }
+                        if (ultimasConhecidas.get(c.id) === c.ultima_mensagem_em) { return; }
+                        if (c.ultima_mensagem_usuario_id === {{ auth()->id() }}) { return; }
+                        if (window.chatConversaAbertaId === c.id) { return; }
+
+                        const chave = c.id + ':' + c.ultima_mensagem_em;
+                        if (notificadas.has(chave)) { return; }
+                        notificadas.add(chave);
+
+                        mostrarToastChat({
+                            conversa_id: c.id,
+                            texto: c.ultima_mensagem,
+                            usuario: { nome: c.nome, foto_url: c.foto_url },
+                        });
+                        window.tocarSomNotificacao();
+                    });
+                }
+
+                ultimasConhecidas = atuais;
+            })
             .catch(function () {});
     }
 
@@ -565,6 +602,10 @@
             if (e.mensagem.usuario.id === {{ auth()->id() }}) { return; }
             if (window.chatConversaAbertaId === e.mensagem.conversa_id) { return; }
 
+            const chave = e.mensagem.conversa_id + ':' + e.mensagem.created_at;
+            if (notificadas.has(chave)) { return; }
+            notificadas.add(chave);
+
             mostrarToastChat(e.mensagem);
             window.tocarSomNotificacao();
         });
@@ -576,9 +617,9 @@
         window.addEventListener('laravel-echo:ready', assinarEcho, { once: true });
     }
 
-    // Polling como reforço/alternativa ao WebSocket (mesmo padrão das
-    // notificações), garante que o badge atualize mesmo sem o Reverb.
-    setInterval(carregar, 15000);
+    // Polling a cada 1s como reforço/alternativa ao WebSocket — garante
+    // toast, som e badge mesmo se o Reverb estiver fora do ar.
+    setInterval(carregar, 1000);
 }());
 
 // Aviso de nova versão do sistema disponível
