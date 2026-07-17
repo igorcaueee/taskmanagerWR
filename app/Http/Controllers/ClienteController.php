@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\HistoricoRegimeTributario;
 use App\Models\PortalUsuario;
 use App\Models\Possibilidade;
+use App\Models\PrecificacaoProduto;
 use App\Models\Produto;
 use App\Models\Segmentacao;
 use App\Models\QuestionarioResposta;
@@ -109,8 +110,9 @@ class ClienteController extends Controller
             ->where('finalizado', true)
             ->latest()
             ->first();
+        $precificacaoProdutosCount = PrecificacaoProduto::where('cliente_id', $id)->count();
 
-        return view('clientes.show', compact('cliente', 'ultimoIDE'));
+        return view('clientes.show', compact('cliente', 'ultimoIDE', 'precificacaoProdutosCount'));
     }
 
     public function formClienteEdit(int $id): View

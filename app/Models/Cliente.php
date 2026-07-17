@@ -73,6 +73,11 @@ class Cliente extends Authenticatable
         return $this->belongsToMany(Produto::class, 'cliente_produto');
     }
 
+    public function hasProduto(string $nome): bool
+    {
+        return $this->produtos()->where('nome', $nome)->exists();
+    }
+
     public function possibilidades(): BelongsToMany
     {
         return $this->belongsToMany(Possibilidade::class, 'cliente_possibilidade');

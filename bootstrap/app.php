@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureColaboradoresEdit;
 use App\Http\Middleware\EnsureDiretor;
 use App\Http\Middleware\EnsureEmailMarketing;
 use App\Http\Middleware\EnsureNetworkAccess;
+use App\Http\Middleware\EnsurePrecificacaoAccess;
 use App\Http\Middleware\PortalAuth;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Console\Scheduling\Schedule;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'colaboradores.edit' => EnsureColaboradoresEdit::class,
             'admin' => EnsureAdmin::class,
             'portal.auth' => PortalAuth::class,
+            'portal.precificacao' => EnsurePrecificacaoAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $e): void {

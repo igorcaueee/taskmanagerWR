@@ -381,6 +381,22 @@
                 </div>
                 @endif
 
+                {{-- Precificação de Produtos --}}
+                @if(auth()->user()?->canGerenciarPrecificacao())
+                <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
+                    <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                        <i class="fa-solid fa-calculator mr-1"></i> Precificação de Produtos
+                    </h2>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                        {{ $precificacaoProdutosCount }} {{ Str::plural('produto', $precificacaoProdutosCount) }} cadastrado{{ $precificacaoProdutosCount === 1 ? '' : 's' }}.
+                    </p>
+                    <a href="{{ route('precificacao.produtos', ['cliente_id' => $cliente->id]) }}"
+                       class="block text-center text-xs px-2 py-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-slate-600 no-underline">
+                        <i class="fa-solid fa-eye mr-1"></i> Ver produtos
+                    </a>
+                </div>
+                @endif
+
                 {{-- Sócios --}}
                 <div class="bg-white dark:bg-slate-800 rounded shadow p-4">
                     <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">

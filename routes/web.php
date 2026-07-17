@@ -24,6 +24,9 @@ use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalChamadoController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PossibilidadeController;
+use App\Http\Controllers\Precificacao\PrecificacaoAliquotaController;
+use App\Http\Controllers\Precificacao\PrecificacaoProdutoController;
+use App\Http\Controllers\Portal\PortalPrecificacaoController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\RelatorioController;
@@ -56,6 +59,26 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/chamados', [PortalChamadoController::class, 'index'])->name('chamados.index');
         Route::get('/chamados/novo/{tipo}', [PortalChamadoController::class, 'create'])->name('chamados.create');
         Route::post('/chamados', [PortalChamadoController::class, 'store'])->name('chamados.store')->middleware('throttle:10,1');
+
+        Route::middleware('portal.precificacao')->prefix('precificacao')->name('precificacao.')->group(function () {
+            Route::get('/', [PortalPrecificacaoController::class, 'index'])->name('index');
+            Route::get('/produtos/form', [PortalPrecificacaoController::class, 'formCreateProduto'])->name('produtos.form.create');
+            Route::get('/produtos/import/form', [PortalPrecificacaoController::class, 'formImportProdutos'])->name('produtos.import.form');
+            Route::get('/produtos/import/template', [PortalPrecificacaoController::class, 'templateProdutos'])->name('produtos.import.template');
+            Route::post('/produtos/import', [PortalPrecificacaoController::class, 'importProdutos'])->name('produtos.import');
+            Route::post('/produtos/save', [PortalPrecificacaoController::class, 'saveProduto'])->name('produtos.save');
+            Route::get('/produtos/{id}/form', [PortalPrecificacaoController::class, 'formEditProduto'])->name('produtos.form.edit');
+            Route::put('/produtos/{id}', [PortalPrecificacaoController::class, 'updateProduto'])->name('produtos.update');
+            Route::delete('/produtos/{id}', [PortalPrecificacaoController::class, 'deleteProduto'])->name('produtos.delete');
+            Route::get('/produtos/{id}', [PortalPrecificacaoController::class, 'show'])->name('show');
+
+            Route::get('/produtos/{produtoId}/cenarios/form', [PortalPrecificacaoController::class, 'formCreateCenario'])->name('cenarios.form.create');
+            Route::get('/produtos/{produtoId}/cenarios/{id}/form', [PortalPrecificacaoController::class, 'formEditCenario'])->name('cenarios.form.edit');
+            Route::post('/produtos/{produtoId}/cenarios/save', [PortalPrecificacaoController::class, 'saveCenario'])->name('cenarios.save');
+            Route::put('/produtos/{produtoId}/cenarios/{id}', [PortalPrecificacaoController::class, 'updateCenario'])->name('cenarios.update');
+            Route::delete('/produtos/{produtoId}/cenarios/{id}', [PortalPrecificacaoController::class, 'deleteCenario'])->name('cenarios.delete');
+            Route::post('/produtos/{produtoId}/cenarios/preview', [PortalPrecificacaoController::class, 'calcularPreview'])->name('cenarios.preview');
+        });
     });
 });
 
@@ -163,6 +186,36 @@ Route::post('/produtos/save', [ProdutoController::class, 'save'])->name('produto
 Route::post('/produtos/inline', [ProdutoController::class, 'storeInline'])->name('produtos.store.inline')->middleware('auth');
 Route::put('/produtos/{id}', [ProdutoController::class, 'update'])->name('produtos.update')->middleware('auth');
 Route::delete('/produtos/{id}', [ProdutoController::class, 'delete'])->name('produtos.delete')->middleware('auth');
+
+// Precificação — tabela de alíquotas (interno)
+Route::get('/precificacao/aliquotas', [PrecificacaoAliquotaController::class, 'index'])->name('precificacao.aliquotas')->middleware('auth');
+Route::get('/precificacao/aliquotas/form', [PrecificacaoAliquotaController::class, 'formCreate'])->name('precificacao.aliquotas.form.create')->middleware('auth');
+Route::get('/precificacao/aliquotas/import/form', [PrecificacaoAliquotaController::class, 'formImport'])->name('precificacao.aliquotas.form.import')->middleware('auth');
+Route::get('/precificacao/aliquotas/import/template', [PrecificacaoAliquotaController::class, 'template'])->name('precificacao.aliquotas.import.template')->middleware('auth');
+Route::post('/precificacao/aliquotas/import', [PrecificacaoAliquotaController::class, 'import'])->name('precificacao.aliquotas.import')->middleware('auth');
+Route::post('/precificacao/aliquotas/save', [PrecificacaoAliquotaController::class, 'save'])->name('precificacao.aliquotas.save')->middleware('auth');
+Route::get('/precificacao/aliquotas/{id}/form', [PrecificacaoAliquotaController::class, 'formEdit'])->name('precificacao.aliquotas.form.edit')->middleware('auth');
+Route::put('/precificacao/aliquotas/{id}', [PrecificacaoAliquotaController::class, 'update'])->name('precificacao.aliquotas.update')->middleware('auth');
+Route::delete('/precificacao/aliquotas/{id}', [PrecificacaoAliquotaController::class, 'delete'])->name('precificacao.aliquotas.delete')->middleware('auth');
+
+// Precificação — produtos por cliente (interno)
+Route::get('/precificacao/produtos', [PrecificacaoProdutoController::class, 'index'])->name('precificacao.produtos')->middleware('auth');
+Route::get('/precificacao/produtos/novo', [PrecificacaoProdutoController::class, 'formCreateProduto'])->name('precificacao.produtos.form.create')->middleware('auth');
+Route::get('/precificacao/produtos/import/form', [PrecificacaoProdutoController::class, 'formImportProdutos'])->name('precificacao.produtos.import.form')->middleware('auth');
+Route::get('/precificacao/produtos/import/template', [PrecificacaoProdutoController::class, 'templateProdutos'])->name('precificacao.produtos.import.template')->middleware('auth');
+Route::post('/precificacao/produtos/import', [PrecificacaoProdutoController::class, 'importProdutos'])->name('precificacao.produtos.import')->middleware('auth');
+Route::post('/precificacao/produtos/save', [PrecificacaoProdutoController::class, 'saveProduto'])->name('precificacao.produtos.save')->middleware('auth');
+Route::get('/precificacao/produtos/{id}/form', [PrecificacaoProdutoController::class, 'formEditProduto'])->name('precificacao.produtos.form.edit')->middleware('auth');
+Route::put('/precificacao/produtos/{id}', [PrecificacaoProdutoController::class, 'updateProduto'])->name('precificacao.produtos.update')->middleware('auth');
+Route::delete('/precificacao/produtos/{id}', [PrecificacaoProdutoController::class, 'deleteProduto'])->name('precificacao.produtos.delete')->middleware('auth');
+Route::get('/precificacao/produtos/{id}', [PrecificacaoProdutoController::class, 'show'])->name('precificacao.produtos.show')->middleware('auth');
+
+Route::get('/precificacao/produtos/{produtoId}/cenarios/novo', [PrecificacaoProdutoController::class, 'formCreateCenario'])->name('precificacao.cenarios.form.create')->middleware('auth');
+Route::get('/precificacao/produtos/{produtoId}/cenarios/{id}/form', [PrecificacaoProdutoController::class, 'formEditCenario'])->name('precificacao.cenarios.form.edit')->middleware('auth');
+Route::post('/precificacao/produtos/{produtoId}/cenarios', [PrecificacaoProdutoController::class, 'saveCenario'])->name('precificacao.cenarios.save')->middleware('auth');
+Route::put('/precificacao/produtos/{produtoId}/cenarios/{id}', [PrecificacaoProdutoController::class, 'updateCenario'])->name('precificacao.cenarios.update')->middleware('auth');
+Route::delete('/precificacao/produtos/{produtoId}/cenarios/{id}', [PrecificacaoProdutoController::class, 'deleteCenario'])->name('precificacao.cenarios.delete')->middleware('auth');
+Route::post('/precificacao/produtos/{produtoId}/cenarios/preview', [PrecificacaoProdutoController::class, 'calcularPreview'])->name('precificacao.cenarios.preview')->middleware('auth');
 
 Route::get('/possibilidades', [PossibilidadeController::class, 'showPossibilidades'])->name('possibilidades')->middleware('auth');
 Route::get('/possibilidades/form', [PossibilidadeController::class, 'formCreate'])->name('possibilidades.form.create')->middleware('auth');

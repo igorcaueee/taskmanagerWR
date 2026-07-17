@@ -18,5 +18,6 @@ class DatabaseSeeder extends Seeder
         $this->call(DepartamentoRecepcaoSeeder::class);
         $this->call(SilviaUserSeeder::class);
         $this->call(TipoTarefaChamadosDpSeeder::class);
+        $this->call(PrecificacaoIcmsInterestadualSeeder::class);
     }
 }

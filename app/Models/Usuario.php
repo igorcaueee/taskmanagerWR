@@ -162,6 +162,12 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
+    // Apenas Diretor mantém a tabela fiscal de precificação
+    public function canGerenciarPrecificacao(): bool
+    {
+        return $this->cargo === 'diretor';
+    }
+
     // Apenas Diretor gerencia possibilidades
     public function canGerenciarPossibilidades(): bool
     {

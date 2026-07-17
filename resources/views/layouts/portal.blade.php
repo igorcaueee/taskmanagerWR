@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="WR Assessoria - Portal do Cliente">
     <title>@yield('title', 'Portal do Cliente') — WR Assessoria</title>
     @include('partials.head')
@@ -37,6 +38,9 @@
                 <a href="{{ route('portal.arquivos') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.arquivos*') ? 'text-[#0084AA]' : '' }}">Meus Arquivos</a>
                 <a href="{{ route('portal.agenda') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.agenda') ? 'text-[#0084AA]' : '' }}">Agenda</a>
                 <a href="{{ route('portal.chamados.index') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.chamados*') ? 'text-[#0084AA]' : '' }}">Chamados</a>
+                @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Precificação de Produtos'))
+                    <a href="{{ route('portal.precificacao.index') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.precificacao*') ? 'text-[#0084AA]' : '' }}">Precificação</a>
+                @endif
             </nav>
 
             <div class="flex items-center gap-3">
@@ -68,6 +72,9 @@
             <a href="{{ route('portal.arquivos') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.arquivos*') ? 'text-[#0084AA]' : '' }}">Arquivos</a>
             <a href="{{ route('portal.agenda') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.agenda') ? 'text-[#0084AA]' : '' }}">Agenda</a>
             <a href="{{ route('portal.chamados.index') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.chamados*') ? 'text-[#0084AA]' : '' }}">Chamados</a>
+            @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Precificação de Produtos'))
+                <a href="{{ route('portal.precificacao.index') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.precificacao*') ? 'text-[#0084AA]' : '' }}">Precificação</a>
+            @endif
         </div>
     </header>
 

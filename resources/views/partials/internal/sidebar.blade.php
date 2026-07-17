@@ -45,6 +45,10 @@
                 <a href="/produtos" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-box-open"></i> Produtos</a>
                 <a href="/possibilidades" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-regular fa-lightbulb"></i> Possibilidades</a>
                 @endif
+                @if (auth()->user()?->canGerenciarPrecificacao())
+                <a href="{{ route('precificacao.aliquotas') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-percent"></i> Alíquotas de Precificação</a>
+                <a href="{{ route('precificacao.produtos') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-calculator"></i> Produtos de Precificação</a>
+                @endif
                 <a href="/tarefas" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-list-check"></i> Tarefas</a>
                 <a href="{{ route('tipos-tarefa.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-tags"></i> Tipos de Tarefa</a>
                 <a href="{{ route('notas-emitidas.emitentes.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-regular fa-address-card"></i> Clientes de Nota</a>
