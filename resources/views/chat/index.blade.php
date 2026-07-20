@@ -269,6 +269,7 @@
         conversaStatusEl.textContent = '';
 
         carregarConversas();
+        inputTexto.focus();
     }
 
     function pollarMensagens(conversaId) {
