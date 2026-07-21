@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Ciclo;
 use App\Models\Cliente;
-use App\Models\NotaEmitida;
 use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\Auth;
@@ -36,11 +35,6 @@ class DashboardController extends Controller
             ->whereDate('data_conclusao', now()->toDateString())
             ->count();
 
-        $notasFeitasHoje = NotaEmitida::query()
-            ->where('estornado', false)
-            ->whereDate('created_at', now()->toDateString())
-            ->count();
-
         $aniversariantesHoje = Usuario::query()
             ->whereNotNull('data_nascimento')
             ->whereMonth('data_nascimento', now()->month)
@@ -70,7 +64,6 @@ class DashboardController extends Controller
             'totalTarefasCiclo',
             'tarefasUsuarioCiclo',
             'tarefasConcluidasHoje',
-            'notasFeitasHoje',
             'aniversariantesHoje',
             'aniversariantesEmpresaHoje',
         ));

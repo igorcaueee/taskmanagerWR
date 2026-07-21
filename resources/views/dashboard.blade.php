@@ -6,7 +6,7 @@
     <div class="max-w-7xl mx-auto py-6 px-4">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-6">Painel</h1>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Usuários ativos</p>
                 <p class="mt-1 text-3xl font-bold text-gray-900 dark:text-slate-100">{{ $totalUsuariosAtivos }}</p>
@@ -30,14 +30,6 @@
                 <p class="mt-1 text-xs text-gray-400 dark:text-slate-500 truncate">{{ now()->format('d/m/Y') }}</p>
             </div>
 
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Notas feitas hoje</p>
-                <p class="mt-1 text-3xl font-bold text-green-600">{{ $notasFeitasHoje }}</p>
-                <p class="mt-1 text-xs text-gray-400 dark:text-slate-500 truncate">{{ now()->format('d/m/Y') }}</p>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
             {{-- Aniversariantes do dia --}}
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
