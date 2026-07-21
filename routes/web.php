@@ -31,6 +31,7 @@ use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\SegmentacaoController;
+use App\Http\Controllers\SimplesNacionalController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\TipoTarefaController;
 use App\Http\Controllers\UsuarioController;
@@ -352,6 +353,29 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');
     Route::post('/exportar-excel-nsus', [NfseController::class, 'exportarExcelNsus'])->name('exportar-excel-nsus');
+});
+
+// Simples Nacional — processamento do DAS via Integra Contador (SERPRO)
+Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')->group(function () {
+    Route::get('/', [SimplesNacionalController::class, 'index'])->name('index');
+    Route::get('/configuracao', [SimplesNacionalController::class, 'getConfiguracao'])->name('configuracao.get');
+    Route::post('/configuracao', [SimplesNacionalController::class, 'salvarConfiguracao'])->name('configuracao.salvar');
+    Route::post('/configuracao/testar', [SimplesNacionalController::class, 'testarConexao'])->name('configuracao.testar');
+    Route::post('/configuracao/testar-consulta-demo', [SimplesNacionalController::class, 'testarConsultaDemo'])->name('configuracao.testar-consulta-demo');
+    Route::post('/configuracao/testar-consulta-recibo', [SimplesNacionalController::class, 'testarConsultaRecibo'])->name('configuracao.testar-consulta-recibo');
+    Route::get('/configuracao/download-teste/{arquivo}', [SimplesNacionalController::class, 'downloadTeste'])->name('configuracao.download-teste');
+    Route::get('/declaracoes', [SimplesNacionalController::class, 'consultarDeclaracoes'])->name('declaracoes');
+    Route::post('/declaracoes/rbt12', [SimplesNacionalController::class, 'buscarRbt12'])->name('declaracoes.rbt12');
+    Route::post('/declaracoes/extrato', [SimplesNacionalController::class, 'consultarExtrato'])->name('declaracoes.extrato');
+    Route::post('/declaracoes/emitir-das', [SimplesNacionalController::class, 'emitirDas'])->name('declaracoes.emitir-das');
+    Route::get('/dados-fiscais', [SimplesNacionalController::class, 'getDadosFiscais'])->name('dados-fiscais.get');
+    Route::get('/dados-fiscais/sugerir-cnae', [SimplesNacionalController::class, 'sugerirCnae'])->name('dados-fiscais.sugerir-cnae');
+    Route::post('/dados-fiscais', [SimplesNacionalController::class, 'salvarDadosFiscais'])->name('dados-fiscais.salvar');
+    Route::get('/receita-mensal', [SimplesNacionalController::class, 'getReceitaMensal'])->name('receita-mensal.get');
+    Route::post('/receita-mensal', [SimplesNacionalController::class, 'salvarReceitaMensal'])->name('receita-mensal.salvar');
+    Route::get('/receitas-atividades', [SimplesNacionalController::class, 'getReceitasAtividades'])->name('receitas-atividades.get');
+    Route::post('/receitas-atividades', [SimplesNacionalController::class, 'salvarReceitasAtividades'])->name('receitas-atividades.salvar');
+    Route::post('/transmitir', [SimplesNacionalController::class, 'transmitir'])->name('transmitir');
 });
 
 // NF-e / CT-e — Distribuição DFe (Ambiente Nacional)

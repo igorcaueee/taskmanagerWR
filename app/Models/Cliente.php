@@ -112,4 +112,14 @@ class Cliente extends Authenticatable
     {
         return $this->hasMany(HistoricoRegimeTributario::class)->orderByDesc('created_at');
     }
+
+    public function dadosSimples(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ClienteDadosSimples::class);
+    }
+
+    public function dasProcessamentos(): HasMany
+    {
+        return $this->hasMany(SimplesDasProcessamento::class)->orderByDesc('periodo_apuracao');
+    }
 }
