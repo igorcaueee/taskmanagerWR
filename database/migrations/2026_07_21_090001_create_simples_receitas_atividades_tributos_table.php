@@ -46,7 +46,7 @@ return new class extends Migration
             $table->decimal('valor', 15, 2)->default(0); // valor sujeito ao ajuste
             $table->timestamps();
 
-            $table->unique(['simples_receita_atividade_id', 'cod_tributo']);
+            $table->unique(['simples_receita_atividade_id', 'cod_tributo'], 'srat_atividade_tributo_unique');
         });
     }
 

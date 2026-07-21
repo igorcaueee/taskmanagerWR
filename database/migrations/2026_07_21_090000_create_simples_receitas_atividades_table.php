@@ -22,7 +22,7 @@ return new class extends Migration
             $table->decimal('valor', 15, 2);
             $table->timestamps();
 
-            $table->unique(['cliente_id', 'periodo_apuracao', 'id_atividade']);
+            $table->unique(['cliente_id', 'periodo_apuracao', 'id_atividade'], 'sra_cliente_periodo_atividade_unique');
         });
     }
 
