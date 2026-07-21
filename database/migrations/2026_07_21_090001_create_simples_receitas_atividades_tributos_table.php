@@ -24,8 +24,9 @@ return new class extends Migration
     {
         Schema::create('simples_receitas_atividades_tributos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('simples_receita_atividade_id')
-                ->constrained('simples_receitas_atividades')
+            $table->foreignId('simples_receita_atividade_id');
+            $table->foreign('simples_receita_atividade_id', 'srat_atividade_id_foreign')
+                ->references('id')->on('simples_receitas_atividades')
                 ->cascadeOnDelete();
             $table->integer('cod_tributo'); // 1001-1010, ver PgdasdAtividades::NOMES_TRIBUTOS
             $table->enum('tipo_ajuste', [
