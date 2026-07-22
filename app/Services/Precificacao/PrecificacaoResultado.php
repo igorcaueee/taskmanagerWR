@@ -8,6 +8,7 @@ class PrecificacaoResultado
         // Compra
         public readonly float $valorCompraTotal,
         public readonly float $icmsSt,
+        public readonly float $creditoIcms,
         public readonly float $ipi,
         public readonly float $freteCompra,
         public readonly float $creditoPis,
@@ -35,6 +36,7 @@ class PrecificacaoResultado
         return [
             'valor_compra_total' => $this->valorCompraTotal,
             'icms_st' => $this->icmsSt,
+            'credito_icms' => $this->creditoIcms,
             'ipi' => $this->ipi,
             'frete_compra' => $this->freteCompra,
             'credito_pis' => $this->creditoPis,

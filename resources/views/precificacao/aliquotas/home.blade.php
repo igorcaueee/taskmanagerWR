@@ -48,8 +48,7 @@
                             <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">cest</td><td class="py-1 text-blue-700 dark:text-blue-300/80">CEST, se tiver (ex: 0199900)</td></tr>
                             <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">uf_referencia</td><td class="py-1 text-blue-700 dark:text-blue-300/80">UF em que a alíquota foi consultada</td></tr>
                             <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">aliquota_icms_interna</td><td class="py-1 text-blue-700 dark:text-blue-300/80">% ICMS dentro do estado</td></tr>
-                            <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">aplica_st / aliquota_icms_st</td><td class="py-1 text-blue-700 dark:text-blue-300/80">Se tem Substituição Tributária, e o % efetivo cobrado na compra</td></tr>
-                            <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">icms_venda_regra</td><td class="py-1 text-blue-700 dark:text-blue-300/80">"Tributado" ou "St_ja_paga" (0% de ICMS na venda)</td></tr>
+                            <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">aplica_st / aliquota_icms_st</td><td class="py-1 text-blue-700 dark:text-blue-300/80">Referência apenas — o ICMS de cada compra é informado manualmente no cenário (ST ou Normal + alíquota)</td></tr>
                             <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">regime_pis_cofins</td><td class="py-1 text-blue-700 dark:text-blue-300/80">"Tributado" ou "Monofasico" (0% de PIS/COFINS na venda)</td></tr>
                             <tr><td class="py-1 pr-3 font-mono whitespace-nowrap">aliquota_pis / aliquota_cofins</td><td class="py-1 text-blue-700 dark:text-blue-300/80">% usado como crédito na compra (e débito na venda, se não for monofásico)</td></tr>
                         </tbody>
@@ -61,7 +60,7 @@
                 </div>
                 <div>
                     <p class="font-medium mb-1">3. Cria-se o cenário de compra/venda no produto</p>
-                    <p class="text-blue-700 dark:text-blue-300/80">UF de compra, UF de venda, valor, quantidade, frete, IPI, markup, comissão. O sistema busca a alíquota automaticamente pelo NCM+CEST e calcula custo, preço de venda e margem na hora.</p>
+                    <p class="text-blue-700 dark:text-blue-300/80">UF de compra, UF de venda, valor, quantidade, frete, IPI, markup, comissão — e o tipo de ICMS na compra (ST ou Normal + alíquota, informado manualmente ali mesmo, não vem desta tabela). O sistema calcula custo, preço de venda e margem na hora usando o PIS/COFINS desta tabela (via NCM+CEST) e o ICMS informado no cenário.</p>
                 </div>
                 <p class="text-xs text-blue-600 dark:text-blue-400 italic">Dica: cadastre as alíquotas antes dos produtos. Se um produto ficar sem alíquota correspondente, ele aparece com aviso amarelo e calcula com 0% de imposto até você cadastrar a alíquota certa — não precisa reeditar o produto depois.</p>
             </div>
@@ -88,7 +87,6 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">UF</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ICMS interno</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ICMS-ST</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ICMS venda</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">PIS/COFINS</th>
                         <th class="px-6 py-3"></th>
                     </tr>
@@ -107,9 +105,6 @@
                                 @else
                                     Não se aplica
                                 @endif
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                {{ $aliquota->icms_venda_regra === 'st_ja_paga' ? 'ST já paga' : 'Tributado' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 {{ $aliquota->regime_pis_cofins === 'monofasico' ? 'Monofásico' : 'Tributado' }}
@@ -134,7 +129,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Nenhuma alíquota cadastrada.</td>
+                            <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">Nenhuma alíquota cadastrada.</td>
                         </tr>
                     @endforelse
                 </tbody>

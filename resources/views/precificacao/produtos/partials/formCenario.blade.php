@@ -5,6 +5,7 @@
         : route('precificacao.cenarios.save', $produto->id);
     $title = $isEditing ? 'Editar Cenário' : 'Novo Cenário';
     $ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+    $compraInternacional = old('compra_internacional', $isEditing ? $cenario->compra_internacional : false);
 @endphp
 
 <div class="flex items-center justify-between mb-4">
@@ -34,9 +35,17 @@
                    value="{{ old('nome', $isEditing ? $cenario->nome : '') }}">
         </div>
 
+        <div class="col-span-2">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" name="compra_internacional" id="compra_internacional" value="1" {{ $compraInternacional ? 'checked' : '' }} class="rounded border-gray-300">
+                Compra internacional (importação)
+            </label>
+        </div>
+
         <div>
             <label class="block text-sm font-medium text-gray-700">UF de compra</label>
-            <select name="uf_compra" class="mt-1 block w-full border rounded px-3 py-2">
+            <select name="uf_compra" id="uf_compra" class="mt-1 block w-full border rounded px-3 py-2">
+                <option value="EX" @selected(old('uf_compra', $isEditing ? $cenario->uf_compra : '') === 'EX')>Exterior (EX)</option>
                 @foreach($ufs as $uf)
                     <option value="{{ $uf }}" @selected(old('uf_compra', $isEditing ? $cenario->uf_compra : '') === $uf)>{{ $uf }}</option>
                 @endforeach
@@ -49,6 +58,25 @@
                     <option value="{{ $uf }}" @selected(old('uf_venda', $isEditing ? $cenario->uf_venda : ($produto->cliente->estado ?? '')) === $uf)>{{ $uf }}</option>
                 @endforeach
             </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Tipo de ICMS na compra</label>
+            <select name="tipo_icms_compra" id="tipo_icms_compra" class="mt-1 block w-full border rounded px-3 py-2">
+                <option value="normal" @selected(old('tipo_icms_compra', $isEditing ? $cenario->tipo_icms_compra : 'normal') === 'normal')>Normal (tributado)</option>
+                <option value="st" @selected(old('tipo_icms_compra', $isEditing ? $cenario->tipo_icms_compra : '') === 'st')>Substituição Tributária (ST)</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Alíquota do ICMS na compra (%)</label>
+            <input name="aliquota_icms_compra_pct" id="aliquota_icms_compra_pct" type="number" step="0.01" min="0" max="100" class="mt-1 block w-full border rounded px-3 py-2"
+                   value="{{ old('aliquota_icms_compra_pct', $isEditing ? $cenario->aliquota_icms_compra_pct : '12') }}" required>
+            <div class="flex gap-1 mt-1">
+                <button type="button" data-aliquota="4" class="btn-aliquota-preset px-2 py-0.5 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 bg-transparent">4%</button>
+                <button type="button" data-aliquota="12" class="btn-aliquota-preset px-2 py-0.5 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 bg-transparent">12%</button>
+                <button type="button" data-aliquota="17" class="btn-aliquota-preset px-2 py-0.5 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 bg-transparent">17%</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Se ST: vira custo extra. Se Normal: vira crédito de ICMS.</p>
         </div>
 
         <div>
@@ -163,6 +191,29 @@
             resultado.innerHTML = '<p class="text-gray-400">Não foi possível calcular a prévia.</p>';
         }
     }
+
+    const compraInternacionalCheckbox = document.getElementById('compra_internacional');
+    const ufCompraSelect = document.getElementById('uf_compra');
+
+    function aplicarCompraInternacional() {
+        if (compraInternacionalCheckbox.checked) {
+            ufCompraSelect.value = 'EX';
+        } else if (ufCompraSelect.value === 'EX') {
+            ufCompraSelect.value = '';
+        }
+    }
+    compraInternacionalCheckbox.addEventListener('change', function () {
+        aplicarCompraInternacional();
+        recalcular();
+    });
+    aplicarCompraInternacional();
+
+    document.querySelectorAll('.btn-aliquota-preset').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('aliquota_icms_compra_pct').value = btn.dataset.aliquota;
+            recalcular();
+        });
+    });
 
     form.addEventListener('input', recalcular);
     form.addEventListener('change', recalcular);

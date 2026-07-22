@@ -13,8 +13,7 @@
         <li>Faça o download do modelo abaixo e preencha com os dados do relatório fiscal (ex: export do Econet Validador).</li>
         <li>As colunas <strong>ncm</strong> e <strong>aliquota_icms_interna</strong> são obrigatórias.</li>
         <li>Um mesmo NCM+CEST+UF já cadastrado será atualizado.</li>
-        <li><strong>aplica_st</strong>: Sim ou Não.</li>
-        <li><strong>icms_venda_regra</strong>: "Tributado" ou "St_ja_paga".</li>
+        <li><strong>aplica_st</strong>: Sim ou Não (referência — o ICMS de cada compra é escolhido manualmente no cenário).</li>
         <li><strong>regime_pis_cofins</strong>: "Tributado" ou "Monofasico".</li>
     </ul>
 </div>

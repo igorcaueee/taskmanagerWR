@@ -63,6 +63,7 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
         Route::middleware('portal.precificacao')->prefix('precificacao')->name('precificacao.')->group(function () {
             Route::get('/', [PortalPrecificacaoController::class, 'index'])->name('index');
+            Route::get('/relatorio', [PortalPrecificacaoController::class, 'exportCenarios'])->name('relatorio');
             Route::get('/produtos/form', [PortalPrecificacaoController::class, 'formCreateProduto'])->name('produtos.form.create');
             Route::get('/produtos/import/form', [PortalPrecificacaoController::class, 'formImportProdutos'])->name('produtos.import.form');
             Route::get('/produtos/import/template', [PortalPrecificacaoController::class, 'templateProdutos'])->name('produtos.import.template');
@@ -201,6 +202,7 @@ Route::delete('/precificacao/aliquotas/{id}', [PrecificacaoAliquotaController::c
 
 // Precificação — produtos por cliente (interno)
 Route::get('/precificacao/produtos', [PrecificacaoProdutoController::class, 'index'])->name('precificacao.produtos')->middleware('auth');
+Route::get('/precificacao/produtos/relatorio', [PrecificacaoProdutoController::class, 'exportCenarios'])->name('precificacao.produtos.relatorio')->middleware('auth');
 Route::get('/precificacao/produtos/novo', [PrecificacaoProdutoController::class, 'formCreateProduto'])->name('precificacao.produtos.form.create')->middleware('auth');
 Route::get('/precificacao/produtos/import/form', [PrecificacaoProdutoController::class, 'formImportProdutos'])->name('precificacao.produtos.import.form')->middleware('auth');
 Route::get('/precificacao/produtos/import/template', [PrecificacaoProdutoController::class, 'templateProdutos'])->name('precificacao.produtos.import.template')->middleware('auth');

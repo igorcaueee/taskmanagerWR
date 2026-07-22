@@ -47,6 +47,7 @@ class PortalPrecificacaoController extends Controller
 
             return [
                 'produto' => $produto,
+                'cenario' => $cenarioPrincipal,
                 'resultado' => $cenarioPrincipal ? $service->calcular($cenarioPrincipal) : null,
             ];
         });
@@ -276,6 +277,77 @@ class PortalPrecificacaoController extends Controller
         return Redirect::route('portal.precificacao.index')->with('success', "Importação concluída: {$importados} produto(s) importado(s).");
     }
 
+    public function exportCenarios(): Response
+    {
+        $cliente = $this->clienteLogado();
+
+        return $this->gerarRelatorioCenarios($cliente);
+    }
+
+    private function gerarRelatorioCenarios(Cliente $cliente): Response
+    {
+        $produtos = PrecificacaoProduto::where('cliente_id', $cliente->id)->with('cenarios')->get();
+        $service = new PrecificacaoCalculoService;
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Cenarios');
+
+        $columns = [
+            'Produto', 'NCM', 'CEST', 'UF Compra', 'UF Venda', 'Tipo ICMS Compra', 'Alíquota ICMS Compra (%)',
+            'Compra Internacional', 'Valor Compra', 'Quantidade', 'Custo Unitário', 'Preço Venda',
+            'Margem R$', 'Margem %',
+        ];
+
+        foreach ($columns as $i => $col) {
+            $cell = chr(65 + $i).'1';
+            $sheet->setCellValue($cell, $col);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A5F']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->getColumnDimensionByColumn($i + 1)->setAutoSize(true);
+        }
+
+        $linha = 2;
+        foreach ($produtos as $produto) {
+            foreach ($produto->cenarios as $cenario) {
+                $r = $service->calcular($cenario);
+
+                $sheet->fromArray([
+                    $produto->nome,
+                    $produto->ncm,
+                    $produto->cest,
+                    $cenario->uf_compra,
+                    $cenario->uf_venda,
+                    $cenario->tipo_icms_compra === 'st' ? 'ST' : 'Normal',
+                    (float) $cenario->aliquota_icms_compra_pct,
+                    $cenario->compra_internacional ? 'Sim' : 'Não',
+                    (float) $cenario->valor_compra_total,
+                    (float) $cenario->quantidade,
+                    round($r->custoUnitario, 2),
+                    round($r->precoVenda, 2),
+                    round($r->margemContribuicaoValor, 2),
+                    round($r->margemContribuicaoPercentual, 2),
+                ], null, 'A'.$linha);
+
+                $linha++;
+            }
+        }
+
+        $writer = new Xlsx($spreadsheet);
+
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="relatorio-precificacao-'.\Illuminate\Support\Str::slug($cliente->nome).'.xlsx"',
+        ]);
+    }
+
     public function templateProdutos(): Response
     {
         $spreadsheet = new Spreadsheet;
@@ -342,15 +414,20 @@ class PortalPrecificacaoController extends Controller
         $request->merge([
             'uf_compra' => mb_strtoupper((string) $request->input('uf_compra')),
             'uf_venda' => mb_strtoupper((string) $request->input('uf_venda')),
+            'compra_internacional' => $request->boolean('compra_internacional'),
         ]);
 
         return Validator::make($request->only([
-            'nome', 'uf_compra', 'uf_venda', 'valor_compra_total', 'quantidade',
+            'nome', 'uf_compra', 'uf_venda', 'tipo_icms_compra', 'aliquota_icms_compra_pct', 'compra_internacional',
+            'valor_compra_total', 'quantidade',
             'frete_compra', 'ipi_pct', 'markup_pct', 'comissao_pct', 'frete_venda_pct',
         ]), [
             'nome' => ['nullable', 'string', 'max:255'],
             'uf_compra' => ['required', 'string', 'size:2'],
             'uf_venda' => ['required', 'string', 'size:2'],
+            'tipo_icms_compra' => ['required', 'in:st,normal'],
+            'aliquota_icms_compra_pct' => ['required', 'numeric', 'min:0', 'max:100'],
+            'compra_internacional' => ['boolean'],
             'valor_compra_total' => ['required', 'numeric', 'min:0.01'],
             'quantidade' => ['required', 'numeric', 'min:0.001'],
             'frete_compra' => ['nullable', 'numeric', 'min:0'],

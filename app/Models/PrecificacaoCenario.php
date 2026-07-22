@@ -14,6 +14,9 @@ class PrecificacaoCenario extends Model
         'nome',
         'uf_compra',
         'uf_venda',
+        'tipo_icms_compra',
+        'aliquota_icms_compra_pct',
+        'compra_internacional',
         'valor_compra_total',
         'quantidade',
         'frete_compra',
@@ -31,6 +34,8 @@ class PrecificacaoCenario extends Model
         'markup_pct' => 'decimal:2',
         'comissao_pct' => 'decimal:2',
         'frete_venda_pct' => 'decimal:2',
+        'aliquota_icms_compra_pct' => 'decimal:2',
+        'compra_internacional' => 'boolean',
     ];
 
     public function produto(): BelongsTo

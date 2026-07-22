@@ -11,6 +11,10 @@
             <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">Custo de compra e preço de venda sugerido dos seus produtos.</p>
         </div>
         <div class="flex gap-2">
+            <a href="{{ route('portal.precificacao.relatorio') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1e293b] border border-gray-300 dark:border-[#334155] text-gray-700 dark:text-slate-200 rounded-lg text-sm no-underline hover:bg-gray-50 dark:hover:bg-[#334155]">
+                <i class="fa-solid fa-file-excel text-green-600"></i> Relatório
+            </a>
             <a href="{{ route('portal.precificacao.produtos.import.form') }}"
                class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1e293b] border border-gray-300 dark:border-[#334155] text-gray-700 dark:text-slate-200 rounded-lg text-sm no-underline hover:bg-gray-50 dark:hover:bg-[#334155]">
                 <i class="fa-solid fa-file-import"></i> Importar planilha
@@ -47,6 +51,8 @@
                     <tr>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Produto</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">NCM / CEST</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">UF compra</th>
+                        <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">UF venda</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Custo unitário</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Preço sugerido</th>
                         <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Margem</th>
@@ -55,12 +61,14 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-[#334155]">
                     @foreach($resumo as $item)
-                        @php $produto = $item['produto']; $resultado = $item['resultado']; @endphp
-                        <tr>
+                        @php $produto = $item['produto']; $cenario = $item['cenario']; $resultado = $item['resultado']; @endphp
+                        <tr onclick="window.location='{{ route('portal.precificacao.show', $produto->id) }}'" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-[#25334a]">
                             <td class="px-5 py-4 text-sm text-gray-800 dark:text-slate-100 whitespace-nowrap">
-                                <a href="{{ route('portal.precificacao.show', $produto->id) }}" class="text-[#0084AA] no-underline hover:underline">{{ $produto->nome }}</a>
+                                {{ $produto->nome }}
                             </td>
                             <td class="px-5 py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">{{ $produto->ncm }} @if($produto->cest) / {{ $produto->cest }} @endif</td>
+                            <td class="px-5 py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">{{ $cenario ? ($cenario->uf_compra === 'EX' ? 'Exterior' : $cenario->uf_compra) : '—' }}</td>
+                            <td class="px-5 py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">{{ $cenario->uf_venda ?? '—' }}</td>
                             @if($resultado)
                                 <td class="px-5 py-4 text-sm text-gray-800 dark:text-slate-100 whitespace-nowrap">R$ {{ number_format($resultado->custoUnitario, 2, ',', '.') }}</td>
                                 <td class="px-5 py-4 text-sm text-gray-800 dark:text-slate-100 whitespace-nowrap">R$ {{ number_format($resultado->precoVenda, 2, ',', '.') }}</td>
@@ -73,9 +81,7 @@
                                 <td class="px-5 py-4 text-sm text-gray-400 dark:text-slate-500" colspan="3">Nenhum cenário de compra cadastrado ainda.</td>
                             @endif
                             <td class="px-5 py-4 text-sm text-right whitespace-nowrap">
-                                <a href="{{ route('portal.precificacao.show', $produto->id) }}" class="text-gray-500 dark:text-slate-400 no-underline hover:text-[#0084AA]">
-                                    <i class="fa-solid fa-chevron-right"></i>
-                                </a>
+                                <span class="text-gray-400 dark:text-slate-500"><i class="fa-solid fa-chevron-right"></i></span>
                             </td>
                         </tr>
                     @endforeach

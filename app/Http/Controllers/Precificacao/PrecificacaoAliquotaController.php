@@ -151,9 +151,6 @@ class PrecificacaoAliquotaController extends Controller
             $cest = $get($row, 'cest') ?: null;
             $ufReferencia = mb_strtoupper($get($row, 'uf_referencia')) ?: null;
 
-            $icmsVendaRaw = mb_strtolower($get($row, 'icms_venda_regra'));
-            $icmsVendaRegra = str_contains($icmsVendaRaw, 'st') ? 'st_ja_paga' : 'tributado';
-
             $regimeRaw = mb_strtolower($get($row, 'regime_pis_cofins'));
             $regimePisCofins = str_contains($regimeRaw, 'mono') ? 'monofasico' : 'tributado';
 
@@ -163,7 +160,6 @@ class PrecificacaoAliquotaController extends Controller
                 'aliquota_icms_interna' => $getDecimal($row, 'aliquota_icms_interna'),
                 'aplica_st' => $getBool($row, 'aplica_st'),
                 'aliquota_icms_st' => $getDecimal($row, 'aliquota_icms_st'),
-                'icms_venda_regra' => $icmsVendaRegra,
                 'regime_pis_cofins' => $regimePisCofins,
                 'aliquota_pis' => $getDecimal($row, 'aliquota_pis'),
                 'aliquota_cofins' => $getDecimal($row, 'aliquota_cofins'),
@@ -200,7 +196,7 @@ class PrecificacaoAliquotaController extends Controller
         $columns = [
             'ncm', 'cest', 'descricao', 'uf_referencia',
             'aliquota_icms_interna', 'aplica_st', 'aliquota_icms_st',
-            'icms_venda_regra', 'regime_pis_cofins', 'aliquota_pis', 'aliquota_cofins',
+            'regime_pis_cofins', 'aliquota_pis', 'aliquota_cofins',
         ];
 
         foreach ($columns as $i => $col) {
@@ -217,7 +213,7 @@ class PrecificacaoAliquotaController extends Controller
         $examples = [
             '87082999', '0199900', 'Grampo/bucha automotiva', 'MG',
             '18', 'Sim', '18',
-            'St_ja_paga', 'Monofasico', '1.65', '7.6',
+            'Monofasico', '1.65', '7.6',
         ];
 
         foreach ($examples as $i => $val) {
@@ -249,7 +245,7 @@ class PrecificacaoAliquotaController extends Controller
         $data = $request->only([
             'ncm', 'cest', 'descricao', 'uf_referencia',
             'aliquota_icms_interna', 'aplica_st', 'aliquota_icms_st',
-            'icms_venda_regra', 'regime_pis_cofins', 'aliquota_pis', 'aliquota_cofins', 'ativo',
+            'regime_pis_cofins', 'aliquota_pis', 'aliquota_cofins', 'ativo',
         ]);
 
         $validator = Validator::make($data, [
@@ -260,7 +256,6 @@ class PrecificacaoAliquotaController extends Controller
             'aliquota_icms_interna' => ['required', 'numeric', 'min:0', 'max:100'],
             'aplica_st' => ['nullable'],
             'aliquota_icms_st' => ['required', 'numeric', 'min:0', 'max:100'],
-            'icms_venda_regra' => ['required', 'in:tributado,st_ja_paga'],
             'regime_pis_cofins' => ['required', 'in:monofasico,tributado'],
             'aliquota_pis' => ['required', 'numeric', 'min:0', 'max:100'],
             'aliquota_cofins' => ['required', 'numeric', 'min:0', 'max:100'],

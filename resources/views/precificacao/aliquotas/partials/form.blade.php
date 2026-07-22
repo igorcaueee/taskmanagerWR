@@ -67,13 +67,6 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700">ICMS na venda</label>
-            <select name="icms_venda_regra" class="mt-1 block w-full border rounded px-3 py-2">
-                <option value="tributado" @selected(old('icms_venda_regra', $isEditing ? $aliquota->icms_venda_regra : 'tributado') === 'tributado')>Tributado normalmente</option>
-                <option value="st_ja_paga" @selected(old('icms_venda_regra', $isEditing ? $aliquota->icms_venda_regra : '') === 'st_ja_paga')>ST já paga (0% na venda)</option>
-            </select>
-        </div>
-        <div>
             <label class="block text-sm font-medium text-gray-700">Regime PIS/COFINS</label>
             <select name="regime_pis_cofins" class="mt-1 block w-full border rounded px-3 py-2">
                 <option value="tributado" @selected(old('regime_pis_cofins', $isEditing ? $aliquota->regime_pis_cofins : 'tributado') === 'tributado')>Tributado</option>

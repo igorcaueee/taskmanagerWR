@@ -63,10 +63,14 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-5">
                     <div>
-                        <p class="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Custo de compra</p>
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Custo de compra</p>
+                            <span class="text-xs font-medium text-gray-500 dark:text-slate-400">Estado: {{ $cenario->uf_compra === 'EX' ? 'Exterior' : $cenario->uf_compra }}</span>
+                        </div>
                         <dl class="space-y-1 text-sm">
                             <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">Valor de compra</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->valorCompraTotal, 2, ',', '.') }}</dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(+) ICMS-ST</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->icmsSt, 2, ',', '.') }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(+) ICMS-ST ({{ $cenario->tipo_icms_compra === 'st' ? number_format($cenario->aliquota_icms_compra_pct, 2, ',', '.').'%' : 'n/a' }})</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->icmsSt, 2, ',', '.') }}</dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(-) Crédito ICMS ({{ $cenario->tipo_icms_compra === 'normal' ? number_format($cenario->aliquota_icms_compra_pct, 2, ',', '.').'%' : 'n/a' }})</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->creditoIcms, 2, ',', '.') }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(+) IPI</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->ipi, 2, ',', '.') }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(+) Frete</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->freteCompra, 2, ',', '.') }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(-) Crédito PIS</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->creditoPis, 2, ',', '.') }}</dd></div>
@@ -77,7 +81,10 @@
                     </div>
 
                     <div>
-                        <p class="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Preço de venda</p>
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Preço de venda</p>
+                            <span class="text-xs font-medium text-gray-500 dark:text-slate-400">Estado: {{ $cenario->uf_venda }}</span>
+                        </div>
                         <dl class="space-y-1 text-sm">
                             <div class="flex justify-between font-semibold"><dt class="text-gray-700 dark:text-slate-200">Preço de venda (markup {{ number_format($cenario->markup_pct, 2, ',', '.') }}%)</dt><dd class="text-gray-900 dark:text-slate-100">R$ {{ number_format($r->precoVenda, 2, ',', '.') }}</dd></div>
                             <div class="flex justify-between"><dt class="text-gray-500 dark:text-slate-400">(-) ICMS s/venda</dt><dd class="text-gray-800 dark:text-slate-100">R$ {{ number_format($r->icmsVenda, 2, ',', '.') }}</dd></div>

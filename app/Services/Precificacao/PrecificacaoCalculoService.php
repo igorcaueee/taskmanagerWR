@@ -2,7 +2,6 @@
 
 namespace App\Services\Precificacao;
 
-use App\Models\PrecificacaoAliquota;
 use App\Models\PrecificacaoCenario;
 
 class PrecificacaoCalculoService
@@ -20,21 +19,25 @@ class PrecificacaoCalculoService
         $comissaoPct = (float) $cenario->comissao_pct;
         $freteVendaPct = (float) $cenario->frete_venda_pct;
 
-        $aplicaSt = $aliquota?->aplica_st ?? false;
-        $aliquotaIcmsSt = $aliquota ? (float) $aliquota->aliquota_icms_st : 0.0;
         $aliquotaIcmsInterna = $aliquota ? (float) $aliquota->aliquota_icms_interna : 0.0;
-        $icmsVendaRegra = $aliquota->icms_venda_regra ?? 'tributado';
         $regimePisCofins = $aliquota->regime_pis_cofins ?? 'tributado';
         $aliquotaPis = $aliquota ? (float) $aliquota->aliquota_pis : 0.0;
         $aliquotaCofins = $aliquota ? (float) $aliquota->aliquota_cofins : 0.0;
 
+        // ICMS na compra é informado manualmente por cenário (ST = custo extra; Normal = crédito).
+        // A venda segue a mesma escolha: se a compra teve ST, o ICMS já foi recolhido e não incide de novo na venda.
+        $tipoIcmsCompra = $cenario->tipo_icms_compra ?? 'normal';
+        $aliquotaIcmsCompraPct = (float) $cenario->aliquota_icms_compra_pct;
+        $icmsVendaRegra = $tipoIcmsCompra === 'st' ? 'st_ja_paga' : 'tributado';
+
         // Compra
-        $icmsSt = $aplicaSt ? $valorCompraTotal * $aliquotaIcmsSt / 100 : 0.0;
+        $icmsSt = $tipoIcmsCompra === 'st' ? $valorCompraTotal * $aliquotaIcmsCompraPct / 100 : 0.0;
+        $creditoIcms = $tipoIcmsCompra === 'normal' ? $valorCompraTotal * $aliquotaIcmsCompraPct / 100 : 0.0;
         $ipi = $valorCompraTotal * $ipiPct / 100;
         $creditoPis = $valorCompraTotal * $aliquotaPis / 100;
         $creditoCofins = $valorCompraTotal * $aliquotaCofins / 100;
 
-        $custoTotal = $valorCompraTotal + $icmsSt + $ipi + $freteCompra - $creditoPis - $creditoCofins;
+        $custoTotal = $valorCompraTotal + $icmsSt + $ipi + $freteCompra - $creditoIcms - $creditoPis - $creditoCofins;
         $custoUnitario = $quantidade > 0 ? $custoTotal / $quantidade : 0.0;
 
         // Venda
@@ -58,6 +61,7 @@ class PrecificacaoCalculoService
         return new PrecificacaoResultado(
             valorCompraTotal: $valorCompraTotal,
             icmsSt: $icmsSt,
+            creditoIcms: $creditoIcms,
             ipi: $ipi,
             freteCompra: $freteCompra,
             creditoPis: $creditoPis,
