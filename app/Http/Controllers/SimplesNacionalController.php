@@ -10,6 +10,7 @@ use App\Models\SimplesReceitaAtividade;
 use App\Models\SimplesReceitaMensal;
 use App\Services\CnpjPublicoService;
 use App\Services\NfseService;
+use App\Services\SimplesNacional\DominioImportParser;
 use App\Services\SimplesNacional\IntegraContadorAuthService;
 use App\Services\SimplesNacional\PgdasdService;
 use App\Support\PgdasdAtividades;
@@ -22,6 +23,7 @@ class SimplesNacionalController extends Controller
     public function __construct(
         private NfseService $nfse,
         private CnpjPublicoService $cnpjPublico,
+        private DominioImportParser $dominioParser,
     ) {}
 
     public function index(Request $request)
@@ -192,18 +194,18 @@ class SimplesNacionalController extends Controller
     {
         $pdfBase64 = $this->buscarCampoPdf($dados);
 
-        if (!$pdfBase64) {
+        if (! $pdfBase64) {
             return null;
         }
 
         $dir = 'integracontador/testes';
         $destPath = storage_path("app/{$dir}");
 
-        if (!is_dir($destPath)) {
+        if (! is_dir($destPath)) {
             mkdir($destPath, 0755, true);
         }
 
-        $nomeSeguro = time() . '-' . preg_replace('/[^A-Za-z0-9._-]/', '_', $nomeArquivo);
+        $nomeSeguro = time().'-'.preg_replace('/[^A-Za-z0-9._-]/', '_', $nomeArquivo);
         file_put_contents("{$destPath}/{$nomeSeguro}", base64_decode($pdfBase64));
 
         return [
@@ -214,7 +216,7 @@ class SimplesNacionalController extends Controller
 
     private function buscarCampoPdf(array $dados): ?string
     {
-        if (!empty($dados['pdf']) && is_string($dados['pdf'])) {
+        if (! empty($dados['pdf']) && is_string($dados['pdf'])) {
             return $dados['pdf'];
         }
 
@@ -246,12 +248,12 @@ class SimplesNacionalController extends Controller
             $dasList = [];
 
             foreach ($periodo['operacoes'] ?? [] as $operacao) {
-                if (!empty($operacao['indiceDeclaracao']['numeroDeclaracao'])) {
+                if (! empty($operacao['indiceDeclaracao']['numeroDeclaracao'])) {
                     $numeroDeclaracao = $operacao['indiceDeclaracao']['numeroDeclaracao'];
                     $dataTransmissao = $operacao['indiceDeclaracao']['dataHoraTransmissao'] ?? null;
                 }
 
-                if (!empty($operacao['indiceDas'])) {
+                if (! empty($operacao['indiceDas'])) {
                     $dasList[] = $operacao['indiceDas'];
                 }
             }
@@ -456,6 +458,128 @@ class SimplesNacionalController extends Controller
     }
 
     /**
+     * Lê o relatório .txt exportado pelo sistema Domínio e devolve uma prévia
+     * (não salva nada ainda) — cliente identificado por CNPJ, atividade
+     * sugerida por similaridade de texto, valores lidos. O usuário confirma
+     * (e pode corrigir) antes de gravar via confirmarImportacaoDominio().
+     *
+     * Foge do padrão de import do projeto (que salva direto) de propósito:
+     * aqui envolve dado fiscal + match automático de atividade que pode errar
+     * (ver PgdasdAtividades/DominioImportParser), então uma prévia antes de
+     * persistir é mais seguro.
+     *
+     * LIMITAÇÃO CONHECIDA: só usa `atividades[0]` de cada estabelecimento — o
+     * parser já suporta múltiplas atividades por estabelecimento, mas esta
+     * tela/preview ainda não exibe nem salva mais de uma. Cliente com duas
+     * atividades no mesmo CNPJ (ex.: comércio + serviço) precisa lançar a
+     * segunda manualmente em "Atividades e receitas" depois de importar.
+     */
+    public function previaImportacaoDominio(Request $request): JsonResponse
+    {
+        $request->validate([
+            'arquivo' => 'required|file|mimes:txt|max:5120',
+        ]);
+
+        $conteudo = file_get_contents($request->file('arquivo')->getRealPath());
+        $resultado = $this->dominioParser->parse($conteudo);
+
+        if (! $resultado['periodo_apuracao']) {
+            return response()->json(['error' => 'Não foi possível identificar o período de apuração no arquivo.'], 422);
+        }
+
+        $catalogo = PgdasdAtividades::catalogo();
+
+        // cpfcnpj é salvo com máscara ("00.000.000/0000-00"), mas o relatório do
+        // Domínio só traz dígitos — comparar direto nunca bate. Carrega todos os
+        // clientes com CNPJ uma única vez e indexa pelos dígitos para casar os dois lados.
+        $clientesPorCnpj = Cliente::whereNotNull('cpfcnpj')
+            ->get(['id', 'nome', 'cpfcnpj'])
+            ->keyBy(fn (Cliente $c) => preg_replace('/\D/', '', (string) $c->cpfcnpj));
+
+        $estabelecimentos = collect($resultado['estabelecimentos'])->map(function (array $e) use ($catalogo, $clientesPorCnpj) {
+            $cliente = $clientesPorCnpj->get($e['cnpj']);
+            $tributosDivergentes = collect($e['atividades'][0]['tributos'] ?? [])
+                ->reject(fn ($t) => $t['situacao'] === 'Tributado')
+                ->values();
+
+            return [
+                'cnpj' => $e['cnpj'],
+                'nome_relatorio' => $e['nome'],
+                'cliente_id' => $cliente?->id,
+                'cliente_nome' => $cliente?->nome,
+                'rbt12' => $e['rbt12'],
+                'rba_atual' => $e['rba_atual'],
+                'rba_anterior' => $e['rba_anterior'],
+                'rpa_competencia' => $e['rpa_competencia'],
+                'rpa_caixa' => $e['rpa_caixa'],
+                'id_atividade_sugerido' => $e['atividades'][0]['id_atividade_sugerido'] ?? null,
+                'atividade_descricao_sugerida' => isset($catalogo[$e['atividades'][0]['id_atividade_sugerido'] ?? null])
+                    ? $catalogo[$e['atividades'][0]['id_atividade_sugerido']]['descricao']
+                    : null,
+                'confianca_match' => $e['atividades'][0]['confianca_match'] ?? 0,
+                'tabela_texto' => $e['atividades'][0]['tabela_texto'] ?? null,
+                'receita_tributada_total' => $e['atividades'][0]['receita_tributada_total'] ?? null,
+                'tributos_divergentes' => $tributosDivergentes,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'periodo_apuracao' => $resultado['periodo_apuracao'],
+            'estabelecimentos' => $estabelecimentos,
+        ]);
+    }
+
+    /**
+     * Salva os dados já revisados/corrigidos pelo usuário na prévia. Não
+     * recebe o arquivo de novo — recebe a estrutura que a tela já mostrou,
+     * possivelmente editada.
+     */
+    public function confirmarImportacaoDominio(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'periodo_apuracao' => 'required|digits:6',
+            'estabelecimentos' => 'required|array|min:1',
+            'estabelecimentos.*.cliente_id' => 'required|exists:clientes,id',
+            'estabelecimentos.*.rpa_competencia' => 'nullable|numeric|min:0',
+            'estabelecimentos.*.rpa_caixa' => 'nullable|numeric|min:0',
+            'estabelecimentos.*.regime_apuracao' => 'required|in:competencia,caixa',
+            'estabelecimentos.*.id_atividade' => 'required|integer|min:1|max:43',
+            'estabelecimentos.*.receita_tributada_total' => 'required|numeric|min:0',
+        ]);
+
+        $periodo = $validated['periodo_apuracao'];
+        $salvos = 0;
+
+        DB::transaction(function () use ($validated, $periodo, &$salvos) {
+            foreach ($validated['estabelecimentos'] as $e) {
+                $regime = $e['regime_apuracao'];
+
+                SimplesReceitaMensal::updateOrCreate(
+                    ['cliente_id' => $e['cliente_id'], 'periodo_apuracao' => $periodo],
+                    [
+                        'receita_bruta_competencia' => $e['rpa_competencia'] ?? 0,
+                        'receita_bruta_caixa' => $e['rpa_caixa'] ?? null,
+                        'regime_apuracao' => $regime,
+                    ]
+                );
+
+                SimplesReceitaAtividade::updateOrCreate(
+                    ['cliente_id' => $e['cliente_id'], 'periodo_apuracao' => $periodo, 'id_atividade' => $e['id_atividade']],
+                    ['valor' => $e['receita_tributada_total']]
+                );
+
+                $salvos++;
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$salvos} estabelecimento(s) importado(s) com sucesso para o período {$periodo}.",
+        ]);
+    }
+
+    /**
      * Transmite a declaração de verdade — cria uma declaração fiscal REAL
      * perante a Receita Federal. Requer receita do mês e dados fiscais já
      * cadastrados (ver getReceitaMensal/getDadosFiscais).
@@ -486,7 +610,7 @@ class SimplesNacionalController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Declaração transmitida — status: {$processamento->status}, recibo: " . ($processamento->numero_recibo ?? '—'),
+            'message' => "Declaração transmitida — status: {$processamento->status}, recibo: ".($processamento->numero_recibo ?? '—'),
             'numero_recibo' => $processamento->numero_recibo,
         ]);
     }
@@ -495,13 +619,13 @@ class SimplesNacionalController extends Controller
     {
         $config = IntegraContadorConfiguracao::first();
 
-        if (!$config) {
+        if (! $config) {
             return response()->json(['configurado' => false]);
         }
 
         return response()->json([
             'configurado' => true,
-            'arquivo_ok' => file_exists(storage_path('app/' . $config->arquivo_certificado)),
+            'arquivo_ok' => file_exists(storage_path('app/'.$config->arquivo_certificado)),
             'cnpj_contratante' => $config->cnpj_contratante,
             'ambiente' => $config->ambiente,
         ]);
@@ -518,7 +642,7 @@ class SimplesNacionalController extends Controller
             'ambiente' => 'required|in:trial,producao',
         ]);
 
-        $config = IntegraContadorConfiguracao::first() ?? new IntegraContadorConfiguracao();
+        $config = IntegraContadorConfiguracao::first() ?? new IntegraContadorConfiguracao;
         $file = $request->file('certificado');
 
         if ($file) {
@@ -535,19 +659,19 @@ class SimplesNacionalController extends Controller
             $dir = 'integracontador/certificados';
             $destPath = storage_path("app/{$dir}");
 
-            if (!is_dir($destPath)) {
+            if (! is_dir($destPath)) {
                 mkdir($destPath, 0755, true);
             }
 
             $destFile = "{$destPath}/certificado.pfx";
 
-            if (!copy($file->getRealPath(), $destFile)) {
+            if (! copy($file->getRealPath(), $destFile)) {
                 return response()->json(['error' => 'Falha ao salvar o arquivo do certificado no servidor.'], 500);
             }
 
             $config->arquivo_certificado = "{$dir}/certificado.pfx";
             $config->senha_certificado = $validated['senha'];
-        } elseif (!$config->exists) {
+        } elseif (! $config->exists) {
             return response()->json(['error' => 'Envie o certificado (.pfx/.p12) e a senha na primeira configuração.'], 422);
         }
 
@@ -593,14 +717,14 @@ class SimplesNacionalController extends Controller
     {
         $config = IntegraContadorConfiguracao::first();
 
-        if (!$config) {
+        if (! $config) {
             return response()->json(['error' => 'Configuração da API Integra Contador não encontrada.'], 422);
         }
 
         $cnpjInformado = preg_replace('/\D/', '', (string) $request->get('cnpj'));
 
         if ($config->ambiente === 'producao') {
-            if (!$cnpjInformado) {
+            if (! $cnpjInformado) {
                 return response()->json(['error' => 'No ambiente de produção não existe CNPJ de demonstração — informe um CNPJ real para testar (ex.: o do próprio escritório).'], 422);
             }
 
@@ -662,7 +786,7 @@ class SimplesNacionalController extends Controller
 
     public function downloadTeste(string $arquivo)
     {
-        $path = "integracontador/testes/" . basename($arquivo);
+        $path = 'integracontador/testes/'.basename($arquivo);
 
         abort_unless(file_exists(storage_path("app/{$path}")), 404);
 
@@ -680,13 +804,13 @@ class SimplesNacionalController extends Controller
         $dir = 'integracontador/testes';
         $destPath = storage_path("app/{$dir}");
 
-        if (!is_dir($destPath)) {
+        if (! is_dir($destPath)) {
             mkdir($destPath, 0755, true);
         }
 
-        $percorrer = function ($valor) use (&$percorrer, &$arquivos, $destPath, $dir) {
+        $percorrer = function ($valor) use (&$percorrer, &$arquivos, $destPath) {
             if (isset($valor['nomeArquivo'], $valor['pdf']) && is_string($valor['pdf'])) {
-                $nomeSeguro = time() . '-' . preg_replace('/[^A-Za-z0-9._-]/', '_', $valor['nomeArquivo']);
+                $nomeSeguro = time().'-'.preg_replace('/[^A-Za-z0-9._-]/', '_', $valor['nomeArquivo']);
                 file_put_contents("{$destPath}/{$nomeSeguro}", base64_decode($valor['pdf']));
 
                 $arquivos[] = [

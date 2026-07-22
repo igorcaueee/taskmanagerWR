@@ -17,16 +17,16 @@ use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
-use App\Http\Controllers\NotaEmitidaController;
 use App\Http\Controllers\NotaEmitenteController;
+use App\Http\Controllers\NotaEmitidaController;
 use App\Http\Controllers\NotificacaoController;
+use App\Http\Controllers\Portal\PortalPrecificacaoController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalChamadoController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PossibilidadeController;
 use App\Http\Controllers\Precificacao\PrecificacaoAliquotaController;
 use App\Http\Controllers\Precificacao\PrecificacaoProdutoController;
-use App\Http\Controllers\Portal\PortalPrecificacaoController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\QuestionarioController;
 use App\Http\Controllers\RelatorioController;
@@ -375,6 +375,8 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::post('/receita-mensal', [SimplesNacionalController::class, 'salvarReceitaMensal'])->name('receita-mensal.salvar');
     Route::get('/receitas-atividades', [SimplesNacionalController::class, 'getReceitasAtividades'])->name('receitas-atividades.get');
     Route::post('/receitas-atividades', [SimplesNacionalController::class, 'salvarReceitasAtividades'])->name('receitas-atividades.salvar');
+    Route::post('/importar-dominio/previa', [SimplesNacionalController::class, 'previaImportacaoDominio'])->name('importar-dominio.previa');
+    Route::post('/importar-dominio/confirmar', [SimplesNacionalController::class, 'confirmarImportacaoDominio'])->name('importar-dominio.confirmar');
     Route::post('/transmitir', [SimplesNacionalController::class, 'transmitir'])->name('transmitir');
 });
 
