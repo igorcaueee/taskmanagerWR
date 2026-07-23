@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClienteCertificadoNfse;
+use App\Models\DocumentoFiscal;
 use App\Services\Concerns\LidaComCertificadoPfx;
 use Illuminate\Support\Facades\Log;
 
@@ -40,15 +41,17 @@ class NfeService
     ];
 
     /**
-     * Busca NF-e/CT-e no intervalo de datas informado.
+     * Sincroniza os NF-e/CT-e novos deste certificado (a partir do último NSU
+     * salvo) para a tabela `documentos_fiscais`. Não filtra por data — a API só
+     * suporta paginação por NSU, e todo documento novo (não-evento) é persistido,
+     * já que a distribuição é um feed incremental: um documento não capturado
+     * numa sincronização não volta a aparecer numa consulta futura.
      *
-     * A API só suporta paginação por NSU (distNSU/ultNSU). Não existe filtro por
-     * data no request — iteramos os lotes e filtramos localmente pela data de
-     * emissão de cada documento resumido no docZip.
-     *
-     * Inicia a partir do último NSU salvo (ultimo_nsu_nfe) para o certificado.
+     * Retorna ['sincronizado' => bool, 'aviso' => ?string] — erros esperados da
+     * Sefaz (consumo indevido, etc.) não lançam exceção, viram aviso, para que o
+     * chamador ainda possa responder com o que já está em banco.
      */
-    public function buscarPorPeriodo(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim): array
+    public function sincronizar(ClienteCertificadoNfse $certificado): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/[.\-\/\s]/', '', $certificado->cliente->cpfcnpj ?? '');
@@ -56,59 +59,58 @@ class NfeService
         $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
         $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
 
-        Log::info('[NF-e] buscarPorPeriodo: iniciando', [
-            'cliente_id'    => $certificado->cliente_id,
-            'cnpj'          => $cnpj,
-            'cUFAutor'      => $cUFAutor,
-            'tpAmb'         => $tpAmb,
-            'endpoint'      => $endpoint,
-            'nsu_inicial'   => (int) $certificado->ultimo_nsu_nfe,
-            'data_inicio'   => $dataInicio,
-            'data_fim'      => $dataFim,
+        Log::info('[NF-e] sincronizar: iniciando', [
+            'cliente_id'  => $certificado->cliente_id,
+            'cnpj'        => $cnpj,
+            'cUFAutor'    => $cUFAutor,
+            'tpAmb'       => $tpAmb,
+            'endpoint'    => $endpoint,
+            'nsu_inicial' => (int) $certificado->ultimo_nsu_nfe,
         ]);
 
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
+        $aviso = null;
+
         try {
-            $documentos = [];
-            $nsuAtual   = (int) $certificado->ultimo_nsu_nfe;
-            $lotes      = 0;
+            $nsuAtual = (int) $certificado->ultimo_nsu_nfe;
+            $lotes    = 0;
 
             while ($lotes < self::MAX_LOTES) {
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cUFAutor, $cnpj, $nsuAtual, $pemCert, $pemKey);
 
                 $cStat = $resp['cStat'] ?? '';
 
-                Log::info('[NF-e] buscarPorPeriodo: lote recebido', [
-                    'lote'       => $lotes,
-                    'nsu_usado'  => $nsuAtual,
-                    'cStat'      => $cStat,
-                    'xMotivo'    => $resp['xMotivo'] ?? null,
-                    'ultNSU'     => $resp['ultNSU'] ?? null,
-                    'maxNSU'     => $resp['maxNSU'] ?? null,
-                    'qtd_docs'   => count($resp['docs'] ?? []),
+                Log::info('[NF-e] sincronizar: lote recebido', [
+                    'lote'      => $lotes,
+                    'nsu_usado' => $nsuAtual,
+                    'cStat'     => $cStat,
+                    'xMotivo'   => $resp['xMotivo'] ?? null,
+                    'ultNSU'    => $resp['ultNSU'] ?? null,
+                    'maxNSU'    => $resp['maxNSU'] ?? null,
+                    'qtd_docs'  => count($resp['docs'] ?? []),
                 ]);
 
                 // 656 = consumo indevido — geralmente porque outro sistema (contábil, ERP etc.)
                 // já consome a distribuição deste CNPJ e a Sefaz está bem à frente do NSU que
                 // tínhamos (0 na primeira consulta). A própria resposta de rejeição já traz o
-                // ultNSU correto — persistimos aqui para autocalibrar a próxima tentativa.
+                // ultNSU correto — persistimos aqui para autocalibrar a próxima tentativa. Não é
+                // fatal: interrompe a sincronização, mas o chamador ainda responde com o que já
+                // está salvo em `documentos_fiscais`.
                 if ($cStat === '656') {
                     if (!empty($resp['ultNSU'])) {
                         $certificado->update(['ultimo_nsu_nfe' => (int) $resp['ultNSU']]);
                     }
 
-                    throw new \RuntimeException(
-                        'A Sefaz rejeitou a consulta por "consumo indevido" — provavelmente porque outro sistema '
-                        . '(contábil, ERP etc.) já consulta a distribuição de DF-e deste CNPJ, e a sequência de NSU '
-                        . 'da Sefaz está à frente da nossa. Sincronizamos o NSU correto' . (!empty($resp['ultNSU']) ? " ({$resp['ultNSU']})" : '')
-                        . ' para a próxima tentativa. ' . ($resp['xMotivo'] ?: 'Aguarde o tempo indicado pela Sefaz antes de tentar novamente.')
-                    );
+                    $aviso = 'A Sefaz rejeitou a sincronização por "consumo indevido" — provavelmente porque outro '
+                        . 'sistema (contábil, ERP etc.) já consulta a distribuição de DF-e deste CNPJ. '
+                        . 'Sincronizamos o NSU correto' . (!empty($resp['ultNSU']) ? " ({$resp['ultNSU']})" : '')
+                        . ' para a próxima tentativa — mostrando os documentos já sincronizados anteriormente.';
+                    break;
                 }
 
                 // 137 = nenhum documento localizado (já está em dia com o servidor)
                 if ($cStat === '137') {
-                    // ultNSU da resposta confirma o ponto em que ficamos "em dia" — persiste mesmo sem documentos.
                     if (isset($resp['ultNSU'])) {
                         $certificado->update(['ultimo_nsu_nfe' => (int) $resp['ultNSU']]);
                     }
@@ -116,40 +118,22 @@ class NfeService
                 }
 
                 if ($cStat !== '138') {
-                    throw new \RuntimeException("Distribuição DFe retornou cStat {$cStat}: " . ($resp['xMotivo'] ?? 'motivo desconhecido'));
+                    $aviso = "Distribuição DFe retornou cStat {$cStat}: " . ($resp['xMotivo'] ?? 'motivo desconhecido')
+                        . ' — mostrando os documentos já sincronizados anteriormente.';
+                    break;
                 }
 
                 if ($resp['ultNSU'] === null || $resp['maxNSU'] === null) {
-                    throw new \RuntimeException('Resposta cStat 138 sem ultNSU/maxNSU — não é possível paginar com segurança.');
+                    $aviso = 'Resposta cStat 138 sem ultNSU/maxNSU — não foi possível paginar com segurança.';
+                    break;
                 }
-
-                $passouFim = false;
 
                 foreach ($resp['docs'] as $doc) {
                     if ($doc['tipo'] === 'evento') {
                         continue; // eventos (cancelamento, manifestação) não viram linha própria por ora
                     }
 
-                    $dataEmissao = substr($doc['dataEmissao'] ?? '', 0, 10);
-
-                    Log::info('[NF-e] buscarPorPeriodo: doc no lote', [
-                        'nsu'         => $doc['nsu'] ?? null,
-                        'tipo'        => $doc['tipo'] ?? null,
-                        'numero'      => $doc['numero'] ?? null,
-                        'dataEmissao' => $dataEmissao ?: null,
-                        'emitente'    => $doc['emitenteNome'] ?? null,
-                    ]);
-
-                    if ($dataEmissao && $dataEmissao < $dataInicio) {
-                        continue;
-                    }
-
-                    if ($dataEmissao && $dataEmissao > $dataFim) {
-                        $passouFim = true;
-                        continue;
-                    }
-
-                    $documentos[] = $doc;
+                    $this->persistir($certificado->cliente_id, 'nacional', $doc);
                 }
 
                 // Avança pelo ultNSU retornado pela própria Sefaz (não pelo NSU do último doc do lote) —
@@ -161,7 +145,7 @@ class NfeService
                 // ultNSU (e levar novo bloqueio de "consumo indevido") caso um lote seguinte falhe.
                 $certificado->update(['ultimo_nsu_nfe' => $nsuAtual]);
 
-                if ($passouFim || $nsuAtual >= $maxNSU) {
+                if ($nsuAtual >= $maxNSU) {
                     break;
                 }
 
@@ -173,44 +157,55 @@ class NfeService
             }
         }
 
-        $documentos = $this->deduplicarPorChave($documentos);
+        Log::info('[NF-e] sincronizar: concluído', ['aviso' => $aviso]);
 
-        Log::info('[NF-e] buscarPorPeriodo: concluído', ['total_documentos' => count($documentos)]);
-
-        return $documentos;
+        return ['sincronizado' => $aviso === null, 'aviso' => $aviso];
     }
 
     /**
-     * A Sefaz pode distribuir o mesmo documento mais de uma vez sob NSUs diferentes
-     * (ex.: resumo resNFe/resCTe e, separadamente, o XML completo procNFe/procCTe).
-     * Deduplica por chave de acesso, mantendo a versão com mais campos preenchidos.
+     * Grava ou atualiza um documento normalizado (ver normalizarDocumento) na
+     * tabela `documentos_fiscais`, identificado pela chave de acesso.
+     *
+     * A Sefaz pode distribuir o mesmo documento mais de uma vez sob NSUs
+     * diferentes (ex.: resumo resNFe/resCTe e, separadamente, o XML completo
+     * procNFe/procCTe) — só sobrescreve um registro já existente se a nova
+     * versão tiver tantos ou mais campos preenchidos, para não perder dados.
      */
-    private function deduplicarPorChave(array $documentos): array
+    private function persistir(int $clienteId, string $origem, array $doc): void
     {
-        $porChave = [];
-        $semChave = [];
+        if (empty($doc['chaveAcesso'])) {
+            return;
+        }
 
-        foreach ($documentos as $doc) {
-            $chave = $doc['chaveAcesso'] ?? null;
+        $existente = DocumentoFiscal::where('chave_acesso', $doc['chaveAcesso'])->first();
 
-            if (!$chave) {
-                $semChave[] = $doc;
-                continue;
-            }
-
-            $score = (int) !empty($doc['numero']) + (int) !empty($doc['dataEmissao'])
+        if ($existente) {
+            $scoreNovo = (int) !empty($doc['numero']) + (int) !empty($doc['dataEmissao'])
                 + (int) !empty($doc['emitenteNome']) + (int) !empty($doc['valor']);
+            $scoreExistente = (int) !empty($existente->numero) + (int) !empty($existente->data_emissao)
+                + (int) !empty($existente->emitente_nome) + (int) !empty($existente->valor);
 
-            if (!isset($porChave[$chave]) || $score > $porChave[$chave]['_score']) {
-                $doc['_score'] = $score;
-                $porChave[$chave] = $doc;
+            if ($scoreNovo < $scoreExistente) {
+                return;
             }
         }
 
-        return array_map(function ($doc) {
-            unset($doc['_score']);
-            return $doc;
-        }, [...array_values($porChave), ...$semChave]);
+        DocumentoFiscal::updateOrCreate(
+            ['chave_acesso' => $doc['chaveAcesso']],
+            [
+                'cliente_id'    => $clienteId,
+                'tipo'          => $doc['tipo'],
+                'origem'        => $origem,
+                'nsu'           => $doc['nsu'] ?? null,
+                'numero'        => $doc['numero'] ?? null,
+                'data_emissao'  => !empty($doc['dataEmissao']) ? substr($doc['dataEmissao'], 0, 10) : null,
+                'emitente_nome' => $doc['emitenteNome'] ?? null,
+                'emitente_doc'  => $doc['emitenteDoc'] ?? null,
+                'valor'         => $doc['valor'] ?: null,
+                'situacao'      => $doc['situacao'] ?? null,
+                'xml_content'   => $doc['xmlContent'] ?? null,
+            ]
+        );
     }
 
     private function cUFAutor(ClienteCertificadoNfse $certificado): int

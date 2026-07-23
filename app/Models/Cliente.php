@@ -41,6 +41,8 @@ class Cliente extends Authenticatable
         'portal_ativo',
         'portal_ultimo_acesso',
         'acesso_extrato',
+        'ultimo_nsu_nfe_rs',
+        'ultimo_nsu_cte_rs',
     ];
 
     protected $casts = [

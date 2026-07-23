@@ -601,6 +601,10 @@
             docsAtuais = data.documentos ?? [];
             selecionados.clear();
 
+            if (data.warning) {
+                Swal.fire({ icon: 'warning', title: 'Sincronização parcial', text: data.warning, timer: 8000, timerProgressBar: true });
+            }
+
             if (docsAtuais.length === 0) {
                 estadoVazio.classList.remove('hidden');
                 return;

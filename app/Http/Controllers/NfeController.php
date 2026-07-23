@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\CertificadoContabilidade;
 use App\Models\Cliente;
 use App\Models\ClienteCertificadoNfse;
+use App\Models\DocumentoFiscal;
+use App\Services\CteIntegracaoRsService;
 use App\Services\NfeIntegracaoRsService;
 use App\Services\NfeService;
 use App\Services\NfseService;
@@ -18,6 +20,7 @@ class NfeController extends Controller
     public function __construct(
         private NfeService $nfe,
         private NfeIntegracaoRsService $nfeRs,
+        private CteIntegracaoRsService $cteRs,
         private NfseService $nfse,
     ) {}
 
@@ -51,12 +54,29 @@ class NfeController extends Controller
             'ambiente'    => $cert->ambiente,
         ]);
 
+        $aviso = null;
+
         try {
-            $documentos = $this->nfe->buscarPorPeriodo($cert, $validated['data_inicio'], $validated['data_fim']);
+            $resultado = $this->nfe->sincronizar($cert);
+            $aviso = $resultado['aviso'];
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] buscar: falha ao sincronizar, respondendo com dados já salvos', [
+                'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
+            ]);
+            $aviso = 'Não foi possível sincronizar com a Sefaz agora (' . $e->getMessage() . '). Mostrando os documentos já sincronizados anteriormente.';
+        }
 
-            Log::info('[NF-e] buscar: concluído', ['total' => count($documentos)]);
+        try {
+            $documentos = DocumentoFiscal::doPeriodo(
+                $validated['cliente_id'],
+                ['nfe', 'cte'],
+                $validated['data_inicio'],
+                $validated['data_fim']
+            );
 
-            $payload = ['success' => true, 'total' => count($documentos), 'documentos' => $documentos];
+            Log::info('[NF-e] buscar: concluído', ['total' => count($documentos), 'aviso' => $aviso]);
+
+            $payload = ['success' => true, 'total' => count($documentos), 'documentos' => $documentos, 'warning' => $aviso];
             $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             if ($encoded === false) {
@@ -65,9 +85,6 @@ class NfeController extends Controller
             }
 
             return new JsonResponse($payload, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        } catch (\RuntimeException $e) {
-            Log::error('[NF-e] buscar: RuntimeException', ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => $e->getMessage()], 500);
         } catch (\Throwable $e) {
             Log::error('[NF-e] buscar: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
@@ -163,20 +180,53 @@ class NfeController extends Controller
             'ambiente'    => $cert->ambiente,
         ]);
 
-        try {
-            $documentos = $this->nfeRs->buscarPorPeriodo($cert, $cliente, $validated['data_inicio'], $validated['data_fim']);
+        $avisos = [];
 
-            Log::info('[NF-e RS] buscar: concluído', ['total' => count($documentos)]);
+        try {
+            $resultado = $this->nfeRs->sincronizar($cert, $cliente);
+            if ($resultado['aviso']) {
+                $avisos[] = $resultado['aviso'];
+            }
+        } catch (\Throwable $e) {
+            Log::error('[NF-e RS] buscar: falha ao sincronizar NF-e/NFC-e, respondendo com dados já salvos', [
+                'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
+            ]);
+            $avisos[] = 'Não foi possível sincronizar NF-e/NFC-e agora (' . $e->getMessage() . ').';
+        }
+
+        try {
+            $resultado = $this->cteRs->sincronizar($cert, $cliente);
+            if ($resultado['aviso']) {
+                $avisos[] = $resultado['aviso'];
+            }
+        } catch (\Throwable $e) {
+            Log::error('[CT-e RS] buscar: falha ao sincronizar CT-e, respondendo com dados já salvos', [
+                'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
+            ]);
+            $avisos[] = 'Não foi possível sincronizar CT-e agora (' . $e->getMessage() . ').';
+        }
+
+        try {
+            $documentos = DocumentoFiscal::doPeriodo(
+                $cliente->id,
+                ['nfe', 'nfce', 'cte'],
+                $validated['data_inicio'],
+                $validated['data_fim']
+            );
+
+            Log::info('[NF-e RS] buscar: concluído', ['total' => count($documentos), 'avisos' => $avisos]);
 
             return new JsonResponse(
-                ['success' => true, 'total' => count($documentos), 'documentos' => $documentos],
+                [
+                    'success'    => true,
+                    'total'      => count($documentos),
+                    'documentos' => $documentos,
+                    'warning'    => $avisos ? implode(' ', $avisos) : null,
+                ],
                 200,
                 [],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
             );
-        } catch (\RuntimeException $e) {
-            Log::error('[NF-e RS] buscar: RuntimeException', ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => $e->getMessage()], 500);
         } catch (\Throwable $e) {
             Log::error('[NF-e RS] buscar: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
