@@ -80,7 +80,14 @@
                             @else
                                 <td class="px-5 py-4 text-sm text-gray-400 dark:text-slate-500" colspan="3">Nenhum cenário de compra cadastrado ainda.</td>
                             @endif
-                            <td class="px-5 py-4 text-sm text-right whitespace-nowrap">
+                            <td class="px-5 py-4 text-sm text-right whitespace-nowrap" onclick="event.stopPropagation()">
+                                <form method="POST" action="{{ route('portal.precificacao.produtos.delete', $produto->id) }}" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="button" class="bg-transparent border-0 p-0 text-red-500 hover:text-red-600 btn-delete-produto mr-3" data-nome="{{ $produto->nome }}">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
                                 <span class="text-gray-400 dark:text-slate-500"><i class="fa-solid fa-chevron-right"></i></span>
                             </td>
                         </tr>
@@ -90,4 +97,30 @@
         </div>
     @endif
 </div>
+
+@push('scripts')
+<script type="module">
+document.querySelectorAll('.btn-delete-produto').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        const nome = btn.dataset.nome;
+        const form = btn.closest('form');
+
+        Swal.fire({
+            title: 'Excluir produto?',
+            text: `Tem certeza que deseja excluir "${nome}"? Todos os cenários dele também serão excluídos. Esta ação não pode ser desfeita.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar',
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+@endpush
 @endsection

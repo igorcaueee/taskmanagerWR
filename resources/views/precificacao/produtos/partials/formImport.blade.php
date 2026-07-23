@@ -11,8 +11,8 @@
     <p class="font-medium mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Instruções</p>
     <ul class="list-disc list-inside space-y-0.5 text-blue-700">
         <li>Faça o download do modelo abaixo e preencha com os produtos do cliente.</li>
-        <li>As colunas <strong>nome</strong> e <strong>ncm</strong> são obrigatórias.</li>
-        <li>Se você preencher <strong>valor_compra</strong> e <strong>quantidade</strong>, um cenário já é criado automaticamente.</li>
+        <li>As colunas <strong>nome</strong> e <strong>ncm</strong> são obrigatórias; <strong>código</strong>, <strong>cest</strong> e <strong>unidade</strong> são opcionais.</li>
+        <li>O cenário de compra/venda (UF, custo, ICMS, markup) é cadastrado depois, individualmente em cada produto.</li>
     </ul>
 </div>
 
@@ -24,7 +24,7 @@
     </a>
 </div>
 
-<form method="POST" action="{{ route('precificacao.produtos.import') }}" enctype="multipart/form-data">
+<form method="POST" action="{{ route('precificacao.produtos.import') }}" enctype="multipart/form-data" id="form-import-produtos-precificacao">
     @csrf
     <input type="hidden" name="cliente_id" value="{{ $cliente->id }}">
 
@@ -46,3 +46,20 @@
         </button>
     </div>
 </form>
+
+<script>
+(function () {
+    const form = document.getElementById('form-import-produtos-precificacao');
+    if (!form) { return; }
+    form.addEventListener('submit', function () {
+        Swal.fire({
+            title: 'Importando planilha...',
+            text: 'Aguarde enquanto os produtos são cadastrados.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading(),
+        });
+    });
+})();
+</script>

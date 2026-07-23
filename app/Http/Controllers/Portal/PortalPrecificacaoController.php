@@ -234,11 +234,6 @@ class PortalPrecificacaoController extends Controller
         $colIndex = array_flip($header);
 
         $get = fn ($row, $col) => isset($colIndex[$col]) ? trim((string) ($row[$colIndex[$col]] ?? '')) : '';
-        $getDecimal = function ($row, $col) use ($get) {
-            $raw = str_replace(',', '.', $get($row, $col));
-
-            return is_numeric($raw) ? (float) $raw : 0.0;
-        };
 
         $importados = 0;
 
@@ -249,27 +244,15 @@ class PortalPrecificacaoController extends Controller
                 continue;
             }
 
-            $produto = PrecificacaoProduto::create([
+            PrecificacaoProduto::create([
                 'cliente_id' => $cliente->id,
                 'nome' => $nome,
                 'ncm' => $ncm,
                 'cest' => $get($row, 'cest') ?: null,
                 'unidade' => $get($row, 'unidade') ?: null,
+                'codigo_interno' => $get($row, 'codigo') ?: null,
                 'ativo' => true,
             ]);
-
-            $valorCompra = $getDecimal($row, 'valor_compra');
-            $quantidade = $getDecimal($row, 'quantidade');
-
-            if ($valorCompra > 0 && $quantidade > 0) {
-                $produto->cenarios()->create([
-                    'uf_compra' => mb_strtoupper($get($row, 'uf_compra')) ?: $cliente->estado,
-                    'uf_venda' => mb_strtoupper($get($row, 'uf_venda')) ?: $cliente->estado,
-                    'valor_compra_total' => $valorCompra,
-                    'quantidade' => $quantidade,
-                    'markup_pct' => $getDecimal($row, 'markup_pct'),
-                ]);
-            }
 
             $importados++;
         }
@@ -354,7 +337,7 @@ class PortalPrecificacaoController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Produtos');
 
-        $columns = ['nome', 'ncm', 'cest', 'unidade', 'valor_compra', 'quantidade', 'uf_compra', 'uf_venda', 'markup_pct'];
+        $columns = ['codigo', 'nome', 'ncm', 'cest', 'unidade'];
 
         foreach ($columns as $i => $col) {
             $cell = chr(65 + $i).'1';
@@ -367,7 +350,7 @@ class PortalPrecificacaoController extends Controller
             $sheet->getColumnDimensionByColumn($i + 1)->setAutoSize(true);
         }
 
-        $examples = ['Grampo dentadura banco', '87082999', '0199900', 'UN', '17850', '30', 'SP', 'MG', '100'];
+        $examples = ['COD001', 'Grampo dentadura banco', '87082999', '0199900', 'UN'];
 
         foreach ($examples as $i => $val) {
             $cell = chr(65 + $i).'2';

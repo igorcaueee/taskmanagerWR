@@ -14,9 +14,8 @@
         <p class="font-medium mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Instruções</p>
         <ul class="list-disc list-inside space-y-0.5">
             <li>Faça o download do modelo abaixo e preencha com seus produtos.</li>
-            <li>As colunas <strong>nome</strong> e <strong>ncm</strong> são obrigatórias.</li>
-            <li>Se você preencher <strong>valor_compra</strong> e <strong>quantidade</strong>, um cenário de compra/venda já é criado automaticamente.</li>
-            <li>Se <strong>uf_venda</strong> ficar em branco, será usada a UF do seu cadastro.</li>
+            <li>As colunas <strong>nome</strong> e <strong>ncm</strong> são obrigatórias; <strong>código</strong>, <strong>cest</strong> e <strong>unidade</strong> são opcionais.</li>
+            <li>O cenário de compra/venda (UF, custo, ICMS, markup) é cadastrado depois, individualmente em cada produto.</li>
         </ul>
     </div>
 
@@ -28,6 +27,7 @@
     </div>
 
     <form method="POST" action="{{ route('portal.precificacao.produtos.import') }}" enctype="multipart/form-data"
+          id="form-import-produtos-portal"
           class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl p-6 shadow-sm space-y-5">
         @csrf
 
@@ -47,4 +47,23 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script type="module">
+(function () {
+    const form = document.getElementById('form-import-produtos-portal');
+    if (!form) { return; }
+    form.addEventListener('submit', function () {
+        Swal.fire({
+            title: 'Importando planilha...',
+            text: 'Aguarde enquanto os produtos são cadastrados.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading(),
+        });
+    });
+})();
+</script>
+@endpush
 @endsection

@@ -47,6 +47,17 @@
             </div>
 
             <div class="bg-white dark:bg-slate-800 rounded shadow overflow-x-auto">
+                <form method="GET" action="{{ route('precificacao.produtos') }}" id="form-filtros-produtos-precificacao"
+                      class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                    <input type="hidden" name="cliente_id" value="{{ $cliente->id }}">
+                    <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pesquisar</label>
+                        <input type="text" name="busca" id="input-busca-produtos" value="{{ request('busca') }}"
+                               placeholder="Nome ou NCM do produto..."
+                               class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-64">
+                    </div>
+                </form>
+
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
                     <thead class="bg-gray-50 dark:bg-slate-900">
                         <tr>
@@ -81,7 +92,14 @@
                                 @else
                                     <td class="px-6 py-4 text-sm text-gray-400" colspan="3">Sem cenário cadastrado.</td>
                                 @endif
-                                <td class="px-6 py-4 text-sm text-right whitespace-nowrap">
+                                <td class="px-6 py-4 text-sm text-right whitespace-nowrap" onclick="event.stopPropagation()">
+                                    <form method="POST" action="{{ route('precificacao.produtos.delete', $produto->id) }}" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="button" class="bg-transparent border-0 p-0 text-red-500 hover:text-red-600 btn-delete-produto mr-3" data-nome="{{ $produto->nome }}">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
                                     <span class="text-gray-400"><i class="fa-solid fa-chevron-right"></i></span>
                                 </td>
                             </tr>
@@ -93,11 +111,50 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="mt-4">
+                {{ $produtos->links() }}
+            </div>
         @endif
     </div>
 
     @push('scripts')
     <script type="module">
+    (function () {
+        const inputBuscaProdutos = document.getElementById('input-busca-produtos');
+        if (inputBuscaProdutos) {
+            let timerBusca = null;
+            inputBuscaProdutos.addEventListener('input', function () {
+                clearTimeout(timerBusca);
+                timerBusca = setTimeout(function () {
+                    document.getElementById('form-filtros-produtos-precificacao').submit();
+                }, 500);
+            });
+        }
+    })();
+
+    document.querySelectorAll('.btn-delete-produto').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const nome = btn.dataset.nome;
+            const form = btn.closest('form');
+
+            Swal.fire({
+                title: 'Excluir produto?',
+                text: `Tem certeza que deseja excluir "${nome}"? Todos os cenários dele também serão excluídos. Esta ação não pode ser desfeita.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Sim, excluir',
+                cancelButtonText: 'Cancelar',
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+
     (function () {
         const buscaInput = document.getElementById('busca-cliente');
         const lista = document.getElementById('lista-resultados-cliente');
