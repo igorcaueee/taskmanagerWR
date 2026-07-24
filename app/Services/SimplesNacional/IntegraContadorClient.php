@@ -35,7 +35,7 @@ class IntegraContadorClient
      * @param  string  $metodoGateway  ex.: 'Consultar', 'Declarar', 'Emitir'
      * @param  array  $dados  payload específico do serviço (idServico)
      */
-    public function chamarServico(string $metodoGateway, string $idServico, string $versaoSistema, Cliente $cliente, array $dados, bool $tentandoNovamente = false): array
+    public function chamarServico(string $metodoGateway, string $idServico, string $versaoSistema, Cliente $cliente, array $dados, bool $tentandoNovamente = false, string $idSistema = self::ID_SISTEMA): array
     {
         $config = IntegraContadorConfiguracao::first();
 
@@ -55,10 +55,13 @@ class IntegraContadorClient
             'autorPedidoDados' => ['numero' => $cnpjEscritorio, 'tipo' => 2],
             'contribuinte' => ['numero' => $cnpjCliente, 'tipo' => 2],
             'pedidoDados' => [
-                'idSistema' => self::ID_SISTEMA,
+                'idSistema' => $idSistema,
                 'idServico' => $idServico,
                 'versaoSistema' => $versaoSistema,
-                'dados' => json_encode($dados, JSON_UNESCAPED_UNICODE),
+                // Alguns serviços sem parâmetro de entrada (ex.: PEDIDOSPARC163 do
+                // Integra-Parcelamento) documentam "dados":"" literal, não "{}" —
+                // json_encode([]) daria "[]", que quebraria esses serviços.
+                'dados' => empty($dados) ? '' : json_encode($dados, JSON_UNESCAPED_UNICODE),
             ],
         ];
 
@@ -77,7 +80,7 @@ class IntegraContadorClient
             Log::info('[IntegraContador] chamarServico: token expirado, reautenticando');
             $this->auth->invalidarTokens();
 
-            return $this->chamarServico($metodoGateway, $idServico, $versaoSistema, $cliente, $dados, tentandoNovamente: true);
+            return $this->chamarServico($metodoGateway, $idServico, $versaoSistema, $cliente, $dados, tentandoNovamente: true, idSistema: $idSistema);
         }
 
         if ($resposta->failed()) {

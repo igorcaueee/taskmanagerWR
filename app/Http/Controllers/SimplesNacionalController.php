@@ -4,15 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\ClienteDadosSimples;
+use App\Models\DefisDeclaracao;
+use App\Models\DefisSocio;
 use App\Models\IntegraContadorConfiguracao;
 use App\Models\SimplesDasProcessamento;
 use App\Models\SimplesReceitaAtividade;
 use App\Models\SimplesReceitaMensal;
 use App\Services\CnpjPublicoService;
 use App\Services\NfseService;
+use App\Services\SimplesNacional\CaixaPostalService;
+use App\Services\SimplesNacional\DefisService;
 use App\Services\SimplesNacional\DominioImportParser;
 use App\Services\SimplesNacional\IntegraContadorAuthService;
+use App\Services\SimplesNacional\MitService;
+use App\Services\SimplesNacional\ParcelamentoService;
 use App\Services\SimplesNacional\PgdasdService;
+use App\Services\SimplesNacional\ProcuracoesService;
+use App\Services\SimplesNacional\SitfisService;
 use App\Support\PgdasdAtividades;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +34,102 @@ class SimplesNacionalController extends Controller
         private DominioImportParser $dominioParser,
     ) {}
 
-    public function index(Request $request)
+    /**
+     * Hub — grid de atalhos para cada módulo (cada um em sua própria tela,
+     * ver telaConfiguracao/telaImportarDominio/etc.).
+     */
+    public function index()
+    {
+        return view('simples-nacional.hub');
+    }
+
+    private function clientesSimplesAtivos()
+    {
+        return Cliente::where('regime_tributario', 'Simples Nacional')
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'cpfcnpj']);
+    }
+
+    /**
+     * Clientes ativos de qualquer regime tributário — usado pelas telas que
+     * não são exclusivas do Simples Nacional (Caixa Postal, SITFIS,
+     * Procurações, MIT: consultas gerais da Receita Federal que valem pra
+     * qualquer CNPJ, ex.: MIT é mais comum em Lucro Real/Presumido).
+     */
+    private function clientesAtivos()
+    {
+        return Cliente::where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'cpfcnpj']);
+    }
+
+    public function telaConfiguracao()
+    {
+        return view('simples-nacional.configuracao');
+    }
+
+    public function telaImportarDominio()
+    {
+        return view('simples-nacional.importar-dominio', [
+            'atividadesCatalogo' => PgdasdAtividades::catalogo(),
+            'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
+        ]);
+    }
+
+    public function telaDeclaracoes()
+    {
+        return view('simples-nacional.declaracoes', [
+            'clientes' => $this->clientesSimplesAtivos(),
+            'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
+        ]);
+    }
+
+    public function telaParcelamentos()
+    {
+        return view('simples-nacional.parcelamentos', ['clientes' => $this->clientesSimplesAtivos()]);
+    }
+
+    public function telaDefis()
+    {
+        return view('simples-nacional.defis', ['clientes' => $this->clientesSimplesAtivos()]);
+    }
+
+    public function telaDefisTransmitir()
+    {
+        return view('simples-nacional.defis-transmitir', ['clientes' => $this->clientesSimplesAtivos()]);
+    }
+
+    public function telaTransmitir()
+    {
+        return view('simples-nacional.transmitir', [
+            'clientes' => $this->clientesSimplesAtivos(),
+            'atividadesCatalogo' => PgdasdAtividades::catalogo(),
+            'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
+        ]);
+    }
+
+    public function telaCaixaPostal()
+    {
+        return view('simples-nacional.caixa-postal', ['clientes' => $this->clientesAtivos()]);
+    }
+
+    public function telaSitfis()
+    {
+        return view('simples-nacional.sitfis', ['clientes' => $this->clientesAtivos()]);
+    }
+
+    public function telaProcuracoes()
+    {
+        return view('simples-nacional.procuracoes', ['clientes' => $this->clientesAtivos()]);
+    }
+
+    public function telaMit()
+    {
+        return view('simples-nacional.mit', ['clientes' => $this->clientesAtivos()]);
+    }
+
+    public function telaProcessamentos(Request $request)
     {
         $periodo = $request->get('periodo', now()->subMonthNoOverflow()->format('Ym'));
 
@@ -37,15 +140,7 @@ class SimplesNacionalController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        $clientes = Cliente::where('regime_tributario', 'Simples Nacional')
-            ->where('status', 'ativo')
-            ->orderBy('nome')
-            ->get(['id', 'nome', 'cpfcnpj']);
-
-        $atividadesCatalogo = PgdasdAtividades::catalogo();
-        $nomesTributos = PgdasdAtividades::NOMES_TRIBUTOS;
-
-        return view('simples-nacional.index', compact('processamentos', 'periodo', 'clientes', 'atividadesCatalogo', 'nomesTributos'));
+        return view('simples-nacional.processamentos', compact('processamentos', 'periodo'));
     }
 
     /**
@@ -181,6 +276,104 @@ class SimplesNacionalController extends Controller
     }
 
     /**
+     * Lista o histórico de parcelamentos PARCSN do cliente (PEDIDOSPARC163),
+     * com a situação de cada um — é o ponto de partida para achar qual
+     * parcelamento está ativo/com gargalo.
+     */
+    public function consultarParcelamentosPedidos(Request $request, ParcelamentoService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $parcelamento->consultarPedidos($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $pedidos = array_is_list($dados) ? $dados : ($dados['pedidos'] ?? $dados['parcelamentos'] ?? []);
+
+        return response()->json(['success' => true, 'pedidos' => $pedidos]);
+    }
+
+    /**
+     * Detalha um parcelamento específico (OBTERPARC164): consolidação
+     * original e demonstrativo de pagamentos mês a mês.
+     */
+    public function consultarParcelamentoDetalhe(Request $request, ParcelamentoService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'numero_parcelamento' => 'required|string',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $parcelamento->consultarParcelamento($cliente, $validated['numero_parcelamento']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json(['success' => true, 'parcelamento' => $dados]);
+    }
+
+    /**
+     * Lista as parcelas do parcelamento ativo do cliente ainda pendentes de
+     * emissão/pagamento (PARCELASPARAGERAR162) — a fila de gargalo em si.
+     */
+    public function consultarParcelasPendentes(Request $request, ParcelamentoService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $parcelamento->consultarParcelasParaImpressao($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json(['success' => true, 'parcelas' => $dados['listaParcelas'] ?? []]);
+    }
+
+    /**
+     * Emite o DAS de uma parcela pendente (GERARDAS161) — o campo do PDF vem
+     * como "docArrecadacaoPdfB64" (ver buscarCampoPdf), sem "nomeArquivo".
+     */
+    public function emitirDasParcelamento(Request $request, ParcelamentoService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'parcela' => 'required|digits:6',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $parcelamento->emitirDas($cliente, $validated['parcela']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $nomeArquivo = "DAS-PARCELAMENTO-{$validated['parcela']}-{$cliente->id}.pdf";
+        $arquivo = $this->extrairPdfAvulso($dados, $nomeArquivo);
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
      * Salva um PDF base64 avulso (sem "nomeArquivo" acompanhando, diferente do
      * padrão do CONSDECREC15/CONSEXTRATO16) e devolve o link de download.
      */
@@ -198,6 +391,16 @@ class SimplesNacionalController extends Controller
             return null;
         }
 
+        return $this->salvarPdfBase64($pdfBase64, $nomeArquivo);
+    }
+
+    /**
+     * Decodifica e salva um PDF base64 já identificado (sem precisar procurar
+     * o campo recursivamente) — usado quando a resposta tem múltiplos PDFs em
+     * campos com nomes fixos conhecidos (ex.: DEFIS: "reciboPdf"/"declaracaoPdf").
+     */
+    private function salvarPdfBase64(string $pdfBase64, string $nomeArquivo): array
+    {
         $dir = 'integracontador/testes';
         $destPath = storage_path("app/{$dir}");
 
@@ -218,6 +421,12 @@ class SimplesNacionalController extends Controller
     {
         if (! empty($dados['pdf']) && is_string($dados['pdf'])) {
             return $dados['pdf'];
+        }
+
+        // Campo usado pelo Integra-Parcelamento (ex.: GERARDAS161 do PARCSN),
+        // nome diferente do "pdf" do PGDASD.
+        if (! empty($dados['docArrecadacaoPdfB64']) && is_string($dados['docArrecadacaoPdfB64'])) {
+            return $dados['docArrecadacaoPdfB64'];
         }
 
         foreach ($dados as $valor) {
@@ -782,6 +991,449 @@ class SimplesNacionalController extends Controller
             'dados_sem_pdf' => $this->removerCamposPdf($dados),
             'arquivos' => $arquivos,
         ]);
+    }
+
+    /**
+     * Lista as declarações DEFIS já transmitidas pelo cliente (CONSDECLARACAO142).
+     */
+    public function consultarDeclaracoesDefis(Request $request, DefisService $defis): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $defis->consultarDeclaracoes($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $declaracoes = array_is_list($dados) ? $dados : ($dados['declaracoes'] ?? []);
+
+        usort($declaracoes, fn ($a, $b) => ($b['anoCalendario'] ?? 0) <=> ($a['anoCalendario'] ?? 0));
+
+        return response()->json(['success' => true, 'declaracoes' => $declaracoes]);
+    }
+
+    /**
+     * Busca o recibo e a declaração completa (PDFs) de uma DEFIS específica
+     * (CONSDECREC144) — campos "reciboPdf"/"declaracaoPdf", sem "nomeArquivo".
+     */
+    public function buscarReciboDefis(Request $request, DefisService $defis): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'id_defis' => 'required|string',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $defis->consultarDeclaracaoRecibo($cliente, $validated['id_defis']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $arquivos = [];
+
+        if (! empty($dados['reciboPdf'])) {
+            $arquivos[] = $this->salvarPdfBase64($dados['reciboPdf'], "DEFIS-{$validated['id_defis']}-recibo.pdf");
+        }
+
+        if (! empty($dados['declaracaoPdf'])) {
+            $arquivos[] = $this->salvarPdfBase64($dados['declaracaoPdf'], "DEFIS-{$validated['id_defis']}-declaracao.pdf");
+        }
+
+        return response()->json(['success' => true, 'arquivos' => $arquivos]);
+    }
+
+    /**
+     * Busca o rascunho de DEFIS do cliente/ano (ou vazio, se ainda não existe).
+     */
+    public function getDefisDados(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_calendario' => 'required|digits:4',
+        ]);
+
+        $declaracao = DefisDeclaracao::with('socios')
+            ->where('cliente_id', $validated['cliente_id'])
+            ->where('ano_calendario', $validated['ano_calendario'])
+            ->first();
+
+        if (! $declaracao) {
+            return response()->json(['declaracao' => null]);
+        }
+
+        return response()->json([
+            'declaracao' => $declaracao,
+            'socios' => $declaracao->socios,
+        ]);
+    }
+
+    /**
+     * Salva (substituindo por completo) o rascunho de DEFIS do cliente/ano —
+     * cabeçalho + lista de sócios. Não transmite nada, só persiste localmente.
+     */
+    public function salvarDefisDados(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_calendario' => 'required|digits:4',
+            'inatividade' => 'nullable|integer|in:0,1,2',
+            'ganho_capital' => 'required|numeric|min:0',
+            'qtd_empregado_inicial' => 'required|integer|min:0',
+            'qtd_empregado_final' => 'required|integer|min:0',
+            'lucro_contabil' => 'nullable|numeric|min:0',
+            'receita_exportacao_direta' => 'required|numeric|min:0',
+            'participacao_cotas_tesouraria' => 'nullable|numeric|min:0',
+            'ganho_renda_variavel' => 'required|numeric|min:0',
+            'estoque_inicial' => 'required|numeric|min:0',
+            'estoque_final' => 'required|numeric|min:0',
+            'saldo_caixa_inicial' => 'required|numeric|min:0',
+            'saldo_caixa_final' => 'required|numeric|min:0',
+            'aquisicoes_mercado_interno' => 'required|numeric|min:0',
+            'importacoes' => 'required|numeric|min:0',
+            'total_entradas_por_transferencia' => 'required|numeric|min:0',
+            'total_saidas_por_transferencia' => 'required|numeric|min:0',
+            'total_devolucoes_vendas' => 'required|numeric|min:0',
+            'total_entradas' => 'required|numeric|min:0',
+            'total_devolucoes_compras' => 'required|numeric|min:0',
+            'total_despesas' => 'required|numeric|min:0',
+            'iss_retidos_fonte' => 'nullable|numeric|min:0',
+            'prestacoes_servico_comunicacao' => 'nullable|numeric|min:0',
+            'prestacoes_servico_transporte' => 'nullable|numeric|min:0',
+            'socios' => 'required|array|min:1',
+            'socios.*.cpf' => 'required|digits:11',
+            'socios.*.rendimentos_isentos' => 'required|numeric|min:0',
+            'socios.*.rendimentos_tributaveis' => 'required|numeric|min:0',
+            'socios.*.participacao_capital_social' => 'required|numeric|min:0|max:100',
+            'socios.*.ir_retido_fonte' => 'required|numeric|min:0',
+        ]);
+
+        $declaracao = DB::transaction(function () use ($validated) {
+            $cabecalho = collect($validated)->except(['socios'])->all();
+
+            $declaracao = DefisDeclaracao::updateOrCreate(
+                ['cliente_id' => $validated['cliente_id'], 'ano_calendario' => $validated['ano_calendario']],
+                $cabecalho
+            );
+
+            $declaracao->socios()->delete();
+
+            foreach ($validated['socios'] as $socio) {
+                $declaracao->socios()->create($socio);
+            }
+
+            return $declaracao;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rascunho da DEFIS salvo com sucesso.',
+            'declaracao_id' => $declaracao->id,
+        ]);
+    }
+
+    /**
+     * Transmite a DEFIS de verdade a partir do rascunho já salvo — cria uma
+     * declaração fiscal REAL perante a Receita Federal, irreversível.
+     */
+    public function transmitirDefis(Request $request, DefisService $defis): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_calendario' => 'required|digits:4',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        $declaracao = DefisDeclaracao::with('socios')
+            ->where('cliente_id', $validated['cliente_id'])
+            ->where('ano_calendario', $validated['ano_calendario'])
+            ->first();
+
+        if (! $declaracao) {
+            return response()->json(['error' => 'Salve o rascunho da DEFIS antes de transmitir.'], 422);
+        }
+
+        try {
+            $declaracao = $defis->transmitirDefisDoCliente($cliente, $declaracao);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        if ($declaracao->status === 'erro') {
+            return response()->json(['error' => $declaracao->mensagem_erro], 422);
+        }
+
+        // Reaproveita a consulta já confirmada (CONSDECREC144) pra pegar os PDFs,
+        // em vez de confiar num parsing novo/não confirmado direto da resposta
+        // da própria transmissão.
+        $arquivos = [];
+
+        if ($declaracao->id_defis) {
+            try {
+                $respostaRecibo = $defis->consultarDeclaracaoRecibo($cliente, $declaracao->id_defis);
+                $dadosRecibo = json_decode($respostaRecibo['dados'] ?? '{}', true) ?? [];
+
+                if (! empty($dadosRecibo['reciboPdf'])) {
+                    $arquivos[] = $this->salvarPdfBase64($dadosRecibo['reciboPdf'], "DEFIS-{$declaracao->id_defis}-recibo.pdf");
+                }
+
+                if (! empty($dadosRecibo['declaracaoPdf'])) {
+                    $arquivos[] = $this->salvarPdfBase64($dadosRecibo['declaracaoPdf'], "DEFIS-{$declaracao->id_defis}-declaracao.pdf");
+                }
+            } catch (\Throwable $e) {
+                // A transmissão já teve sucesso — não falha a resposta só porque
+                // buscar o PDF do recibo em seguida deu erro (ex.: SERPRO ainda
+                // processando). O usuário pode baixar depois pela tela de consulta.
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "DEFIS transmitida com sucesso — idDefis: {$declaracao->id_defis}",
+            'id_defis' => $declaracao->id_defis,
+            'arquivos' => $arquivos,
+        ]);
+    }
+
+    /**
+     * Lista mensagens da caixa postal do cliente (MSGCONTRIBUINTE61), paginado.
+     */
+    public function consultarMensagensCaixaPostal(Request $request, CaixaPostalService $caixaPostal): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ponteiro_pagina' => 'nullable|string',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $caixaPostal->obterListaMensagens($cliente, $validated['ponteiro_pagina'] ?? null);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $conteudo = $dados['conteudo'][0] ?? [];
+
+        return response()->json([
+            'success' => true,
+            'mensagens' => $conteudo['listaMensagens'] ?? [],
+            'indicador_ultima_pagina' => $conteudo['indicadorUltimaPagina'] ?? 'S',
+            'ponteiro_proxima_pagina' => $conteudo['ponteiroProximaPagina'] ?? null,
+        ]);
+    }
+
+    /**
+     * Detalhes de uma mensagem específica (MSGDETALHAMENTO62) — corpo em HTML.
+     */
+    public function consultarDetalheMensagemCaixaPostal(Request $request, CaixaPostalService $caixaPostal): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'isn' => 'required|string',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $caixaPostal->obterDetalhesMensagem($cliente, $validated['isn']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $conteudo = $dados['conteudo'][0] ?? $dados['conteudo'] ?? [];
+
+        return response()->json(['success' => true, 'mensagem' => $conteudo]);
+    }
+
+    /**
+     * Indicador rápido de mensagens novas (INNOVAMSG63) — 0/1/2.
+     */
+    public function consultarIndicadorNovasCaixaPostal(Request $request, CaixaPostalService $caixaPostal): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $caixaPostal->obterIndicadorNovasMensagens($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $conteudo = $dados['conteudo'][0] ?? $dados;
+
+        return response()->json(['success' => true, 'indicador' => $conteudo]);
+    }
+
+    /**
+     * Solicita o protocolo do relatório SITFIS (SOLICITARPROTOCOLO91) —
+     * primeiro passo do fluxo assíncrono.
+     */
+    public function solicitarSitfis(Request $request, SitfisService $sitfis): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $sitfis->solicitarProtocolo($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json([
+            'success' => true,
+            'protocolo' => $dados['protocoloRelatorio'] ?? null,
+            'tempo_espera_ms' => $dados['tempoEspera'] ?? 4000,
+        ]);
+    }
+
+    /**
+     * Tenta emitir o relatório com o protocolo já obtido (RELATORIOSITFIS92)
+     * — pode responder "ainda não pronto", quem chama decide se tenta de
+     * novo (ver SitfisService::extrairResultado).
+     */
+    public function emitirSitfis(Request $request, SitfisService $sitfis): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'protocolo' => 'required|string',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $sitfis->emitirRelatorio($cliente, $validated['protocolo']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $resultado = $sitfis->extrairResultado($resposta);
+
+        if (!$resultado['pronto']) {
+            return response()->json(['success' => true, 'pronto' => false, 'tempo_espera_ms' => $resultado['tempo_espera_ms']]);
+        }
+
+        $nomeArquivo = "SITFIS-{$cliente->id}.pdf";
+        $arquivo = $this->salvarPdfBase64($resultado['pdf'], $nomeArquivo);
+
+        return response()->json(['success' => true, 'pronto' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
+     * Consulta se o cliente tem procuração eletrônica ativa em nome do
+     * escritório e para quais sistemas (OBTERPROCURACAO41).
+     */
+    public function consultarProcuracao(Request $request, ProcuracoesService $procuracoes): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $procuracoes->obterProcuracao($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '[]', true) ?? [];
+
+        return response()->json([
+            'success' => true,
+            'cliente' => ['id' => $cliente->id, 'nome' => $cliente->nome, 'cpfcnpj' => $cliente->cpfcnpj],
+            'procuracoes' => $dados,
+        ]);
+    }
+
+    /**
+     * Lista as apurações MIT do cliente por ano (e opcionalmente mês/situação)
+     * — LISTAAPURACOES317.
+     */
+    public function consultarApuracoesMit(Request $request, MitService $mit): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_apuracao' => 'required|digits:4',
+            'mes_apuracao' => 'nullable|integer|between:1,12',
+            'situacao_apuracao' => 'nullable|integer|between:1,4',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $mit->listarApuracoes(
+                $cliente,
+                (int) $validated['ano_apuracao'],
+                isset($validated['mes_apuracao']) ? (int) $validated['mes_apuracao'] : null,
+                isset($validated['situacao_apuracao']) ? (int) $validated['situacao_apuracao'] : null,
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json([
+            'success' => true,
+            'apuracoes' => $dados['Apuracoes'] ?? $dados['apuracoes'] ?? [],
+        ]);
+    }
+
+    /**
+     * Detalha uma apuração MIT específica (débitos por tributo, suspensões
+     * etc.) — CONSAPURACAO316.
+     */
+    public function consultarApuracaoMitDetalhe(Request $request, MitService $mit): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'id_apuracao' => 'required|integer',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $mit->consultarApuracao($cliente, (int) $validated['id_apuracao']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json(['success' => true, 'apuracao' => $dados]);
     }
 
     public function downloadTeste(string $arquivo)

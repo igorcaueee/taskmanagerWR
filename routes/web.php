@@ -360,6 +360,18 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
 // Simples Nacional — processamento do DAS via Integra Contador (SERPRO)
 Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')->group(function () {
     Route::get('/', [SimplesNacionalController::class, 'index'])->name('index');
+    Route::get('/configuracao/tela', [SimplesNacionalController::class, 'telaConfiguracao'])->name('configuracao.tela');
+    Route::get('/importar-dominio/tela', [SimplesNacionalController::class, 'telaImportarDominio'])->name('importar-dominio.tela');
+    Route::get('/declaracoes/tela', [SimplesNacionalController::class, 'telaDeclaracoes'])->name('declaracoes.tela');
+    Route::get('/parcelamentos/tela', [SimplesNacionalController::class, 'telaParcelamentos'])->name('parcelamentos.tela');
+    Route::get('/defis/tela', [SimplesNacionalController::class, 'telaDefis'])->name('defis.tela');
+    Route::get('/defis-transmitir/tela', [SimplesNacionalController::class, 'telaDefisTransmitir'])->name('defis-transmitir.tela');
+    Route::get('/transmitir/tela', [SimplesNacionalController::class, 'telaTransmitir'])->name('transmitir.tela');
+    Route::get('/caixa-postal/tela', [SimplesNacionalController::class, 'telaCaixaPostal'])->name('caixa-postal.tela');
+    Route::get('/sitfis/tela', [SimplesNacionalController::class, 'telaSitfis'])->name('sitfis.tela');
+    Route::get('/procuracoes/tela', [SimplesNacionalController::class, 'telaProcuracoes'])->name('procuracoes.tela');
+    Route::get('/mit/tela', [SimplesNacionalController::class, 'telaMit'])->name('mit.tela');
+    Route::get('/processamentos', [SimplesNacionalController::class, 'telaProcessamentos'])->name('processamentos');
     Route::get('/configuracao', [SimplesNacionalController::class, 'getConfiguracao'])->name('configuracao.get');
     Route::post('/configuracao', [SimplesNacionalController::class, 'salvarConfiguracao'])->name('configuracao.salvar');
     Route::post('/configuracao/testar', [SimplesNacionalController::class, 'testarConexao'])->name('configuracao.testar');
@@ -380,6 +392,23 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::post('/importar-dominio/previa', [SimplesNacionalController::class, 'previaImportacaoDominio'])->name('importar-dominio.previa');
     Route::post('/importar-dominio/confirmar', [SimplesNacionalController::class, 'confirmarImportacaoDominio'])->name('importar-dominio.confirmar');
     Route::post('/transmitir', [SimplesNacionalController::class, 'transmitir'])->name('transmitir');
+    Route::get('/parcelamentos/pedidos', [SimplesNacionalController::class, 'consultarParcelamentosPedidos'])->name('parcelamentos.pedidos');
+    Route::post('/parcelamentos/detalhe', [SimplesNacionalController::class, 'consultarParcelamentoDetalhe'])->name('parcelamentos.detalhe');
+    Route::get('/parcelamentos/pendentes', [SimplesNacionalController::class, 'consultarParcelasPendentes'])->name('parcelamentos.pendentes');
+    Route::post('/parcelamentos/emitir-das', [SimplesNacionalController::class, 'emitirDasParcelamento'])->name('parcelamentos.emitir-das');
+    Route::get('/defis/declaracoes', [SimplesNacionalController::class, 'consultarDeclaracoesDefis'])->name('defis.declaracoes');
+    Route::post('/defis/recibo', [SimplesNacionalController::class, 'buscarReciboDefis'])->name('defis.recibo');
+    Route::get('/defis/dados', [SimplesNacionalController::class, 'getDefisDados'])->name('defis.dados.get');
+    Route::post('/defis/dados', [SimplesNacionalController::class, 'salvarDefisDados'])->name('defis.dados.salvar');
+    Route::post('/defis/transmitir', [SimplesNacionalController::class, 'transmitirDefis'])->name('defis.transmitir');
+    Route::get('/caixa-postal/mensagens', [SimplesNacionalController::class, 'consultarMensagensCaixaPostal'])->name('caixa-postal.mensagens');
+    Route::post('/caixa-postal/mensagem', [SimplesNacionalController::class, 'consultarDetalheMensagemCaixaPostal'])->name('caixa-postal.mensagem');
+    Route::get('/caixa-postal/indicador', [SimplesNacionalController::class, 'consultarIndicadorNovasCaixaPostal'])->name('caixa-postal.indicador');
+    Route::post('/sitfis/solicitar', [SimplesNacionalController::class, 'solicitarSitfis'])->name('sitfis.solicitar');
+    Route::post('/sitfis/emitir', [SimplesNacionalController::class, 'emitirSitfis'])->name('sitfis.emitir');
+    Route::get('/procuracoes/consultar', [SimplesNacionalController::class, 'consultarProcuracao'])->name('procuracoes.consultar');
+    Route::get('/mit/apuracoes', [SimplesNacionalController::class, 'consultarApuracoesMit'])->name('mit.apuracoes');
+    Route::post('/mit/apuracao', [SimplesNacionalController::class, 'consultarApuracaoMitDetalhe'])->name('mit.apuracao');
 });
 
 // NF-e / CT-e — Distribuição DFe (Ambiente Nacional)
