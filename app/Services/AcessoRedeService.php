@@ -10,7 +10,7 @@ class AcessoRedeService
 {
     public function acessoPermitido(Usuario $usuario, string $ip): bool
     {
-        if ($usuario->isDiretor()) {
+        if ($usuario->isDiretor() || $usuario->isTi()) {
             return true;
         }
 

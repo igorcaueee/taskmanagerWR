@@ -102,6 +102,11 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
+    public function isTi(): bool
+    {
+        return $this->cargo === 'ti';
+    }
+
     public function departamento(): BelongsTo
     {
         return $this->belongsTo(Departamento::class);
