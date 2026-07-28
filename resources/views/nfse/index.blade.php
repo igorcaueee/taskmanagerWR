@@ -503,6 +503,60 @@
     // ─── Busca ───────────────────────────────────────────────────────────────
     btnBuscar.addEventListener('click', buscar);
 
+    // Limite de segurança de páginas (chunks) por busca — evita loop infinito
+    // em caso de bug de paginação. 400 chunks * 12 lotes = 4800 lotes, bem
+    // acima do necessário mesmo para as empresas maiores.
+    const NFSE_MAX_CHUNKS = 400;
+
+    /**
+     * Busca um chunk de NSUs. Lança Error com mensagem pronta pra exibir em
+     * caso de falha (HTTP não-2xx, JSON inválido, ou erro reportado pela API).
+     */
+    async function buscarChunkNfse(clienteId, dataInicioVal, dataFimVal, nsuInicio) {
+        const controller = new AbortController();
+        // Cada chunk processa poucos lotes — 90s é folga suficiente e fica
+        // abaixo do timeout de proxy/CDN (Cloudflare derruba em ~100s com HTTP 524).
+        const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
+        let resp;
+        try {
+            resp = await fetch('/nfse/buscar', {
+                method: 'POST',
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify({
+                    cliente_id:  clienteId,
+                    data_inicio: dataInicioVal,
+                    data_fim:    dataFimVal,
+                    nsu_inicio:  nsuInicio,
+                }),
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        // Lê como texto primeiro para diagnóstico em caso de resposta inválida
+        const texto = await resp.text();
+        let data;
+        try {
+            data = JSON.parse(texto);
+        } catch (_) {
+            console.error('[NFS-e] Resposta não-JSON recebida:', texto.substring(0, 1000));
+            throw new Error(`Resposta inválida do servidor (HTTP ${resp.status}, não-JSON). Verifique o console do navegador (F12) para detalhes.`);
+        }
+
+        if (!resp.ok || data.error) {
+            console.error('[NFS-e] Resposta de erro:', resp.status, data);
+            throw new Error(data.error ?? data.message ?? `Erro desconhecido (HTTP ${resp.status}).`);
+        }
+
+        return data;
+    }
+
     async function buscar() {
         const clienteId = selectCliente.value;
 
@@ -522,62 +576,57 @@
         btnBuscar.disabled = true;
         document.getElementById('btnBuscarLabel').textContent = 'Buscando...';
 
-        // Contador de tempo decorrido — empresas grandes podem levar minutos
-        // e sem isso a tela parece travada.
+        // Contador de tempo decorrido + progresso — a busca é feita em várias
+        // chamadas (chunks) pra não estourar o timeout do proxy/CDN, então sem
+        // isso a tela parece travada em empresas grandes.
         const loadingTempoEl = document.getElementById('loadingTempo');
         const inicioBusca    = Date.now();
-        const intervalTempo  = setInterval(() => {
+        let notasEncontradasAteAgora = 0;
+        const atualizarLoadingTexto = () => {
             const s = Math.floor((Date.now() - inicioBusca) / 1000);
             const m = Math.floor(s / 60);
             const rest = String(s % 60).padStart(2, '0');
-            loadingTempoEl.textContent = `Buscando há ${m}:${rest}... empresas com muitas notas podem levar alguns minutos.`;
-        }, 1000);
+            loadingTempoEl.textContent =
+                `Buscando há ${m}:${rest}... ${notasEncontradasAteAgora} nota(s) encontrada(s) até agora.`;
+        };
+        const intervalTempo = setInterval(atualizarLoadingTexto, 1000);
 
         try {
-            const controller = new AbortController();
-            const timeoutId  = setTimeout(() => controller.abort(), 600_000); // 10 min
+            let notasAcumuladas       = [];
+            const canceledChavesTodas = new Set();
+            let nsuAtual              = 0;
+            let concluido             = false;
+            let chunks                = 0;
 
-            const resp = await fetch('/nfse/buscar', {
-                method: 'POST',
-                signal: controller.signal,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': CSRF,
-                },
-                body: JSON.stringify({
-                    cliente_id:  clienteId,
-                    data_inicio: dataInicio.value,
-                    data_fim:    dataFim.value,
-                }),
-            });
-            clearTimeout(timeoutId);
+            while (!concluido) {
+                chunks++;
+                if (chunks > NFSE_MAX_CHUNKS) {
+                    throw new Error('A busca excedeu o limite de páginas de segurança. Tente reduzir o período pesquisado.');
+                }
 
-            // Lê como texto primeiro para diagnóstico em caso de resposta inválida
-            const texto = await resp.text();
-            let data;
-            try {
-                data = JSON.parse(texto);
-            } catch (_) {
-                console.error('[NFS-e] Resposta não-JSON recebida:', texto.substring(0, 1000));
-                esconderTodosEstados();
-                estadoErro.classList.remove('hidden');
-                document.getElementById('erroMsg').textContent =
-                    `Resposta inválida do servidor (HTTP ${resp.status}, não-JSON). Verifique o console do navegador (F12) para detalhes.`;
-                return;
+                const data = await buscarChunkNfse(clienteId, dataInicio.value, dataFim.value, nsuAtual);
+
+                notasAcumuladas = notasAcumuladas.concat(data.notas ?? []);
+                (data.canceled_chaves ?? []).forEach(c => canceledChavesTodas.add(c));
+                nsuAtual   = data.proximo_nsu ?? nsuAtual;
+                concluido  = !!data.concluido;
+
+                notasEncontradasAteAgora = notasAcumuladas.length;
+                atualizarLoadingTexto();
+            }
+
+            // Cancelamentos podem ter sido encontrados num chunk posterior ao
+            // da nota original — reaplica em toda a lista acumulada.
+            if (canceledChavesTodas.size > 0) {
+                notasAcumuladas.forEach(nota => {
+                    if (nota.chaveAcesso && canceledChavesTodas.has(nota.chaveAcesso)) {
+                        nota.status = 'CANCELADA';
+                    }
+                });
             }
 
             esconderTodosEstados();
-
-            if (!resp.ok || data.error) {
-                estadoErro.classList.remove('hidden');
-                document.getElementById('erroMsg').textContent =
-                    data.error ?? data.message ?? `Erro desconhecido (HTTP ${resp.status}).`;
-                console.error('[NFS-e] Resposta de erro:', resp.status, data);
-                return;
-            }
-
-            notasAtuais = data.notas ?? [];
+            notasAtuais = notasAcumuladas;
 
             if (notasAtuais.length === 0) {
                 estadoVazio.classList.remove('hidden');
@@ -593,8 +642,8 @@
             esconderTodosEstados();
             estadoErro.classList.remove('hidden');
             const msg = e.name === 'AbortError'
-                ? 'Tempo limite excedido (10 min). A busca pode continuar em segundo plano — tente novamente em instantes.'
-                : 'Erro de comunicação: ' + e.message;
+                ? 'Tempo limite excedido numa das páginas da busca. Tente novamente em instantes.'
+                : e.message;
             document.getElementById('erroMsg').textContent = msg;
         } finally {
             clearInterval(intervalTempo);

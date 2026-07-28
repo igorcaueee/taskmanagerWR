@@ -120,13 +120,23 @@ class NfseController extends Controller
 
     // ─── Busca de NFS-e ──────────────────────────────────────────────────────
 
+    /**
+     * Busca uma fatia (chunk) de NFS-e. O front-end chama esta rota repetidas
+     * vezes, passando 'nsu_inicio' = 'proximo_nsu' da resposta anterior, até
+     * receber 'concluido' = true — cada chamada fica curta o suficiente para
+     * não esbarrar no timeout de proxy/CDN (Cloudflare derruba com HTTP 524
+     * conexões que o backend demora demais pra responder).
+     */
     public function buscar(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'cliente_id'  => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'nsu_inicio'  => 'sometimes|integer|min:0',
         ]);
+
+        $nsuInicio = (int) ($validated['nsu_inicio'] ?? 0);
 
         $cert = ClienteCertificadoNfse::with('cliente')->where('cliente_id', $validated['cliente_id'])->first();
 
@@ -134,32 +144,42 @@ class NfseController extends Controller
             return response()->json(['error' => 'Certificado digital não configurado para este cliente. Configure-o antes de buscar.'], 422);
         }
 
-        Log::info('[NFS-e] buscar: iniciando', [
+        Log::info('[NFS-e] buscar: iniciando chunk', [
             'cliente_id'  => $validated['cliente_id'],
             'data_inicio' => $validated['data_inicio'],
             'data_fim'    => $validated['data_fim'],
-            'ultimo_nsu'  => $cert->ultimo_nsu,
+            'nsu_inicio'  => $nsuInicio,
             'ambiente'    => $cert->ambiente,
         ]);
 
         try {
-            $notas = $this->nfse->buscarPorPeriodo($cert, $validated['data_inicio'], $validated['data_fim']);
+            $resultado = $this->nfse->buscarPorPeriodoChunk($cert, $validated['data_inicio'], $validated['data_fim'], $nsuInicio);
 
-            Log::info('[NFS-e] buscar: concluído', ['total' => count($notas)]);
+            Log::info('[NFS-e] buscar: chunk concluído', [
+                'total'       => count($resultado['notas']),
+                'proximo_nsu' => $resultado['proximoNsu'],
+                'concluido'   => $resultado['concluido'],
+            ]);
+
+            $payload = [
+                'success'        => true,
+                'total'          => count($resultado['notas']),
+                'notas'          => $resultado['notas'],
+                'proximo_nsu'    => $resultado['proximoNsu'],
+                'concluido'      => $resultado['concluido'],
+                'canceled_chaves' => $resultado['canceledChaves'],
+            ];
 
             // Verifica se json_encode consegue serializar — falha com UTF-8 inválido
-            $payload = ['success' => true, 'total' => count($notas), 'notas' => $notas];
             $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             if ($encoded === false) {
                 Log::error('[NFS-e] buscar: json_encode falhou', [
                     'erro'    => json_last_error_msg(),
-                    'amostra' => json_encode($notas[0] ?? []),
+                    'amostra' => json_encode($resultado['notas'][0] ?? []),
                 ]);
                 return response()->json(['error' => 'Falha ao serializar resposta: ' . json_last_error_msg()], 500);
             }
-
-            Log::info('[NFS-e] buscar: json ok', ['bytes' => strlen($encoded)]);
 
             return new JsonResponse($payload, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (\RuntimeException $e) {

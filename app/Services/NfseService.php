@@ -21,8 +21,11 @@ class NfseService
     const DANFSE_PRODUCAO    = 'https://adn.nfse.gov.br/danfse';
     const DANFSE_HOMOLOGACAO = 'https://adn.producaorestrita.nfse.gov.br/danfse';
 
-    // Máximo de lotes buscados por requisição (proteção contra loop)
-    const MAX_LOTES = 200;
+    // Máximo de lotes buscados por chamada (chunk). O Cloudflare na frente da
+    // aplicação derruba a conexão com HTTP 524 se o backend não responder em
+    // ~100s, então cada chamada processa só uma fatia — o front-end chama
+    // repetidas vezes (nsuInicio = proximoNsu do chunk anterior) até concluido=true.
+    const MAX_LOTES_POR_CHUNK = 12;
 
     // Intervalo mínimo entre requisições ao ADN — dispara os lotes em rajada
     // estoura o rate limit deles (HTTP 429) e cada 429 custa 10-20s de espera
@@ -32,44 +35,53 @@ class NfseService
     private static ?float $ultimaRequisicaoEm = null;
 
     /**
-     * Busca NFS-e no intervalo de datas informado.
+     * Busca uma fatia (chunk) de NFS-e no intervalo de datas informado, a partir
+     * do NSU indicado.
      *
-     * A API só suporta paginação por NSU (GET /DFe/{NSU}?lote=true).
-     * Não existe endpoint de filtro por data — iteramos os lotes e filtramos
-     * localmente pelo campo DataHoraGeracao de cada documento.
+     * A API só suporta paginação por NSU (GET /DFe/{NSU}?lote=true). Não existe
+     * endpoint de filtro por data — iteramos os lotes e filtramos localmente
+     * pelo campo DataHoraGeracao de cada documento.
      *
-     * Inicia a partir do último NSU salvo para o certificado, garantindo que
-     * buscas repetidas não reprocessem documentos já vistos.
+     * Processa no máximo MAX_LOTES_POR_CHUNK lotes por chamada — o Cloudflare
+     * na frente da aplicação derruba a conexão (HTTP 524) se o backend demorar
+     * demais pra responder, então quem orquestra a busca completa (o front-end)
+     * chama este método repetidamente, usando 'proximoNsu' da resposta anterior
+     * como 'nsuInicio' da próxima, até 'concluido' vir true.
+     *
+     * @return array{notas: array, proximoNsu: int, concluido: bool, canceledChaves: array<string>}
      */
-    public function buscarPorPeriodo(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim): array
+    public function buscarPorPeriodoChunk(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim, int $nsuInicio = 0): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/[.\-\/\s]/', '', $certificado->cliente->cpfcnpj ?? '');
         $base     = $this->baseUrl($certificado);
 
-        // Extrai PEM uma única vez — reutilizado em todos os lotes do loop
+        // Extrai PEM uma única vez — reutilizado em todos os lotes do chunk
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
         try {
             $notas            = [];
-            $canceledChaves   = []; // chaves de eventos de cancelamento (cross-batch)
-            $nsuAtual         = 0;
-            $maxNsuEncontrado = 0;
+            $canceledChaves   = []; // chaves de eventos de cancelamento encontradas neste chunk
+            $nsuAtual         = $nsuInicio;
+            $maxNsuEncontrado = $nsuInicio > 0 ? $nsuInicio - 1 : 0;
             $lotes            = 0;
+            $concluido        = false;
 
-            while ($lotes < self::MAX_LOTES) {
+            while ($lotes < self::MAX_LOTES_POR_CHUNK) {
                 $url  = "{$base}/DFe/{$nsuAtual}?lote=true" . ($cnpj ? "&cnpjConsulta={$cnpj}" : '');
                 $resp = $this->requisicaoComRetryPem($url, $pemCert, $pemKey);
 
                 $status = $resp['StatusProcessamento'] ?? '';
 
                 if (in_array($status, ['NENHUM_DOCUMENTO_LOCALIZADO', 'REJEICAO'])) {
+                    $concluido = true;
                     break;
                 }
 
                 $lote = $resp['LoteDFe'] ?? [];
 
                 if (empty($lote)) {
+                    $concluido = true;
                     break;
                 }
 
@@ -111,6 +123,7 @@ class NfseService
                 }
 
                 if ($passouFim) {
+                    $concluido = true;
                     break;
                 }
 
@@ -118,7 +131,10 @@ class NfseService
                 $lotes++;
             }
 
-            // Atualiza status das NFSes que tiveram evento de cancelamento
+            // Marca como CANCELADA as notas cuja chave apareceu num evento de
+            // cancelamento dentro deste mesmo chunk. Cancelamentos referentes a
+            // notas de chunks anteriores são resolvidos pelo chamador (front-end),
+            // que acumula 'canceledChaves' de todos os chunks e reaplica no final.
             if (!empty($canceledChaves)) {
                 foreach ($notas as &$nota) {
                     if (!empty($nota['chaveAcesso']) && isset($canceledChaves[$nota['chaveAcesso']])) {
@@ -143,7 +159,12 @@ class NfseService
             }
         }
 
-        return $notas;
+        return [
+            'notas'          => $notas,
+            'proximoNsu'     => $maxNsuEncontrado + 1,
+            'concluido'      => $concluido,
+            'canceledChaves' => array_keys($canceledChaves),
+        ];
     }
 
     /**
