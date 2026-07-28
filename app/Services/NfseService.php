@@ -24,6 +24,13 @@ class NfseService
     // Máximo de lotes buscados por requisição (proteção contra loop)
     const MAX_LOTES = 200;
 
+    // Intervalo mínimo entre requisições ao ADN — dispara os lotes em rajada
+    // estoura o rate limit deles (HTTP 429) e cada 429 custa 10-20s de espera
+    // reativa. Espaçando as chamadas evitamos boa parte desses 429.
+    const INTERVALO_MIN_REQ_US = 300_000; // 0.3s
+
+    private static ?float $ultimaRequisicaoEm = null;
+
     /**
      * Busca NFS-e no intervalo de datas informado.
      *
@@ -305,8 +312,25 @@ class NfseService
         return $this->requisicaoPem('GET', $url, $pemCert, $pemKey);
     }
 
+    /** Garante um espaçamento mínimo entre chamadas ao ADN para não estourar o rate limit deles. */
+    private function aguardarIntervaloMinimo(): void
+    {
+        if (self::$ultimaRequisicaoEm !== null) {
+            $decorridoUs = (microtime(true) - self::$ultimaRequisicaoEm) * 1_000_000;
+            $faltaUs     = self::INTERVALO_MIN_REQ_US - $decorridoUs;
+
+            if ($faltaUs > 0) {
+                usleep((int) $faltaUs);
+            }
+        }
+
+        self::$ultimaRequisicaoEm = microtime(true);
+    }
+
     private function requisicaoPem(string $method, string $url, string $pemCert, string $pemKey): array
     {
+        $this->aguardarIntervaloMinimo();
+
         Log::info('[NFS-e] requisicaoPem: enviando', ['method' => $method, 'url' => $url]);
 
         $ch = curl_init();
