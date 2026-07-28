@@ -205,6 +205,12 @@
                         </label>
                     </div>
                     <div class="flex items-center gap-2">
+                        <select id="filtroDirecao"
+                                class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
+                            <option value="">Entradas e saídas</option>
+                            <option value="saida">Somente saídas</option>
+                            <option value="entrada">Somente entradas</option>
+                        </select>
                         <select id="filtroTipo"
                                 class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
                             <option value="">Todos os tipos</option>
@@ -375,20 +381,53 @@
     const checkTodos     = document.getElementById('checkTodos');
     const btnDownloadZip = document.getElementById('btnDownloadZip');
     const filtroTipo     = document.getElementById('filtroTipo');
+    const filtroDirecao  = document.getElementById('filtroDirecao');
 
-    let docsAtuais  = [];
-    let paginaAtual = 1;
-    const porPagina = 50;
-    const selecionados = new Set(); // nsu (string) dos documentos marcados, persiste entre páginas
+    let docsAtuais   = [];
+    let clienteCnpj  = ''; // CNPJ (só dígitos) da empresa selecionada, usado para classificar entrada/saída
+    let paginaAtual  = 1;
+    const porPagina  = 50;
+    const selecionados = new Set(); // nsu (string) dos documentos marcados, persiste entre páginas (dentro do mesmo filtro)
 
     const btnPaginaAnterior = document.getElementById('btnPaginaAnterior');
     const btnPaginaProxima  = document.getElementById('btnPaginaProxima');
     const paginaInfo        = document.getElementById('paginaInfo');
 
-    function docsFiltrados() {
-        const tipo = filtroTipo.value;
-        return tipo ? docsAtuais.filter(d => d.tipo === tipo) : docsAtuais;
+    function soDigitos(str) {
+        return (str || '').replace(/\D/g, '');
     }
+
+    // Saída = documento emitido pela própria empresa selecionada; entrada = emitido por terceiros.
+    function direcaoDoc(doc) {
+        if (!clienteCnpj) return null;
+        return soDigitos(doc.emitenteDoc) === clienteCnpj ? 'saida' : 'entrada';
+    }
+
+    function docsFiltrados() {
+        let docs = docsAtuais;
+
+        if (filtroTipo.value) {
+            docs = docs.filter(d => d.tipo === filtroTipo.value);
+        }
+
+        if (filtroDirecao.value) {
+            docs = docs.filter(d => direcaoDoc(d) === filtroDirecao.value);
+        }
+
+        return docs;
+    }
+
+    // Ao trocar qualquer filtro, limpa a seleção — evita que documentos marcados
+    // sob um filtro anterior (ex.: "todos") sejam incluídos no zip ao gerar com
+    // outro filtro aplicado (ex.: "somente saídas").
+    function limparSelecaoAoFiltrar() {
+        selecionados.clear();
+        checkTodos.checked = false;
+        paginaAtual = 1;
+        renderizarPaginaAtual();
+    }
+
+    filtroDirecao.addEventListener('change', limparSelecaoAoFiltrar);
 
     function atualizarResumo() {
         const filtrados = docsFiltrados();
@@ -405,10 +444,7 @@
         }
     }
 
-    filtroTipo.addEventListener('change', function () {
-        paginaAtual = 1;
-        renderizarPaginaAtual();
-    });
+    filtroTipo.addEventListener('change', limparSelecaoAoFiltrar);
 
     btnPaginaAnterior.addEventListener('click', function () {
         if (paginaAtual > 1) {
@@ -447,6 +483,7 @@
     // ─── Seleção de empresa ──────────────────────────────────────────────────
     selectCliente.addEventListener('change', async function () {
         const clienteId = this.value;
+        clienteCnpj = soDigitos(this.options[this.selectedIndex]?.dataset.cnpj);
 
         esconderTodosEstados();
         estadoInicial.classList.remove('hidden');
@@ -611,6 +648,7 @@
             }
 
             filtroTipo.value = '';
+            filtroDirecao.value = '';
             paginaAtual = 1;
             estadoResultados.classList.remove('hidden');
             renderizarPaginaAtual();
@@ -647,6 +685,13 @@
             };
             const tipoBadge = badgesPorTipo[tipo] ?? badgesPorTipo.nfe;
 
+            const direcao = direcaoDoc(doc);
+            const direcaoBadge = direcao === 'saida'
+                ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 ml-1">Saída</span>'
+                : direcao === 'entrada'
+                    ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-400 ml-1">Entrada</span>'
+                    : '';
+
             const marcado = selecionados.has(String(nsu));
 
             const tr = document.createElement('tr');
@@ -657,7 +702,7 @@
                 <td class="px-4 py-3">
                     <input type="checkbox" class="check-doc rounded text-[#0084aa]" data-nsu="${nsu}" ${!temXml ? 'disabled' : ''} ${marcado ? 'checked' : ''}>
                 </td>
-                <td class="px-4 py-3">${tipoBadge}</td>
+                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}</td>
                 <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">${numero}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${data}</td>
                 <td class="px-4 py-3 text-gray-700 dark:text-slate-300 max-w-[220px] truncate" title="${doc.emitenteNome ?? ''}">${doc.emitenteNome ?? '-'}</td>
