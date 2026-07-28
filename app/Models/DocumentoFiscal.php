@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DocumentoFiscal extends Model
 {
+    protected $table = 'documentos_fiscais';
+
     protected $fillable = [
         'cliente_id',
         'chave_acesso',
