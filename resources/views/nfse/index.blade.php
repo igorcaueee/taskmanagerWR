@@ -320,7 +320,20 @@
         }
     }
 
-    filtroTipo.addEventListener('change', atualizarResumo);
+    filtroTipo.addEventListener('change', function () {
+        atualizarResumo();
+        limparSelecaoAoFiltrar();
+    });
+
+    // Ao trocar o filtro, desmarca tudo — evita que notas selecionadas sob um
+    // filtro anterior (ex.: "todos os tipos") sejam incluídas no zip/Excel ao
+    // gerar com outro filtro aplicado (ex.: "somente emitidas"), já que ficam
+    // ocultas mas continuam marcadas no DOM.
+    function limparSelecaoAoFiltrar() {
+        checkTodos.checked = false;
+        tabelaNotas.querySelectorAll('.check-nota:checked').forEach(cb => cb.checked = false);
+        atualizarSelecao();
+    }
 
     // ─── Seleção de empresa ──────────────────────────────────────────────────
     selectCliente.addEventListener('change', async function () {
