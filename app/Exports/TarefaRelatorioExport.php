@@ -26,18 +26,19 @@ class TarefaRelatorioExport
             'A' => 'Título',
             'B' => 'Cliente',
             'C' => 'Responsável',
-            'D' => 'Etapa',
-            'E' => 'Vencimento',
-            'F' => 'Conclusão',
-            'G' => 'Prioridade',
-            'H' => 'Status',
+            'D' => 'Supervisor',
+            'E' => 'Etapa',
+            'F' => 'Vencimento',
+            'G' => 'Conclusão',
+            'H' => 'Prioridade',
+            'I' => 'Status',
         ];
 
         foreach ($headers as $col => $label) {
             $sheet->setCellValue("{$col}1", $label);
         }
 
-        $sheet->getStyle('A1:H1')->applyFromArray([
+        $sheet->getStyle('A1:I1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F3864']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
@@ -58,18 +59,19 @@ class TarefaRelatorioExport
                 'A' => $tarefa->titulo,
                 'B' => $tarefa->cliente?->nome ?? '—',
                 'C' => $tarefa->responsavel?->nome ?? '—',
-                'D' => $tarefa->etapa?->nome ?? '—',
-                'E' => $tarefa->data_vencimento?->format('d/m/Y') ?? '—',
-                'F' => $tarefa->data_conclusao?->format('d/m/Y') ?? '—',
-                'G' => $prioridadeLabels[$tarefa->prioridade] ?? $tarefa->prioridade,
-                'H' => $status,
+                'D' => $tarefa->supervisor?->nome ?? '—',
+                'E' => $tarefa->etapa?->nome ?? '—',
+                'F' => $tarefa->data_vencimento?->format('d/m/Y') ?? '—',
+                'G' => $tarefa->data_conclusao?->format('d/m/Y') ?? '—',
+                'H' => $prioridadeLabels[$tarefa->prioridade] ?? $tarefa->prioridade,
+                'I' => $status,
             ];
 
             foreach ($values as $col => $value) {
                 $sheet->setCellValue("{$col}{$row}", $value);
             }
 
-            $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+            $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ]);
@@ -78,7 +80,7 @@ class TarefaRelatorioExport
         }
 
         if ($this->tarefas->isNotEmpty()) {
-            $sheet->getStyle('A1:H' . ($row - 1))->applyFromArray([
+            $sheet->getStyle('A1:I' . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -88,7 +90,7 @@ class TarefaRelatorioExport
             ]);
         }
 
-        $widths = ['A' => 40, 'B' => 30, 'C' => 25, 'D' => 20, 'E' => 14, 'F' => 14, 'G' => 12, 'H' => 14];
+        $widths = ['A' => 40, 'B' => 30, 'C' => 25, 'D' => 25, 'E' => 20, 'F' => 14, 'G' => 14, 'H' => 12, 'I' => 14];
         foreach ($widths as $col => $w) {
             $sheet->getColumnDimension($col)->setWidth($w);
         }

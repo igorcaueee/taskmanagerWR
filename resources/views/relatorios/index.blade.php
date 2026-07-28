@@ -58,6 +58,18 @@
                     </select>
                 </div>
 
+                {{-- Supervisor --}}
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Supervisor</label>
+                    <select name="supervisor_id"
+                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Todos</option>
+                        @foreach($usuarios as $u)
+                            <option value="{{ $u->id }}" @selected($supervisorFiltro == $u->id)>{{ $u->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 {{-- Etapa --}}
                 <div>
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Etapa</label>
@@ -155,7 +167,7 @@
                     <i class="fa-solid fa-magnifying-glass"></i> Aplicar
                 </button>
 
-                @if(request()->hasAny(['responsavel_id','etapa_id','departamento_id','tipo_tarefa_id','cliente_id','status']))
+                @if(request()->hasAny(['responsavel_id','supervisor_id','etapa_id','departamento_id','tipo_tarefa_id','cliente_id','status']))
                     <a href="{{ route('relatorios', array_filter(['periodo' => request('periodo'), 'data_inicio' => request('data_inicio'), 'data_fim' => request('data_fim')])) }}"
                        class="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 border border-gray-300 dark:border-slate-600 rounded">
                         <i class="fa-solid fa-xmark"></i> Limpar filtros
@@ -351,6 +363,7 @@
                             </th>
                             <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Cliente</th>
                             <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Responsável</th>
+                            <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Supervisor</th>
                             <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Etapa</th>
                             <th class="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                 <a href="{{ $sortUrl('data_vencimento') }}" class="inline-flex items-center gap-1 hover:text-brand">
@@ -387,6 +400,9 @@
                                 </td>
                                 <td class="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                     {{ $tarefa->responsavel?->nome ?? '—' }}
+                                </td>
+                                <td class="px-4 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    {{ $tarefa->supervisor?->nome ?? '—' }}
                                 </td>
                                 <td class="px-4 py-2 whitespace-nowrap">
                                     @if($tarefa->etapa)
@@ -431,7 +447,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400 dark:text-slate-500 italic">
+                                <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-400 dark:text-slate-500 italic">
                                     Nenhuma tarefa encontrada para os filtros selecionados.
                                 </td>
                             </tr>

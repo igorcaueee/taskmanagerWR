@@ -26,15 +26,19 @@ class RelatorioController extends Controller
 
         // ── Filtros adicionais ─────────────────────────────────────────
         $responsavelFiltro    = $request->filled('responsavel_id')    ? $request->integer('responsavel_id')    : null;
+        $supervisorFiltro     = $request->filled('supervisor_id')     ? $request->integer('supervisor_id')     : null;
         $etapaFiltro          = $request->filled('etapa_id')          ? $request->integer('etapa_id')          : null;
         $departamentoFiltro   = $request->filled('departamento_id')   ? $request->integer('departamento_id')   : null;
         $tipoTarefaFiltro     = $request->filled('tipo_tarefa_id')    ? $request->integer('tipo_tarefa_id')    : null;
         $clienteFiltro        = $request->filled('cliente_id')        ? $request->integer('cliente_id')        : null;
         $statusFiltro         = $request->input('status'); // 'concluida' | 'pendente' | 'vencida'
 
-        $aplicarFiltros = function ($q) use ($responsavelFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $clienteFiltro, $statusFiltro): void {
+        $aplicarFiltros = function ($q) use ($responsavelFiltro, $supervisorFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $clienteFiltro, $statusFiltro): void {
             if ($responsavelFiltro) {
                 $q->where('responsavel_id', $responsavelFiltro);
+            }
+            if ($supervisorFiltro) {
+                $q->where('supervisor_id', $supervisorFiltro);
             }
             if ($etapaFiltro) {
                 $q->where('etapa_id', $etapaFiltro);
@@ -191,7 +195,7 @@ class RelatorioController extends Controller
             ->where('ativo', true)
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->tap($aplicarFiltros)
-            ->with(['responsavel', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
+            ->with(['responsavel', 'supervisor', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
             ->orderBy($colunaOrdem, $direcaoOrdem)
             ->paginate(25)
             ->withQueryString();
@@ -219,6 +223,7 @@ class RelatorioController extends Controller
             'colunaOrdem',
             'direcaoOrdem',
             'responsavelFiltro',
+            'supervisorFiltro',
             'etapaFiltro',
             'departamentoFiltro',
             'tipoTarefaFiltro',
@@ -232,15 +237,19 @@ class RelatorioController extends Controller
         [$dataInicio, $dataFim] = $this->resolverPeriodo($request);
 
         $responsavelFiltro    = $request->filled('responsavel_id')    ? $request->integer('responsavel_id')    : null;
+        $supervisorFiltro     = $request->filled('supervisor_id')     ? $request->integer('supervisor_id')     : null;
         $etapaFiltro          = $request->filled('etapa_id')          ? $request->integer('etapa_id')          : null;
         $departamentoFiltro   = $request->filled('departamento_id')   ? $request->integer('departamento_id')   : null;
         $tipoTarefaFiltro     = $request->filled('tipo_tarefa_id')    ? $request->integer('tipo_tarefa_id')    : null;
         $clienteFiltro        = $request->filled('cliente_id')        ? $request->integer('cliente_id')        : null;
         $statusFiltro         = $request->input('status');
 
-        $aplicarFiltros = function ($q) use ($responsavelFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $clienteFiltro, $statusFiltro): void {
+        $aplicarFiltros = function ($q) use ($responsavelFiltro, $supervisorFiltro, $etapaFiltro, $departamentoFiltro, $tipoTarefaFiltro, $clienteFiltro, $statusFiltro): void {
             if ($responsavelFiltro) {
                 $q->where('responsavel_id', $responsavelFiltro);
+            }
+            if ($supervisorFiltro) {
+                $q->where('supervisor_id', $supervisorFiltro);
             }
             if ($etapaFiltro) {
                 $q->where('etapa_id', $etapaFiltro);
@@ -272,7 +281,7 @@ class RelatorioController extends Controller
             ->where('ativo', true)
             ->whereBetween('data_vencimento', [$dataInicio, $dataFim])
             ->tap($aplicarFiltros)
-            ->with(['responsavel', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
+            ->with(['responsavel', 'supervisor', 'etapa', 'cliente', 'departamento', 'tipoTarefa'])
             ->orderBy($colunaOrdem, $direcaoOrdem)
             ->get();
 
