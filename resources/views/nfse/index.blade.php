@@ -154,7 +154,7 @@
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
                 <p class="text-sm text-gray-500 dark:text-slate-400">Consultando o Portal Nacional NFS-e...</p>
-                <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Isso pode levar alguns segundos.</p>
+                <p id="loadingTempo" class="text-xs text-gray-400 dark:text-slate-500 mt-1">Isso pode levar alguns minutos em empresas com muitas notas.</p>
             </div>
 
             {{-- Erro --}}
@@ -522,9 +522,20 @@
         btnBuscar.disabled = true;
         document.getElementById('btnBuscarLabel').textContent = 'Buscando...';
 
+        // Contador de tempo decorrido — empresas grandes podem levar minutos
+        // e sem isso a tela parece travada.
+        const loadingTempoEl = document.getElementById('loadingTempo');
+        const inicioBusca    = Date.now();
+        const intervalTempo  = setInterval(() => {
+            const s = Math.floor((Date.now() - inicioBusca) / 1000);
+            const m = Math.floor(s / 60);
+            const rest = String(s % 60).padStart(2, '0');
+            loadingTempoEl.textContent = `Buscando há ${m}:${rest}... empresas com muitas notas podem levar alguns minutos.`;
+        }, 1000);
+
         try {
             const controller = new AbortController();
-            const timeoutId  = setTimeout(() => controller.abort(), 300_000); // 5 min
+            const timeoutId  = setTimeout(() => controller.abort(), 600_000); // 10 min
 
             const resp = await fetch('/nfse/buscar', {
                 method: 'POST',
@@ -552,7 +563,7 @@
                 esconderTodosEstados();
                 estadoErro.classList.remove('hidden');
                 document.getElementById('erroMsg').textContent =
-                    'Resposta inválida do servidor (não-JSON). Verifique o console do navegador (F12) para detalhes.';
+                    `Resposta inválida do servidor (HTTP ${resp.status}, não-JSON). Verifique o console do navegador (F12) para detalhes.`;
                 return;
             }
 
@@ -560,7 +571,9 @@
 
             if (!resp.ok || data.error) {
                 estadoErro.classList.remove('hidden');
-                document.getElementById('erroMsg').textContent = data.error ?? 'Erro desconhecido.';
+                document.getElementById('erroMsg').textContent =
+                    data.error ?? data.message ?? `Erro desconhecido (HTTP ${resp.status}).`;
+                console.error('[NFS-e] Resposta de erro:', resp.status, data);
                 return;
             }
 
@@ -580,10 +593,11 @@
             esconderTodosEstados();
             estadoErro.classList.remove('hidden');
             const msg = e.name === 'AbortError'
-                ? 'Tempo limite excedido (5 min). A busca pode continuar em segundo plano — tente novamente em instantes.'
+                ? 'Tempo limite excedido (10 min). A busca pode continuar em segundo plano — tente novamente em instantes.'
                 : 'Erro de comunicação: ' + e.message;
             document.getElementById('erroMsg').textContent = msg;
         } finally {
+            clearInterval(intervalTempo);
             btnBuscar.disabled = false;
             document.getElementById('btnBuscarLabel').textContent = 'Buscar NFS-e';
         }
