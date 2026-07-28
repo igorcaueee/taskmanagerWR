@@ -273,10 +273,15 @@ class TarefaController extends Controller
     public function save(Request $request): RedirectResponse
     {
         $data = $request->only([
-            'titulo', 'descricao', 'cliente_ids', 'tipo_tarefa_ids',
+            'titulo', 'titulo_manual', 'descricao', 'cliente_ids', 'tipo_tarefa_ids',
             'etapa_id', 'responsavel_id', 'supervisor_id', 'data_vencimento', 'prioridade', 'frequencia',
             'requer_envio_arquivo', 'primeira_execucao',
         ]);
+
+        // Se o usuário editou manualmente o título (mesmo com um tipo selecionado),
+        // esse título vale só para esta(s) tarefa(s) e não sobrescreve o título
+        // padrão cadastrado no tipo.
+        $tituloManual = ! empty($data['titulo']) && filter_var($data['titulo_manual'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $temTipos = ! empty($data['tipo_tarefa_ids']);
 
@@ -333,9 +338,9 @@ class TarefaController extends Controller
                     $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
                 }
                 $tipoCheck = $tipoId ? $tiposMap->get($tipoId) : null;
-                $tituloCheck = $tipoCheck && $tipoCheck->titulo_padrao
-                    ? $tipoCheck->titulo_padrao
-                    : ($data['titulo'] ?? $tipoCheck?->nome ?? '');
+                $tituloCheck = $tituloManual
+                    ? $data['titulo']
+                    : ($tipoCheck->titulo_padrao ?? $tipoCheck?->nome ?? $data['titulo'] ?? '');
                 $existe = Tarefa::where('titulo', $tituloCheck)
                     ->where('responsavel_id', $data['responsavel_id'])
                     ->where('data_vencimento', $dataParaTipo)
@@ -368,9 +373,9 @@ class TarefaController extends Controller
                     : null;
 
                 $tipo = $tipoId ? $tiposMap->get($tipoId) : null;
-                $tituloFinal = $tipo && $tipo->titulo_padrao
-                    ? $tipo->titulo_padrao
-                    : ($data['titulo'] ?? $tipo?->nome ?? '');
+                $tituloFinal = $tituloManual
+                    ? $data['titulo']
+                    : ($tipo->titulo_padrao ?? $tipo?->nome ?? $data['titulo'] ?? '');
                 $tarefa = Tarefa::create([
                     'titulo' => $tituloFinal,
                     'descricao' => $data['descricao'] ?? null,

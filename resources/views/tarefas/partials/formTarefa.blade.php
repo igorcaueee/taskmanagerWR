@@ -103,6 +103,7 @@
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    value="{{ old('titulo', $isEditing ? $tarefa->titulo : '') }}"
                    {{ $isEditing ? 'required' : '' }}>
+            <input type="hidden" name="titulo_manual" id="input-titulo-manual" value="{{ old('titulo_manual', '0') }}">
         </div>
 
         <div class="mt-4">
@@ -555,6 +556,16 @@ document.addEventListener('click', function (e) {
 (function () {
     const inputData = document.querySelector('[name="data_vencimento"]');
     const inputTitulo = document.querySelector('[name="titulo"]');
+    const inputTituloManual = document.getElementById('input-titulo-manual');
+
+    // Quando o usuário digita no título, marca como edição manual: esse título
+    // passa a valer só para esta tarefa, mesmo que um tipo com título padrão
+    // esteja selecionado.
+    if (inputTitulo && inputTituloManual) {
+        inputTitulo.addEventListener('input', function () {
+            inputTituloManual.value = '1';
+        });
+    }
 
     // Modo edição: single select
     const selectTipo = document.getElementById('tipo_tarefa_id');
@@ -628,30 +639,20 @@ function atualizarDisplayTipoMulti() {
 
 function atualizarVisibilidadeCamposTipo(checked) {
     // --- Título ---
+    // O título continua editável mesmo com um tipo selecionado: o título padrão do
+    // tipo só é usado como sugestão (preenche se o campo estiver vazio). O que o
+    // usuário digitar é salvo apenas para essa tarefa, sem alterar o tipo.
     const inputTitulo = document.getElementById('input-titulo');
 
     if (inputTitulo) {
         const algumSemTitulo = checked.some(function (c) { return !c.closest('li').dataset.tituloPadrao; });
 
-        if (checked.length > 0 && !algumSemTitulo) {
-            if (inputTitulo.dataset.locked !== '1') {
-                inputTitulo.dataset.valorAntes = inputTitulo.value;
-                inputTitulo.dataset.locked = '1';
-            }
+        if (checked.length > 0 && !algumSemTitulo && !inputTitulo.value.trim()) {
             const titulos = Array.from(new Set(checked.map(function (c) { return c.closest('li').dataset.tituloPadrao; })));
             inputTitulo.value = titulos.join(', ');
-            inputTitulo.setAttribute('readonly', '');
-            inputTitulo.classList.add('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
-            inputTitulo.removeAttribute('required');
-        } else {
-            if (inputTitulo.dataset.locked === '1') {
-                inputTitulo.value = inputTitulo.dataset.valorAntes || '';
-                inputTitulo.dataset.locked = '0';
-            }
-            inputTitulo.removeAttribute('readonly');
-            inputTitulo.classList.remove('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
-            if (checked.length === 0) inputTitulo.setAttribute('required', '');
         }
+
+        inputTitulo.setAttribute('required', '');
     }
 
     // --- Data de Vencimento ---
