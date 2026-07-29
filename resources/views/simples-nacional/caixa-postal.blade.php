@@ -7,7 +7,7 @@
         <div class="mb-6">
             <a href="{{ route('simples-nacional.index') }}" title="Voltar" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-brand hover:bg-brand/10 no-underline"><i class="fa-solid fa-arrow-left"></i></a>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1"><i class="fa-solid fa-envelope"></i> Caixa Postal</h1>
-            <p class="text-gray-700 dark:text-gray-300">Mensagens da Receita Federal (e-CAC) do cliente, sem precisar checar manualmente.</p>
+            <p class="text-gray-700 dark:text-gray-300">Mensagens da Receita Federal (e-CAC) do cliente e situação de enquadramento no DTE, sem precisar checar manualmente.</p>
         </div>
 
         <div id="cardCaixaPostal" class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 mb-6">
@@ -32,6 +32,10 @@
                 <button type="button" id="btnVerIndicador"
                         class="py-2 px-4 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-sm font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600">
                     Ver indicador
+                </button>
+                <button type="button" id="btnVerDte"
+                        class="py-2 px-4 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-sm font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600">
+                    Ver situação DTE
                 </button>
                 <button type="button" id="btnBuscarMensagens"
                         class="py-2 px-4 bg-brand hover:bg-brand/80 text-white text-sm font-semibold rounded-lg transition-colors border-0">
@@ -69,6 +73,7 @@
     <script>
     const selectClienteCaixaPostal    = document.getElementById('selectClienteCaixaPostal');
     const btnVerIndicador             = document.getElementById('btnVerIndicador');
+    const btnVerDte                   = document.getElementById('btnVerDte');
     const btnBuscarMensagens          = document.getElementById('btnBuscarMensagens');
     const indicadorResultado          = document.getElementById('indicadorResultado');
     const caixaPostalErro             = document.getElementById('caixaPostalErro');
@@ -131,6 +136,57 @@
             indicadorResultado.textContent = 'Erro de comunicação com o servidor.';
         } finally {
             this.disabled = false;
+        }
+    });
+
+    const TEXTOS_INDICADOR_DTE = {
+        '-2': 'CNPJ inválido',
+        '-1': 'Não participante do DTE',
+        '0': 'Participante do DTE',
+        '1': 'Participante do DTE-SN (Simples Nacional)',
+        '2': 'Participante do DTE e do DTE-SN',
+    };
+
+    btnVerDte.addEventListener('click', async function () {
+        const clienteId = selectClienteCaixaPostal.value;
+
+        if (!clienteId) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione o cliente.' });
+            return;
+        }
+
+        this.disabled = true;
+        const textoOriginal = this.textContent;
+        this.textContent = 'Consultando...';
+
+        try {
+            const url = new URL('{{ route('simples-nacional.caixa-postal.dte') }}');
+            url.searchParams.set('cliente_id', clienteId);
+
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const data = await resp.json();
+
+            if (!resp.ok || data.error) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao consultar situação DTE.' });
+                return;
+            }
+
+            const indicador = String(data.indicador_enquadramento ?? '');
+            const participa = indicador === '0' || indicador === '1' || indicador === '2';
+
+            Swal.fire({
+                icon: participa ? 'info' : 'warning',
+                title: 'Situação DTE',
+                html: `
+                    <p class="text-sm mb-2">${escapeHtml(TEXTOS_INDICADOR_DTE[indicador] ?? `Indicador: ${indicador}`)}</p>
+                    ${data.status_enquadramento ? `<p class="text-xs text-gray-500">${escapeHtml(data.status_enquadramento)}</p>` : ''}
+                `,
+            });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            this.disabled = false;
+            this.textContent = textoOriginal;
         }
     });
 

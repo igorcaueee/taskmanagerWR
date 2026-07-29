@@ -26,6 +26,7 @@ use App\Http\Controllers\PortalChamadoController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PossibilidadeController;
 use App\Http\Controllers\Precificacao\PrecificacaoAliquotaController;
+use App\Http\Controllers\Precificacao\PrecificacaoNcmGrupoController;
 use App\Http\Controllers\Precificacao\PrecificacaoProdutoController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\QuestionarioController;
@@ -200,6 +201,14 @@ Route::get('/precificacao/aliquotas/{id}/form', [PrecificacaoAliquotaController:
 Route::put('/precificacao/aliquotas/{id}', [PrecificacaoAliquotaController::class, 'update'])->name('precificacao.aliquotas.update')->middleware('auth');
 Route::delete('/precificacao/aliquotas/{id}', [PrecificacaoAliquotaController::class, 'delete'])->name('precificacao.aliquotas.delete')->middleware('auth');
 
+// Precificação — grupos de NCM (interno)
+Route::get('/precificacao/ncm-grupos', [PrecificacaoNcmGrupoController::class, 'index'])->name('precificacao.ncmGrupos')->middleware('auth');
+Route::get('/precificacao/ncm-grupos/form', [PrecificacaoNcmGrupoController::class, 'formCreate'])->name('precificacao.ncmGrupos.form.create')->middleware('auth');
+Route::post('/precificacao/ncm-grupos/save', [PrecificacaoNcmGrupoController::class, 'save'])->name('precificacao.ncmGrupos.save')->middleware('auth');
+Route::get('/precificacao/ncm-grupos/{id}/form', [PrecificacaoNcmGrupoController::class, 'formEdit'])->name('precificacao.ncmGrupos.form.edit')->middleware('auth');
+Route::put('/precificacao/ncm-grupos/{id}', [PrecificacaoNcmGrupoController::class, 'update'])->name('precificacao.ncmGrupos.update')->middleware('auth');
+Route::delete('/precificacao/ncm-grupos/{id}', [PrecificacaoNcmGrupoController::class, 'delete'])->name('precificacao.ncmGrupos.delete')->middleware('auth');
+
 // Precificação — produtos por cliente (interno)
 Route::get('/precificacao/produtos', [PrecificacaoProdutoController::class, 'index'])->name('precificacao.produtos')->middleware('auth');
 Route::get('/precificacao/produtos/relatorio', [PrecificacaoProdutoController::class, 'exportCenarios'])->name('precificacao.produtos.relatorio')->middleware('auth');
@@ -361,17 +370,15 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
 Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')->group(function () {
     Route::get('/', [SimplesNacionalController::class, 'index'])->name('index');
     Route::get('/configuracao/tela', [SimplesNacionalController::class, 'telaConfiguracao'])->name('configuracao.tela');
-    Route::get('/importar-dominio/tela', [SimplesNacionalController::class, 'telaImportarDominio'])->name('importar-dominio.tela');
-    Route::get('/declaracoes/tela', [SimplesNacionalController::class, 'telaDeclaracoes'])->name('declaracoes.tela');
+    Route::get('/das/tela', [SimplesNacionalController::class, 'telaDas'])->name('das.tela');
     Route::get('/parcelamentos/tela', [SimplesNacionalController::class, 'telaParcelamentos'])->name('parcelamentos.tela');
+    Route::get('/parcelamentos-mei/tela', [SimplesNacionalController::class, 'telaParcelamentosMei'])->name('parcelamentos-mei.tela');
     Route::get('/defis/tela', [SimplesNacionalController::class, 'telaDefis'])->name('defis.tela');
-    Route::get('/defis-transmitir/tela', [SimplesNacionalController::class, 'telaDefisTransmitir'])->name('defis-transmitir.tela');
-    Route::get('/transmitir/tela', [SimplesNacionalController::class, 'telaTransmitir'])->name('transmitir.tela');
     Route::get('/caixa-postal/tela', [SimplesNacionalController::class, 'telaCaixaPostal'])->name('caixa-postal.tela');
     Route::get('/sitfis/tela', [SimplesNacionalController::class, 'telaSitfis'])->name('sitfis.tela');
     Route::get('/procuracoes/tela', [SimplesNacionalController::class, 'telaProcuracoes'])->name('procuracoes.tela');
     Route::get('/mit/tela', [SimplesNacionalController::class, 'telaMit'])->name('mit.tela');
-    Route::get('/processamentos', [SimplesNacionalController::class, 'telaProcessamentos'])->name('processamentos');
+    Route::get('/dctfweb/tela', [SimplesNacionalController::class, 'telaDctfWeb'])->name('dctfweb.tela');
     Route::get('/configuracao', [SimplesNacionalController::class, 'getConfiguracao'])->name('configuracao.get');
     Route::post('/configuracao', [SimplesNacionalController::class, 'salvarConfiguracao'])->name('configuracao.salvar');
     Route::post('/configuracao/testar', [SimplesNacionalController::class, 'testarConexao'])->name('configuracao.testar');
@@ -396,6 +403,10 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::post('/parcelamentos/detalhe', [SimplesNacionalController::class, 'consultarParcelamentoDetalhe'])->name('parcelamentos.detalhe');
     Route::get('/parcelamentos/pendentes', [SimplesNacionalController::class, 'consultarParcelasPendentes'])->name('parcelamentos.pendentes');
     Route::post('/parcelamentos/emitir-das', [SimplesNacionalController::class, 'emitirDasParcelamento'])->name('parcelamentos.emitir-das');
+    Route::get('/parcelamentos-mei/pedidos', [SimplesNacionalController::class, 'consultarParcelamentosMeiPedidos'])->name('parcelamentos-mei.pedidos');
+    Route::post('/parcelamentos-mei/detalhe', [SimplesNacionalController::class, 'consultarParcelamentoMeiDetalhe'])->name('parcelamentos-mei.detalhe');
+    Route::get('/parcelamentos-mei/pendentes', [SimplesNacionalController::class, 'consultarParcelasMeiPendentes'])->name('parcelamentos-mei.pendentes');
+    Route::post('/parcelamentos-mei/emitir-das', [SimplesNacionalController::class, 'emitirDasParcelamentoMei'])->name('parcelamentos-mei.emitir-das');
     Route::get('/defis/declaracoes', [SimplesNacionalController::class, 'consultarDeclaracoesDefis'])->name('defis.declaracoes');
     Route::post('/defis/recibo', [SimplesNacionalController::class, 'buscarReciboDefis'])->name('defis.recibo');
     Route::get('/defis/dados', [SimplesNacionalController::class, 'getDefisDados'])->name('defis.dados.get');
@@ -404,11 +415,21 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::get('/caixa-postal/mensagens', [SimplesNacionalController::class, 'consultarMensagensCaixaPostal'])->name('caixa-postal.mensagens');
     Route::post('/caixa-postal/mensagem', [SimplesNacionalController::class, 'consultarDetalheMensagemCaixaPostal'])->name('caixa-postal.mensagem');
     Route::get('/caixa-postal/indicador', [SimplesNacionalController::class, 'consultarIndicadorNovasCaixaPostal'])->name('caixa-postal.indicador');
+    Route::get('/caixa-postal/dte', [SimplesNacionalController::class, 'consultarSituacaoDte'])->name('caixa-postal.dte');
     Route::post('/sitfis/solicitar', [SimplesNacionalController::class, 'solicitarSitfis'])->name('sitfis.solicitar');
     Route::post('/sitfis/emitir', [SimplesNacionalController::class, 'emitirSitfis'])->name('sitfis.emitir');
     Route::get('/procuracoes/consultar', [SimplesNacionalController::class, 'consultarProcuracao'])->name('procuracoes.consultar');
     Route::get('/mit/apuracoes', [SimplesNacionalController::class, 'consultarApuracoesMit'])->name('mit.apuracoes');
     Route::post('/mit/apuracao', [SimplesNacionalController::class, 'consultarApuracaoMitDetalhe'])->name('mit.apuracao');
+    Route::post('/mit/encerrar-sem-movimento', [SimplesNacionalController::class, 'encerrarApuracaoMitSemMovimento'])->name('mit.encerrar-sem-movimento');
+    Route::get('/mit/apuracao-rascunho', [SimplesNacionalController::class, 'getMitApuracaoRascunho'])->name('mit.apuracao-rascunho.get');
+    Route::post('/mit/apuracao-rascunho', [SimplesNacionalController::class, 'salvarMitApuracaoRascunho'])->name('mit.apuracao-rascunho.salvar');
+    Route::post('/mit/encerrar-com-movimento', [SimplesNacionalController::class, 'encerrarApuracaoMitComMovimento'])->name('mit.encerrar-com-movimento');
+    Route::post('/dctfweb/guia', [SimplesNacionalController::class, 'gerarGuiaDctfWeb'])->name('dctfweb.guia');
+    Route::post('/dctfweb/guia-andamento', [SimplesNacionalController::class, 'gerarGuiaAndamentoDctfWeb'])->name('dctfweb.guia-andamento');
+    Route::post('/dctfweb/recibo', [SimplesNacionalController::class, 'consultarReciboDctfWeb'])->name('dctfweb.recibo');
+    Route::post('/dctfweb/completa', [SimplesNacionalController::class, 'consultarDeclaracaoCompletaDctfWeb'])->name('dctfweb.completa');
+    Route::post('/dctfweb/xml', [SimplesNacionalController::class, 'consultarXmlDctfWeb'])->name('dctfweb.xml');
 });
 
 // NF-e / CT-e — Distribuição DFe (Ambiente Nacional)

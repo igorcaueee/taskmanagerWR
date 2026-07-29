@@ -7,6 +7,7 @@ use App\Models\ClienteDadosSimples;
 use App\Models\DefisDeclaracao;
 use App\Models\DefisSocio;
 use App\Models\IntegraContadorConfiguracao;
+use App\Models\MitApuracaoRascunho;
 use App\Models\SimplesDasProcessamento;
 use App\Models\SimplesReceitaAtividade;
 use App\Models\SimplesReceitaMensal;
@@ -14,17 +15,22 @@ use App\Services\CnpjPublicoService;
 use App\Services\NfseService;
 use App\Services\SimplesNacional\CaixaPostalService;
 use App\Services\SimplesNacional\DefisService;
+use App\Services\SimplesNacional\DctfWebService;
 use App\Services\SimplesNacional\DominioImportParser;
+use App\Services\SimplesNacional\DteService;
 use App\Services\SimplesNacional\IntegraContadorAuthService;
 use App\Services\SimplesNacional\MitService;
+use App\Services\SimplesNacional\ParcelamentoMeiService;
 use App\Services\SimplesNacional\ParcelamentoService;
 use App\Services\SimplesNacional\PgdasdService;
 use App\Services\SimplesNacional\ProcuracoesService;
 use App\Services\SimplesNacional\SitfisService;
+use App\Support\MitCodigosReceita;
 use App\Support\PgdasdAtividades;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class SimplesNacionalController extends Controller
 {
@@ -64,24 +70,42 @@ class SimplesNacionalController extends Controller
             ->get(['id', 'nome', 'cpfcnpj']);
     }
 
+    private function clientesMeiAtivos()
+    {
+        return Cliente::where('regime_tributario', 'MEI')
+            ->where('status', 'ativo')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'cpfcnpj']);
+    }
+
     public function telaConfiguracao()
     {
         return view('simples-nacional.configuracao');
     }
 
-    public function telaImportarDominio()
+    /**
+     * Tela única do DAS mensal (PGDASD) — reúne em abas o que antes eram 4
+     * telas separadas (lançar receita/transmitir, consultar declarações,
+     * importar do Domínio, processamentos em lote), já que todas giram em
+     * torno do mesmo fluxo mensal.
+     */
+    public function telaDas(Request $request)
     {
-        return view('simples-nacional.importar-dominio', [
+        $periodo = $request->get('periodo', now()->subMonthNoOverflow()->format('Ym'));
+
+        $processamentos = SimplesDasProcessamento::with('cliente')
+            ->where('periodo_apuracao', $periodo)
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->get('status')))
+            ->orderBy('cliente_id')
+            ->paginate(30)
+            ->withQueryString();
+
+        return view('simples-nacional.das', [
+            'clientes' => $this->clientesSimplesAtivos(),
             'atividadesCatalogo' => PgdasdAtividades::catalogo(),
             'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
-        ]);
-    }
-
-    public function telaDeclaracoes()
-    {
-        return view('simples-nacional.declaracoes', [
-            'clientes' => $this->clientesSimplesAtivos(),
-            'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
+            'processamentos' => $processamentos,
+            'periodo' => $periodo,
         ]);
     }
 
@@ -90,23 +114,17 @@ class SimplesNacionalController extends Controller
         return view('simples-nacional.parcelamentos', ['clientes' => $this->clientesSimplesAtivos()]);
     }
 
+    public function telaParcelamentosMei()
+    {
+        return view('simples-nacional.parcelamentos-mei', [
+            'clientes' => $this->clientesMeiAtivos(),
+            'programas' => ParcelamentoMeiService::programasValidos(),
+        ]);
+    }
+
     public function telaDefis()
     {
         return view('simples-nacional.defis', ['clientes' => $this->clientesSimplesAtivos()]);
-    }
-
-    public function telaDefisTransmitir()
-    {
-        return view('simples-nacional.defis-transmitir', ['clientes' => $this->clientesSimplesAtivos()]);
-    }
-
-    public function telaTransmitir()
-    {
-        return view('simples-nacional.transmitir', [
-            'clientes' => $this->clientesSimplesAtivos(),
-            'atividadesCatalogo' => PgdasdAtividades::catalogo(),
-            'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
-        ]);
     }
 
     public function telaCaixaPostal()
@@ -126,21 +144,18 @@ class SimplesNacionalController extends Controller
 
     public function telaMit()
     {
-        return view('simples-nacional.mit', ['clientes' => $this->clientesAtivos()]);
+        return view('simples-nacional.mit', [
+            'clientes' => $this->clientesAtivos(),
+            'catalogoReceitaMit' => MitCodigosReceita::catalogo(),
+        ]);
     }
 
-    public function telaProcessamentos(Request $request)
+    public function telaDctfWeb()
     {
-        $periodo = $request->get('periodo', now()->subMonthNoOverflow()->format('Ym'));
-
-        $processamentos = SimplesDasProcessamento::with('cliente')
-            ->where('periodo_apuracao', $periodo)
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->get('status')))
-            ->orderBy('cliente_id')
-            ->paginate(30)
-            ->withQueryString();
-
-        return view('simples-nacional.processamentos', compact('processamentos', 'periodo'));
+        return view('simples-nacional.dctfweb', [
+            'clientes' => $this->clientesAtivos(),
+            'categorias' => DctfWebService::CATEGORIAS,
+        ]);
     }
 
     /**
@@ -368,6 +383,110 @@ class SimplesNacionalController extends Controller
 
         $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
         $nomeArquivo = "DAS-PARCELAMENTO-{$validated['parcela']}-{$cliente->id}.pdf";
+        $arquivo = $this->extrairPdfAvulso($dados, $nomeArquivo);
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
+     * Lista o histórico de pedidos de parcelamento MEI do cliente no programa
+     * escolhido (PARCMEI/PARCMEI-ESP/PERTMEI/RELPMEI) — mesma lógica do
+     * consultarParcelamentosPedidos, só que parametrizada por programa.
+     */
+    public function consultarParcelamentosMeiPedidos(Request $request, ParcelamentoMeiService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoMeiService::programasValidos())],
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $parcelamento->consultarPedidos($cliente, $validated['programa']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $pedidos = array_is_list($dados) ? $dados : ($dados['pedidos'] ?? $dados['parcelamentos'] ?? []);
+
+        return response()->json(['success' => true, 'pedidos' => $pedidos]);
+    }
+
+    /**
+     * Detalha um parcelamento MEI específico do programa escolhido.
+     */
+    public function consultarParcelamentoMeiDetalhe(Request $request, ParcelamentoMeiService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoMeiService::programasValidos())],
+            'numero_parcelamento' => 'required|string',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $parcelamento->consultarParcelamento($cliente, $validated['programa'], $validated['numero_parcelamento']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json(['success' => true, 'parcelamento' => $dados]);
+    }
+
+    /**
+     * Lista as parcelas MEI ainda pendentes de emissão/pagamento do programa
+     * escolhido.
+     */
+    public function consultarParcelasMeiPendentes(Request $request, ParcelamentoMeiService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoMeiService::programasValidos())],
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $parcelamento->consultarParcelasParaImpressao($cliente, $validated['programa']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json(['success' => true, 'parcelas' => $dados['listaParcelas'] ?? []]);
+    }
+
+    /**
+     * Emite o DAS de uma parcela MEI pendente do programa escolhido.
+     */
+    public function emitirDasParcelamentoMei(Request $request, ParcelamentoMeiService $parcelamento): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoMeiService::programasValidos())],
+            'parcela' => 'required|digits:6',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $parcelamento->emitirDas($cliente, $validated['programa'], $validated['parcela']);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $nomeArquivo = "DAS-{$validated['programa']}-{$validated['parcela']}-{$cliente->id}.pdf";
         $arquivo = $this->extrairPdfAvulso($dados, $nomeArquivo);
 
         return response()->json(['success' => true, 'arquivo' => $arquivo]);
@@ -1285,6 +1404,213 @@ class SimplesNacionalController extends Controller
     }
 
     /**
+     * Consulta o indicador de enquadramento no DTE do cliente
+     * (CONSULTASITUACAODTE111) — 0 (DTE), 1 (DTE-SN), 2 (ambos), -1 (não
+     * participante), -2 (CNPJ inválido).
+     */
+    public function consultarSituacaoDte(Request $request, DteService $dte): JsonResponse
+    {
+        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        if (empty($cliente->cpfcnpj)) {
+            return response()->json(['error' => "Cliente {$cliente->nome} não tem CNPJ cadastrado."], 422);
+        }
+
+        try {
+            $resposta = $dte->consultarSituacao($cliente);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json([
+            'success' => true,
+            'indicador_enquadramento' => $dados['indicadorEnquadramento'] ?? null,
+            'status_enquadramento' => $dados['statusEnquadramento'] ?? null,
+        ]);
+    }
+
+    /**
+     * Valida os campos comuns às 5 operações do DCTFWeb — categoria/ano
+     * sempre obrigatórios, mês obrigatório exceto categorias de 13º salário
+     * (41/51), os demais condicionais por categoria (regra confirmada na
+     * doc oficial: diaPA só na 45, cnoAfericao só na 44,
+     * numProcReclamatoria só na 46).
+     */
+    private function validarDadosDctfWeb(Request $request): array
+    {
+        return $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'categoria' => ['required', 'integer', Rule::in(array_keys(DctfWebService::CATEGORIAS))],
+            'ano_pa' => 'required|digits:4',
+            'mes_pa' => ['required_unless:categoria,41,51', 'nullable', 'integer', 'between:1,12'],
+            'dia_pa' => ['required_if:categoria,45', 'nullable', 'integer', 'between:1,31'],
+            'cno_afericao' => ['required_if:categoria,44', 'nullable', 'string'],
+            'num_proc_reclamatoria' => ['required_if:categoria,46', 'nullable', 'string'],
+            'numero_recibo_entrega' => 'nullable|string',
+        ]);
+    }
+
+    /**
+     * Gera o DARF (guia de arrecadação) de uma declaração DCTFWeb já
+     * entregue (GERARGUIA31).
+     */
+    public function gerarGuiaDctfWeb(Request $request, DctfWebService $dctfWeb): JsonResponse
+    {
+        $validated = $this->validarDadosDctfWeb($request);
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $dctfWeb->gerarGuia(
+                $cliente,
+                $validated['categoria'],
+                $validated['ano_pa'],
+                $validated['mes_pa'] ?? null,
+                $validated['dia_pa'] ?? null,
+                $validated['cno_afericao'] ?? null,
+                $validated['num_proc_reclamatoria'] ?? null,
+                $validated['numero_recibo_entrega'] ?? null,
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $arquivo = $this->extrairPdfAvulso($dados, "DCTFWEB-GUIA-{$validated['categoria']}-{$validated['ano_pa']}-{$cliente->id}.pdf");
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
+     * Gera o DARF de uma declaração DCTFWeb ainda em andamento
+     * (GERARGUIAANDAMENTO313).
+     */
+    public function gerarGuiaAndamentoDctfWeb(Request $request, DctfWebService $dctfWeb): JsonResponse
+    {
+        $validated = $this->validarDadosDctfWeb($request);
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $dctfWeb->gerarGuiaAndamento(
+                $cliente,
+                $validated['categoria'],
+                $validated['ano_pa'],
+                $validated['mes_pa'] ?? null,
+                $validated['dia_pa'] ?? null,
+                $validated['cno_afericao'] ?? null,
+                $validated['num_proc_reclamatoria'] ?? null,
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $arquivo = $this->extrairPdfAvulso($dados, "DCTFWEB-GUIA-ANDAMENTO-{$validated['categoria']}-{$validated['ano_pa']}-{$cliente->id}.pdf");
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
+     * Consulta o recibo de transmissão de uma declaração DCTFWeb já
+     * entregue (CONSRECIBO32).
+     */
+    public function consultarReciboDctfWeb(Request $request, DctfWebService $dctfWeb): JsonResponse
+    {
+        $validated = $this->validarDadosDctfWeb($request);
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $dctfWeb->consultarRecibo(
+                $cliente,
+                $validated['categoria'],
+                $validated['ano_pa'],
+                $validated['mes_pa'] ?? null,
+                $validated['dia_pa'] ?? null,
+                $validated['cno_afericao'] ?? null,
+                $validated['num_proc_reclamatoria'] ?? null,
+                $validated['numero_recibo_entrega'] ?? null,
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $arquivo = $this->extrairPdfAvulso($dados, "DCTFWEB-RECIBO-{$validated['categoria']}-{$validated['ano_pa']}-{$cliente->id}.pdf");
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
+     * Consulta o relatório completo da declaração DCTFWeb (CONSDECCOMPLETA33).
+     */
+    public function consultarDeclaracaoCompletaDctfWeb(Request $request, DctfWebService $dctfWeb): JsonResponse
+    {
+        $validated = $this->validarDadosDctfWeb($request);
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $dctfWeb->consultarDeclaracaoCompleta(
+                $cliente,
+                $validated['categoria'],
+                $validated['ano_pa'],
+                $validated['mes_pa'] ?? null,
+                $validated['dia_pa'] ?? null,
+                $validated['cno_afericao'] ?? null,
+                $validated['num_proc_reclamatoria'] ?? null,
+                $validated['numero_recibo_entrega'] ?? null,
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $arquivo = $this->extrairPdfAvulso($dados, "DCTFWEB-COMPLETA-{$validated['categoria']}-{$validated['ano_pa']}-{$cliente->id}.pdf");
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
+     * Consulta o XML da declaração DCTFWeb (CONSXMLDECLARACAO38) — devolve
+     * o XML decodificado como arquivo .xml pra download (não usamos esse
+     * XML pra transmitir, ver docblock do DctfWebService).
+     */
+    public function consultarXmlDctfWeb(Request $request, DctfWebService $dctfWeb): JsonResponse
+    {
+        $validated = $this->validarDadosDctfWeb($request);
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $dctfWeb->consultarXmlDeclaracao(
+                $cliente,
+                $validated['categoria'],
+                $validated['ano_pa'],
+                $validated['mes_pa'] ?? null,
+                $validated['dia_pa'] ?? null,
+                $validated['cno_afericao'] ?? null,
+                $validated['num_proc_reclamatoria'] ?? null,
+                $validated['numero_recibo_entrega'] ?? null,
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+        $xmlBase64 = $dados['XMLStringBase64'] ?? $dados['xmlStringBase64'] ?? null;
+
+        if (! $xmlBase64) {
+            return response()->json(['success' => true, 'arquivo' => null]);
+        }
+
+        $nomeArquivo = "DCTFWEB-{$validated['categoria']}-{$validated['ano_pa']}-{$cliente->id}.xml";
+        $arquivo = $this->salvarPdfBase64($xmlBase64, $nomeArquivo);
+
+        return response()->json(['success' => true, 'arquivo' => $arquivo]);
+    }
+
+    /**
      * Solicita o protocolo do relatório SITFIS (SOLICITARPROTOCOLO91) —
      * primeiro passo do fluxo assíncrono.
      */
@@ -1434,6 +1760,180 @@ class SimplesNacionalController extends Controller
         $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
 
         return response()->json(['success' => true, 'apuracao' => $dados]);
+    }
+
+    /**
+     * Encerra uma apuração MIT SEM MOVIMENTO (ENCAPURACAO314) — declaração
+     * fiscal REAL e irreversível perante a Receita Federal.
+     */
+    public function encerrarApuracaoMitSemMovimento(Request $request, MitService $mit): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_apuracao' => 'required|digits:4',
+            'mes_apuracao' => 'required|integer|between:1,12',
+            'qualificacao_pj' => 'required|integer|between:1,12',
+            'cpf_responsavel' => 'required|digits:11',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resposta = $mit->encerrarApuracaoSemMovimento(
+                $cliente,
+                (int) $validated['ano_apuracao'],
+                (int) $validated['mes_apuracao'],
+                (int) $validated['qualificacao_pj'],
+                $validated['cpf_responsavel'],
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Apuração MIT sem movimento encerrada com sucesso.',
+            'dados' => $dados,
+        ]);
+    }
+
+    /**
+     * Busca o rascunho de apuração MIT com movimento do cliente/ano/mês (ou
+     * vazio, se ainda não existe).
+     */
+    public function getMitApuracaoRascunho(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_apuracao' => 'required|digits:4',
+            'mes_apuracao' => 'required|integer|between:1,12',
+        ]);
+
+        $rascunho = MitApuracaoRascunho::with('debitos')
+            ->where('cliente_id', $validated['cliente_id'])
+            ->where('ano_apuracao', $validated['ano_apuracao'])
+            ->where('mes_apuracao', $validated['mes_apuracao'])
+            ->first();
+
+        if (! $rascunho) {
+            return response()->json(['rascunho' => null]);
+        }
+
+        return response()->json([
+            'rascunho' => $rascunho,
+            'debitos' => $rascunho->debitos,
+        ]);
+    }
+
+    /**
+     * Salva (substituindo por completo) o rascunho de apuração MIT com
+     * movimento do cliente/ano/mês — cabeçalho + lista de débitos. Não
+     * transmite nada, só persiste localmente.
+     */
+    public function salvarMitApuracaoRascunho(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_apuracao' => 'required|digits:4',
+            'mes_apuracao' => 'required|integer|between:1,12',
+            'qualificacao_pj' => 'required|integer|between:1,12',
+            'tributacao_lucro' => 'nullable|integer|between:1,7',
+            'variacoes_monetarias' => 'required|integer|in:1,2',
+            'regime_pis_cofins' => 'nullable|integer|between:1,4',
+            'cpf_responsavel' => 'required|digits:11',
+            'balanco_irpj' => 'nullable|boolean',
+            'balanco_csll' => 'nullable|boolean',
+            'debitos' => 'required|array|min:1',
+            'debitos.*.grupo' => 'required|string',
+            'debitos.*.codigo_receita' => 'required|string',
+            'debitos.*.periodicidade' => 'required|string|in:ME,TR,AN',
+            'debitos.*.ano_referencia' => 'required|digits:4',
+            'debitos.*.mes_referencia' => 'nullable|integer|between:1,12',
+            'debitos.*.trimestre_referencia' => 'nullable|integer|between:1,4',
+            'debitos.*.valor' => 'required|numeric|min:0.01',
+            'debitos.*.cnpj_estabelecimento' => 'nullable|digits:14',
+            'debitos.*.cnpj_incorporacao' => 'nullable|digits:14',
+            'debitos.*.cnpj_scp' => 'nullable|digits:14',
+            'debitos.*.codigo_municipio_ouro' => 'nullable|string',
+        ]);
+
+        $rascunho = DB::transaction(function () use ($validated) {
+            $cabecalho = collect($validated)->except(['debitos'])->all();
+            $cabecalho['sem_movimento'] = false;
+
+            $rascunho = MitApuracaoRascunho::updateOrCreate(
+                [
+                    'cliente_id' => $validated['cliente_id'],
+                    'ano_apuracao' => $validated['ano_apuracao'],
+                    'mes_apuracao' => $validated['mes_apuracao'],
+                ],
+                $cabecalho
+            );
+
+            $rascunho->debitos()->delete();
+
+            foreach ($validated['debitos'] as $debito) {
+                $rascunho->debitos()->create($debito);
+            }
+
+            return $rascunho;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rascunho da apuração MIT salvo com sucesso.',
+            'rascunho_id' => $rascunho->id,
+        ]);
+    }
+
+    /**
+     * Encerra a apuração MIT COM MOVIMENTO de verdade a partir do rascunho já
+     * salvo — declaração fiscal REAL perante a Receita Federal, irreversível.
+     */
+    public function encerrarApuracaoMitComMovimento(Request $request, MitService $mit): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano_apuracao' => 'required|digits:4',
+            'mes_apuracao' => 'required|integer|between:1,12',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        $rascunho = MitApuracaoRascunho::with('debitos')
+            ->where('cliente_id', $validated['cliente_id'])
+            ->where('ano_apuracao', $validated['ano_apuracao'])
+            ->where('mes_apuracao', $validated['mes_apuracao'])
+            ->first();
+
+        if (! $rascunho || $rascunho->debitos->isEmpty()) {
+            return response()->json(['error' => 'Salve o rascunho da apuração (com ao menos 1 débito) antes de encerrar.'], 422);
+        }
+
+        try {
+            $resposta = $mit->encerrarApuracaoComMovimento($cliente, $rascunho);
+        } catch (\Throwable $e) {
+            $rascunho->update(['status' => 'erro', 'mensagem_erro' => $e->getMessage()]);
+
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+        $rascunho->update([
+            'status' => 'transmitida',
+            'id_apuracao_serpro' => $dados['idApuracao'] ?? $dados['IdApuracao'] ?? null,
+            'mensagem_erro' => null,
+            'encerrado_em' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Apuração MIT com movimento encerrada com sucesso.',
+            'dados' => $dados,
+        ]);
     }
 
     public function downloadTeste(string $arquivo)

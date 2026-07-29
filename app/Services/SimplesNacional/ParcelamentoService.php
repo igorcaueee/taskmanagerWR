@@ -16,10 +16,12 @@ use App\Models\Cliente;
  * API real (nem trial nem produção) — revalidar assim que houver o primeiro
  * cliente com parcelamento ativo para consultar.
  *
- * Só cobre PARCSN (parcelamento ordinário do Simples Nacional). Os outros 7
- * módulos do Integra-Parcelamento (PARCSN-ESP, PERTSN, RELPSN, PARCMEI e
- * variantes) têm os mesmos 5 serviços, mas com idServico diferente — não
- * implementados aqui até surgir um cliente que precise.
+ * Só cobre PARCSN (parcelamento ordinário do Simples Nacional). PARCSN-ESP,
+ * PERTSN e RELPSN (mesmos 5 serviços, idServico diferente) ainda não
+ * implementados — não há cliente que precise até agora. Os 4 programas do
+ * MEI (PARCMEI/PARCMEI-ESP/PERTMEI/RELPMEI) foram implementados à parte em
+ * ParcelamentoMeiService (parametrizado por programa, em vez de duplicar
+ * esta classe 4 vezes).
  */
 class ParcelamentoService
 {

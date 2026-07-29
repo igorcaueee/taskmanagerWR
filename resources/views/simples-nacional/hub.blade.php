@@ -22,22 +22,52 @@
                 </div>
             </a>
 
-            <a href="{{ route('simples-nacional.importar-dominio.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+            <a href="{{ route('nfse.index') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-import"></i></div>
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-invoice"></i></div>
                     <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Importar do Domínio</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Preencher receita a partir do relatório .txt</p>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">NFS-e Portal Nacional</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Consulta de notas de serviço no Portal Nacional</p>
                     </div>
                 </div>
             </a>
 
-            <a href="{{ route('simples-nacional.declaracoes.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+            <a href="{{ route('nfe.index') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-magnifying-glass"></i></div>
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-truck-ramp-box"></i></div>
                     <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Consultar declarações</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Histórico do PGDASD, DAS, extrato e RBT12</p>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">NF-e / CT-e Nacional</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Distribuição DFe — consulta de NF-e/CT-e</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{{ route('simples-nacional.das.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+                <div class="flex items-center gap-4">
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <div>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">DAS mensal (PGDASD)</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Lançar receita, transmitir, consultar declarações, importar do Domínio e histórico</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{{ route('simples-nacional.mit.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+                <div class="flex items-center gap-4">
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-invoice"></i></div>
+                    <div>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">MIT</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Consultar apurações e encerrar (sem ou com movimento)</p>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{{ route('simples-nacional.defis.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+                <div class="flex items-center gap-4">
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-lines"></i></div>
+                    <div>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">DEFIS</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Transmitir e consultar declarações anuais</p>
                     </div>
                 </div>
             </a>
@@ -52,32 +82,22 @@
                 </div>
             </a>
 
-            <a href="{{ route('simples-nacional.defis.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+            <a href="{{ route('simples-nacional.parcelamentos-mei.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-lines"></i></div>
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-hand-holding-dollar"></i></div>
                     <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">DEFIS</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Consultar declarações anuais já transmitidas</p>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Parcelamentos MEI</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">PARCMEI, PARCMEI-ESP, PERTMEI e RELPMEI</p>
                     </div>
                 </div>
             </a>
 
-            <a href="{{ route('simples-nacional.defis-transmitir.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+            <a href="{{ route('simples-nacional.dctfweb.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-paper-plane"></i></div>
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-invoice"></i></div>
                     <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Transmitir DEFIS</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Lançar dados anuais e transmitir a DEFIS</p>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('simples-nacional.transmitir.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
-                <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-paper-plane"></i></div>
-                    <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Lançar receita e transmitir</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Apuração do mês e transmissão do PGDASD</p>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">DCTFWeb</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Guia, recibo, relatório completo e XML da declaração</p>
                     </div>
                 </div>
             </a>
@@ -108,26 +128,6 @@
                     <div>
                         <h2 class="font-semibold text-gray-800 dark:text-slate-100">Procurações</h2>
                         <p class="text-sm text-gray-500 dark:text-slate-400">Checar procuração eletrônica ativa por cliente</p>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('simples-nacional.mit.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
-                <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-invoice"></i></div>
-                    <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">MIT</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Consultar apurações do Módulo de Inclusão de Tributos</p>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('simples-nacional.processamentos') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
-                <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-list-check"></i></div>
-                    <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Processamentos em lote</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Histórico de transmissão automática por período</p>
                     </div>
                 </div>
             </a>
