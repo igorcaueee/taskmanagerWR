@@ -47,6 +47,7 @@ class DocumentoFiscal extends Model
             ->map(fn (DocumentoFiscal $doc) => [
                 'nsu'          => $doc->nsu,
                 'tipo'         => $doc->tipo,
+                'origem'       => $doc->origem,
                 'chaveAcesso'  => $doc->chave_acesso,
                 'numero'       => $doc->numero,
                 'dataEmissao'  => $doc->data_emissao?->format('Y-m-d\TH:i:s'),
@@ -55,6 +56,7 @@ class DocumentoFiscal extends Model
                 'valor'        => $doc->valor,
                 'situacao'     => $doc->situacao,
                 'xmlContent'   => $doc->xml_content,
+                'sincronizadoEm' => $doc->updated_at?->format('Y-m-d\TH:i:s'),
             ])
             ->all();
     }

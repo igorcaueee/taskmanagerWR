@@ -702,6 +702,16 @@
                     ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-400 ml-1">Entrada</span>'
                     : '';
 
+            // Indica de onde veio o dado (nacional x contabilidade RS) e quando foi sincronizado pela
+            // última vez — o resultado exibido pode vir do banco local (busca anterior), não
+            // necessariamente da consulta que acabou de rodar (ex.: quando a Sefaz rejeita a
+            // sincronização ao vivo, ainda mostramos o que já tínhamos salvo).
+            const origemLabel = doc.origem === 'rs' ? 'Contabilidade (RS)' : doc.origem === 'nacional' ? 'Nacional' : null;
+            const sincTexto = doc.sincronizadoEm ? `Sincronizado em ${formatarData(doc.sincronizadoEm)}` : '';
+            const origemBadge = origemLabel
+                ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700/60 dark:text-slate-400 ml-1" title="${sincTexto}">${origemLabel}</span>`
+                : '';
+
             const marcado = selecionados.has(String(nsu));
 
             const tr = document.createElement('tr');
@@ -712,7 +722,7 @@
                 <td class="px-4 py-3">
                     <input type="checkbox" class="check-doc rounded text-[#0084aa]" data-nsu="${nsu}" ${!temXml ? 'disabled' : ''} ${marcado ? 'checked' : ''}>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}</td>
+                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}${origemBadge}</td>
                 <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">${numero}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${data}</td>
                 <td class="px-4 py-3 text-gray-700 dark:text-slate-300 max-w-[220px] truncate" title="${doc.emitenteNome ?? ''}">${doc.emitenteNome ?? '-'}</td>
