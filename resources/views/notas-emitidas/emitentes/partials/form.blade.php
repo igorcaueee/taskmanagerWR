@@ -211,8 +211,47 @@
         }
     });
 
+    function pareceCpfCnpj(valor) {
+        const digitos = valor.replace(/\D/g, '');
+        if (!digitos) { return false; }
+        return digitos.length === valor.trim().length && (digitos.length === 11 || digitos.length === 14);
+    }
+
+    function pareceNome(valor) {
+        return /[a-zA-ZÀ-ÿ]/.test(valor);
+    }
+
     document.getElementById('form-emitente').addEventListener('submit', function (e) {
-        if (!modoCliente.checked) { return; }
+        if (!modoCliente.checked) {
+            const nome = nomeInput.value.trim();
+            const cpfcnpj = cpfcnpjInput.value.trim();
+
+            if (pareceCpfCnpj(nome)) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Campos trocados?',
+                    text: 'O campo "Nome" parece conter um CPF/CNPJ. Verifique se os campos "Nome" e "CPF/CNPJ" não estão invertidos.',
+                    icon: 'warning',
+                    confirmButtonColor: '#6b7280',
+                    confirmButtonText: 'Entendi',
+                });
+                return;
+            }
+
+            if (cpfcnpj && pareceNome(cpfcnpj)) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Campos trocados?',
+                    text: 'O campo "CPF/CNPJ" parece conter um nome. Verifique se os campos "Nome" e "CPF/CNPJ" não estão invertidos.',
+                    icon: 'warning',
+                    confirmButtonColor: '#6b7280',
+                    confirmButtonText: 'Entendi',
+                });
+                return;
+            }
+
+            return;
+        }
 
         if (isEditing && !clienteIdInput.value) {
             e.preventDefault();
