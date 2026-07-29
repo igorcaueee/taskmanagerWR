@@ -15,6 +15,7 @@ use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
+use App\Http\Controllers\ConsultaCndController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\NotaEmitenteController;
@@ -442,6 +443,15 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
     Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
+});
+
+Route::middleware('auth')->prefix('cnd')->name('cnd.')->group(function () {
+    Route::get('/', [ConsultaCndController::class, 'index'])->name('index');
+    Route::get('/configuracao', [ConsultaCndController::class, 'getConfiguracao'])->name('configuracao.get');
+    Route::post('/configuracao', [ConsultaCndController::class, 'salvarConfiguracao'])->name('configuracao.salvar');
+    Route::post('/configuracao/testar', [ConsultaCndController::class, 'testarConexao'])->name('configuracao.testar');
+    Route::post('/consultar', [ConsultaCndController::class, 'consultar'])->name('consultar');
+    Route::get('/download/{arquivo}', [ConsultaCndController::class, 'download'])->name('download');
 });
 
 // Acesso externo — restrito a Diretor e TI
