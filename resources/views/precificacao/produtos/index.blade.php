@@ -56,6 +56,16 @@
                                placeholder="Nome ou NCM do produto..."
                                class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand w-64">
                     </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Grupo de NCM</label>
+                        <select name="ncm_grupo_id" onchange="document.getElementById('form-filtros-produtos-precificacao').submit()"
+                                class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                            <option value="">Todos os grupos</option>
+                            @foreach($gruposNcm as $grupoOpcao)
+                                <option value="{{ $grupoOpcao->id }}" @selected(request('ncm_grupo_id') == $grupoOpcao->id)>{{ $grupoOpcao->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </form>
 
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
@@ -63,6 +73,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">NCM / CEST</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grupo</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">UF compra</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">UF venda</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Custo unitário</th>
@@ -73,12 +84,19 @@
                     </thead>
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                         @forelse($resumo as $item)
-                            @php $produto = $item['produto']; $cenario = $item['cenario']; $resultado = $item['resultado']; @endphp
+                            @php $produto = $item['produto']; $cenario = $item['cenario']; $resultado = $item['resultado']; $grupoNcm = $item['grupoNcm']; @endphp
                             <tr onclick="window.location='{{ route('precificacao.produtos.show', $produto->id) }}'" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700">
                                 <td class="px-6 py-4 text-sm whitespace-nowrap">
                                     {{ $produto->nome }}
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $produto->ncm }} @if($produto->cest) / {{ $produto->cest }} @endif</td>
+                                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                    @if($grupoNcm)
+                                        <span class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{{ $grupoNcm->nome }}</span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $cenario ? ($cenario->uf_compra === 'EX' ? 'Exterior' : $cenario->uf_compra) : '—' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $cenario->uf_venda ?? '—' }}</td>
                                 @if($resultado)
@@ -105,7 +123,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum produto cadastrado para este cliente.</td>
+                                <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Nenhum produto cadastrado para este cliente.</td>
                             </tr>
                         @endforelse
                     </tbody>

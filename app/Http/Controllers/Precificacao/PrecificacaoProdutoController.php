@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Precificacao;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\PrecificacaoCenario;
+use App\Models\PrecificacaoNcmGrupo;
 use App\Models\PrecificacaoProduto;
 use App\Services\Precificacao\PrecificacaoCalculoService;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
@@ -30,6 +31,7 @@ class PrecificacaoProdutoController extends Controller
         $cliente = null;
         $resumo = collect();
         $produtos = null;
+        $gruposNcm = PrecificacaoNcmGrupo::where('ativo', true)->with('itens')->orderBy('nome')->get();
 
         if ($request->filled('cliente_id')) {
             $cliente = Cliente::findOrFail($request->integer('cliente_id'));
@@ -45,21 +47,33 @@ class PrecificacaoProdutoController extends Controller
                 });
             }
 
+            if ($request->filled('ncm_grupo_id')) {
+                $grupoFiltro = $gruposNcm->firstWhere('id', $request->integer('ncm_grupo_id'));
+                $prefixos = $grupoFiltro ? $grupoFiltro->itens->pluck('ncm')->all() : [];
+
+                $query->where(function ($q) use ($prefixos) {
+                    foreach ($prefixos as $prefixo) {
+                        $q->orWhere('ncm', 'like', $prefixo.'%');
+                    }
+                });
+            }
+
             $produtos = $query->with('cenarios')->paginate(25)->withQueryString();
             $service = new PrecificacaoCalculoService;
 
-            $resumo = $produtos->getCollection()->map(function (PrecificacaoProduto $produto) use ($service) {
+            $resumo = $produtos->getCollection()->map(function (PrecificacaoProduto $produto) use ($service, $gruposNcm) {
                 $cenarioPrincipal = $produto->cenarios->first();
 
                 return [
                     'produto' => $produto,
                     'cenario' => $cenarioPrincipal,
                     'resultado' => $cenarioPrincipal ? $service->calcular($cenarioPrincipal) : null,
+                    'grupoNcm' => $gruposNcm->first(fn (PrecificacaoNcmGrupo $g) => $g->contemNcm($produto->ncm)),
                 ];
             });
         }
 
-        return view('precificacao.produtos.index', compact('cliente', 'resumo', 'produtos'));
+        return view('precificacao.produtos.index', compact('cliente', 'resumo', 'produtos', 'gruposNcm'));
     }
 
     public function show(int $id): View
