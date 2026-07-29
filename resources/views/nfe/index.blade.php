@@ -717,7 +717,14 @@
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${data}</td>
                 <td class="px-4 py-3 text-gray-700 dark:text-slate-300 max-w-[220px] truncate" title="${doc.emitenteNome ?? ''}">${doc.emitenteNome ?? '-'}</td>
                 <td class="px-4 py-3 text-right font-medium text-gray-800 dark:text-slate-200">${valor}</td>
-                <td class="px-4 py-3">
+                <td class="px-4 py-3 whitespace-nowrap">
+                    ${doc.chaveAcesso ? `
+                    <button type="button"
+                            class="btn-ver-pdf p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-transparent border-0 transition-colors"
+                            title="Ver PDF (DANFE/DACTE)"
+                            data-chave="${doc.chaveAcesso}">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </button>` : ''}
                     ${temXml ? `
                     <button type="button"
                             class="btn-download-xml p-1.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 bg-transparent border-0 transition-colors"
@@ -732,6 +739,10 @@
 
         tabelaDocs.querySelectorAll('.btn-download-xml').forEach(btn => {
             btn.addEventListener('click', () => downloadXml(btn.dataset.nsu));
+        });
+
+        tabelaDocs.querySelectorAll('.btn-ver-pdf').forEach(btn => {
+            btn.addEventListener('click', () => abrirPdf(btn.dataset.chave, btn));
         });
 
         tabelaDocs.querySelectorAll('.check-doc').forEach(cb => {
@@ -803,6 +814,37 @@
         a.download = `${doc.tipo}_nsu${nsu}.xml`;
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    // ─── PDF (DANFE/DANFE-NFC-e/DACTE) — GET /nfe/danfe?chave_acesso= ─────────
+    async function abrirPdf(chaveAcesso, btn) {
+        const iconOrig = btn.innerHTML;
+
+        btn.disabled  = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+        try {
+            const resp = await fetch(`/nfe/danfe?chave_acesso=${encodeURIComponent(chaveAcesso)}`, {
+                headers: { 'Accept': 'application/pdf,application/json' },
+            });
+
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                Swal.fire({ icon: 'warning', title: 'PDF indisponível', text: data.error ?? 'Falha ao gerar o PDF.' });
+                return;
+            }
+
+            const blob = await resp.blob();
+            const url  = URL.createObjectURL(blob);
+
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            btn.disabled  = false;
+            btn.innerHTML = iconOrig;
+        }
     }
 
     // ─── Download ZIP (múltiplos, considerando seleção em todas as páginas) ──

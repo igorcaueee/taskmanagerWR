@@ -13,6 +13,9 @@ use App\Services\NfseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use NFePHP\DA\CTe\Dacte;
+use NFePHP\DA\NFe\Danfce;
+use NFePHP\DA\NFe\Danfe;
 use ZipArchive;
 
 class NfeController extends Controller
@@ -269,5 +272,52 @@ class NfeController extends Controller
         return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Gera o PDF (DANFE/DANFE-NFC-e/DACTE) a partir do XML já sincronizado em
+     * `documentos_fiscais`, usando nfephp-org/sped-da. Não depende de nenhum
+     * webservice adicional da Sefaz — DANFE/DACTE não são "gerados" por ela,
+     * são montados localmente a partir do XML autorizado.
+     */
+    public function danfe(Request $request)
+    {
+        $validated = $request->validate([
+            'chave_acesso' => 'required|string|size:44',
+        ]);
+
+        $documento = DocumentoFiscal::where('chave_acesso', $validated['chave_acesso'])->first();
+
+        if (!$documento || empty($documento->xml_content)) {
+            return response()->json(['error' => 'XML deste documento não está disponível para gerar o PDF.'], 422);
+        }
+
+        try {
+            $gerador = match ($documento->tipo) {
+                'nfe'   => new Danfe($documento->xml_content),
+                'nfce'  => new Danfce($documento->xml_content),
+                'cte'   => new Dacte($documento->xml_content),
+                default => throw new \RuntimeException("Tipo de documento '{$documento->tipo}' não suporta geração de PDF."),
+            };
+
+            $gerador->monta();
+            $pdf = $gerador->render();
+        } catch (\Throwable $e) {
+            Log::warning('[NF-e] danfe: falha ao gerar PDF', [
+                'chave_acesso' => $validated['chave_acesso'],
+                'tipo'         => $documento->tipo,
+                'msg'          => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Não foi possível gerar o PDF deste documento — provavelmente o XML completo ainda '
+                    . 'não está disponível (documento ainda em formato resumido, aguardando manifestação do '
+                    . 'destinatário). Detalhe técnico: ' . $e->getMessage(),
+            ], 422);
+        }
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 }
