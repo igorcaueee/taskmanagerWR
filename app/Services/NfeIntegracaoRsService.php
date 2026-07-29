@@ -276,7 +276,9 @@ XML;
 
         $cStat  = $get('cStat');
         $xMotivo = $get('xMotivo');
-        $ultNSUStr = $get('ultNSU');
+        // ultNSU no retorno é só o eco do que foi enviado na requisição — o NSU real de onde
+        // continuar (para não reprocessar o mesmo lote infinitamente) vem em ultNSURet.
+        $ultNSUStr = $get('ultNSURet') ?: $get('ultNSU');
         $ultNSU = $ultNSUStr !== '' ? (int) $ultNSUStr : null;
 
         $loteComp = $get('loteDistComp');

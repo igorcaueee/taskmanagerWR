@@ -140,10 +140,12 @@ class CteIntegracaoRsService
         $cUF = self::CUF_RS;
         $mod = self::MOD_CTE;
 
+        // Diferente do webservice de NF-e RS (SOAP 1.1): o CTeIntegracao exige SOAP 1.2 —
+        // a Sefaz rejeita com "VersionMismatch" se enviado como 1.1.
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
     <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
       <cteDadosMsgDownload>
         <distCTeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
@@ -161,8 +163,8 @@ class CteIntegracaoRsService
         </distCTeRS>
       </cteDadosMsgDownload>
     </cteIntegracaoContab>
-  </soap:Body>
-</soap:Envelope>
+  </soap12:Body>
+</soap12:Envelope>
 XML;
 
         $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
@@ -192,8 +194,7 @@ XML;
             // Mesma infraestrutura SVRS do webservice de NF-e RS — mesmo bundle de CA.
             CURLOPT_CAINFO         => resource_path('certificados-icp-brasil/dfe-rs-ca-bundle.pem'),
             CURLOPT_HTTPHEADER     => [
-                'Content-Type: text/xml; charset=utf-8',
-                'SOAPAction: "' . self::SOAP_ACTION . '"',
+                'Content-Type: application/soap+xml; charset=utf-8; action="' . self::SOAP_ACTION . '"',
             ],
         ]);
 
