@@ -5,7 +5,7 @@
 @section('content')
     <div class="max-w-7xl mx-auto py-6 px-4">
         <div class="mb-6">
-            <a href="{{ route('simples-nacional.index') }}" title="Voltar" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-brand hover:bg-brand/10 no-underline"><i class="fa-solid fa-file-invoice"></i></a>
+            <a href="{{ route('simples-nacional.index') }}" title="Voltar" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-brand hover:bg-brand/10 no-underline"><i class="fa-solid fa-arrow-left"></i></a>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1"><i class="fa-solid fa-file-invoice"></i> DCTFWeb</h1>
             <p class="text-gray-700 dark:text-gray-300">Guia (DARF), recibo, relatório completo e XML de uma declaração DCTFWeb já calculada pelo eSocial/EFD-Reinf.</p>
         </div>
