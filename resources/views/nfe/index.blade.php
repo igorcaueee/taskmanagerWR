@@ -33,17 +33,20 @@
         </div>
 
         <div id="certContabilidadeStatus" class="mt-3 space-y-2">
-            <div id="certRsOk" class="hidden items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
+            <div id="certRsOk" class="hidden items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2 flex-wrap">
                 <i class="fa-solid fa-shield-halved"></i>
                 <span>Certificado da contabilidade configurado — vence <strong id="certRsVencimento"></strong></span>
+                <button type="button" class="btn-atualizar-cert-rs ml-auto underline text-[#0084aa] bg-transparent border-0">Atualizar certificado</button>
             </div>
-            <div id="certRsAlert" class="hidden items-center gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+            <div id="certRsAlert" class="hidden items-center gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 flex-wrap">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 <span>Certificado da contabilidade vence em breve: <strong id="certRsVencimentoAlert"></strong></span>
+                <button type="button" class="btn-atualizar-cert-rs ml-auto underline text-[#0084aa] bg-transparent border-0">Atualizar certificado</button>
             </div>
-            <div id="certRsExpired" class="hidden items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+            <div id="certRsExpired" class="hidden items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 flex-wrap">
                 <i class="fa-solid fa-circle-xmark"></i>
                 <span>Certificado da contabilidade <strong>vencido</strong>! Atualize-o antes de consultar.</span>
+                <button type="button" class="btn-atualizar-cert-rs ml-auto underline text-[#0084aa] bg-transparent border-0">Atualizar certificado</button>
             </div>
             <div id="certRsNone" class="hidden items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-700 rounded-lg px-3 py-2 flex-wrap">
                 <i class="fa-solid fa-key"></i>
@@ -327,6 +330,12 @@
 
     btnAbrirUploadRs?.addEventListener('click', function () {
         formUploadRs.classList.toggle('hidden');
+    });
+
+    document.querySelectorAll('.btn-atualizar-cert-rs').forEach(btn => {
+        btn.addEventListener('click', function () {
+            formUploadRs.classList.toggle('hidden');
+        });
     });
 
     btnSalvarCertRs.addEventListener('click', async function () {
