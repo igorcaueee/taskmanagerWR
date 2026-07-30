@@ -172,8 +172,8 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
-                <p class="text-sm text-gray-500 dark:text-slate-400">Consultando o Ambiente Nacional (NFeDistribuicaoDFe)...</p>
-                <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Isso pode levar alguns segundos.</p>
+                <p class="text-sm text-gray-500 dark:text-slate-400" id="loadingTitulo">Consultando o Ambiente Nacional (NFeDistribuicaoDFe)...</p>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mt-1" id="loadingTempo">Isso pode levar alguns segundos.</p>
             </div>
 
             {{-- Erro --}}
@@ -585,6 +585,87 @@
     // ─── Busca ───────────────────────────────────────────────────────────────
     btnBuscar.addEventListener('click', buscar);
 
+    // Limite de segurança de chunks por fase — evita loop infinito em caso de
+    // bug de paginação (400 chunks * 12 lotes = 4800 lotes, bem acima do
+    // necessário mesmo para as maiores empresas). Mesmo padrão da tela de NFS-e.
+    const NFE_MAX_CHUNKS_POR_FASE = 400;
+
+    async function chamarChunk(url, body) {
+        const controller = new AbortController();
+        // Cada chunk processa poucos lotes — 90s é folga suficiente e fica
+        // abaixo do timeout de proxy/CDN (Cloudflare derruba em ~100s com HTTP 524).
+        const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
+        let resp;
+        try {
+            resp = await fetch(url, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify(body),
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        const texto = await resp.text();
+        let data;
+        try {
+            data = JSON.parse(texto);
+        } catch (_) {
+            console.error('[NF-e] Resposta não-JSON recebida:', texto.substring(0, 1000));
+            throw new Error(`Resposta inválida do servidor (HTTP ${resp.status}, não-JSON). Verifique o console do navegador (F12) para detalhes.`);
+        }
+
+        if (!resp.ok || data.error) {
+            console.error('[NF-e] Resposta de erro:', resp.status, data);
+            throw new Error(data.error ?? `Erro desconhecido (HTTP ${resp.status}).`);
+        }
+
+        return data;
+    }
+
+    /**
+     * Sincroniza uma fase até 'concluido'=true, chamando a rota de chunk
+     * repetidas vezes (nsu_inicio = proximo_nsu da chamada anterior). Cada
+     * chamada processa só uma fatia — evita que a sincronização inteira (que
+     * pode levar minutos) derrube no timeout do Cloudflare.
+     */
+    async function sincronizarFaseAteConcluir(url, bodyBase, labelProgresso) {
+        let nsuAtual  = undefined; // primeira chamada: omite, backend usa o NSU salvo
+        let concluido = false;
+        let chunks    = 0;
+        let aviso     = null;
+
+        while (!concluido) {
+            chunks++;
+            if (chunks > NFE_MAX_CHUNKS_POR_FASE) {
+                throw new Error(`${labelProgresso}: excedeu o limite de páginas de segurança.`);
+            }
+
+            document.getElementById('loadingTempo').textContent = `${labelProgresso}... (parte ${chunks})`;
+
+            const body = { ...bodyBase };
+            if (nsuAtual !== undefined) {
+                body.nsu_inicio = nsuAtual;
+            }
+
+            const data = await chamarChunk(url, body);
+
+            nsuAtual  = data.proximo_nsu;
+            concluido = !!data.concluido;
+            if (data.aviso) {
+                aviso = data.aviso;
+            }
+        }
+
+        return aviso;
+    }
+
     async function buscar() {
         const clienteId = selectCliente.value;
 
@@ -599,57 +680,60 @@
 
         esconderTodosEstados();
         estadoLoading.classList.remove('hidden');
+        document.getElementById('loadingTitulo').textContent = checkModoRs.checked
+            ? 'Sincronizando com a Sefaz-RS (contabilidade)...'
+            : 'Sincronizando com o Ambiente Nacional (NFeDistribuicaoDFe)...';
+        document.getElementById('loadingTempo').textContent = 'Iniciando...';
         btnBuscar.disabled = true;
         document.getElementById('btnBuscarLabel').textContent = 'Buscando...';
 
         try {
-            const controller = new AbortController();
-            const timeoutId  = setTimeout(() => controller.abort(), 300_000); // 5 min
+            const avisos = [];
+            const bodyBase = { cliente_id: clienteId };
+
+            if (checkModoRs.checked) {
+                // Uma fase de cada vez — NF-e, NFC-e e CT-e têm NSU independente,
+                // e rodar em sequência (não em paralelo) evita rajada de
+                // requisições no mesmo certificado da contabilidade.
+                const fases = [
+                    ['nfe',  'Buscando NF-e'],
+                    ['nfce', 'Buscando NFC-e'],
+                    ['cte',  'Buscando CT-e'],
+                ];
+
+                for (const [fase, label] of fases) {
+                    const aviso = await sincronizarFaseAteConcluir(
+                        '/nfe/rs/sincronizar-chunk',
+                        { ...bodyBase, fase },
+                        label
+                    );
+                    if (aviso) avisos.push(aviso);
+                }
+            } else {
+                const aviso = await sincronizarFaseAteConcluir(
+                    '/nfe/sincronizar-chunk',
+                    bodyBase,
+                    'Buscando NF-e/CT-e'
+                );
+                if (aviso) avisos.push(aviso);
+            }
+
+            document.getElementById('loadingTempo').textContent = 'Carregando resultados...';
 
             const url = checkModoRs.checked ? '/nfe/rs/buscar' : '/nfe/buscar';
-
-            const resp = await fetch(url, {
-                method: 'POST',
-                signal: controller.signal,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': CSRF,
-                },
-                body: JSON.stringify({
-                    cliente_id:  clienteId,
-                    data_inicio: dataInicio.value,
-                    data_fim:    dataFim.value,
-                }),
+            const data = await chamarChunk(url, {
+                cliente_id:  clienteId,
+                data_inicio: dataInicio.value,
+                data_fim:    dataFim.value,
             });
-            clearTimeout(timeoutId);
-
-            const texto = await resp.text();
-            let data;
-            try {
-                data = JSON.parse(texto);
-            } catch (_) {
-                console.error('[NF-e] Resposta não-JSON recebida:', texto.substring(0, 1000));
-                esconderTodosEstados();
-                estadoErro.classList.remove('hidden');
-                document.getElementById('erroMsg').textContent =
-                    'Resposta inválida do servidor (não-JSON). Verifique o console do navegador (F12) para detalhes.';
-                return;
-            }
 
             esconderTodosEstados();
-
-            if (!resp.ok || data.error) {
-                estadoErro.classList.remove('hidden');
-                document.getElementById('erroMsg').textContent = data.error ?? 'Erro desconhecido.';
-                return;
-            }
 
             docsAtuais = data.documentos ?? [];
             selecionados.clear();
 
-            if (data.warning) {
-                Swal.fire({ icon: 'warning', title: 'Sincronização parcial', text: data.warning, timer: 8000, timerProgressBar: true });
+            if (avisos.length > 0) {
+                Swal.fire({ icon: 'warning', title: 'Sincronização parcial', text: avisos.join(' '), timer: 8000, timerProgressBar: true });
             }
 
             if (docsAtuais.length === 0) {
@@ -667,7 +751,7 @@
             esconderTodosEstados();
             estadoErro.classList.remove('hidden');
             const msg = e.name === 'AbortError'
-                ? 'Tempo limite excedido (5 min). Tente novamente em instantes.'
+                ? 'Tempo limite excedido numa das etapas da sincronização. Tente novamente em instantes.'
                 : 'Erro de comunicação: ' + e.message;
             document.getElementById('erroMsg').textContent = msg;
         } finally {

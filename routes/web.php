@@ -438,6 +438,7 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
 Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/', [NfeController::class, 'index'])->name('index');
     Route::post('/buscar', [NfeController::class, 'buscar'])->name('buscar');
+    Route::post('/sincronizar-chunk', [NfeController::class, 'sincronizarChunk'])->name('sincronizar-chunk');
     Route::post('/xml/zip-xmls', [NfeController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
     Route::get('/danfe', [NfeController::class, 'danfe'])->name('danfe');
 
@@ -445,6 +446,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
     Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
+    Route::post('/rs/sincronizar-chunk', [NfeController::class, 'sincronizarRsChunk'])->name('rs.sincronizar-chunk');
 });
 
 Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(function () {

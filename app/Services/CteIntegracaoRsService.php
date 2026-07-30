@@ -19,12 +19,16 @@ use Illuminate\Support\Facades\Log;
  * Análogo ao NfeIntegracaoRsService, mas para CT-e (modelo 57): a requisição
  * tem indEmit/indToma (não indDest) e o campo obrigatório mod=57.
  *
- * Nome do wrapper SOAP (nfeDadosMsgDownload / cteDadosMsgDownload) e cStat de
- * sucesso (117/118, diferente do 137/138 do NF-e RS) foram documentados no
- * Boletim Técnico RS-2015/001, mas o nome exato do elemento wrapper não consta
- * no BT/XSD — segue o padrão de nomenclatura da SVRS por analogia. Deve ser
- * confirmado contra o WSDL real (CTeIntegracao.asmx?wsdl) assim que houver
- * autorização eletrônica de CT-e liberada para um cliente de teste.
+ * Confirmado no XSD oficial (distCTeRS_v1.00.xsd): apesar do nome do arquivo e
+ * da tabela do Boletim Técnico chamarem o elemento raiz de "distCTeRS", o XSD
+ * declara `<xs:element name="distNFeRS" type="TDistCTeRS">` — a SEFAZ-RS
+ * reaproveitou o schema do NF-e e esqueceu de renomear o elemento. É
+ * `distNFeRS` (não `distCTeRS`) que precisa ir no XML, senão a Sefaz rejeita
+ * com cStat 243 "XML Mal Formado".
+ *
+ * Nome do wrapper SOAP (cteDadosMsgDownload) segue por analogia ao
+ * nfeDadosMsgDownload do NF-e RS (não documentado no BT/XSD) — ainda não
+ * confirmado contra o WSDL real.
  */
 class CteIntegracaoRsService
 {
@@ -38,43 +42,46 @@ class CteIntegracaoRsService
     const CUF_RS = 43;
     const MOD_CTE = 57;
 
-    // Máximo de lotes buscados por requisição (proteção contra loop)
-    const MAX_LOTES = 200;
+    // Máximo de lotes buscados por chamada (chunk) — ver NfeService::MAX_LOTES_POR_CHUNK
+    // para o motivo (evitar timeout de proxy/CDN numa sincronização longa).
+    const MAX_LOTES_POR_CHUNK = 12;
 
     /**
-     * Sincroniza os CT-e novos de um cliente (CNPJ), a partir do último NSU
-     * salvo, para a tabela `documentos_fiscais`, usando o certificado da
-     * contabilidade.
+     * Sincroniza uma fatia (chunk) dos CT-e novos de um cliente (CNPJ), a
+     * partir do NSU indicado (ou do último salvo, se omitido), para a tabela
+     * `documentos_fiscais`, usando o certificado da contabilidade.
      *
-     * Retorna ['sincronizado' => bool, 'aviso' => ?string].
+     * Retorna ['concluido' => bool, 'proximoNsu' => int, 'aviso' => ?string].
      */
-    public function sincronizar(CertificadoContabilidade $certificado, Cliente $cliente): array
+    public function sincronizarChunk(CertificadoContabilidade $certificado, Cliente $cliente, ?int $nsuInicio = null): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/[.\-\/\s]/', '', $cliente->cpfcnpj ?? '');
         $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
         $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
 
-        Log::info('[CT-e RS] sincronizar: iniciando', [
+        $nsuAtual = $nsuInicio ?? (int) $cliente->ultimo_nsu_cte_rs;
+
+        Log::info('[CT-e RS] sincronizarChunk: iniciando', [
             'cliente_id'  => $cliente->id,
             'cnpj'        => $cnpj,
             'tpAmb'       => $tpAmb,
             'endpoint'    => $endpoint,
-            'nsu_inicial' => (int) $cliente->ultimo_nsu_cte_rs,
+            'nsu_inicial' => $nsuAtual,
         ]);
 
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
-        $aviso = null;
+        $aviso     = null;
+        $concluido = false;
 
         try {
-            $nsuAtual = (int) $cliente->ultimo_nsu_cte_rs;
-            $lotes    = 0;
+            $lotes = 0;
 
-            while ($lotes < self::MAX_LOTES) {
+            while ($lotes < self::MAX_LOTES_POR_CHUNK) {
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cnpj, $nsuAtual, $pemCert, $pemKey);
 
-                Log::info('[CT-e RS] sincronizar: lote recebido', [
+                Log::info('[CT-e RS] sincronizarChunk: lote recebido', [
                     'lote'      => $lotes,
                     'nsu_usado' => $nsuAtual,
                     'cStat'     => $resp['cStat'],
@@ -86,20 +93,24 @@ class CteIntegracaoRsService
                 // 678 = consumo indevido; 8005 = fora do prazo de download (janela de ~3 meses).
                 if (in_array($resp['cStat'], ['678', '8005'], true)) {
                     if (!empty($resp['ultNSU'])) {
-                        $cliente->update(['ultimo_nsu_cte_rs' => $resp['ultNSU']]);
+                        $nsuAtual = (int) $resp['ultNSU'];
+                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
                     }
 
                     $aviso = $resp['cStat'] === '678'
                         ? 'A Sefaz-RS rejeitou a sincronização de CT-e por "consumo indevido" — aguarde e tente '
                             . 'novamente mais tarde. Mostrando os documentos já sincronizados anteriormente.'
                         : 'Não há mais CT-e dentro do prazo de download. Mostrando os documentos já sincronizados.';
+                    $concluido = true;
                     break;
                 }
 
                 if (empty($resp['docs'])) {
                     if (!empty($resp['ultNSU'])) {
-                        $cliente->update(['ultimo_nsu_cte_rs' => $resp['ultNSU']]);
+                        $nsuAtual = (int) $resp['ultNSU'];
+                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
                     }
+                    $concluido = true;
                     break;
                 }
 
@@ -119,6 +130,7 @@ class CteIntegracaoRsService
                 }
 
                 if (!$loteCheio) {
+                    $concluido = true;
                     break;
                 }
 
@@ -130,9 +142,9 @@ class CteIntegracaoRsService
             }
         }
 
-        Log::info('[CT-e RS] sincronizar: concluído', ['aviso' => $aviso]);
+        Log::info('[CT-e RS] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
-        return ['sincronizado' => $aviso === null, 'aviso' => $aviso];
+        return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
     }
 
     private function consultarNsu(string $endpoint, int $tpAmb, string $cnpj, int $ultNSU, string $pemCert, string $pemKey): array
@@ -148,7 +160,7 @@ class CteIntegracaoRsService
   <soap12:Body>
     <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
       <cteDadosMsgDownload>
-        <distCTeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
+        <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
@@ -160,7 +172,7 @@ class CteIntegracaoRsService
             <indToma>3</indToma>
             <ultNSU>{$ultNSU}</ultNSU>
           </solRel>
-        </distCTeRS>
+        </distNFeRS>
       </cteDadosMsgDownload>
     </cteIntegracaoContab>
   </soap12:Body>

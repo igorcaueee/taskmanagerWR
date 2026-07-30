@@ -36,12 +36,18 @@ class NfeController extends Controller
         return view('nfe.index', compact('clientes'));
     }
 
-    public function buscar(Request $request): JsonResponse
+    /**
+     * Sincroniza uma fatia (chunk) do certificado nacional. O front-end chama
+     * esta rota repetidas vezes, passando 'nsu_inicio' = 'proximo_nsu' da
+     * resposta anterior, até receber 'concluido' = true — cada chamada fica
+     * curta o suficiente para não esbarrar no timeout de proxy/CDN (Cloudflare
+     * derruba com HTTP 524 conexões que o backend demora demais pra responder).
+     */
+    public function sincronizarChunk(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id'  => 'required|exists:clientes,id',
-            'data_inicio' => 'required|date_format:Y-m-d',
-            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'cliente_id' => 'required|exists:clientes,id',
+            'nsu_inicio' => 'sometimes|integer|min:0',
         ]);
 
         $cert = ClienteCertificadoNfse::with('cliente')->where('cliente_id', $validated['cliente_id'])->first();
@@ -50,24 +56,34 @@ class NfeController extends Controller
             return response()->json(['error' => 'Certificado digital não configurado para este cliente. Configure-o na tela de NFS-e antes de buscar.'], 422);
         }
 
-        Log::info('[NF-e] buscar: iniciando', [
-            'cliente_id'  => $validated['cliente_id'],
-            'data_inicio' => $validated['data_inicio'],
-            'data_fim'    => $validated['data_fim'],
-            'ambiente'    => $cert->ambiente,
-        ]);
-
-        $aviso = null;
+        $nsuInicio = array_key_exists('nsu_inicio', $validated) ? (int) $validated['nsu_inicio'] : null;
 
         try {
-            $resultado = $this->nfe->sincronizar($cert);
-            $aviso = $resultado['aviso'];
-        } catch (\Throwable $e) {
-            Log::error('[NF-e] buscar: falha ao sincronizar, respondendo com dados já salvos', [
-                'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
+            $resultado = $this->nfe->sincronizarChunk($cert, $nsuInicio);
+
+            return response()->json([
+                'success'     => true,
+                'concluido'   => $resultado['concluido'],
+                'proximo_nsu' => $resultado['proximoNsu'],
+                'aviso'       => $resultado['aviso'],
             ]);
-            $aviso = 'Não foi possível sincronizar com a Sefaz agora (' . $e->getMessage() . '). Mostrando os documentos já sincronizados anteriormente.';
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] sincronizarChunk: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Lê os documentos já sincronizados (tabela `documentos_fiscais`) para o
+     * período informado — não consulta a Sefaz (ver sincronizarChunk).
+     */
+    public function buscar(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id'  => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
 
         try {
             $documentos = DocumentoFiscal::doPeriodo(
@@ -77,9 +93,9 @@ class NfeController extends Controller
                 $validated['data_fim']
             );
 
-            Log::info('[NF-e] buscar: concluído', ['total' => count($documentos), 'aviso' => $aviso]);
+            Log::info('[NF-e] buscar: concluído', ['total' => count($documentos)]);
 
-            $payload = ['success' => true, 'total' => count($documentos), 'documentos' => $documentos, 'warning' => $aviso];
+            $payload = ['success' => true, 'total' => count($documentos), 'documentos' => $documentos];
             $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             if ($encoded === false) {
@@ -160,12 +176,20 @@ class NfeController extends Controller
 
     // ─── Busca via webservice de contabilistas (SEFAZ-RS) ─────────────────────
 
-    public function buscarRs(Request $request): JsonResponse
+    /**
+     * Sincroniza uma fatia (chunk) de uma única fase (nfe|nfce|cte) via
+     * contabilidade. O front-end percorre as três fases em sequência, uma de
+     * cada vez até 'concluido'=true, antes de passar pra próxima — cada
+     * chamada fica curta o suficiente para não esbarrar no timeout de
+     * proxy/CDN, e evita rajada de requisições no mesmo certificado (que
+     * compartilha "consumo indevido" entre todos os clientes).
+     */
+    public function sincronizarRsChunk(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id'  => 'required|exists:clientes,id',
-            'data_inicio' => 'required|date_format:Y-m-d',
-            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'cliente_id' => 'required|exists:clientes,id',
+            'fase'       => 'required|in:nfe,nfce,cte',
+            'nsu_inicio' => 'sometimes|integer|min:0',
         ]);
 
         $cert = CertificadoContabilidade::first();
@@ -175,57 +199,54 @@ class NfeController extends Controller
         }
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $nsuInicio = array_key_exists('nsu_inicio', $validated) ? (int) $validated['nsu_inicio'] : null;
 
-        Log::info('[NF-e RS] buscar: iniciando', [
-            'cliente_id'  => $cliente->id,
-            'data_inicio' => $validated['data_inicio'],
-            'data_fim'    => $validated['data_fim'],
-            'ambiente'    => $cert->ambiente,
+        try {
+            $resultado = match ($validated['fase']) {
+                'nfe'   => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFE, $nsuInicio),
+                'nfce'  => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFCE, $nsuInicio),
+                'cte'   => $this->cteRs->sincronizarChunk($cert, $cliente, $nsuInicio),
+            };
+
+            return response()->json([
+                'success'     => true,
+                'fase'        => $validated['fase'],
+                'concluido'   => $resultado['concluido'],
+                'proximo_nsu' => $resultado['proximoNsu'],
+                'aviso'       => $resultado['aviso'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[NF-e RS] sincronizarRsChunk: Throwable inesperado', [
+                'fase' => $validated['fase'], 'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Lê os documentos já sincronizados (tabela `documentos_fiscais`) para o
+     * período informado — não consulta a Sefaz (ver sincronizarRsChunk).
+     */
+    public function buscarRs(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id'  => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
         ]);
-
-        $avisos = [];
-
-        try {
-            $resultado = $this->nfeRs->sincronizar($cert, $cliente);
-            if ($resultado['aviso']) {
-                $avisos[] = $resultado['aviso'];
-            }
-        } catch (\Throwable $e) {
-            Log::error('[NF-e RS] buscar: falha ao sincronizar NF-e/NFC-e, respondendo com dados já salvos', [
-                'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
-            ]);
-            $avisos[] = 'Não foi possível sincronizar NF-e/NFC-e agora (' . $e->getMessage() . ').';
-        }
-
-        try {
-            $resultado = $this->cteRs->sincronizar($cert, $cliente);
-            if ($resultado['aviso']) {
-                $avisos[] = $resultado['aviso'];
-            }
-        } catch (\Throwable $e) {
-            Log::error('[CT-e RS] buscar: falha ao sincronizar CT-e, respondendo com dados já salvos', [
-                'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
-            ]);
-            $avisos[] = 'Não foi possível sincronizar CT-e agora (' . $e->getMessage() . ').';
-        }
 
         try {
             $documentos = DocumentoFiscal::doPeriodo(
-                $cliente->id,
+                $validated['cliente_id'],
                 ['nfe', 'nfce', 'cte'],
                 $validated['data_inicio'],
                 $validated['data_fim']
             );
 
-            Log::info('[NF-e RS] buscar: concluído', ['total' => count($documentos), 'avisos' => $avisos]);
+            Log::info('[NF-e RS] buscar: concluído', ['total' => count($documentos)]);
 
             return new JsonResponse(
-                [
-                    'success'    => true,
-                    'total'      => count($documentos),
-                    'documentos' => $documentos,
-                    'warning'    => $avisos ? implode(' ', $avisos) : null,
-                ],
+                ['success' => true, 'total' => count($documentos), 'documentos' => $documentos],
                 200,
                 [],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES

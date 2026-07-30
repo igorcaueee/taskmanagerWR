@@ -28,8 +28,12 @@ class NfeService
     const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse';
     const VERSAO      = '1.35';
 
-    // Máximo de lotes buscados por requisição (proteção contra loop)
-    const MAX_LOTES = 200;
+    // Máximo de lotes buscados por chamada (chunk). Assim como na NFS-e, uma
+    // sincronização inteira (potencialmente centenas de lotes) numa única
+    // requisição HTTP corre o risco de ser derrubada pelo Cloudflare (HTTP 524)
+    // antes do backend terminar — por isso cada chamada processa só uma fatia,
+    // e quem orquestra a busca completa (o front-end) chama repetidas vezes.
+    const MAX_LOTES_POR_CHUNK = 12;
 
     // Código IBGE da UF — usado em cUFAutor. Índice: sigla da UF cadastrada no cliente.
     const UF_CODIGO = [
@@ -41,17 +45,22 @@ class NfeService
     ];
 
     /**
-     * Sincroniza os NF-e/CT-e novos deste certificado (a partir do último NSU
-     * salvo) para a tabela `documentos_fiscais`. Não filtra por data — a API só
-     * suporta paginação por NSU, e todo documento novo (não-evento) é persistido,
-     * já que a distribuição é um feed incremental: um documento não capturado
-     * numa sincronização não volta a aparecer numa consulta futura.
+     * Sincroniza uma fatia (chunk) dos NF-e/CT-e novos deste certificado, a
+     * partir do NSU indicado (ou do último salvo, se omitido), para a tabela
+     * `documentos_fiscais`. Não filtra por data — a API só suporta paginação
+     * por NSU, e todo documento novo (não-evento) é persistido, já que a
+     * distribuição é um feed incremental: um documento não capturado numa
+     * sincronização não volta a aparecer numa consulta futura.
      *
-     * Retorna ['sincronizado' => bool, 'aviso' => ?string] — erros esperados da
-     * Sefaz (consumo indevido, etc.) não lançam exceção, viram aviso, para que o
-     * chamador ainda possa responder com o que já está em banco.
+     * Processa no máximo MAX_LOTES_POR_CHUNK lotes por chamada — o chamador
+     * (controller/front-end) deve repetir a chamada passando 'proximoNsu' como
+     * novo nsuInicio até 'concluido' vir true.
+     *
+     * Retorna ['concluido' => bool, 'proximoNsu' => int, 'aviso' => ?string] —
+     * erros esperados da Sefaz (consumo indevido, etc.) não lançam exceção,
+     * viram aviso com concluido=true, para que o chamador pare de tentar.
      */
-    public function sincronizar(ClienteCertificadoNfse $certificado): array
+    public function sincronizarChunk(ClienteCertificadoNfse $certificado, ?int $nsuInicio = null): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/[.\-\/\s]/', '', $certificado->cliente->cpfcnpj ?? '');
@@ -59,29 +68,31 @@ class NfeService
         $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
         $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
 
-        Log::info('[NF-e] sincronizar: iniciando', [
+        $nsuAtual = $nsuInicio ?? (int) $certificado->ultimo_nsu_nfe;
+
+        Log::info('[NF-e] sincronizarChunk: iniciando', [
             'cliente_id'  => $certificado->cliente_id,
             'cnpj'        => $cnpj,
             'cUFAutor'    => $cUFAutor,
             'tpAmb'       => $tpAmb,
             'endpoint'    => $endpoint,
-            'nsu_inicial' => (int) $certificado->ultimo_nsu_nfe,
+            'nsu_inicial' => $nsuAtual,
         ]);
 
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
-        $aviso = null;
+        $aviso     = null;
+        $concluido = false;
 
         try {
-            $nsuAtual = (int) $certificado->ultimo_nsu_nfe;
-            $lotes    = 0;
+            $lotes = 0;
 
-            while ($lotes < self::MAX_LOTES) {
+            while ($lotes < self::MAX_LOTES_POR_CHUNK) {
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cUFAutor, $cnpj, $nsuAtual, $pemCert, $pemKey);
 
                 $cStat = $resp['cStat'] ?? '';
 
-                Log::info('[NF-e] sincronizar: lote recebido', [
+                Log::info('[NF-e] sincronizarChunk: lote recebido', [
                     'lote'      => $lotes,
                     'nsu_usado' => $nsuAtual,
                     'cStat'     => $cStat,
@@ -99,32 +110,38 @@ class NfeService
                 // está salvo em `documentos_fiscais`.
                 if ($cStat === '656') {
                     if (!empty($resp['ultNSU'])) {
-                        $certificado->update(['ultimo_nsu_nfe' => (int) $resp['ultNSU']]);
+                        $nsuAtual = (int) $resp['ultNSU'];
+                        $certificado->update(['ultimo_nsu_nfe' => $nsuAtual]);
                     }
 
                     $aviso = 'A Sefaz rejeitou a sincronização por "consumo indevido" — provavelmente porque outro '
                         . 'sistema (contábil, ERP etc.) já consulta a distribuição de DF-e deste CNPJ. '
                         . 'Sincronizamos o NSU correto' . (!empty($resp['ultNSU']) ? " ({$resp['ultNSU']})" : '')
                         . ' para a próxima tentativa — mostrando os documentos já sincronizados anteriormente.';
+                    $concluido = true;
                     break;
                 }
 
                 // 137 = nenhum documento localizado (já está em dia com o servidor)
                 if ($cStat === '137') {
                     if (isset($resp['ultNSU'])) {
-                        $certificado->update(['ultimo_nsu_nfe' => (int) $resp['ultNSU']]);
+                        $nsuAtual = (int) $resp['ultNSU'];
+                        $certificado->update(['ultimo_nsu_nfe' => $nsuAtual]);
                     }
+                    $concluido = true;
                     break;
                 }
 
                 if ($cStat !== '138') {
                     $aviso = "Distribuição DFe retornou cStat {$cStat}: " . ($resp['xMotivo'] ?? 'motivo desconhecido')
                         . ' — mostrando os documentos já sincronizados anteriormente.';
+                    $concluido = true;
                     break;
                 }
 
                 if ($resp['ultNSU'] === null || $resp['maxNSU'] === null) {
                     $aviso = 'Resposta cStat 138 sem ultNSU/maxNSU — não foi possível paginar com segurança.';
+                    $concluido = true;
                     break;
                 }
 
@@ -146,6 +163,7 @@ class NfeService
                 $certificado->update(['ultimo_nsu_nfe' => $nsuAtual]);
 
                 if ($nsuAtual >= $maxNSU) {
+                    $concluido = true;
                     break;
                 }
 
@@ -157,9 +175,9 @@ class NfeService
             }
         }
 
-        Log::info('[NF-e] sincronizar: concluído', ['aviso' => $aviso]);
+        Log::info('[NF-e] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
-        return ['sincronizado' => $aviso === null, 'aviso' => $aviso];
+        return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
     }
 
     /**
