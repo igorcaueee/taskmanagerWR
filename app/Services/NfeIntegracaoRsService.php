@@ -132,6 +132,7 @@ class NfeIntegracaoRsService
 
                 foreach ($resp['docs'] as $doc) {
                     if ($doc['tipo'] === 'evento') {
+                        $this->processarEvento($doc['xmlContent'] ?? '');
                         continue;
                     }
 
@@ -170,6 +171,34 @@ class NfeIntegracaoRsService
     }
 
     /**
+     * Evento de cancelamento (tpEvento 110111) não vira linha própria — mas
+     * precisa atualizar a `situacao` do documento original, senão ele
+     * continua marcado como normal para sempre mesmo depois de cancelado.
+     */
+    private function processarEvento(string $xml): void
+    {
+        if ($xml === '') {
+            return;
+        }
+
+        libxml_use_internal_errors(true);
+        $obj = new \SimpleXMLElement($xml);
+        $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
+
+        if ($get('tpEvento') !== '110111') {
+            return;
+        }
+
+        $chave = $get('chNFe') ?: $get('chCTe');
+
+        if ($chave === '') {
+            return;
+        }
+
+        DocumentoFiscal::where('chave_acesso', $chave)->update(['situacao' => 'cancelada']);
+    }
+
+    /**
      * Grava ou atualiza um documento normalizado na tabela `documentos_fiscais`,
      * identificado pela chave de acesso — só sobrescreve um registro existente
      * se a nova versão tiver tantos ou mais campos preenchidos.
@@ -205,7 +234,9 @@ class NfeIntegracaoRsService
                 'emitente_nome' => $doc['emitenteNome'] ?? null,
                 'emitente_doc'  => $doc['emitenteDoc'] ?? null,
                 'valor'         => $doc['valor'] ?: null,
-                'situacao'      => $doc['situacao'] ?? null,
+                // Um cancelamento já detectado (via processarEvento) não pode ser desfeito por uma
+                // reissincronização do mesmo documento sem essa informação.
+                'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
                 'xml_content'   => $doc['xmlContent'] ?? null,
             ]
         );

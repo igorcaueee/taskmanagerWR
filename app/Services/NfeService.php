@@ -147,7 +147,10 @@ class NfeService
 
                 foreach ($resp['docs'] as $doc) {
                     if ($doc['tipo'] === 'evento') {
-                        continue; // eventos (cancelamento, manifestação) não viram linha própria por ora
+                        // Eventos não viram linha própria, mas cancelamento atualiza a situação
+                        // do documento original (senão ele fica "normal" pra sempre no cofre).
+                        $this->processarEvento($doc['xmlContent'] ?? '');
+                        continue;
                     }
 
                     $this->persistir($certificado->cliente_id, 'nacional', $doc);
@@ -189,6 +192,36 @@ class NfeService
      * procNFe/procCTe) — só sobrescreve um registro já existente se a nova
      * versão tiver tantos ou mais campos preenchidos, para não perder dados.
      */
+    /**
+     * Evento de cancelamento (tpEvento 110111) não vira linha própria — mas
+     * precisa atualizar a `situacao` do documento original, senão ele
+     * continua marcado como normal para sempre mesmo depois de cancelado. Se
+     * o documento original ainda não tiver sido sincronizado, a atualização
+     * simplesmente não afeta nenhuma linha (fica pendente até ele existir).
+     */
+    private function processarEvento(string $xml): void
+    {
+        if ($xml === '') {
+            return;
+        }
+
+        libxml_use_internal_errors(true);
+        $obj = new \SimpleXMLElement($xml);
+        $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
+
+        if ($get('tpEvento') !== '110111') {
+            return;
+        }
+
+        $chave = $get('chNFe') ?: $get('chCTe');
+
+        if ($chave === '') {
+            return;
+        }
+
+        DocumentoFiscal::where('chave_acesso', $chave)->update(['situacao' => 'cancelada']);
+    }
+
     private function persistir(int $clienteId, string $origem, array $doc): void
     {
         if (empty($doc['chaveAcesso'])) {
@@ -220,7 +253,10 @@ class NfeService
                 'emitente_nome' => $doc['emitenteNome'] ?? null,
                 'emitente_doc'  => $doc['emitenteDoc'] ?? null,
                 'valor'         => $doc['valor'] ?: null,
-                'situacao'      => $doc['situacao'] ?? null,
+                // Um cancelamento já detectado (via processarEvento) não pode ser desfeito por uma
+                // reissincronização do mesmo documento sem essa informação (resumo/XML completo não
+                // carregam o cancelamento, só o evento separado carrega).
+                'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
                 'xml_content'   => $doc['xmlContent'] ?? null,
             ]
         );

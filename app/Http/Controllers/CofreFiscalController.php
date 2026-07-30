@@ -125,6 +125,14 @@ class CofreFiscalController extends Controller
             $query->where('origem', $request->input('origem'));
         }
 
+        if ($request->input('situacao') === 'cancelada') {
+            $query->where('situacao', 'cancelada');
+        } elseif ($request->input('situacao') === 'normal') {
+            $query->where(function (Builder $q) {
+                $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada');
+            });
+        }
+
         if ($request->filled('data_inicio')) {
             $query->whereDate('data_emissao', '>=', $request->input('data_inicio'));
         }

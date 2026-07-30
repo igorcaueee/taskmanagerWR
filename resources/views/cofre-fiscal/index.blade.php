@@ -70,6 +70,15 @@
                 </select>
             </div>
             <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Situação</label>
+                <select name="situacao" onchange="document.getElementById('form-filtros-cofre').submit()"
+                        class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
+                    <option value="">Normais e canceladas</option>
+                    <option value="normal"    @selected(request('situacao') === 'normal')>Somente normais</option>
+                    <option value="cancelada" @selected(request('situacao') === 'cancelada')>Somente canceladas</option>
+                </select>
+            </div>
+            <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Data inicial</label>
                 <input type="date" name="data_inicio" value="{{ request('data_inicio') }}"
                        onchange="document.getElementById('form-filtros-cofre').submit()"
@@ -119,10 +128,13 @@
                             <td class="px-4 py-3 text-gray-700 dark:text-slate-300 max-w-[220px] truncate" title="{{ $documento->cliente?->nome }}">
                                 {{ $documento->cliente?->nome ?? '-' }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="text-xs font-semibold px-2 py-0.5 rounded-full {{ $badgesPorTipo[$documento->tipo] ?? $badgesPorTipo['nfe'] }}">
                                     {{ $labelPorTipo[$documento->tipo] ?? $documento->tipo }}
                                 </span>
+                                @if($documento->situacao === 'cancelada')
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 ml-1">Cancelada</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">{{ $documento->numero ?: '-' }}</td>
                             <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">
