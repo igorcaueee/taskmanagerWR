@@ -20,6 +20,10 @@ use ZipArchive;
 
 class NfeController extends Controller
 {
+    // Cada documento carrega o xml_content inteiro; buscar todos de um período
+    // grande (milhares de docs) de uma vez estoura o memory_limit do PHP.
+    private const DOCUMENTOS_POR_PAGINA = 500;
+
     public function __construct(
         private NfeService $nfe,
         private NfeIntegracaoRsService $nfeRs,
@@ -83,20 +87,34 @@ class NfeController extends Controller
             'cliente_id'  => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'page'        => 'sometimes|integer|min:1',
         ]);
 
+        $page = (int) ($validated['page'] ?? 1);
+
         try {
-            $documentos = DocumentoFiscal::doPeriodo(
+            $resultado = DocumentoFiscal::doPeriodo(
                 $validated['cliente_id'],
                 ['nfe', 'cte'],
                 $validated['data_inicio'],
                 $validated['data_fim'],
-                ['nacional']
+                ['nacional'],
+                $page,
+                self::DOCUMENTOS_POR_PAGINA
             );
 
-            Log::info('[NF-e] buscar: concluído', ['total' => count($documentos)]);
+            $totalPaginas = max(1, (int) ceil($resultado['total'] / self::DOCUMENTOS_POR_PAGINA));
 
-            $payload = ['success' => true, 'total' => count($documentos), 'documentos' => $documentos];
+            Log::info('[NF-e] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
+
+            $payload = [
+                'success'       => true,
+                'total'         => $resultado['total'],
+                'documentos'    => $resultado['documentos'],
+                'pagina'        => $page,
+                'total_paginas' => $totalPaginas,
+                'concluido'     => $page >= $totalPaginas,
+            ];
             $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             if ($encoded === false) {
@@ -234,21 +252,35 @@ class NfeController extends Controller
             'cliente_id'  => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'page'        => 'sometimes|integer|min:1',
         ]);
 
+        $page = (int) ($validated['page'] ?? 1);
+
         try {
-            $documentos = DocumentoFiscal::doPeriodo(
+            $resultado = DocumentoFiscal::doPeriodo(
                 $validated['cliente_id'],
                 ['nfe', 'nfce', 'cte'],
                 $validated['data_inicio'],
                 $validated['data_fim'],
-                ['rs']
+                ['rs'],
+                $page,
+                self::DOCUMENTOS_POR_PAGINA
             );
 
-            Log::info('[NF-e RS] buscar: concluído', ['total' => count($documentos)]);
+            $totalPaginas = max(1, (int) ceil($resultado['total'] / self::DOCUMENTOS_POR_PAGINA));
+
+            Log::info('[NF-e RS] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
 
             return new JsonResponse(
-                ['success' => true, 'total' => count($documentos), 'documentos' => $documentos],
+                [
+                    'success'       => true,
+                    'total'         => $resultado['total'],
+                    'documentos'    => $resultado['documentos'],
+                    'pagina'        => $page,
+                    'total_paginas' => $totalPaginas,
+                    'concluido'     => $page >= $totalPaginas,
+                ],
                 200,
                 [],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES

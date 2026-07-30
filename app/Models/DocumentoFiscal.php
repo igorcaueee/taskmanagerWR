@@ -35,15 +35,21 @@ class DocumentoFiscal extends Model
 
     /**
      * Busca os documentos já sincronizados de um cliente num período, no
-     * formato de array que a tela de NF-e já espera.
+     * formato de array que a tela de NF-e já espera. Paginado — cada
+     * documento carrega o xml_content inteiro, então trazer tudo de uma vez
+     * num período grande (milhares de docs) estoura o memory_limit do PHP.
      */
-    public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim, ?array $origens = null): array
+    public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim, ?array $origens = null, int $page = 1, int $perPage = 500): array
     {
-        return static::where('cliente_id', $clienteId)
+        $query = static::where('cliente_id', $clienteId)
             ->whereIn('tipo', $tipos)
-            ->when($origens, fn ($query) => $query->whereIn('origem', $origens))
-            ->whereBetween('data_emissao', [$dataInicio, $dataFim])
-            ->orderBy('data_emissao')
+            ->when($origens, fn ($q) => $q->whereIn('origem', $origens))
+            ->whereBetween('data_emissao', [$dataInicio, $dataFim]);
+
+        $total = (clone $query)->count();
+
+        $documentos = $query->orderBy('data_emissao')->orderBy('id')
+            ->forPage($page, $perPage)
             ->get()
             ->map(fn (DocumentoFiscal $doc) => [
                 'nsu'          => $doc->nsu,
@@ -60,5 +66,7 @@ class DocumentoFiscal extends Model
                 'sincronizadoEm' => $doc->updated_at?->format('Y-m-d\TH:i:s'),
             ])
             ->all();
+
+        return ['total' => $total, 'documentos' => $documentos];
     }
 }

@@ -718,18 +718,36 @@
                 if (aviso) avisos.push(aviso);
             }
 
-            document.getElementById('loadingTempo').textContent = 'Carregando resultados...';
-
             const url = checkModoRs.checked ? '/nfe/rs/buscar' : '/nfe/buscar';
-            const data = await chamarChunk(url, {
-                cliente_id:  clienteId,
-                data_inicio: dataInicio.value,
-                data_fim:    dataFim.value,
-            });
+
+            // A lista é paginada no backend (cada documento carrega o XML inteiro;
+            // trazer um período com milhares de docs de uma vez estoura a memória
+            // do PHP) — busca página a página até "concluido", igual ao padrão de
+            // sincronização em chunks acima.
+            let pagina        = 1;
+            let totalPaginas  = 1;
+            let documentos    = [];
+
+            do {
+                document.getElementById('loadingTempo').textContent = totalPaginas > 1
+                    ? `Carregando resultados... (página ${pagina} de ${totalPaginas})`
+                    : 'Carregando resultados...';
+
+                const data = await chamarChunk(url, {
+                    cliente_id:  clienteId,
+                    data_inicio: dataInicio.value,
+                    data_fim:    dataFim.value,
+                    page:        pagina,
+                });
+
+                documentos   = documentos.concat(data.documentos ?? []);
+                totalPaginas = data.total_paginas ?? 1;
+                pagina++;
+            } while (pagina <= totalPaginas);
 
             esconderTodosEstados();
 
-            docsAtuais = data.documentos ?? [];
+            docsAtuais = documentos;
             selecionados.clear();
 
             if (avisos.length > 0) {
