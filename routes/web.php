@@ -16,6 +16,7 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\ConsultaCndController;
+use App\Http\Controllers\CofreFiscalController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\NotaEmitenteController;
@@ -444,6 +445,12 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
     Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
+});
+
+Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(function () {
+    Route::get('/', [CofreFiscalController::class, 'index'])->name('index');
+    Route::get('/xml/{chaveAcesso}', [CofreFiscalController::class, 'downloadXml'])->name('xml');
+    Route::get('/zip', [CofreFiscalController::class, 'downloadZip'])->name('zip');
 });
 
 Route::middleware('auth')->prefix('cnd')->name('cnd.')->group(function () {
