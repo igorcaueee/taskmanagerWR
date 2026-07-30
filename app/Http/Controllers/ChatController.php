@@ -202,7 +202,7 @@ class ChatController extends Controller
 
         $participanteIds = $conversa->participantes()->pluck('usuario_id')->all();
 
-        broadcast(new MensagemEnviada($mensagem, $participanteIds));
+        $this->broadcastSilenciosamente(new MensagemEnviada($mensagem, $participanteIds));
 
         return response()->json(['mensagem' => $this->formatarMensagem($mensagem->fresh(['usuario', 'anexos']))]);
     }
@@ -217,7 +217,7 @@ class ChatController extends Controller
             ->where('usuario_id', Auth::id())
             ->update(['ultima_mensagem_lida_id' => $ultimaMensagemId, 'lida_em' => now()]);
 
-        broadcast(new MensagemLida($conversa->id, Auth::id(), $ultimaMensagemId));
+        $this->broadcastSilenciosamente(new MensagemLida($conversa->id, Auth::id(), $ultimaMensagemId));
 
         return response()->json(['success' => true]);
     }
@@ -226,7 +226,7 @@ class ChatController extends Controller
     {
         $this->abortSeNaoParticipante($conversa);
 
-        broadcast(new UsuarioDigitando(Auth::user(), $conversa->id, $request->boolean('digitando')));
+        $this->broadcastSilenciosamente(new UsuarioDigitando(Auth::user(), $conversa->id, $request->boolean('digitando')));
 
         return response()->json(['success' => true]);
     }
@@ -257,6 +257,16 @@ class ChatController extends Controller
         $this->abortSeNaoParticipante($anexo->mensagem->conversa);
 
         return Storage::disk('local')->response($anexo->caminho, $anexo->nome_original);
+    }
+
+    protected function broadcastSilenciosamente(object $evento): void
+    {
+        try {
+            broadcast($evento);
+        } catch (\Throwable $e) {
+            // Chat funciona via polling; broadcast é apenas um extra em tempo real
+            // e não deve poluir o log quando o Reverb/Pusher estiver indisponível.
+        }
     }
 
     protected function abortSeNaoParticipante(Conversa $conversa): void
