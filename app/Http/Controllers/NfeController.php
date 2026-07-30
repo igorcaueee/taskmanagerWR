@@ -133,6 +133,8 @@ class NfeController extends Controller
 
     public function getCertificadoContabilidade(): JsonResponse
     {
+        abort_if(!auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
+
         $cert = CertificadoContabilidade::first();
 
         if (!$cert) {
@@ -151,6 +153,8 @@ class NfeController extends Controller
 
     public function salvarCertificadoContabilidade(Request $request): JsonResponse
     {
+        abort_if(!auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
+
         $validated = $request->validate([
             'certificado' => 'required|file|max:10240',
             'senha'       => 'required|string|min:1',

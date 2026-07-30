@@ -203,6 +203,12 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
+    // Apenas Diretor e TI configuram o certificado da contabilidade (NF-e/NFC-e/CT-e via SEFAZ-RS)
+    public function canConfigurarCertificadoContabilidade(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
+
     // Diretor e TI acessam o E-mail Marketing
     public function canEmailMarketing(): bool
     {

@@ -1,6 +1,6 @@
 @extends('layouts.internal')
 
-@section('title', 'NF-e / CT-e — Distribuição DFe')
+@section('title', 'NF-e / NFC-e / CT-e — Distribuição DFe')
 
 @section('content')
 <div class="w-full mx-auto py-6 px-4">
@@ -10,26 +10,23 @@
         <a href="{{ route('simples-nacional.index') }}" title="Voltar" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-brand hover:bg-brand/10 no-underline"><i class="fa-solid fa-arrow-left"></i></a>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2 mt-1">
             <i class="fa-solid fa-truck-ramp-box text-[#0084aa]"></i>
-            NF-e / CT-e — Distribuição DFe
+            NF-e / NFC-e / CT-e — Distribuição DFe
         </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulte e baixe XMLs de NF-e e CT-e diretamente do webservice nacional (NFeDistribuicaoDFe), usando o certificado já cadastrado na tela de NFS-e.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulte e baixe XMLs de NF-e, NFC-e e CT-e usando o certificado da própria contabilidade (padrão) — ou, se preferir, o certificado individual de cada cliente.</p>
     </div>
 
-    {{-- ─── Webservice de contabilistas (SEFAZ-RS) — NF-e e NFC-e ──────────── --}}
+    @if(auth()->user()?->canConfigurarCertificadoContabilidade())
+    {{-- ─── Webservice de contabilistas (SEFAZ-RS) — NF-e, NFC-e e CT-e ──────── --}}
     <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
                 <h2 class="font-semibold text-gray-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
-                    <i class="fa-solid fa-file-invoice text-[#0084aa]"></i> Busca via Contabilidade (SEFAZ-RS)
+                    <i class="fa-solid fa-file-invoice text-[#0084aa]"></i> Certificado da Contabilidade (SEFAZ-RS)
                 </h2>
                 <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                    Usa o certificado digital da própria contabilidade (webservice de contabilistas da SEFAZ-RS) para trazer NF-e e NFC-e de qualquer cliente que tenha autorizado o acesso via e-CAC — sem precisar do certificado individual de cada empresa.
+                    Certificado digital da própria contabilidade (webservice de contabilistas da SEFAZ-RS), usado por padrão para trazer NF-e, NFC-e e CT-e de qualquer cliente que tenha autorizado o acesso via e-CAC — sem precisar do certificado individual de cada empresa. Quem busca escolhe o modo (contabilidade ou certificado do cliente) direto no card de período de busca.
                 </p>
             </div>
-            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer whitespace-nowrap">
-                <input type="checkbox" id="checkModoRs" class="rounded text-[#0084aa]">
-                Usar busca via contabilidade
-            </label>
         </div>
 
         <div id="certContabilidadeStatus" class="mt-3 space-y-2">
@@ -83,6 +80,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- ─── Linha de topo: cards de configuração ──────────────────────────── --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -148,10 +146,15 @@
                     <button type="button" data-periodo="ano" class="btn-periodo text-xs px-2.5 py-1 rounded-full border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-[#0084aa] hover:text-[#0084aa] transition-colors">Ano atual</button>
                 </div>
 
+                <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-400 cursor-pointer mt-3">
+                    <input type="checkbox" id="checkModoRs" class="rounded text-[#0084aa]" checked>
+                    Buscar com o certificado da contabilidade (padrão) — desmarque para usar o certificado do cliente
+                </label>
+
                 <button type="button" id="btnBuscar"
                         class="w-full mt-3 py-2.5 px-4 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <span id="btnBuscarLabel">Buscar NF-e / CT-e</span>
+                    <span id="btnBuscarLabel">Buscar NF-e / NFC-e / CT-e</span>
                 </button>
             </div>
 
@@ -163,7 +166,7 @@
             {{-- Estado inicial --}}
             <div id="estadoInicial" class="h-64 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
                 <i class="fa-solid fa-truck-ramp-box text-5xl mb-3 opacity-30"></i>
-                <p class="text-sm">Selecione uma empresa e o período para buscar as NF-e/CT-e.</p>
+                <p class="text-sm">Selecione uma empresa e o período para buscar as NF-e/NFC-e/CT-e.</p>
             </div>
 
             {{-- Loading --}}
@@ -191,7 +194,7 @@
             {{-- Vazio --}}
             <div id="estadoVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
                 <i class="fa-solid fa-inbox text-4xl mb-2 opacity-40"></i>
-                <p class="text-sm">Nenhuma NF-e/CT-e encontrada no período selecionado.</p>
+                <p class="text-sm">Nenhuma NF-e/NFC-e/CT-e encontrada no período selecionado.</p>
             </div>
 
             {{-- Resultados --}}
@@ -221,6 +224,12 @@
                             <option value="nfe">NF-e</option>
                             <option value="nfce">NFC-e</option>
                             <option value="cte">CT-e</option>
+                        </select>
+                        <select id="filtroSituacao"
+                                class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
+                            <option value="">Normais e canceladas</option>
+                            <option value="normal">Somente normais</option>
+                            <option value="cancelada">Somente canceladas</option>
                         </select>
                         <button type="button" id="btnDownloadZip"
                                 class="hidden items-center gap-1.5 px-3 py-1.5 bg-[#0084aa] hover:bg-[#006e8e] text-white text-xs font-semibold rounded-lg transition-colors">
@@ -295,6 +304,7 @@
 
     // ─── Busca via contabilidade (SEFAZ-RS) ────────────────────────────────────
     const checkModoRs     = document.getElementById('checkModoRs');
+    @if(auth()->user()?->canConfigurarCertificadoContabilidade())
     const certRsOk        = document.getElementById('certRsOk');
     const certRsAlert     = document.getElementById('certRsAlert');
     const certRsExpired   = document.getElementById('certRsExpired');
@@ -379,6 +389,7 @@
     });
 
     carregarStatusCertRs();
+    @endif
 
     const estadoInicial    = document.getElementById('estadoInicial');
     const estadoLoading    = document.getElementById('estadoLoading');
@@ -392,6 +403,7 @@
     const btnDownloadZip = document.getElementById('btnDownloadZip');
     const filtroTipo     = document.getElementById('filtroTipo');
     const filtroDirecao  = document.getElementById('filtroDirecao');
+    const filtroSituacao = document.getElementById('filtroSituacao');
 
     let docsAtuais   = [];
     let clienteCnpj  = ''; // CNPJ (só dígitos) da empresa selecionada, usado para classificar entrada/saída
@@ -422,6 +434,12 @@
 
         if (filtroDirecao.value) {
             docs = docs.filter(d => direcaoDoc(d) === filtroDirecao.value);
+        }
+
+        if (filtroSituacao.value === 'cancelada') {
+            docs = docs.filter(d => d.situacao === 'cancelada');
+        } else if (filtroSituacao.value === 'normal') {
+            docs = docs.filter(d => d.situacao !== 'cancelada');
         }
 
         return docs;
@@ -455,6 +473,7 @@
     }
 
     filtroTipo.addEventListener('change', limparSelecaoAoFiltrar);
+    filtroSituacao.addEventListener('change', limparSelecaoAoFiltrar);
 
     btnPaginaAnterior.addEventListener('click', function () {
         if (paginaAtual > 1) {
@@ -761,6 +780,7 @@
 
             filtroTipo.value = '';
             filtroDirecao.value = '';
+            filtroSituacao.value = '';
             paginaAtual = 1;
             estadoResultados.classList.remove('hidden');
             renderizarPaginaAtual();
@@ -774,7 +794,7 @@
             document.getElementById('erroMsg').textContent = msg;
         } finally {
             btnBuscar.disabled = false;
-            document.getElementById('btnBuscarLabel').textContent = 'Buscar NF-e / CT-e';
+            document.getElementById('btnBuscarLabel').textContent = 'Buscar NF-e / NFC-e / CT-e';
         }
     }
 
@@ -814,6 +834,10 @@
                 ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700/60 dark:text-slate-400 ml-1" title="${sincTexto}">${origemLabel}</span>`
                 : '';
 
+            const canceladaBadge = doc.situacao === 'cancelada'
+                ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 ml-1">Cancelada</span>'
+                : '';
+
             const marcado = selecionados.has(String(nsu));
 
             const tr = document.createElement('tr');
@@ -824,7 +848,7 @@
                 <td class="px-4 py-3">
                     <input type="checkbox" class="check-doc rounded text-[#0084aa]" data-nsu="${nsu}" ${!temXml ? 'disabled' : ''} ${marcado ? 'checked' : ''}>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}${origemBadge}</td>
+                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}${origemBadge}${canceladaBadge}</td>
                 <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">${numero}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${data}</td>
                 <td class="px-4 py-3 text-gray-700 dark:text-slate-300 max-w-[220px] truncate" title="${doc.emitenteNome ?? ''}">${doc.emitenteNome ?? '-'}</td>
