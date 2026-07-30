@@ -18,6 +18,11 @@ use Illuminate\Support\Facades\Log;
  * consultado, não por certificado, e o retorno vem em um único lote compactado
  * (loteDistComp) em vez de docZip individuais.
  *
+ * O campo `mod` (55=NF-e, 65=NFC-e) é opcional no schema `distNFeRS`, mas
+ * omiti-lo faz a Sefaz-RS devolver só NF-e — por isso rodamos duas
+ * sincronizações independentes por cliente (uma por modelo), cada uma com seu
+ * próprio NSU (são sequências separadas na base da SEFAZ-RS).
+ *
  * SOAPAction e nomes de elementos confirmados via WSDL real (baixado com o
  * certificado da contabilidade através de buscarWsdl()): operação
  * nfeIntegracaoContab, wrapper nfeDadosMsgDownload, namespace
@@ -34,17 +39,44 @@ class NfeIntegracaoRsService
 
     const CUF_RS = 43;
 
+    const MOD_NFE  = '55';
+    const MOD_NFCE = '65';
+
+    // Coluna de NSU por modelo — sequências independentes na SEFAZ-RS.
+    const CAMPO_NSU = [
+        self::MOD_NFE  => 'ultimo_nsu_nfe_rs',
+        self::MOD_NFCE => 'ultimo_nsu_nfce_rs',
+    ];
+
     // Máximo de lotes buscados por requisição (proteção contra loop)
     const MAX_LOTES = 200;
 
     /**
-     * Sincroniza os NF-e/NFC-e novos de um cliente (CNPJ), a partir do último
-     * NSU salvo, para a tabela `documentos_fiscais`, usando o certificado da
-     * contabilidade. Não filtra por data (ver NfeService::sincronizar).
+     * Sincroniza os NF-e e os NFC-e novos de um cliente (CNPJ), a partir do
+     * último NSU salvo de cada modelo, para a tabela `documentos_fiscais`,
+     * usando o certificado da contabilidade. Não filtra por data (ver
+     * NfeService::sincronizar).
      *
      * Retorna ['sincronizado' => bool, 'aviso' => ?string].
      */
     public function sincronizar(CertificadoContabilidade $certificado, Cliente $cliente): array
+    {
+        $avisos = [];
+
+        foreach (self::CAMPO_NSU as $mod => $campoNsu) {
+            $resultado = $this->sincronizarModelo($certificado, $cliente, $mod, $campoNsu);
+
+            if ($resultado['aviso']) {
+                $avisos[] = $resultado['aviso'];
+            }
+        }
+
+        $aviso = $avisos ? implode(' ', $avisos) : null;
+
+        return ['sincronizado' => $aviso === null, 'aviso' => $aviso];
+    }
+
+    private function sincronizarModelo(CertificadoContabilidade $certificado, Cliente $cliente, string $mod, string $campoNsu): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/[.\-\/\s]/', '', $cliente->cpfcnpj ?? '');
@@ -54,9 +86,10 @@ class NfeIntegracaoRsService
         Log::info('[NF-e RS] sincronizar: iniciando', [
             'cliente_id'  => $cliente->id,
             'cnpj'        => $cnpj,
+            'mod'         => $mod,
             'tpAmb'       => $tpAmb,
             'endpoint'    => $endpoint,
-            'nsu_inicial' => (int) $cliente->ultimo_nsu_nfe_rs,
+            'nsu_inicial' => (int) $cliente->{$campoNsu},
         ]);
 
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
@@ -64,13 +97,14 @@ class NfeIntegracaoRsService
         $aviso = null;
 
         try {
-            $nsuAtual = (int) $cliente->ultimo_nsu_nfe_rs;
+            $nsuAtual = (int) $cliente->{$campoNsu};
             $lotes    = 0;
 
             while ($lotes < self::MAX_LOTES) {
-                $resp = $this->consultarNsu($endpoint, $tpAmb, $cnpj, $nsuAtual, $pemCert, $pemKey);
+                $resp = $this->consultarNsu($endpoint, $tpAmb, $cnpj, $mod, $nsuAtual, $pemCert, $pemKey);
 
                 Log::info('[NF-e RS] sincronizar: lote recebido', [
+                    'mod'       => $mod,
                     'lote'      => $lotes,
                     'nsu_usado' => $nsuAtual,
                     'cStat'     => $resp['cStat'],
@@ -81,17 +115,18 @@ class NfeIntegracaoRsService
 
                 if ($resp['cStat'] === '678') {
                     if (!empty($resp['ultNSU'])) {
-                        $cliente->update(['ultimo_nsu_nfe_rs' => $resp['ultNSU']]);
+                        $cliente->update([$campoNsu => $resp['ultNSU']]);
                     }
 
-                    $aviso = 'A Sefaz-RS rejeitou a sincronização por "consumo indevido" — aguarde e tente '
-                        . 'novamente mais tarde. Mostrando os documentos já sincronizados anteriormente.';
+                    $aviso = 'A Sefaz-RS rejeitou a sincronização de ' . ($mod === self::MOD_NFCE ? 'NFC-e' : 'NF-e')
+                        . ' por "consumo indevido" — aguarde e tente novamente mais tarde. Mostrando os '
+                        . 'documentos já sincronizados anteriormente.';
                     break;
                 }
 
                 if (empty($resp['docs'])) {
                     if (!empty($resp['ultNSU'])) {
-                        $cliente->update(['ultimo_nsu_nfe_rs' => $resp['ultNSU']]);
+                        $cliente->update([$campoNsu => $resp['ultNSU']]);
                     }
                     break;
                 }
@@ -103,12 +138,20 @@ class NfeIntegracaoRsService
                         continue;
                     }
 
+                    Log::info('[NF-e RS] sincronizar: doc no lote', [
+                        'mod'         => $mod,
+                        'chave'       => $doc['chaveAcesso'] ?? null,
+                        'tipo'        => $doc['tipo'] ?? null,
+                        'numero'      => $doc['numero'] ?? null,
+                        'dataEmissao' => $doc['dataEmissao'] ?? null,
+                    ]);
+
                     $this->persistir($cliente->id, $doc);
                 }
 
                 if (!empty($resp['ultNSU'])) {
                     $nsuAtual = (int) $resp['ultNSU'];
-                    $cliente->update(['ultimo_nsu_nfe_rs' => $nsuAtual]);
+                    $cliente->update([$campoNsu => $nsuAtual]);
                 }
 
                 if (!$loteCheio) {
@@ -123,9 +166,9 @@ class NfeIntegracaoRsService
             }
         }
 
-        Log::info('[NF-e RS] sincronizar: concluído', ['aviso' => $aviso]);
+        Log::info('[NF-e RS] sincronizar: concluído', ['mod' => $mod, 'aviso' => $aviso]);
 
-        return ['sincronizado' => $aviso === null, 'aviso' => $aviso];
+        return ['aviso' => $aviso];
     }
 
     /**
@@ -170,7 +213,7 @@ class NfeIntegracaoRsService
         );
     }
 
-    private function consultarNsu(string $endpoint, int $tpAmb, string $cnpj, int $ultNSU, string $pemCert, string $pemKey): array
+    private function consultarNsu(string $endpoint, int $tpAmb, string $cnpj, string $mod, int $ultNSU, string $pemCert, string $pemKey): array
     {
         $cUF = self::CUF_RS;
 
@@ -185,10 +228,11 @@ class NfeIntegracaoRsService
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
           <CNPJ>{$cnpj}</CNPJ>
+          <mod>{$mod}</mod>
           <solRel>
             <indXML>1</indXML>
-            <indEmit>3</indEmit>
-            <indDest>3</indDest>
+            <indEmit>7</indEmit>
+            <indDest>7</indDest>
             <ultNSU>{$ultNSU}</ultNSU>
           </solRel>
         </distNFeRS>

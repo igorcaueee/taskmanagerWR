@@ -42,6 +42,7 @@ class Cliente extends Authenticatable
         'portal_ultimo_acesso',
         'acesso_extrato',
         'ultimo_nsu_nfe_rs',
+        'ultimo_nsu_nfce_rs',
         'ultimo_nsu_cte_rs',
     ];
 
