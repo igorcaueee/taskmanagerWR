@@ -90,7 +90,8 @@ class NfeController extends Controller
                 $validated['cliente_id'],
                 ['nfe', 'cte'],
                 $validated['data_inicio'],
-                $validated['data_fim']
+                $validated['data_fim'],
+                ['nacional']
             );
 
             Log::info('[NF-e] buscar: concluído', ['total' => count($documentos)]);
@@ -240,7 +241,8 @@ class NfeController extends Controller
                 $validated['cliente_id'],
                 ['nfe', 'nfce', 'cte'],
                 $validated['data_inicio'],
-                $validated['data_fim']
+                $validated['data_fim'],
+                ['rs']
             );
 
             Log::info('[NF-e RS] buscar: concluído', ['total' => count($documentos)]);

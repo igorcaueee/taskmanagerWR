@@ -37,10 +37,11 @@ class DocumentoFiscal extends Model
      * Busca os documentos já sincronizados de um cliente num período, no
      * formato de array que a tela de NF-e já espera.
      */
-    public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim): array
+    public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim, ?array $origens = null): array
     {
         return static::where('cliente_id', $clienteId)
             ->whereIn('tipo', $tipos)
+            ->when($origens, fn ($query) => $query->whereIn('origem', $origens))
             ->whereBetween('data_emissao', [$dataInicio, $dataFim])
             ->orderBy('data_emissao')
             ->get()
