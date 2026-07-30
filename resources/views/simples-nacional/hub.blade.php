@@ -36,8 +36,8 @@
                 <div class="flex items-center gap-4">
                     <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-truck-ramp-box"></i></div>
                     <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">NF-e / CT-e Nacional</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Distribuição DFe — consulta de NF-e/CT-e</p>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">NF-e / NFC-e / CT-e</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Distribuição DFe — consulta de NF-e/NFC-e/CT-e</p>
                     </div>
                 </div>
             </a>
