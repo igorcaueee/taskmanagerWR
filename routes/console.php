@@ -9,5 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('campanhas:enviar-agendadas')->everyMinute();
-Schedule::command('ciclos:passar-afazer')->weeklyOn(1, '07:00');
+Schedule::command('ciclos:passar-afazer')->monthlyOn(1, '07:00');
 Schedule::command('certificados:verificar')->dailyAt('08:00');
