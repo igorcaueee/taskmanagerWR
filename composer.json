@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "barryvdh/laravel-dompdf": "^3.1",
+        "cweagans/composer-patches": "^2.0",
         "google/apiclient": "^2.15",
         "laravel/ai": "^0.3.2",
         "laravel/framework": "^13.0",
@@ -81,6 +82,11 @@
     "extra": {
         "laravel": {
             "dont-discover": []
+        },
+        "patches": {
+            "nfephp-org/sped-da": {
+                "Corrige sintaxe de offset com chaves ($str{$i}), removida no PHP 8, que quebrava a geracao de DANFE-NFCe": "patches/nfephp-sped-da-danfce-php8-curly-braces.patch"
+            }
         }
     },
     "config": {
@@ -89,7 +95,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "cweagans/composer-patches": true
         }
     },
     "minimum-stability": "stable",

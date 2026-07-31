@@ -1,0 +1,20 @@
+--- a/src/NFe/Danfce.php
++++ b/src/NFe/Danfce.php
+@@ -1136,7 +1136,7 @@
+         $hex = "";
+         $iCount = 0;
+         do {
+-            $hex .= sprintf("%02x", ord($str{$iCount}));
++            $hex .= sprintf("%02x", ord($str[$iCount]));
+             $iCount++;
+         } while ($iCount < strlen($str));
+         return $hex;
+@@ -1181,7 +1181,7 @@
+         $bin = "";
+         $iCount = 0;
+         do {
+-            $bin .= chr(hexdec($str{$iCount}.$str{($iCount + 1)}));
++            $bin .= chr(hexdec($str[$iCount].$str[($iCount + 1)]));
+             $iCount += 2;
+         } while ($iCount < strlen($str));
+         return $bin;

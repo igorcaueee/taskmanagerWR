@@ -1,0 +1,17 @@
+{
+    "_hash": "9af8ec3e2c6d11bb433b9108676a3951c9d5caf509ea19ccfaaf5f61a4033742",
+    "patches": {
+        "nfephp-org/sped-da": [
+            {
+                "package": "nfephp-org/sped-da",
+                "description": "Corrige sintaxe de offset com chaves ($str{$i}), removida no PHP 8, que quebrava a geracao de DANFE-NFCe",
+                "url": "patches/nfephp-sped-da-danfce-php8-curly-braces.patch",
+                "sha256": "ad2b9eb873c336892e1d1b20376e963ee2ef35b3b580ebcc58685135266b1992",
+                "depth": 1,
+                "extra": {
+                    "provenance": "root"
+                }
+            }
+        ]
+    }
+}
