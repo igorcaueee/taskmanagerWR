@@ -246,8 +246,13 @@ class PgdasdService
      * que lista "cnpjCompleto" como campo do nível raiz de "dados", irmão
      * de "declaracao"/"indicadorTransmissao"/"indicadorComparacao" — por
      * isso agora é enviado também em transmitirDeclaracaoDoCliente().
-     * AINDA NÃO CONFIRMADO contra a API real — se o próximo 400 apontar
-     * outro campo, é sinal de que essa hipótese também precisa de ajuste.
+     * CONFIRMADO em produção (2026-08-03): depois desse ajuste, o erro
+     * avançou de "'CnpjCompleto' not found" para "'Pa' not found" — ou
+     * seja, o campo de nível raiz que identifica o período NÃO é
+     * "periodoApuracao" (usado por CONSDECLARACAO13/GERARDAS12), é "pa"
+     * (confirma a doc oficial). Corrigido em transmitirDeclaracao(); os
+     * outros idServico do PGDASD continuam usando "periodoApuracao"
+     * normalmente, essa troca vale só para o TRANSDECLARACAO11.
      *
      * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
      */
@@ -369,7 +374,7 @@ class PgdasdService
                 idServico: 'TRANSDECLARACAO11',
                 versaoSistema: '1.0',
                 cliente: $cliente,
-                dados: array_merge(['periodoApuracao' => (int) $periodoApuracao], $dadosApuracao),
+                dados: array_merge(['pa' => (int) $periodoApuracao], $dadosApuracao),
             );
 
             $registro->update([
