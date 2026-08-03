@@ -321,10 +321,16 @@ class PgdasdService
             }
 
             if ($tributo->tipo_ajuste === 'isencao' || $tributo->tipo_ajuste === 'reducao') {
+                // "isencao" = redução de 100% (a tela não pede percentual pra
+                // esse caso, ver renderTributoCell no das.blade.php) — a API
+                // rejeita percentualReducao=0 como inválido (confirmado em
+                // produção 2026-08-03, MSG_ISN_008 "Campo 'reducao/
+                // percentualReducao' inválido"), então mandamos 100 fixo
+                // pra isenção em vez do 0 que vinha de percentual_reducao nulo.
                 $reducoes[] = [
                     'codTributo' => $tributo->cod_tributo,
                     'valor' => (float) $tributo->valor,
-                    'percentualReducao' => (float) ($tributo->percentual_reducao ?? 0),
+                    'percentualReducao' => $tributo->tipo_ajuste === 'isencao' ? 100.0 : (float) ($tributo->percentual_reducao ?? 0),
                     'identificador' => $tributo->identificador_isencao ?? 1,
                 ];
             }
