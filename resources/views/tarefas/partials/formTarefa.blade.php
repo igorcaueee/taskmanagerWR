@@ -663,22 +663,12 @@ function atualizarVisibilidadeCamposTipo(checked) {
     const datasDistintas = Array.from(new Set(checked.map(function (c) { return c.closest('li').dataset.dataVencimento; })));
 
     if (checked.length > 0 && !algumSemData && datasDistintas.length === 1) {
-        if (dataInput.dataset.locked !== '1') {
-            dataInput.dataset.valorAntes = dataInput.value;
-            dataInput.dataset.locked = '1';
+        if (!dataInput.value.trim()) {
+            dataInput.value = datasDistintas[0];
         }
-        dataInput.value = datasDistintas[0];
-        dataInput.setAttribute('readonly', '');
-        dataInput.classList.add('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
         dataInput.removeAttribute('required');
-    } else {
-        if (dataInput.dataset.locked === '1') {
-            dataInput.value = dataInput.dataset.valorAntes || '';
-            dataInput.dataset.locked = '0';
-        }
-        dataInput.removeAttribute('readonly');
-        dataInput.classList.remove('bg-gray-100', 'dark:bg-slate-800', 'cursor-not-allowed');
-        if (checked.length === 0) dataInput.setAttribute('required', '');
+    } else if (checked.length === 0) {
+        dataInput.setAttribute('required', '');
     }
 }
 
