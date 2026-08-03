@@ -170,6 +170,7 @@ class PgdasdService
         }
 
         $dadosApuracao = [
+            'cnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
             'declaracao' => $this->montarDeclaracao($cliente, $receita, $atividades),
             'indicadorTransmissao' => true,
             'indicadorComparacao' => false,
@@ -232,11 +233,21 @@ class PgdasdService
      * conceitos diferentes (competência = receita auferida, caixa = recebida)
      * e não podem ser um substituto do outro, mesmo os dois compondo o mesmo período.
      *
-     * "CnpjCompleto" (dentro de "estabelecimentos") é o único campo desse
-     * payload com C maiúsculo — confirmado contra a API real em produção
-     * (2026-08-03): a API rejeitou "cnpjCompleto" com
-     * MSG_ISN_036/"Required property 'CnpjCompleto' not found", mesmo com
-     * todos os outros campos em camelCase minúsculo funcionando normalmente.
+     * "CnpjCompleto" dentro de "estabelecimentos" foi capitalizado (C
+     * maiúsculo) numa primeira tentativa de corrigir o erro MSG_ISN_036
+     * ("Required property 'CnpjCompleto' not found") em produção
+     * (2026-08-03) — mas o MESMO erro, byte a byte igual, persistiu mesmo
+     * com o campo já capitalizado no payload enviado. Isso indica que o
+     * erro NÃO era sobre a capitalização do campo aninhado, e sim sobre um
+     * campo "cnpjCompleto" (nível raiz do "dados", fora de "declaracao")
+     * que nunca era enviado — hipótese baseada na doc oficial (apicenter.
+     * estaleiro.serpro.gov.br/documentacao/api-integra-contador/pt/
+     * solucoes/integra-sn/pgdasd/servicos/entregar_declaracao_mensal_entrada/),
+     * que lista "cnpjCompleto" como campo do nível raiz de "dados", irmão
+     * de "declaracao"/"indicadorTransmissao"/"indicadorComparacao" — por
+     * isso agora é enviado também em transmitirDeclaracaoDoCliente().
+     * AINDA NÃO CONFIRMADO contra a API real — se o próximo 400 apontar
+     * outro campo, é sinal de que essa hipótese também precisa de ajuste.
      *
      * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
      */
