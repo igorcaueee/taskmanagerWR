@@ -31,12 +31,15 @@ use Illuminate\Support\Facades\Log;
  * diferente do NF-e RS (wrapper `nfeDadosMsgDownload`), o CTeIntegracao usa
  * apenas `<xml>` como elemento — não existe um `cteDadosMsgDownload`.
  *
- * O atributo `versao` do `distNFeRS` também precisou ser corrigido: a
- * documentação de 2018 usa "1.00", mas a Sefaz rejeitava com cStat 239
- * ("Cabecalho - Versao do arquivo XML nao suportada") — o Portal do CT-e
- * (dfe-portal.svrs.rs.gov.br) confirma que a versão 4.00 do layout é
- * obrigatória desde 01/02/2024 (substituiu a 3.00), e cita esse mesmo cStat
- * para quem envia versão desatualizada.
+ * O atributo `versao` do `distNFeRS` é "1.00" — confirmado no XSD real
+ * (dfe-portal.svrs.rs.gov.br/Schemas/PRCTE/leiauteDistCTeRS_v1.00.xsd), cujo
+ * tipo TVerDFe restringe o valor ao padrão fixo "1\.00" (sem outra opção).
+ * Tentativas de usar "4.00"/"2.00" (numa suposição equivocada de que a versão
+ * do LAYOUT DE EMISSÃO do CT-e, essa sim atualizada para 4.00 desde 01/02/2024
+ * por um sistema totalmente diferente, também se aplicaria a este wrapper de
+ * distribuição para contabilistas) geram cStat 239 "Cabecalho - Versao do
+ * arquivo XML nao suportada" — só passam da validação estrutural (243, quando
+ * elemento/wrapper estava errado) para cair nessa checagem de versão inválida.
  */
 class CteIntegracaoRsService
 {
@@ -169,7 +172,7 @@ class CteIntegracaoRsService
   <soap12:Body>
     <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
       <xml>
-        <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
+        <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
