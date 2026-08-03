@@ -377,9 +377,24 @@ class PgdasdService
                 dados: array_merge(['pa' => (int) $periodoApuracao], $dadosApuracao),
             );
 
+            // Bug: estava lendo "numeroRecibo" direto do envelope de resposta
+            // (contratante/pedidoDados/status/dados/mensagens), não do
+            // conteúdo de "dados" (que vem como string JSON, precisa
+            // decodificar) — por isso numero_recibo sempre ficava nulo.
+            // Ainda não confirmado qual o nome exato do campo dentro do
+            // "dados" de sucesso do TRANSDECLARACAO11 (nunca visto um
+            // sucesso real antes) — logamos o corpo decodificado pra
+            // conseguir confirmar no próximo teste real.
+            $dadosResposta = json_decode($resposta['dados'] ?? '{}', true) ?? [];
+
+            Log::info('[PGDASD] transmitirDeclaracao: sucesso, corpo de "dados" decodificado', [
+                'cliente_id' => $cliente->id,
+                'dados' => $dadosResposta,
+            ]);
+
             $registro->update([
                 'status' => 'sucesso',
-                'numero_recibo' => $resposta['numeroRecibo'] ?? null,
+                'numero_recibo' => $dadosResposta['numeroDeclaracao'] ?? $dadosResposta['numeroRecibo'] ?? $dadosResposta['numeroDas'] ?? null,
                 'mensagem_erro' => null,
                 'processado_em' => now(),
             ]);
