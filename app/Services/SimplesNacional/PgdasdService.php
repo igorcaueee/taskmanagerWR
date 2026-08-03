@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\SimplesDasProcessamento;
 use App\Models\SimplesReceitaAtividade;
 use App\Models\SimplesReceitaMensal;
+use App\Support\PgdasdAtividades;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -169,9 +170,15 @@ class PgdasdService
             throw new \RuntimeException("Cliente {$cliente->nome} já tem uma declaração ORIGINAL transmitida para o período {$periodoApuracao} (confirmado via CONSDECLARACAO13). Este sistema ainda não implementa retificadora (tipoDeclaracao 2) — transmitir de novo como Original provavelmente será rejeitado pela Receita Federal.");
         }
 
+        $exigeFolhaSalario = $atividades->contains(fn (SimplesReceitaAtividade $a) => in_array($a->id_atividade, PgdasdAtividades::ATIVIDADES_FATOR_R, true));
+
+        if ($exigeFolhaSalario && $receita->folha_salario === null) {
+            throw new \RuntimeException("Cliente {$cliente->nome}: há atividade sujeita ao fator \"r\" (Anexo V) lançada para {$periodoApuracao}, que exige informar o valor da folha de salário do período — preencha antes de transmitir.");
+        }
+
         $dadosApuracao = [
             'cnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
-            'declaracao' => $this->montarDeclaracao($cliente, $receita, $atividades),
+            'declaracao' => $this->montarDeclaracao($cliente, $receita, $atividades, $periodoApuracao, $exigeFolhaSalario),
             'indicadorTransmissao' => true,
             'indicadorComparacao' => false,
         ];
@@ -254,9 +261,17 @@ class PgdasdService
      * outros idServico do PGDASD continuam usando "periodoApuracao"
      * normalmente, essa troca vale só para o TRANSDECLARACAO11.
      *
+     * "folhasSalario" só é enviado quando alguma atividade lançada é sujeita
+     * ao fator "r" (PgdasdAtividades::ATIVIDADES_FATOR_R) — confirmado em
+     * produção (2026-08-03): a API rejeitou a transmissão com "Existe
+     * atividade com folha de salário obrigatória" sem esse campo. Formato
+     * (array de {pa, valor}) é inferência a partir do nome/estrutura de
+     * "receitasBrutasAnteriores" (mesmo padrão histórico por período) — só
+     * enviamos o período corrente, nunca confirmado se aceita mais de um.
+     *
      * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
      */
-    private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades): array
+    private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades, string $periodoApuracao, bool $exigeFolhaSalario): array
     {
         $declaracao = [
             'tipoDeclaracao' => 1, // 1 = Original
@@ -267,6 +282,12 @@ class PgdasdService
         if ($receita->regime_apuracao === 'caixa') {
             $declaracao['receitaPaCaixaInterno'] = (float) $receita->receita_bruta_caixa;
             $declaracao['receitaPaCaixaExterno'] = 0.0;
+        }
+
+        if ($exigeFolhaSalario) {
+            $declaracao['folhasSalario'] = [
+                ['pa' => (int) $periodoApuracao, 'valor' => (float) $receita->folha_salario],
+            ];
         }
 
         $declaracao['estabelecimentos'] = [

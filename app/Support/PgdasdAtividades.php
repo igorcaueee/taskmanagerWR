@@ -31,6 +31,16 @@ class PgdasdAtividades
     const TRIBUTO_IPI = 1008;
     const TRIBUTO_ISS = 1010;
 
+    /**
+     * Atividades "sujeitas ao fator r" (tributadas pelo Anexo V em vez do
+     * III quando a relação folha/receita for baixa) — exigem informar o
+     * valor da folha de salário do período na transmissão, confirmado em
+     * produção (2026-08-03): a API rejeitou o TRANSDECLARACAO11 com "Existe
+     * atividade com folha de salário obrigatória" quando uma atividade 11
+     * foi lançada sem esse valor.
+     */
+    const ATIVIDADES_FATOR_R = [10, 11, 12, 29];
+
     const NOMES_TRIBUTOS = [
         self::TRIBUTO_IRPJ => 'IRPJ',
         self::TRIBUTO_CSLL => 'CSLL',

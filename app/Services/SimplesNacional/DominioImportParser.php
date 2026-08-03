@@ -10,18 +10,19 @@ use App\Support\PgdasdAtividades;
  * manualmente na tela de transmissão.
  *
  * Formato observado (não documentado oficialmente pelo Domínio, inferido a
- * partir de um arquivo real de exemplo em 2026-07-22): linhas separadas por
- * TAB, primeira coluna é um "tipo de linha" que indica o conteúdo, coluna 4
- * (índice 0) é o índice do estabelecimento (0 = nível da declaração/matriz,
- * 1..N = cada estabelecimento, N+1 = totais finais). As colunas de dados após
- * a 20 podem deslocar de posição dependendo de campos opcionais — por isso
- * extraímos os valores pelo texto do rótulo ("Receita Tributada Total:" etc.)
- * em vez de por índice fixo de coluna, o que é mais robusto a variações de
- * layout entre relatórios.
+ * partir de arquivos reais): linhas separadas por TAB, primeira coluna é um
+ * "tipo de linha" que indica o conteúdo. A coluna 4 (índice 0) NÃO é um
+ * índice estável de estabelecimento como se assumiu inicialmente — ela
+ * incrementa a cada NOVO BLOCO do relatório (cada atividade dentro de um
+ * mesmo estabelecimento também ganha um valor novo nessa coluna), então usá-la
+ * pra agrupar por estabelecimento descartava silenciosamente toda atividade
+ * além da primeira (confirmado com um relatório real em 2026-08-03, que tinha
+ * 4 atividades e só 1 aparecia). Por isso o estabelecimento atual é rastreado
+ * pela ordem real das linhas "tipo 3" (início de estabelecimento), e a
+ * atividade atual pela ordem real das linhas "tipo 4" com rótulo "Anexo:"
+ * (todo bloco de atividade observado começa com uma linha "Anexo:").
  *
- * Vale revalidar esse parser se o Domínio mudar o formato do relatório, ou se
- * aparecer um caso com múltiplas atividades por estabelecimento, regime misto
- * (competência + caixa), ou situação tributária diferente de "Tributado".
+ * Vale revalidar esse parser se o Domínio mudar o formato do relatório.
  */
 class DominioImportParser
 {
@@ -38,9 +39,12 @@ class DominioImportParser
      *         rba_anterior: ?float,
      *         rpa_competencia: ?float,
      *         rpa_caixa: ?float,
+     *         anexo_sugerido: ?string,
      *         atividades: array<int, array{
      *             tabela_texto: ?string,
+     *             secao_texto: ?string,
      *             anexo_texto: ?string,
+     *             anexo_romano: ?string,
      *             id_atividade_sugerido: ?int,
      *             confianca_match: float,
      *             receita_tributada_total: ?float,
@@ -58,7 +62,8 @@ class DominioImportParser
         $estabelecimentos = [];
         $dadosNivelDeclaracao = ['rbt12' => null, 'rba_atual' => null, 'rba_anterior' => null, 'rpa_competencia' => null, 'rpa_caixa' => null];
         $pendingLabel = null;
-        $ultimaAtividadeIdx = [];
+        $estabAtual = null;
+        $atividadeAtual = null;
 
         foreach ($linhas as $linha) {
             if (trim($linha) === '') {
@@ -72,8 +77,6 @@ class DominioImportParser
             if ($tipo === '') {
                 continue;
             }
-
-            $estabIdx = (int) trim($cols[4] ?? '0');
 
             if ($periodoApuracao === null) {
                 $periodoStr = trim($cols[18] ?? ''); // dd/mm/yyyy, primeiro dia do período
@@ -111,24 +114,21 @@ class DominioImportParser
 
                 case '3': // início de um estabelecimento: tail = [id, nome, cnpj]
                     if (count($tail) >= 3) {
-                        $estabelecimentos[$estabIdx] = [
+                        $estabAtual = count($estabelecimentos);
+                        $estabelecimentos[$estabAtual] = [
                             'cnpj' => preg_replace('/\D/', '', $tail[2]),
                             'nome' => $tail[1],
                             'atividades' => [],
                         ];
-                        $ultimaAtividadeIdx[$estabIdx] = -1;
+                        $atividadeAtual = null;
                     }
                     $pendingLabel = null;
                     break;
 
                 case '4': // texto Anexo/Seção/Tabela (pode continuar em linhas sem rótulo)
-                    if (! isset($estabelecimentos[$estabIdx]) || empty($tail)) {
+                    if ($estabAtual === null || empty($tail)) {
                         break;
                     }
-
-                    $atividadeIdx = max($ultimaAtividadeIdx[$estabIdx] ?? -1, 0);
-                    $this->garantirAtividade($estabelecimentos[$estabIdx], $atividadeIdx);
-                    $ultimaAtividadeIdx[$estabIdx] = $atividadeIdx;
 
                     $ultimo = end($tail);
 
@@ -136,38 +136,36 @@ class DominioImportParser
                         $label = rtrim($ultimo, ':');
                         $texto = implode(' ', array_slice($tail, 0, -1));
                         $chave = $label === 'Anexo' ? 'anexo_texto' : ($label === 'Tabela' ? 'tabela_texto' : 'secao_texto');
-                        $estabelecimentos[$estabIdx]['atividades'][$atividadeIdx][$chave] = $texto;
+
+                        if ($chave === 'anexo_texto') {
+                            // toda atividade observada começa com uma linha "Anexo:" —
+                            // marca o início de um novo bloco de atividade.
+                            $atividadeAtual = count($estabelecimentos[$estabAtual]['atividades']);
+                            $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual] = [];
+                        }
+
+                        if ($atividadeAtual === null) {
+                            break; // texto solto antes de qualquer "Anexo:" nesse estabelecimento
+                        }
+
+                        $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual][$chave] = $texto;
                         $pendingLabel = $chave;
-                    } elseif ($pendingLabel) {
-                        $estabelecimentos[$estabIdx]['atividades'][$atividadeIdx][$pendingLabel] .= ' '.implode(' ', $tail);
+                    } elseif ($pendingLabel && $atividadeAtual !== null) {
+                        $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual][$pendingLabel] .= ' '.implode(' ', $tail);
                     }
                     break;
 
                 case '5': // Receita Tributada Total / Alíquota / Simples Nacional Total
-                    if (! isset($estabelecimentos[$estabIdx])) {
+                    if ($estabAtual === null || $atividadeAtual === null) {
                         break;
                     }
 
-                    $atividadeIdx = max($ultimaAtividadeIdx[$estabIdx] ?? 0, 0);
-                    $this->garantirAtividade($estabelecimentos[$estabIdx], $atividadeIdx);
-
                     $mapa = $this->extrairPorLabel($tail, ['Receita Tributada Total:', 'Alíquota:', 'Simples Nacional Total:']);
-                    $estabelecimentos[$estabIdx]['atividades'][$atividadeIdx]['receita_tributada_total'] = $this->paraFloat($mapa['Receita Tributada Total:'][0] ?? null);
-
-                    // Depois desta linha, uma eventual próxima atividade no mesmo estabelecimento
-                    // começará um novo índice (o layout do Domínio não numera atividades
-                    // explicitamente; usamos a sequência de blocos "tipo 4" pra separar).
-                    $ultimaAtividadeIdx[$estabIdx] = $atividadeIdx + 1;
+                    $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual]['receita_tributada_total'] = $this->paraFloat($mapa['Receita Tributada Total:'][0] ?? null);
                     break;
 
                 case '6': // Partilha (nomes dos tributos) / Situação
-                    if (! isset($estabelecimentos[$estabIdx])) {
-                        break;
-                    }
-
-                    $atividadeIdx = max(($ultimaAtividadeIdx[$estabIdx] ?? 1) - 1, 0);
-
-                    if (! isset($estabelecimentos[$estabIdx]['atividades'][$atividadeIdx])) {
+                    if ($estabAtual === null || $atividadeAtual === null) {
                         break;
                     }
 
@@ -175,9 +173,9 @@ class DominioImportParser
                     $valores = array_slice($tail, 1);
 
                     if (str_starts_with($label, 'Partilha')) {
-                        $estabelecimentos[$estabIdx]['atividades'][$atividadeIdx]['_ordem_tributos'] = $valores;
+                        $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual]['_ordem_tributos'] = $valores;
                     } elseif (str_starts_with($label, 'Situação')) {
-                        $ordem = $estabelecimentos[$estabIdx]['atividades'][$atividadeIdx]['_ordem_tributos'] ?? [];
+                        $ordem = $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual]['_ordem_tributos'] ?? [];
                         $tributos = [];
 
                         foreach ($ordem as $i => $nomeTributo) {
@@ -188,7 +186,7 @@ class DominioImportParser
                             }
                         }
 
-                        $estabelecimentos[$estabIdx]['atividades'][$atividadeIdx]['tributos'] = $tributos;
+                        $estabelecimentos[$estabAtual]['atividades'][$atividadeAtual]['tributos'] = $tributos;
                     }
                     break;
             }
@@ -202,18 +200,30 @@ class DominioImportParser
             $atividadesFinal = [];
 
             foreach ($dados['atividades'] as $atividade) {
-                unset($atividade['_ordem_tributos']);
                 $tabelaTexto = $atividade['tabela_texto'] ?? null;
+                $secaoTexto = $atividade['secao_texto'] ?? null;
+                $anexoTexto = $atividade['anexo_texto'] ?? null;
+                $receitaTotal = $atividade['receita_tributada_total'] ?? null;
+
+                // Descarta blocos que não são atividade de verdade (ex.: um recap
+                // de RBT12/RBA que o Domínio repete com um "Anexo:" solto no fim
+                // do relatório, sem Tabela nem Receita Tributada Total nenhuma).
+                if ($tabelaTexto === null && $receitaTotal === null) {
+                    continue;
+                }
+
                 [$idSugerido, $confianca] = $tabelaTexto
-                    ? $this->sugerirIdAtividade($tabelaTexto)
+                    ? $this->sugerirIdAtividade($anexoTexto, $secaoTexto, $tabelaTexto)
                     : [null, 0.0];
 
                 $atividadesFinal[] = [
                     'tabela_texto' => $tabelaTexto,
-                    'anexo_texto' => $atividade['anexo_texto'] ?? null,
+                    'secao_texto' => $secaoTexto,
+                    'anexo_texto' => $anexoTexto,
+                    'anexo_romano' => $this->extrairAnexoRomano($anexoTexto),
                     'id_atividade_sugerido' => $idSugerido,
                     'confianca_match' => $confianca,
-                    'receita_tributada_total' => $atividade['receita_tributada_total'] ?? null,
+                    'receita_tributada_total' => $receitaTotal,
                     'tributos' => $atividade['tributos'] ?? [],
                 ];
             }
@@ -221,18 +231,12 @@ class DominioImportParser
             $resultado['estabelecimentos'][] = array_merge($dadosNivelDeclaracao, [
                 'cnpj' => $dados['cnpj'],
                 'nome' => $dados['nome'],
+                'anexo_sugerido' => $this->anexoMaisFrequente($atividadesFinal),
                 'atividades' => $atividadesFinal,
             ]);
         }
 
         return $resultado;
-    }
-
-    private function garantirAtividade(array &$estabelecimento, int $idx): void
-    {
-        if (! isset($estabelecimento['atividades'][$idx])) {
-            $estabelecimento['atividades'][$idx] = [];
-        }
     }
 
     /**
@@ -278,15 +282,98 @@ class DominioImportParser
     }
 
     /**
-     * Casa o texto da "Tabela" do relatório do Domínio com a descrição
+     * Extrai o algarismo romano do Anexo (I a V) do texto "Anexo I - Comércio" etc.
+     */
+    private function extrairAnexoRomano(?string $anexoTexto): ?string
+    {
+        if ($anexoTexto && preg_match('/\bAnexo\s+(IV|III|II|I|V)\b/ui', $anexoTexto, $m)) {
+            return mb_strtoupper($m[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Anexo predominante entre as atividades de um estabelecimento — usado pra
+     * sugerir preenchimento do campo "Anexo" cadastrado do cliente.
+     */
+    private function anexoMaisFrequente(array $atividades): ?string
+    {
+        $contagem = array_count_values(array_filter(array_column($atividades, 'anexo_romano')));
+
+        if (empty($contagem)) {
+            return null;
+        }
+
+        arsort($contagem);
+
+        return array_key_first($contagem);
+    }
+
+    /**
+     * Palavra-chave do texto do relatório (Anexo/Seção) => trecho que precisa
+     * aparecer na "categoria" do catálogo — usado pra restringir o fuzzy
+     * match a só um grupo de atividades plausível antes de comparar por
+     * similaridade de texto. Sem esse filtro, uma descrição curta e não
+     * relacionada (ex.: atividade 36, "Comunicação... sem substituição
+     * tributária de ICMS") pode bater mais caracteres com o texto de entrada
+     * do que a atividade certa, só por acaso de forma — confirmado com um
+     * relatório real em 2026-08-03 (ver docblock de sugerirIdAtividade).
+     * Checado nessa ordem (mais específico primeiro) pra não deixar um termo
+     * genérico como "servic" capturar um caso mais específico como
+     * "comunicac"/"transport"/"construc".
+     */
+    private const CATEGORIA_POR_PALAVRA_CHAVE = [
+        'industrializad' => 'venda de mercadorias industrializadas',
+        'comunicac' => 'comunicacao',
+        'transport' => 'transporte',
+        'construc' => 'construcao civil',
+        'locac' => 'locacao de bens moveis',
+        'comerc' => 'revenda de mercadorias',
+        'servic' => 'prestacao de servicos',
+    ];
+
+    /**
+     * Casa o texto Anexo+Seção+Tabela do relatório do Domínio com a descrição
      * correspondente no catálogo oficial de atividades do PGDASD, por
      * similaridade de texto (normalizado, sem acento/pontuação).
      *
+     * Usa Anexo+Seção+Tabela combinados (não só a Tabela) por dois motivos,
+     * confirmados com um relatório real em 2026-08-03: (1) o mesmo texto de
+     * Tabela pode se repetir em Seções diferentes com significados opostos
+     * (ex.: "Tabela 1" aparece tanto na Seção "não sujeitas a substituição"
+     * quanto na Seção "sujeitas a substituição" do mesmo Anexo/relatório);
+     * (2) a comparação por caractere (similar_text) penaliza descrições
+     * corretas mas longas do catálogo quando o texto de entrada é curto — ex.
+     * a Tabela "Sem substituição tributária" batia mais com a atividade 34
+     * ("Transporte sem substituição tributária de ICMS", 74%) do que com a
+     * atividade 1 (correta, mas com uma descrição bem mais longa, por isso
+     * proporcionalmente "menos parecida"). Combinar Seção+Anexo ajuda, mas
+     * não resolve sozinho — o pré-filtro por categoria (CATEGORIA_POR_
+     * PALAVRA_CHAVE) que efetivamente evita comparar "Comércio" com
+     * "Comunicação"/"Transporte".
+     *
      * @return array{0: ?int, 1: float} [idAtividade, confiança 0-1]
      */
-    private function sugerirIdAtividade(string $tabelaTexto): array
+    private function sugerirIdAtividade(?string $anexoTexto, ?string $secaoTexto, string $tabelaTexto): array
     {
-        $alvo = $this->normalizar($tabelaTexto);
+        $alvo = $this->normalizar(implode(' ', array_filter([$anexoTexto, $secaoTexto, $tabelaTexto])));
+        $catalogo = PgdasdAtividades::catalogo();
+
+        $catalogoFiltrado = null;
+        foreach (self::CATEGORIA_POR_PALAVRA_CHAVE as $palavraChave => $trechoCategoria) {
+            if (! str_contains($alvo, $palavraChave)) {
+                continue;
+            }
+
+            $subset = array_filter($catalogo, fn (array $info) => str_contains($this->normalizar($info['categoria']), $trechoCategoria));
+
+            if (! empty($subset)) {
+                $catalogoFiltrado = $subset;
+                break;
+            }
+        }
+
         $melhorId = null;
         $melhorScore = 0.0;
 
@@ -296,14 +383,28 @@ class DominioImportParser
         // comparar por similaridade, senão o match pode escolher a opção errada
         // com confiança alta.
         $alvoNegado = $this->contemNegacao($alvo);
+        $alvoSubstituicao = $this->polaridadeSubstituicao($alvo);
+        $alvoExterior = $this->polaridadeExterior($alvo);
+        $sobreviventes = 0;
 
-        foreach (PgdasdAtividades::catalogo() as $id => $info) {
-            $candidato = $this->normalizar($info['descricao']);
+        foreach ($catalogoFiltrado ?? $catalogo as $id => $info) {
+            $candidato = $this->normalizar($info['categoria'].' '.$info['descricao']);
 
             if ($this->contemNegacao($candidato) !== $alvoNegado && $this->mencionaConceitoNegavel($alvo, $candidato)) {
                 continue;
             }
 
+            $candSubstituicao = $this->polaridadeSubstituicao($candidato);
+            if ($alvoSubstituicao !== null && $candSubstituicao !== null && $alvoSubstituicao !== $candSubstituicao) {
+                continue;
+            }
+
+            $candExterior = $this->polaridadeExterior($candidato);
+            if ($alvoExterior !== null && $candExterior !== null && $alvoExterior !== $candExterior) {
+                continue;
+            }
+
+            $sobreviventes++;
             similar_text($alvo, $candidato, $percentual);
             $score = $percentual / 100;
 
@@ -313,12 +414,32 @@ class DominioImportParser
             }
         }
 
+        // Se o pré-filtro de categoria + os filtros de polaridade (substituição,
+        // comércio exterior) deixaram só 1 atividade possível, confiamos nela
+        // mesmo com score bruto abaixo de 0.5 — a similaridade por caractere
+        // penaliza descrições corretas mas verbosas do catálogo (ex.: atividade 1
+        // menciona "tributação monofásica"/"antecipação com encerramento" que não
+        // aparecem no relatório do Domínio), e nesse ponto já não é mais uma
+        // questão de "parecença de texto", é a única opção estruturalmente
+        // compatível.
+        if ($sobreviventes === 1 && $melhorId !== null) {
+            return [$melhorId, max($melhorScore, 0.75)];
+        }
+
         return $melhorScore >= 0.5 ? [$melhorId, $melhorScore] : [null, $melhorScore];
     }
 
     /**
-     * Detecta negação explícita tipo "não sujeitos"/"sem retenção" no texto
-     * já normalizado (sem acento/pontuação).
+     * Detecta negação explícita tipo "não sujeitos ao fator r" no texto já
+     * normalizado (sem acento/pontuação). Só cobre "não" — "sem"/"exceto"
+     * de propósito NÃO entram aqui (testado e revertido em 2026-08-03): eles
+     * aparecem em trechos do catálogo sem relação com o conceito que se quer
+     * negar (ex.: "revenda de mercadorias EXCETO para o exterior" tem
+     * "exceto" mas não é sobre substituição tributária), contaminando esse
+     * filtro genérico. Os conceitos "substituição tributária" e "comércio
+     * exterior" — que realmente precisam de "sem"/"exceto" como negação —
+     * têm checagem própria e localizada em polaridadeSubstituicao/
+     * polaridadeExterior, exatamente pra evitar essa contaminação.
      */
     private function contemNegacao(string $textoNormalizado): bool
     {
@@ -332,7 +453,7 @@ class DominioImportParser
      */
     private function mencionaConceitoNegavel(string $alvo, string $candidato): bool
     {
-        foreach (['sujeit', 'retencao', 'substitui'] as $conceito) {
+        foreach (['sujeit', 'retencao'] as $conceito) {
             if (str_contains($alvo, $conceito) && str_contains($candidato, $conceito)) {
                 return true;
             }
@@ -341,12 +462,56 @@ class DominioImportParser
         return false;
     }
 
+    /**
+     * Polaridade de "substituição tributária" (null = conceito não mencionado
+     * no texto, então não filtra por ele): olha a palavra imediatamente antes
+     * de "substitui" pra decidir se é negado ("sem"/"não sujeito a") ou
+     * afirmado ("com"/"sujeito a") — precisa ser localizado (não um "contém
+     * 'sem' em qualquer lugar da string") porque o catálogo usa "exceto para
+     * o exterior" no mesmo trecho, o que não tem nada a ver com substituição.
+     */
+    private function polaridadeSubstituicao(string $textoNormalizado): ?bool
+    {
+        if (! str_contains($textoNormalizado, 'substitui')) {
+            return null;
+        }
+
+        if (preg_match('/\b(sem|nao[a-z ]{0,20}sujeit\w*)\b[a-z ]{0,60}substitui/', $textoNormalizado)) {
+            return true;
+        }
+
+        if (preg_match('/\b(com|sujeit\w*)\b[a-z ]{0,60}(a )?substitui/', $textoNormalizado)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    /**
+     * Polaridade de "comércio exterior" (null = não mencionado): "exceto ...
+     * exterior" = atividade doméstica (negado); "para o exterior" sem
+     * "exceto" perto = atividade de exportação (afirmado).
+     */
+    private function polaridadeExterior(string $textoNormalizado): ?bool
+    {
+        if (! str_contains($textoNormalizado, 'exterior')) {
+            return null;
+        }
+
+        return ! (bool) preg_match('/\bexceto\b[a-z ]{0,60}exterior/', $textoNormalizado);
+    }
+
     private function normalizar(string $texto): string
     {
         $texto = mb_strtolower($texto, 'UTF-8');
         $texto = preg_replace('/\bTabela\s*\d+\s*-\s*/ui', '', $texto);
         $texto = iconv('UTF-8', 'ASCII//TRANSLIT', $texto) ?: $texto;
         $texto = preg_replace('/[^a-z0-9]+/', ' ', $texto);
+        // "Exportação"/"exportar" é sinônimo de "exterior" pro fim de detectar a
+        // polaridade de comércio exterior (o relatório do Domínio usa um termo,
+        // o catálogo oficial usa o outro) — sem isso os dois nunca "conversam"
+        // no filtro de polaridade de mencionaConceitoNegavel/contemNegacao.
+        $texto = preg_replace('/\bexportac(ao|oes)\b/', 'exterior', $texto);
 
         return trim($texto);
     }

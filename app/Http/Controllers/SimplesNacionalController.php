@@ -104,6 +104,7 @@ class SimplesNacionalController extends Controller
             'clientes' => $this->clientesSimplesAtivos(),
             'atividadesCatalogo' => PgdasdAtividades::catalogo(),
             'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
+            'atividadesFatorR' => PgdasdAtividades::ATIVIDADES_FATOR_R,
             'processamentos' => $processamentos,
             'periodo' => $periodo,
         ]);
@@ -674,6 +675,7 @@ class SimplesNacionalController extends Controller
             'receita_bruta_competencia' => $receita->receita_bruta_competencia ?? null,
             'receita_bruta_caixa' => $receita->receita_bruta_caixa ?? null,
             'regime_apuracao' => $receita->regime_apuracao ?? 'competencia',
+            'folha_salario' => $receita->folha_salario ?? null,
         ]);
     }
 
@@ -685,6 +687,7 @@ class SimplesNacionalController extends Controller
             'receita_bruta_competencia' => 'required|numeric|min:0',
             'receita_bruta_caixa' => 'nullable|numeric|min:0',
             'regime_apuracao' => 'required|in:competencia,caixa',
+            'folha_salario' => 'nullable|numeric|min:0',
         ]);
 
         SimplesReceitaMensal::updateOrCreate(
@@ -693,6 +696,7 @@ class SimplesNacionalController extends Controller
                 'receita_bruta_competencia' => $validated['receita_bruta_competencia'],
                 'receita_bruta_caixa' => $validated['receita_bruta_caixa'] ?? null,
                 'regime_apuracao' => $validated['regime_apuracao'],
+                'folha_salario' => $validated['folha_salario'] ?? null,
             ]
         );
 
@@ -826,9 +830,23 @@ class SimplesNacionalController extends Controller
 
         $estabelecimentos = collect($resultado['estabelecimentos'])->map(function (array $e) use ($catalogo, $clientesPorCnpj) {
             $cliente = $clientesPorCnpj->get($e['cnpj']);
-            $tributosDivergentes = collect($e['atividades'][0]['tributos'] ?? [])
-                ->reject(fn ($t) => $t['situacao'] === 'Tributado')
-                ->values();
+
+            $atividades = collect($e['atividades'])->map(function (array $a) use ($catalogo) {
+                $tributosDivergentes = collect($a['tributos'] ?? [])
+                    ->reject(fn ($t) => $t['situacao'] === 'Tributado')
+                    ->values();
+
+                return [
+                    'id_atividade_sugerido' => $a['id_atividade_sugerido'] ?? null,
+                    'atividade_descricao_sugerida' => isset($catalogo[$a['id_atividade_sugerido'] ?? null])
+                        ? $catalogo[$a['id_atividade_sugerido']]['descricao']
+                        : null,
+                    'confianca_match' => $a['confianca_match'] ?? 0,
+                    'tabela_texto' => $a['tabela_texto'] ?? null,
+                    'receita_tributada_total' => $a['receita_tributada_total'] ?? null,
+                    'tributos_divergentes' => $tributosDivergentes,
+                ];
+            })->values();
 
             return [
                 'cnpj' => $e['cnpj'],
@@ -840,14 +858,8 @@ class SimplesNacionalController extends Controller
                 'rba_anterior' => $e['rba_anterior'],
                 'rpa_competencia' => $e['rpa_competencia'],
                 'rpa_caixa' => $e['rpa_caixa'],
-                'id_atividade_sugerido' => $e['atividades'][0]['id_atividade_sugerido'] ?? null,
-                'atividade_descricao_sugerida' => isset($catalogo[$e['atividades'][0]['id_atividade_sugerido'] ?? null])
-                    ? $catalogo[$e['atividades'][0]['id_atividade_sugerido']]['descricao']
-                    : null,
-                'confianca_match' => $e['atividades'][0]['confianca_match'] ?? 0,
-                'tabela_texto' => $e['atividades'][0]['tabela_texto'] ?? null,
-                'receita_tributada_total' => $e['atividades'][0]['receita_tributada_total'] ?? null,
-                'tributos_divergentes' => $tributosDivergentes,
+                'anexo_sugerido' => $e['anexo_sugerido'] ?? null,
+                'atividades' => $atividades,
             ];
         });
 
@@ -872,8 +884,10 @@ class SimplesNacionalController extends Controller
             'estabelecimentos.*.rpa_competencia' => 'nullable|numeric|min:0',
             'estabelecimentos.*.rpa_caixa' => 'nullable|numeric|min:0',
             'estabelecimentos.*.regime_apuracao' => 'required|in:competencia,caixa',
-            'estabelecimentos.*.id_atividade' => 'required|integer|min:1|max:43',
-            'estabelecimentos.*.receita_tributada_total' => 'required|numeric|min:0',
+            'estabelecimentos.*.anexo_simples' => 'nullable|string|max:10',
+            'estabelecimentos.*.atividades' => 'required|array|min:1',
+            'estabelecimentos.*.atividades.*.id_atividade' => 'required|integer|min:1|max:43',
+            'estabelecimentos.*.atividades.*.receita_tributada_total' => 'required|numeric|min:0',
         ]);
 
         $periodo = $validated['periodo_apuracao'];
@@ -892,10 +906,29 @@ class SimplesNacionalController extends Controller
                     ]
                 );
 
-                SimplesReceitaAtividade::updateOrCreate(
-                    ['cliente_id' => $e['cliente_id'], 'periodo_apuracao' => $periodo, 'id_atividade' => $e['id_atividade']],
-                    ['valor' => $e['receita_tributada_total']]
-                );
+                if (! empty($e['anexo_simples'])) {
+                    ClienteDadosSimples::updateOrCreate(
+                        ['cliente_id' => $e['cliente_id']],
+                        ['anexo_simples' => $e['anexo_simples']]
+                    );
+                }
+
+                // Substitui por completo as atividades desse cliente/período — mesmo
+                // padrão "apaga tudo e recria" do salvarReceitasAtividades manual,
+                // pra reimportar o mesmo período não deixar atividade órfã de uma
+                // importação anterior.
+                SimplesReceitaAtividade::where('cliente_id', $e['cliente_id'])
+                    ->where('periodo_apuracao', $periodo)
+                    ->delete();
+
+                foreach ($e['atividades'] as $atividade) {
+                    SimplesReceitaAtividade::create([
+                        'cliente_id' => $e['cliente_id'],
+                        'periodo_apuracao' => $periodo,
+                        'id_atividade' => $atividade['id_atividade'],
+                        'valor' => $atividade['receita_tributada_total'],
+                    ]);
+                }
 
                 $salvos++;
             }

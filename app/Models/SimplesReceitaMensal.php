@@ -20,11 +20,13 @@ class SimplesReceitaMensal extends Model
         'receita_bruta_competencia',
         'receita_bruta_caixa',
         'regime_apuracao',
+        'folha_salario',
     ];
 
     protected $casts = [
         'receita_bruta_competencia' => 'decimal:2',
         'receita_bruta_caixa' => 'decimal:2',
+        'folha_salario' => 'decimal:2',
     ];
 
     public function cliente(): BelongsTo

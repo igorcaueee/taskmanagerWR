@@ -90,6 +90,10 @@
                                 <option value="caixa">Caixa</option>
                             </select>
                         </div>
+                        <div id="wrapperFolhaSalario" class="hidden md:col-span-3">
+                            <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Valor da folha de salário do período R$ <span class="text-amber-600">(obrigatório — há atividade sujeita ao fator "r"/Anexo V selecionada abaixo)</span></label>
+                            <input type="number" step="0.01" id="inputFolhaSalario" class="w-full md:w-64 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                        </div>
                         <div class="md:col-span-3">
                             <button type="button" id="btnSalvarReceitaMensal" class="py-1.5 px-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded text-sm hover:bg-gray-50 dark:hover:bg-slate-600">
                                 Salvar receita do mês
@@ -214,8 +218,7 @@
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cliente no sistema</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">RBT12 / RBA</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita (competência/caixa)</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Atividade sugerida</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita da atividade</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Atividades (uma por linha, do relatório)</th>
                                 </tr>
                             </thead>
                             <tbody id="importDominioTabelaBody" class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700"></tbody>
@@ -308,6 +311,7 @@
     <script>
         window.PGDASD_ATIVIDADES = @json($atividadesCatalogo);
         window.PGDASD_TRIBUTOS = @json($nomesTributos);
+        window.PGDASD_ATIVIDADES_FATOR_R = @json($atividadesFatorR);
     </script>
     @include('simples-nacional._shared')
     <script>
@@ -344,6 +348,8 @@
     const inputReceitaCompetencia    = document.getElementById('inputReceitaCompetencia');
     const inputReceitaCaixa          = document.getElementById('inputReceitaCaixa');
     const selectRegimeApuracao       = document.getElementById('selectRegimeApuracao');
+    const wrapperFolhaSalario        = document.getElementById('wrapperFolhaSalario');
+    const inputFolhaSalario          = document.getElementById('inputFolhaSalario');
     const btnSalvarReceitaMensal     = document.getElementById('btnSalvarReceitaMensal');
     const btnTransmitirDeclaracao    = document.getElementById('btnTransmitirDeclaracao');
     const transmitirResultado        = document.getElementById('transmitirResultado');
@@ -384,6 +390,7 @@
         inputReceitaCompetencia.value = data.receita_bruta_competencia ?? '';
         inputReceitaCaixa.value = data.receita_bruta_caixa ?? '';
         selectRegimeApuracao.value = data.regime_apuracao ?? 'competencia';
+        inputFolhaSalario.value = data.folha_salario ?? '';
     }
 
     function atualizarCamposTransmissao() {
@@ -447,6 +454,7 @@
                     receita_bruta_competencia: inputReceitaCompetencia.value,
                     receita_bruta_caixa: inputReceitaCaixa.value || null,
                     regime_apuracao: selectRegimeApuracao.value,
+                    folha_salario: inputFolhaSalario.value || null,
                 }),
             });
             const data = await resp.json();
@@ -568,6 +576,11 @@
         resumoAtividadesSelecionadas.textContent = selecionadas.length === 0
             ? 'Selecionar atividades...'
             : selecionadas.map(cb => cb.value).join(', ') + (selecionadas.length > 1 ? ' atividades' : ' atividade');
+
+        // Atividades sujeitas ao fator "r" (Anexo V) exigem informar a folha de
+        // salário do período na transmissão (ver PgdasdAtividades::ATIVIDADES_FATOR_R).
+        const exigeFolhaSalario = selecionadas.some(cb => (window.PGDASD_ATIVIDADES_FATOR_R ?? []).includes(parseInt(cb.value, 10)));
+        wrapperFolhaSalario.classList.toggle('hidden', !exigeFolhaSalario);
     }
 
     btnToggleAtividades.addEventListener('click', () => {
@@ -1201,14 +1214,11 @@
             data.estabelecimentos.forEach(e => {
                 const tr = document.createElement('tr');
                 tr.dataset.clienteId = e.cliente_id ?? '';
+                tr.dataset.anexoSugerido = e.anexo_sugerido ?? '';
 
                 const clienteHtml = e.cliente_id
                     ? `<span class="text-green-700 dark:text-green-400">${escapeHtml(e.cliente_nome)}</span>`
                     : `<span class="text-red-600">Não encontrado (CNPJ ${escapeHtml(e.cnpj)})</span>`;
-
-                const avisoTributos = (e.tributos_divergentes ?? []).length > 0
-                    ? `<div class="text-xs text-amber-600 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Tributos com situação diferente de "Tributado" — ajuste manualmente depois em "Atividades e receitas".</div>`
-                    : '';
 
                 // sugere caixa só quando o relatório já traz um valor de caixa; senão parte de competência.
                 // O valor é único e editável — o Domínio pode marcar como "competência" um cliente que na
@@ -1217,11 +1227,18 @@
                 const regimeSugerido = (e.rpa_caixa !== null && e.rpa_caixa !== undefined && Number(e.rpa_caixa) > 0) ? 'caixa' : 'competencia';
                 const valorInicial = regimeSugerido === 'caixa' ? (e.rpa_caixa ?? '') : (e.rpa_competencia ?? '');
 
+                const anexoHtml = e.anexo_sugerido
+                    ? `<label class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400 mt-1 cursor-pointer">
+                        <input type="checkbox" class="checkbox-atualizar-anexo-dominio" checked>
+                        Anexo sugerido: <strong>${escapeHtml(e.anexo_sugerido)}</strong> (atualizar cadastro)
+                       </label>`
+                    : '';
+
                 tr.innerHTML = `
-                    <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">${escapeHtml(e.cnpj)}</td>
-                    <td class="px-3 py-2 whitespace-nowrap">${clienteHtml}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-xs">RBT12: R$ ${formatarMoeda(e.rbt12)}<br>RBA atual: R$ ${formatarMoeda(e.rba_atual)}<br>RBA anterior: R$ ${formatarMoeda(e.rba_anterior)}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-xs">
+                    <td class="px-3 py-2 font-mono text-xs whitespace-nowrap align-top">${escapeHtml(e.cnpj)}</td>
+                    <td class="px-3 py-2 whitespace-nowrap align-top">${clienteHtml}${anexoHtml}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-xs align-top">RBT12: R$ ${formatarMoeda(e.rbt12)}<br>RBA atual: R$ ${formatarMoeda(e.rba_atual)}<br>RBA anterior: R$ ${formatarMoeda(e.rba_anterior)}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-xs align-top">
                         <input type="number" step="0.01" class="input-valor-regime-dominio block mb-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-28" value="${valorInicial}">
                         <label class="flex items-center gap-1.5 mb-1 cursor-pointer">
                             <input type="checkbox" class="checkbox-regime-competencia" ${regimeSugerido === 'competencia' ? 'checked' : ''}>
@@ -1232,17 +1249,45 @@
                             Caixa
                         </label>
                     </td>
-                    <td class="px-3 py-2 select-atividade-cell">
-                        <select class="select-atividade-dominio text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-64">
-                            ${montarSelectAtividadesDominio(e.id_atividade_sugerido)}
-                        </select>
-                        <div class="text-xs text-gray-400 mt-1">Confiança do match: ${Math.round((e.confianca_match ?? 0) * 100)}% — texto do relatório: "${escapeHtml(e.tabela_texto ?? '—')}"</div>
-                        ${avisoTributos}
-                    </td>
-                    <td class="px-3 py-2">
-                        <input type="number" step="0.01" class="input-receita-atividade-dominio text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-28" value="${e.receita_tributada_total ?? ''}">
+                    <td class="px-3 py-2 align-top">
+                        <table class="atividades-dominio-tabela text-xs border-separate" style="border-spacing: 0 0.5rem;"></table>
+                        <div class="soma-atividades-dominio text-xs mt-1"></div>
                     </td>
                 `;
+
+                const tabelaAtividades = tr.querySelector('.atividades-dominio-tabela');
+
+                (e.atividades ?? []).forEach(a => {
+                    const linhaAtividade = document.createElement('tr');
+                    linhaAtividade.innerHTML = `
+                        <td class="pr-2 align-top">
+                            <select class="select-atividade-dominio text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-64">
+                                ${montarSelectAtividadesDominio(a.id_atividade_sugerido)}
+                            </select>
+                            <div class="text-xs text-gray-400 mt-0.5">Confiança: ${Math.round((a.confianca_match ?? 0) * 100)}% — "${escapeHtml(a.tabela_texto ?? '—')}"</div>
+                            ${(a.tributos_divergentes ?? []).length > 0
+                                ? `<div class="text-xs text-amber-600 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> Tributos com situação diferente de "Tributado" — ajuste manualmente depois em "Atividades e receitas".</div>`
+                                : ''}
+                        </td>
+                        <td class="align-top">
+                            <input type="number" step="0.01" class="input-receita-atividade-dominio text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-28" value="${a.receita_tributada_total ?? ''}">
+                        </td>
+                    `;
+                    tabelaAtividades.appendChild(linhaAtividade);
+                });
+
+                const somaCell = tr.querySelector('.soma-atividades-dominio');
+
+                function atualizarSomaDominio() {
+                    const inputsReceita = Array.from(tr.querySelectorAll('.input-receita-atividade-dominio'));
+                    const soma = inputsReceita.reduce((acc, input) => acc + (parseFloat(input.value) || 0), 0);
+                    const valorRegime = parseFloat(tr.querySelector('.input-valor-regime-dominio').value) || 0;
+                    const bate = Math.abs(soma - valorRegime) < 0.01;
+                    somaCell.innerHTML = `Soma das atividades: R$ ${formatarMoeda(soma)} — Receita lançada: R$ ${formatarMoeda(valorRegime)} ${bate ? '<span class="text-green-600">✓ bate</span>' : '<span class="text-red-600">✗ não bate</span>'}`;
+                }
+
+                tr.addEventListener('input', atualizarSomaDominio);
+                atualizarSomaDominio();
 
                 importDominioTabelaBody.appendChild(tr);
             });
@@ -1270,10 +1315,14 @@
                 return; // pula estabelecimentos sem cliente encontrado
             }
 
-            const idAtividade = tr.querySelector('.select-atividade-dominio').value;
-            const receita = tr.querySelector('.input-receita-atividade-dominio').value;
+            const atividades = Array.from(tr.querySelectorAll('.atividades-dominio-tabela tr')).map(linhaAtividade => ({
+                id_atividade: linhaAtividade.querySelector('.select-atividade-dominio').value,
+                receita_tributada_total: linhaAtividade.querySelector('.input-receita-atividade-dominio').value,
+            }));
+
             const regimeApuracao = tr.querySelector('.checkbox-regime-caixa').checked ? 'caixa' : 'competencia';
             const valorRegime = tr.querySelector('.input-valor-regime-dominio').value || null;
+            const checkboxAnexo = tr.querySelector('.checkbox-atualizar-anexo-dominio');
 
             estabelecimentos.push({
                 cliente_id: clienteId,
@@ -1283,8 +1332,8 @@
                 rpa_competencia: valorRegime,
                 rpa_caixa: regimeApuracao === 'caixa' ? valorRegime : null,
                 regime_apuracao: regimeApuracao,
-                id_atividade: idAtividade,
-                receita_tributada_total: receita,
+                anexo_simples: (checkboxAnexo && checkboxAnexo.checked) ? tr.dataset.anexoSugerido : null,
+                atividades: atividades,
             });
         });
 
