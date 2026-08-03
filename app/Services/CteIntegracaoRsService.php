@@ -30,6 +30,13 @@ use Illuminate\Support\Facades\Log;
  * certificado da contabilidade através de `php artisan cte:buscar-wsdl`):
  * diferente do NF-e RS (wrapper `nfeDadosMsgDownload`), o CTeIntegracao usa
  * apenas `<xml>` como elemento — não existe um `cteDadosMsgDownload`.
+ *
+ * O atributo `versao` do `distNFeRS` também precisou ser corrigido: a
+ * documentação de 2018 usa "1.00", mas a Sefaz rejeitava com cStat 239
+ * ("Cabecalho - Versao do arquivo XML nao suportada") — o Portal do CT-e
+ * (dfe-portal.svrs.rs.gov.br) confirma que a versão 4.00 do layout é
+ * obrigatória desde 01/02/2024 (substituiu a 3.00), e cita esse mesmo cStat
+ * para quem envia versão desatualizada.
  */
 class CteIntegracaoRsService
 {
@@ -162,7 +169,7 @@ class CteIntegracaoRsService
   <soap12:Body>
     <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
       <xml>
-        <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
+        <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="4.00">
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
