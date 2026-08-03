@@ -95,8 +95,14 @@ class DominioImportParser
 
             switch ($tipo) {
                 case '17':
+                    // O valor vem logo após o rótulo (label, valor, "0", valor repetido) —
+                    // usar o ÚLTIMO item da linha (como era antes) quebra quando o Domínio
+                    // repete esse mesmo "tipo 17" numa seção de recap no fim do relatório
+                    // com um "Anexo:" grudado no final da linha (confirmado com um
+                    // relatório real em 2026-08-03): o último item vira "Anexo:" (não
+                    // numérico), e sobrescrevia o valor correto com null.
                     $label = $tail[0] ?? '';
-                    $total = $this->paraFloat(end($tail) !== $label ? end($tail) : null);
+                    $total = $this->paraFloat($tail[1] ?? null);
                     $labelNormalizado = $this->normalizar($label);
 
                     if (str_contains($labelNormalizado, 'competencia')) {

@@ -173,7 +173,7 @@ class PgdasdService
         $exigeFolhaSalario = $atividades->contains(fn (SimplesReceitaAtividade $a) => in_array($a->id_atividade, PgdasdAtividades::ATIVIDADES_FATOR_R, true));
 
         if ($exigeFolhaSalario && $receita->folha_salario === null) {
-            throw new \RuntimeException("Cliente {$cliente->nome}: há atividade sujeita ao fator \"r\" (Anexo V) lançada para {$periodoApuracao}, que exige informar o valor da folha de salário do período — preencha antes de transmitir.");
+            throw new \RuntimeException("Cliente {$cliente->nome}: há atividade sujeita ao fator \"r\" (Anexo V) lançada para {$periodoApuracao}, que exige informar o valor da folha de salário do mês anterior — preencha antes de transmitir.");
         }
 
         $dadosApuracao = [
@@ -262,12 +262,19 @@ class PgdasdService
      * normalmente, essa troca vale só para o TRANSDECLARACAO11.
      *
      * "folhasSalario" só é enviado quando alguma atividade lançada é sujeita
-     * ao fator "r" (PgdasdAtividades::ATIVIDADES_FATOR_R) — confirmado em
-     * produção (2026-08-03): a API rejeitou a transmissão com "Existe
-     * atividade com folha de salário obrigatória" sem esse campo. Formato
-     * (array de {pa, valor}) é inferência a partir do nome/estrutura de
-     * "receitasBrutasAnteriores" (mesmo padrão histórico por período) — só
-     * enviamos o período corrente, nunca confirmado se aceita mais de um.
+     * ao fator "r" (PgdasdAtividades::ATIVIDADES_FATOR_R). Formato (array de
+     * {pa, valor}) é inferência a partir do nome/estrutura de
+     * "receitasBrutasAnteriores" (mesmo padrão histórico por período).
+     *
+     * CONFIRMADO em produção (2026-08-03): o período exigido é o MÊS
+     * ANTERIOR ao que está sendo declarado, não o próprio período da
+     * apuração — ao declarar 07/2026 com folhasSalario=[{pa:202607,...}], a
+     * API rejeitou pedindo especificamente "06/2026". Corrigido para enviar
+     * sempre period_apuracao - 1 mês. Ainda não confirmado se isso é fixo
+     * (sempre só o mês anterior) ou se, uma vez preenchido, a próxima
+     * transmissão pode pedir outro mês mais antigo ainda (histórico
+     * acumulado nunca antes informado pra esse CNPJ) — revalidar se
+     * aparecer um novo erro parecido.
      *
      * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
      */
@@ -285,8 +292,10 @@ class PgdasdService
         }
 
         if ($exigeFolhaSalario) {
+            $periodoAnterior = \Carbon\Carbon::createFromFormat('Ym', $periodoApuracao)->subMonthNoOverflow()->format('Ym');
+
             $declaracao['folhasSalario'] = [
-                ['pa' => (int) $periodoApuracao, 'valor' => (float) $receita->folha_salario],
+                ['pa' => (int) $periodoAnterior, 'valor' => (float) $receita->folha_salario],
             ];
         }
 

@@ -91,7 +91,7 @@
                             </select>
                         </div>
                         <div id="wrapperFolhaSalario" class="hidden md:col-span-3">
-                            <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Valor da folha de salário do período R$ <span class="text-amber-600">(obrigatório — há atividade sujeita ao fator "r"/Anexo V selecionada abaixo)</span></label>
+                            <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Valor da folha de salário do <strong>mês anterior</strong> R$ <span class="text-amber-600">(obrigatório — há atividade sujeita ao fator "r"/Anexo V selecionada abaixo; a API pede o valor do mês anterior ao declarado, não o do próprio período)</span></label>
                             <input type="number" step="0.01" id="inputFolhaSalario" class="w-full md:w-64 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
                         </div>
                         <div class="md:col-span-3">
