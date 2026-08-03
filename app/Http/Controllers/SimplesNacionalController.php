@@ -832,8 +832,23 @@ class SimplesNacionalController extends Controller
             $cliente = $clientesPorCnpj->get($e['cnpj']);
 
             $atividades = collect($e['atividades'])->map(function (array $a) use ($catalogo) {
-                $tributosDivergentes = collect($a['tributos'] ?? [])
+                // "tipo_ajuste_sugerido" já traduz a maioria das situações do
+                // Domínio (Tributado/Não incidência/Subst. Trib./Trib. Monof.)
+                // pro enum usado no cadastro manual — só sinalizamos como
+                // "não reconhecido" (pra revisão manual) quando a situação
+                // NÃO é "Tributado" mas ainda assim caiu no fallback "normal"
+                // (ou seja, o parser não conseguiu mapear).
+                $tributosNaoReconhecidos = collect($a['tributos'] ?? [])
                     ->reject(fn ($t) => $t['situacao'] === 'Tributado')
+                    ->reject(fn ($t) => $t['tipo_ajuste_sugerido'] !== 'normal')
+                    ->values();
+
+                $tributos = collect($a['tributos'] ?? [])
+                    ->map(fn ($t) => [
+                        'cod_tributo' => $t['cod_tributo'],
+                        'tipo_ajuste' => $t['tipo_ajuste_sugerido'],
+                        'situacao_relatorio' => $t['situacao'],
+                    ])
                     ->values();
 
                 return [
@@ -844,7 +859,8 @@ class SimplesNacionalController extends Controller
                     'confianca_match' => $a['confianca_match'] ?? 0,
                     'tabela_texto' => $a['tabela_texto'] ?? null,
                     'receita_tributada_total' => $a['receita_tributada_total'] ?? null,
-                    'tributos_divergentes' => $tributosDivergentes,
+                    'tributos' => $tributos,
+                    'tributos_nao_reconhecidos' => $tributosNaoReconhecidos,
                 ];
             })->values();
 
@@ -888,6 +904,12 @@ class SimplesNacionalController extends Controller
             'estabelecimentos.*.atividades' => 'required|array|min:1',
             'estabelecimentos.*.atividades.*.id_atividade' => 'required|integer|min:1|max:43',
             'estabelecimentos.*.atividades.*.receita_tributada_total' => 'required|numeric|min:0',
+            'estabelecimentos.*.atividades.*.tributos' => 'array',
+            'estabelecimentos.*.atividades.*.tributos.*.cod_tributo' => 'required|integer',
+            'estabelecimentos.*.atividades.*.tributos.*.tipo_ajuste' => 'required|in:normal,isencao,reducao,imunidade,lancamento_oficio,substituicao_tributaria,tributacao_monofasica,antecipacao_encerramento,retencao_iss,exigibilidade_suspensa',
+            'estabelecimentos.*.atividades.*.tributos.*.identificador_isencao' => 'nullable|integer|in:1,2',
+            'estabelecimentos.*.atividades.*.tributos.*.percentual_reducao' => 'nullable|numeric|min:0|max:100',
+            'estabelecimentos.*.atividades.*.tributos.*.motivo_suspensao' => 'nullable|integer|min:1|max:6',
         ]);
 
         $periodo = $validated['periodo_apuracao'];
@@ -922,12 +944,27 @@ class SimplesNacionalController extends Controller
                     ->delete();
 
                 foreach ($e['atividades'] as $atividade) {
-                    SimplesReceitaAtividade::create([
+                    $registro = SimplesReceitaAtividade::create([
                         'cliente_id' => $e['cliente_id'],
                         'periodo_apuracao' => $periodo,
                         'id_atividade' => $atividade['id_atividade'],
                         'valor' => $atividade['receita_tributada_total'],
                     ]);
+
+                    foreach ($atividade['tributos'] ?? [] as $tributo) {
+                        if (($tributo['tipo_ajuste'] ?? 'normal') === 'normal') {
+                            continue; // tributação normal não precisa de registro
+                        }
+
+                        $registro->tributos()->create([
+                            'cod_tributo' => $tributo['cod_tributo'],
+                            'tipo_ajuste' => $tributo['tipo_ajuste'],
+                            'identificador_isencao' => $tributo['identificador_isencao'] ?? null,
+                            'percentual_reducao' => $tributo['percentual_reducao'] ?? null,
+                            'motivo_suspensao' => $tributo['motivo_suspensao'] ?? null,
+                            'valor' => $atividade['receita_tributada_total'],
+                        ]);
+                    }
                 }
 
                 $salvos++;

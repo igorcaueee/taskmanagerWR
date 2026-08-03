@@ -596,7 +596,7 @@
     const MOTIVOS_SUSPENSAO = { 1: 'Liminar em MS', 2: 'Depósito Judicial', 3: 'Antecipação de Tutela', 4: 'Liminar em Medida Cautelar', 5: 'Depósito Administrativo', 6: 'Outros' };
     const OPCOES_AJUSTE = {
         normal: 'Normal',
-        imunidade: 'Imunidade',
+        imunidade: 'Imunidade / Não incidência',
         lancamento_oficio: 'Lançamento de Ofício',
         substituicao_tributaria: 'Substituição Tributária',
         tributacao_monofasica: 'Tributação Monofásica',
@@ -1136,6 +1136,11 @@
     const btnConfirmarImportDominio = document.getElementById('btnConfirmarImportDominio');
     const importDominioResultado = document.getElementById('importDominioResultado');
 
+    // O relatório do Domínio traz o Anexo em algarismo romano (ex.: "III"),
+    // mas o campo "Anexo" cadastrado do cliente é usado pela API Integra
+    // Contador, que espera o número (ex.: "3") — converte antes de salvar.
+    const ANEXO_ROMANO_PARA_NUMERO = { I: '1', II: '2', III: '3', IV: '4', V: '5' };
+
     function montarSelectAtividadesDominio(idSelecionado) {
         const grupos = {};
         Object.entries(window.PGDASD_ATIVIDADES).forEach(([id, a]) => {
@@ -1153,6 +1158,90 @@
         });
 
         return html;
+    }
+
+    /**
+     * Monta um "cartão" de atividade da importação do Domínio, reaproveitando
+     * renderTributoCell (mesmo componente da aba manual "Lançar receita e
+     * transmitir") pra já vir com o tratamento tributário por tributo
+     * pré-preenchido (Tributado→Normal, Não incidência→Imunidade, Subst.
+     * Trib.→Substituição Tributária, Trib. Monof.→Tributação Monofásica —
+     * ver DominioImportParser::mapearSituacaoParaTipoAjuste).
+     */
+    function montarItemAtividadeDominio(a) {
+        const item = document.createElement('div');
+        item.className = 'atividade-dominio-item mb-3 pb-3 border-b border-gray-100 dark:border-slate-700 last:border-b-0 last:mb-0 last:pb-0';
+
+        const avisoNaoReconhecido = (a.tributos_nao_reconhecidos ?? []).length > 0
+            ? `<div class="text-xs text-amber-600 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> Situação "${escapeHtml(a.tributos_nao_reconhecidos[0].situacao)}" não reconhecida automaticamente — confira o tratamento tributário abaixo.</div>`
+            : '';
+
+        item.innerHTML = `
+            <select class="select-atividade-dominio text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-72">
+                ${montarSelectAtividadesDominio(a.id_atividade_sugerido)}
+            </select>
+            <div class="text-xs text-gray-400 mt-0.5">Confiança: ${Math.round((a.confianca_match ?? 0) * 100)}% — "${escapeHtml(a.tabela_texto ?? '—')}"</div>
+            ${avisoNaoReconhecido}
+            <div class="tributos-dominio-wrapper overflow-x-auto mt-1"></div>
+        `;
+
+        const wrapper = item.querySelector('.tributos-dominio-wrapper');
+        const selectAtividade = item.querySelector('.select-atividade-dominio');
+
+        function renderizarTributos(idAtividade, tributosExistentes) {
+            wrapper.innerHTML = '';
+
+            const atividade = window.PGDASD_ATIVIDADES[idAtividade];
+            if (!atividade) return;
+
+            const tributosMap = {};
+            (tributosExistentes ?? []).forEach(t => { tributosMap[t.cod_tributo] = t; });
+
+            const tabela = document.createElement('table');
+            tabela.className = 'text-xs border-separate';
+            tabela.style.borderSpacing = '0.5rem 0';
+
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+            const thReceita = document.createElement('th');
+            thReceita.className = 'text-left text-gray-500 dark:text-slate-400 font-medium pb-1';
+            thReceita.textContent = 'Receita (R$)';
+            trHead.appendChild(thReceita);
+
+            const tbody = document.createElement('tbody');
+            const trBody = document.createElement('tr');
+            const tdReceita = document.createElement('td');
+            tdReceita.className = 'align-top py-1 pr-2';
+            tdReceita.innerHTML = `<input type="number" step="0.01" class="input-receita-atividade-dominio w-28 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 text-sm" value="${a.receita_tributada_total ?? ''}">`;
+            trBody.appendChild(tdReceita);
+
+            atividade.tributos.forEach(codTributo => {
+                const th = document.createElement('th');
+                th.className = 'text-left text-gray-500 dark:text-slate-400 font-medium pb-1';
+                th.textContent = window.PGDASD_TRIBUTOS[codTributo] ?? codTributo;
+                trHead.appendChild(th);
+
+                trBody.appendChild(renderTributoCell(codTributo, tributosMap[codTributo]));
+            });
+
+            thead.appendChild(trHead);
+            tbody.appendChild(trBody);
+            tabela.appendChild(thead);
+            tabela.appendChild(tbody);
+            wrapper.appendChild(tabela);
+        }
+
+        renderizarTributos(a.id_atividade_sugerido, a.tributos);
+
+        // Se o usuário trocar a atividade sugerida por outra, os tributos
+        // aplicáveis mudam — reseta o tratamento tributário pra "Normal" em
+        // vez de manter o mapeamento feito pra atividade antiga (poderia
+        // aplicar um ajuste errado num tributo que nem existia antes).
+        selectAtividade.addEventListener('change', () => {
+            renderizarTributos(parseInt(selectAtividade.value, 10), []);
+        });
+
+        return item;
     }
 
     // Competência e caixa são mutuamente exclusivos (regime_apuracao só aceita um dos dois no banco),
@@ -1250,30 +1339,15 @@
                         </label>
                     </td>
                     <td class="px-3 py-2 align-top">
-                        <table class="atividades-dominio-tabela text-xs border-separate" style="border-spacing: 0 0.5rem;"></table>
+                        <div class="atividades-dominio-lista"></div>
                         <div class="soma-atividades-dominio text-xs mt-1"></div>
                     </td>
                 `;
 
-                const tabelaAtividades = tr.querySelector('.atividades-dominio-tabela');
+                const listaAtividades = tr.querySelector('.atividades-dominio-lista');
 
                 (e.atividades ?? []).forEach(a => {
-                    const linhaAtividade = document.createElement('tr');
-                    linhaAtividade.innerHTML = `
-                        <td class="pr-2 align-top">
-                            <select class="select-atividade-dominio text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-64">
-                                ${montarSelectAtividadesDominio(a.id_atividade_sugerido)}
-                            </select>
-                            <div class="text-xs text-gray-400 mt-0.5">Confiança: ${Math.round((a.confianca_match ?? 0) * 100)}% — "${escapeHtml(a.tabela_texto ?? '—')}"</div>
-                            ${(a.tributos_divergentes ?? []).length > 0
-                                ? `<div class="text-xs text-amber-600 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> Tributos com situação diferente de "Tributado" — ajuste manualmente depois em "Atividades e receitas".</div>`
-                                : ''}
-                        </td>
-                        <td class="align-top">
-                            <input type="number" step="0.01" class="input-receita-atividade-dominio text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-28" value="${a.receita_tributada_total ?? ''}">
-                        </td>
-                    `;
-                    tabelaAtividades.appendChild(linhaAtividade);
+                    listaAtividades.appendChild(montarItemAtividadeDominio(a));
                 });
 
                 const somaCell = tr.querySelector('.soma-atividades-dominio');
@@ -1287,6 +1361,7 @@
                 }
 
                 tr.addEventListener('input', atualizarSomaDominio);
+                tr.addEventListener('change', atualizarSomaDominio);
                 atualizarSomaDominio();
 
                 importDominioTabelaBody.appendChild(tr);
@@ -1315,10 +1390,33 @@
                 return; // pula estabelecimentos sem cliente encontrado
             }
 
-            const atividades = Array.from(tr.querySelectorAll('.atividades-dominio-tabela tr')).map(linhaAtividade => ({
-                id_atividade: linhaAtividade.querySelector('.select-atividade-dominio').value,
-                receita_tributada_total: linhaAtividade.querySelector('.input-receita-atividade-dominio').value,
-            }));
+            const atividades = Array.from(tr.querySelectorAll('.atividade-dominio-item')).map(item => {
+                const receita = item.querySelector('.input-receita-atividade-dominio').value;
+                const tributos = [];
+
+                item.querySelectorAll('.tributo-row').forEach(row => {
+                    const tipoAjuste = row.querySelector('.select-tipo-ajuste').value;
+                    if (tipoAjuste === 'normal') return;
+
+                    const identificadorEl = row.querySelector('.select-identificador');
+                    const percentualEl = row.querySelector('.input-percentual');
+                    const motivoEl = row.querySelector('.select-motivo');
+
+                    tributos.push({
+                        cod_tributo: parseInt(row.dataset.codTributo, 10),
+                        tipo_ajuste: tipoAjuste,
+                        identificador_isencao: (tipoAjuste === 'isencao' || tipoAjuste === 'reducao') ? parseInt(identificadorEl.value, 10) : null,
+                        percentual_reducao: tipoAjuste === 'reducao' ? parseFloat(percentualEl.value || '0') : null,
+                        motivo_suspensao: tipoAjuste === 'exigibilidade_suspensa' ? parseInt(motivoEl.value, 10) : null,
+                    });
+                });
+
+                return {
+                    id_atividade: item.querySelector('.select-atividade-dominio').value,
+                    receita_tributada_total: receita,
+                    tributos,
+                };
+            });
 
             const regimeApuracao = tr.querySelector('.checkbox-regime-caixa').checked ? 'caixa' : 'competencia';
             const valorRegime = tr.querySelector('.input-valor-regime-dominio').value || null;
@@ -1332,7 +1430,7 @@
                 rpa_competencia: valorRegime,
                 rpa_caixa: regimeApuracao === 'caixa' ? valorRegime : null,
                 regime_apuracao: regimeApuracao,
-                anexo_simples: (checkboxAnexo && checkboxAnexo.checked) ? tr.dataset.anexoSugerido : null,
+                anexo_simples: (checkboxAnexo && checkboxAnexo.checked) ? (ANEXO_ROMANO_PARA_NUMERO[tr.dataset.anexoSugerido] ?? tr.dataset.anexoSugerido) : null,
                 atividades: atividades,
             });
         });

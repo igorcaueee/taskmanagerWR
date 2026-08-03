@@ -188,7 +188,13 @@ class DominioImportParser
                             $codTributo = $this->codigoTributoPorNome($nomeTributo);
 
                             if ($codTributo) {
-                                $tributos[] = ['cod_tributo' => $codTributo, 'situacao' => $valores[$i] ?? 'Tributado'];
+                                $situacao = $valores[$i] ?? 'Tributado';
+
+                                $tributos[] = [
+                                    'cod_tributo' => $codTributo,
+                                    'situacao' => $situacao,
+                                    'tipo_ajuste_sugerido' => $this->mapearSituacaoParaTipoAjuste($situacao),
+                                ];
                             }
                         }
 
@@ -288,6 +294,42 @@ class DominioImportParser
     }
 
     /**
+     * Traduz a "Situação" do tributo no relatório do Domínio pro
+     * "tipo_ajuste" usado em SimplesReceitaAtividadeTributo (mesmo enum da
+     * tela manual de "Atividades e receitas").
+     *
+     * "Não incidência" mapeia pra "imunidade" — não existe um código
+     * "não incidência" separado na tabela oficial "Qualificação Tributária"
+     * do PGDASD (só imunidade/lançamento de ofício/substituição tributária/
+     * tributação monofásica/antecipação com encerramento/retenção de ISS);
+     * a imunidade constitucional sobre exportação (o caso mais comum de
+     * "não incidência" nos relatórios) é justamente coberta por esse código.
+     * "Retenção"/"Retido" mapeia pra retencao_iss — só faz sentido pro ISS,
+     * mas não há problema em aplicar o mesmo tipo pra outro tributo aqui
+     * (o valor final só é usado se o código de tributo permitir na API).
+     *
+     * Qualquer situação não reconhecida cai em "normal" (comportamento
+     * anterior, quando isso só virava um aviso pra revisão manual) — o
+     * chamador ainda pode usar $situacaoReconhecida para saber se precisa
+     * avisar o usuário.
+     */
+    private function mapearSituacaoParaTipoAjuste(string $situacao): string
+    {
+        $normalizado = $this->normalizar($situacao);
+
+        return match (true) {
+            str_contains($normalizado, 'tributado') => 'normal',
+            str_contains($normalizado, 'incidencia') => 'imunidade', // "Não incidência"
+            str_contains($normalizado, 'monof') => 'tributacao_monofasica', // "Trib. Monof."
+            str_contains($normalizado, 'subst') => 'substituicao_tributaria', // "Subst. Trib."
+            str_contains($normalizado, 'retid') || str_contains($normalizado, 'retenc') => 'retencao_iss',
+            str_contains($normalizado, 'isent') => 'isencao',
+            str_contains($normalizado, 'imune') => 'imunidade',
+            default => 'normal',
+        };
+    }
+
+    /**
      * Extrai o algarismo romano do Anexo (I a V) do texto "Anexo I - Comércio" etc.
      */
     private function extrairAnexoRomano(?string $anexoTexto): ?string
@@ -330,6 +372,17 @@ class DominioImportParser
      * "comunicac"/"transport"/"construc".
      */
     private const CATEGORIA_POR_PALAVRA_CHAVE = [
+        // "fator" ("fator r") e "retencao" (retenção de ISS) só existem no
+        // catálogo pra atividades de prestação de serviços — checados ANTES
+        // de "locac", porque o Anexo III se chama oficialmente "Locação de
+        // Bens Móveis E Prestação de Serviços" no relatório do Domínio (as
+        // duas palavras aparecem juntas no nome do Anexo mesmo quando a
+        // atividade real é só prestação de serviço), o que fazia o match
+        // cair sempre no grupo errado (locação, ids 7/8) só por conter a
+        // palavra "locação" no texto — confirmado com um relatório real em
+        // 2026-08-03.
+        'fator' => 'prestacao de servicos',
+        'retencao' => 'prestacao de servicos',
         'industrializad' => 'venda de mercadorias industrializadas',
         'comunicac' => 'comunicacao',
         'transport' => 'transporte',
@@ -432,7 +485,19 @@ class DominioImportParser
             return [$melhorId, max($melhorScore, 0.75)];
         }
 
-        return $melhorScore >= 0.5 ? [$melhorId, $melhorScore] : [null, $melhorScore];
+        // Com múltiplos sobreviventes, o score bruto de similaridade de texto
+        // continua penalizando descrições verbosas mesmo dentro do grupo já
+        // restrito por categoria/polaridade — confirmado com um relatório
+        // real em 2026-08-03 (Anexo III "Locação de Bens Móveis e Prestação
+        // de Serviços" citado no nome do próprio Anexo mesmo pra atividades
+        // que são só prestação de serviço, deixando algumas descrições do
+        // catálogo sem "sujeito"/"retenção"/"substituição" — e portanto fora
+        // do filtro de polaridade — mesmo sendo conceitualmente distantes).
+        // Por isso não descartamos mais o melhor candidato só por estar
+        // abaixo de 0.5: a tela sempre mostra o "% de confiança" e deixa
+        // corrigir manualmente, então um palpite de baixa confiança ainda é
+        // mais útil que nenhuma sugestão.
+        return [$melhorId, $melhorScore];
     }
 
     /**
