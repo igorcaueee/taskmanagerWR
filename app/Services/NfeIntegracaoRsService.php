@@ -185,17 +185,23 @@ class NfeIntegracaoRsService
         $obj = new \SimpleXMLElement($xml);
         $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
 
-        if ($get('tpEvento') !== '110111') {
+        $tpEvento = $get('tpEvento');
+
+        if ($tpEvento !== '110111') {
+            Log::info('[NF-e RS] processarEvento: ignorado (não é cancelamento)', ['tpEvento' => $tpEvento ?: null]);
             return;
         }
 
         $chave = $get('chNFe') ?: $get('chCTe');
 
         if ($chave === '') {
+            Log::warning('[NF-e RS] processarEvento: cancelamento sem chNFe/chCTe extraível', ['xmlSample' => substr($xml, 0, 500)]);
             return;
         }
 
-        DocumentoFiscal::where('chave_acesso', $chave)->update(['situacao' => 'cancelada']);
+        $linhas = DocumentoFiscal::where('chave_acesso', $chave)->update(['situacao' => 'cancelada']);
+
+        Log::info('[NF-e RS] processarEvento: cancelamento processado', ['chave' => $chave, 'linhas_afetadas' => $linhas]);
     }
 
     /**

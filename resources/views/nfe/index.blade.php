@@ -459,6 +459,8 @@
 
     function atualizarResumo() {
         const filtrados = docsFiltrados();
+        // Soma sempre o que está sendo exibido — quem controla se cancelada entra ou não
+        // é o próprio filtro de Situação (Normais / Canceladas / Normais e canceladas).
         const soma = filtrados.reduce((acc, d) => acc + (parseFloat(d.valor) || 0), 0);
 
         totalDocs.textContent = filtrados.length;
