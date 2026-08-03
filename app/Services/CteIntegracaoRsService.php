@@ -26,9 +26,10 @@ use Illuminate\Support\Facades\Log;
  * `distNFeRS` (não `distCTeRS`) que precisa ir no XML, senão a Sefaz rejeita
  * com cStat 243 "XML Mal Formado".
  *
- * Nome do wrapper SOAP (cteDadosMsgDownload) segue por analogia ao
- * nfeDadosMsgDownload do NF-e RS (não documentado no BT/XSD) — ainda não
- * confirmado contra o WSDL real.
+ * Nome do parâmetro do SOAP body confirmado via WSDL real (baixado com o
+ * certificado da contabilidade através de `php artisan cte:buscar-wsdl`):
+ * diferente do NF-e RS (wrapper `nfeDadosMsgDownload`), o CTeIntegracao usa
+ * apenas `<xml>` como elemento — não existe um `cteDadosMsgDownload`.
  */
 class CteIntegracaoRsService
 {
@@ -160,7 +161,7 @@ class CteIntegracaoRsService
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
   <soap12:Body>
     <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
-      <cteDadosMsgDownload>
+      <xml>
         <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
@@ -174,7 +175,7 @@ class CteIntegracaoRsService
             <ultNSU>{$ultNSU}</ultNSU>
           </solRel>
         </distNFeRS>
-      </cteDadosMsgDownload>
+      </xml>
     </cteIntegracaoContab>
   </soap12:Body>
 </soap12:Envelope>
