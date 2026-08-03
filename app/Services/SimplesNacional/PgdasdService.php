@@ -232,6 +232,12 @@ class PgdasdService
      * conceitos diferentes (competência = receita auferida, caixa = recebida)
      * e não podem ser um substituto do outro, mesmo os dois compondo o mesmo período.
      *
+     * "CnpjCompleto" (dentro de "estabelecimentos") é o único campo desse
+     * payload com C maiúsculo — confirmado contra a API real em produção
+     * (2026-08-03): a API rejeitou "cnpjCompleto" com
+     * MSG_ISN_036/"Required property 'CnpjCompleto' not found", mesmo com
+     * todos os outros campos em camelCase minúsculo funcionando normalmente.
+     *
      * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
      */
     private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades): array
@@ -249,7 +255,7 @@ class PgdasdService
 
         $declaracao['estabelecimentos'] = [
             [
-                'cnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
+                'CnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
                 'atividades' => $atividades->map(fn (SimplesReceitaAtividade $atividade) => $this->montarAtividade($atividade))->values()->all(),
             ],
         ];
