@@ -41,6 +41,37 @@ class PgdasdAtividades
      */
     const ATIVIDADES_FATOR_R = [10, 11, 12, 29];
 
+    /**
+     * Atividades cuja PRÓPRIA descrição já declara o tratamento do ISS
+     * (sem retenção devido a outro/próprio Município, ou com retenção/
+     * substituição) — confirmado em produção (2026-08-04): a API rejeitou
+     * TRANSDECLARACAO11 com "Qualificação tributária inválida: ISENÇÃO não é
+     * permitida para o idAtividade 15 com o tributo ISS" ao tentar marcar o
+     * ISS como isento/imune numa atividade que já diz "com retenção/
+     * substituição de ISS" — as duas informações são conflitantes (o
+     * tratamento do ISS já está fixado pela escolha do idAtividade, não dá
+     * pra sobrepor com uma qualificação tributária independente por cima).
+     * Não inclui a atividade 9/28 (ISS fixo) porque essas nem têm ISS na
+     * lista de tributos. Atividades de exportação de serviço (29/30/31) NÃO
+     * entram aqui de propósito: elas não têm essa distinção de retenção na
+     * própria descrição, então marcar o ISS como imune (não incidência por
+     * exportação) continua válido nelas.
+     */
+    const ATIVIDADES_ISS_TRATAMENTO_PROPRIO = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27];
+
+    /**
+     * Subconjunto de ATIVIDADES_ISS_TRATAMENTO_PROPRIO cuja descrição diz
+     * "com retenção/substituição de ISS" — nessas, quando o relatório do
+     * Domínio mostra "Não incidência" pro ISS, a leitura mais provável é que
+     * o ISS foi retido/recolhido pelo TOMADOR do serviço (por isso não
+     * compõe o ISS devido pelo prestador na ótica do PGDASD) — ou seja, o
+     * qualificador certo é "retenção de ISS" (identificador 11), não
+     * "imunidade"/"isenção". HIPÓTESE, ainda não confirmada contra a API
+     * real (só sabemos que "imunidade" foi rejeitada pra essas atividades,
+     * 2026-08-04) — revalidar no próximo teste.
+     */
+    const ATIVIDADES_ISS_COM_RETENCAO = [12, 15, 18, 21, 24, 27];
+
     const NOMES_TRIBUTOS = [
         self::TRIBUTO_IRPJ => 'IRPJ',
         self::TRIBUTO_CSLL => 'CSLL',
@@ -128,5 +159,23 @@ class PgdasdAtividades
     public static function nomeTributo(int $codTributo): string
     {
         return self::NOMES_TRIBUTOS[$codTributo] ?? (string) $codTributo;
+    }
+
+    /**
+     * Atividade classificada como "mercado externo" (categoria "para o
+     * exterior", sem o "exceto") — confirmado em produção (2026-08-04): a
+     * API rejeitou o TRANSDECLARACAO11 com "A soma das receitas no mercado
+     * interno... informadas em cada atividade é diferente da receita total
+     * informada no campo 'Receitas no mercado interno'" porque a receita da
+     * atividade 30 ("Prestação de serviços para o exterior") estava sendo
+     * somada dentro de receitaPaCompetenciaInterno junto com as atividades
+     * domésticas, em vez de compor receitaPaCompetenciaExterno — ver
+     * PgdasdService::montarDeclaracao.
+     */
+    public static function ehParaExterior(int $idAtividade): bool
+    {
+        $categoria = self::catalogo()[$idAtividade]['categoria'] ?? '';
+
+        return str_contains($categoria, 'para o exterior') && ! str_contains($categoria, 'exceto');
     }
 }

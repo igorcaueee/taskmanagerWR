@@ -1173,7 +1173,7 @@
         item.className = 'atividade-dominio-item mb-3 pb-3 border-b border-gray-100 dark:border-slate-700 last:border-b-0 last:mb-0 last:pb-0';
 
         const avisoNaoReconhecido = (a.tributos_nao_reconhecidos ?? []).length > 0
-            ? `<div class="text-xs text-amber-600 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> Situação "${escapeHtml(a.tributos_nao_reconhecidos[0].situacao)}" não reconhecida automaticamente — confira o tratamento tributário abaixo.</div>`
+            ? `<div class="text-xs text-amber-600 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> Relatório mostra situação "${escapeHtml(a.tributos_nao_reconhecidos[0].situacao)}" que não foi possível aplicar automaticamente (não reconhecida, ou conflita com o tratamento de ISS já definido por esta atividade) — confira o tratamento tributário abaixo antes de salvar.</div>`
             : '';
 
         item.innerHTML = `

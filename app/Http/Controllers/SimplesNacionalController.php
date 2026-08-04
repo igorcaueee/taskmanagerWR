@@ -832,18 +832,58 @@ class SimplesNacionalController extends Controller
             $cliente = $clientesPorCnpj->get($e['cnpj']);
 
             $atividades = collect($e['atividades'])->map(function (array $a) use ($catalogo) {
+                $idAtividadeSugerido = $a['id_atividade_sugerido'] ?? null;
+
+                // O ISS de algumas atividades (10-27) já tem o tratamento
+                // (sem/com retenção) definido pela própria descrição da
+                // atividade — aplicar OUTRA qualificação tributária no ISS
+                // por cima é conflitante pra API (confirmado em produção
+                // 2026-08-04, ver PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_
+                // PROPRIO). Nas atividades "com retenção/substituição"
+                // (ATIVIDADES_ISS_COM_RETENCAO), "Não incidência" do relatório
+                // provavelmente significa "retido pelo tomador" — sugerimos
+                // "retencao_iss" nesse caso (hipótese, ver docblock da
+                // constante). Nas demais (sem retenção), não tem qualificação
+                // válida pro ISS — força "normal" e sinaliza pra revisão manual.
+                $issTemTratamentoProprio = $idAtividadeSugerido !== null
+                    && in_array($idAtividadeSugerido, PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO, true);
+                $issComRetencao = $idAtividadeSugerido !== null
+                    && in_array($idAtividadeSugerido, PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO, true);
+
+                $tributosProcessados = collect($a['tributos'] ?? [])->map(function ($t) use ($issTemTratamentoProprio, $issComRetencao) {
+                    $conflitanteComIss = $issTemTratamentoProprio
+                        && $t['cod_tributo'] === PgdasdAtividades::TRIBUTO_ISS
+                        && $t['tipo_ajuste_sugerido'] !== 'normal';
+
+                    if ($conflitanteComIss && $issComRetencao) {
+                        return [
+                            'cod_tributo' => $t['cod_tributo'],
+                            'situacao' => $t['situacao'],
+                            'tipo_ajuste_sugerido' => 'retencao_iss',
+                            'precisa_revisao' => true, // hipótese, vale conferir
+                        ];
+                    }
+
+                    return [
+                        'cod_tributo' => $t['cod_tributo'],
+                        'situacao' => $t['situacao'],
+                        'tipo_ajuste_sugerido' => $conflitanteComIss ? 'normal' : $t['tipo_ajuste_sugerido'],
+                        'precisa_revisao' => $conflitanteComIss,
+                    ];
+                });
+
                 // "tipo_ajuste_sugerido" já traduz a maioria das situações do
                 // Domínio (Tributado/Não incidência/Subst. Trib./Trib. Monof.)
-                // pro enum usado no cadastro manual — só sinalizamos como
-                // "não reconhecido" (pra revisão manual) quando a situação
-                // NÃO é "Tributado" mas ainda assim caiu no fallback "normal"
-                // (ou seja, o parser não conseguiu mapear).
-                $tributosNaoReconhecidos = collect($a['tributos'] ?? [])
-                    ->reject(fn ($t) => $t['situacao'] === 'Tributado')
-                    ->reject(fn ($t) => $t['tipo_ajuste_sugerido'] !== 'normal')
+                // pro enum usado no cadastro manual — sinalizamos como
+                // "precisa revisão manual" quando a situação NÃO é "Tributado"
+                // mas caiu no fallback "normal" (parser não conseguiu mapear),
+                // ou quando o mapeamento foi descartado por conflitar com o
+                // tratamento de ISS já embutido na atividade.
+                $tributosNaoReconhecidos = $tributosProcessados
+                    ->filter(fn ($t) => $t['precisa_revisao'] || ($t['situacao'] !== 'Tributado' && $t['tipo_ajuste_sugerido'] === 'normal'))
                     ->values();
 
-                $tributos = collect($a['tributos'] ?? [])
+                $tributos = $tributosProcessados
                     ->map(fn ($t) => [
                         'cod_tributo' => $t['cod_tributo'],
                         'tipo_ajuste' => $t['tipo_ajuste_sugerido'],

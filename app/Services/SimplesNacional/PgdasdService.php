@@ -280,15 +280,28 @@ class PgdasdService
      */
     private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades, string $periodoApuracao, bool $exigeFolhaSalario): array
     {
+        // A API valida que receitaPaCompetenciaInterno/Externo (e o par
+        // "Caixa") sejam exatamente a soma das atividades classificadas como
+        // mercado interno/externo (PgdasdAtividades::ehParaExterior) —
+        // confirmado em produção (2026-08-04) com a BVD, que tem a atividade
+        // 30 ("Prestação de serviços para o exterior") junto com atividades
+        // domésticas: jogar o total inteiro em "Interno" é rejeitado.
+        $atividadesExterno = $atividades->filter(
+            fn (SimplesReceitaAtividade $atividade) => PgdasdAtividades::ehParaExterior((int) $atividade->id_atividade)
+        );
+        $atividadesInterno = $atividades->reject(
+            fn (SimplesReceitaAtividade $atividade) => PgdasdAtividades::ehParaExterior((int) $atividade->id_atividade)
+        );
+
         $declaracao = [
             'tipoDeclaracao' => 1, // 1 = Original
-            'receitaPaCompetenciaInterno' => (float) $receita->receita_bruta_competencia,
-            'receitaPaCompetenciaExterno' => 0.0,
+            'receitaPaCompetenciaInterno' => (float) $atividadesInterno->sum('valor'),
+            'receitaPaCompetenciaExterno' => (float) $atividadesExterno->sum('valor'),
         ];
 
         if ($receita->regime_apuracao === 'caixa') {
-            $declaracao['receitaPaCaixaInterno'] = (float) $receita->receita_bruta_caixa;
-            $declaracao['receitaPaCaixaExterno'] = 0.0;
+            $declaracao['receitaPaCaixaInterno'] = (float) $atividadesInterno->sum('valor');
+            $declaracao['receitaPaCaixaExterno'] = (float) $atividadesExterno->sum('valor');
         }
 
         if ($exigeFolhaSalario) {
@@ -328,6 +341,23 @@ class PgdasdService
         foreach ($atividade->tributos as $tributo) {
             if ($tributo->tipo_ajuste === 'exigibilidade_suspensa') {
                 throw new \RuntimeException("Atividade {$atividade->id_atividade}: \"exigibilidade suspensa\" ainda não tem mapeamento confirmado no payload do TRANSDECLARACAO11 — remova esse ajuste ou aguarde essa funcionalidade antes de transmitir.");
+            }
+
+            if (
+                $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ISS
+                && $tributo->tipo_ajuste !== 'normal'
+                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO, true)
+            ) {
+                // "retencao_iss" é permitido nas atividades "com retenção/substituição"
+                // (o próprio nome da atividade já declara isso) — só bloqueamos as
+                // outras qualificações (isenção/imunidade/substituição/etc.), que
+                // conflitam com o tratamento de ISS já fixado pela atividade.
+                $retencaoPermitida = $tributo->tipo_ajuste === 'retencao_iss'
+                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO, true);
+
+                if (! $retencaoPermitida) {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: o tratamento do ISS já é definido pela própria descrição da atividade (\"sem/com retenção...\") — não é possível aplicar também uma qualificação tributária (isenção/imunidade/substituição/etc.) no ISS dessa atividade, a API rejeita como conflitante. Se o ISS realmente não incide nessa receita, escolha uma atividade cuja descrição já reflita isso, ou deixe o ISS como \"Normal\".");
+                }
             }
 
             $identificadorQualificacao = match ($tributo->tipo_ajuste) {
