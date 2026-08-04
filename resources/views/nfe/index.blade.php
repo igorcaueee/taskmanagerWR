@@ -244,7 +244,7 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr id="rowTotalValor" class="hidden border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/40">
-                                <td colspan="5" class="px-4 py-2 text-xs text-gray-500 dark:text-slate-400">Total dos documentos visíveis</td>
+                                <td colspan="6" class="px-4 py-2 text-xs text-gray-500 dark:text-slate-400">Total dos documentos visíveis</td>
                                 <td class="px-4 py-2 text-right text-sm font-bold text-[#0084aa]" id="totalValor"></td>
                                 <td colspan="2"></td>
                             </tr>
@@ -253,6 +253,7 @@
                                 <th class="px-4 py-3 text-left">Tipo</th>
                                 <th class="px-4 py-3 text-left">Número</th>
                                 <th class="px-4 py-3 text-left">Data Emissão</th>
+                                <th class="px-4 py-3 text-left">Data Saída/Ent.</th>
                                 <th class="px-4 py-3 text-left">Emitente</th>
                                 <th class="px-4 py-3 text-right">Valor</th>
                                 <th class="px-4 py-3 text-left">Ações</th>
@@ -826,7 +827,8 @@
             const nsu    = doc.nsu ?? '';
             const tipo   = doc.tipo ?? 'nfe';
             const numero = doc.numero || `NSU ${nsu}`;
-            const data   = doc.dataEmissao ? formatarData(doc.dataEmissao) : '-';
+            const data       = doc.dataEmissao ? formatarData(doc.dataEmissao) : '-';
+            const dataSaiEnt = doc.dataSaidaEntrada ? formatarData(doc.dataSaidaEntrada) : '-';
             const valor  = doc.valor != null && doc.valor !== '' ? formatarMoeda(parseFloat(doc.valor)) : '-';
             const temXml = !!doc.xmlContent;
 
@@ -871,6 +873,7 @@
                 <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}${origemBadge}${canceladaBadge}</td>
                 <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">${numero}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${data}</td>
+                <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${dataSaiEnt}</td>
                 <td class="px-4 py-3 text-gray-700 dark:text-slate-300 max-w-[220px] truncate" title="${doc.emitenteNome ?? ''}">${doc.emitenteNome ?? '-'}</td>
                 <td class="px-4 py-3 text-right font-medium text-gray-800 dark:text-slate-200">${valor}</td>
                 <td class="px-4 py-3 whitespace-nowrap">
