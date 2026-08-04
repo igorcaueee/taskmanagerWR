@@ -255,16 +255,17 @@ class NfeService
                 'origem'        => $origem,
                 'nsu'           => $doc['nsu'] ?? null,
                 'numero'        => $doc['numero'] ?? null,
-                'data_emissao'  => !empty($doc['dataEmissao']) ? substr($doc['dataEmissao'], 0, 10) : null,
-                'emitente_nome' => $doc['emitenteNome'] ?? null,
-                'emitente_doc'  => $doc['emitenteDoc'] ?? null,
-                'valor'         => $doc['valor'] ?: null,
+                'data_emissao'       => !empty($doc['dataEmissao']) ? substr($doc['dataEmissao'], 0, 10) : null,
+                'data_saida_entrada' => !empty($doc['dataSaidaEntrada']) ? substr($doc['dataSaidaEntrada'], 0, 10) : null,
+                'emitente_nome'      => $doc['emitenteNome'] ?? null,
+                'emitente_doc'       => $doc['emitenteDoc'] ?? null,
+                'valor'              => $doc['valor'] ?: null,
                 // Um cancelamento já detectado (via processarEvento) não pode ser desfeito por uma
                 // reissincronização do mesmo documento sem essa informação (resumo/XML completo não
                 // carregam o cancelamento, só o evento separado carrega).
-                'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
-                'tp_nf'         => $doc['tpNf'] ?? $existente?->tp_nf,
-                'xml_content'   => $doc['xmlContent'] ?? null,
+                'situacao'           => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
+                'tp_nf'              => $doc['tpNf'] ?? $existente?->tp_nf,
+                'xml_content'        => $doc['xmlContent'] ?? null,
             ]
         );
     }
@@ -426,10 +427,11 @@ XML;
             $numero = (string) (int) substr($chave, 25, 9);
         }
 
-        $dataEmissao   = $get('dhEmi');
-        $emitenteNome  = $get('xNome');
-        $valor         = $get('vNF') ?: $get('vCT');
-        $tpNfStr       = $get('tpNF');
+        $dataEmissao      = $get('dhEmi');
+        $dataSaidaEntrada = $get('dhSaiEnt') ?: $get('dSaiEnt');
+        $emitenteNome     = $get('xNome');
+        $valor            = $get('vNF') ?: $get('vCT');
+        $tpNfStr          = $get('tpNF');
 
         if (!$dataEmissao && !$emitenteNome && !$valor) {
             Log::warning('[NF-e] normalizarDocumento: campos vazios após parse', [
@@ -443,13 +445,14 @@ XML;
             'nsu'          => $nsu,
             'tipo'         => $tipoDoc,
             'chaveAcesso'  => $chave,
-            'numero'       => $numero,
-            'dataEmissao'  => $dataEmissao,
-            'emitenteNome' => $this->utf8Safe($emitenteNome),
-            'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
-            'valor'        => $valor,
-            'situacao'     => $get('cSitDFe'),
-            'tpNf'         => $tpNfStr !== '' ? (int) $tpNfStr : null,
+            'numero'           => $numero,
+            'dataEmissao'      => $dataEmissao,
+            'dataSaidaEntrada' => $dataSaidaEntrada,
+            'emitenteNome'     => $this->utf8Safe($emitenteNome),
+            'emitenteDoc'      => $get('CNPJ') ?: $get('CPF'),
+            'valor'            => $valor,
+            'situacao'         => $get('cSitDFe'),
+            'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
             'xmlContent'   => $xml,
         ];
     }

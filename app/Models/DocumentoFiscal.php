@@ -22,11 +22,13 @@ class DocumentoFiscal extends Model
         'valor',
         'situacao',
         'tp_nf',
+        'data_saida_entrada',
         'xml_content',
     ];
 
     protected $casts = [
-        'data_emissao' => 'date',
+        'data_emissao'       => 'date',
+        'data_saida_entrada' => 'date',
     ];
 
     public function cliente(): BelongsTo
@@ -42,14 +44,20 @@ class DocumentoFiscal extends Model
      */
     public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim, ?array $origens = null, int $page = 1, int $perPage = 500): array
     {
+        // A data que define o período de uma nota é a de saída/entrada (dhSaiEnt) quando o
+        // XML traz esse campo — não a de emissão. Uma nota emitida no fim do mês pode só ter
+        // saído/entrado fisicamente no mês seguinte, e é isso que deve valer pro filtro (e
+        // pro que é exibido), mesmo que "emissão" continue sendo o nome da coluna na tela.
+        $dataEfetiva = 'COALESCE(data_saida_entrada, data_emissao)';
+
         $query = static::where('cliente_id', $clienteId)
             ->whereIn('tipo', $tipos)
             ->when($origens, fn ($q) => $q->whereIn('origem', $origens))
-            ->whereBetween('data_emissao', [$dataInicio, $dataFim]);
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$dataInicio, $dataFim]);
 
         $total = (clone $query)->count();
 
-        $documentos = $query->orderBy('data_emissao')->orderBy('id')
+        $documentos = $query->orderByRaw($dataEfetiva)->orderBy('id')
             ->forPage($page, $perPage)
             ->get()
             ->map(fn (DocumentoFiscal $doc) => [
@@ -58,7 +66,7 @@ class DocumentoFiscal extends Model
                 'origem'       => $doc->origem,
                 'chaveAcesso'  => $doc->chave_acesso,
                 'numero'       => $doc->numero,
-                'dataEmissao'  => $doc->data_emissao?->format('Y-m-d\TH:i:s'),
+                'dataEmissao'  => ($doc->data_saida_entrada ?? $doc->data_emissao)?->format('Y-m-d\TH:i:s'),
                 'emitenteNome' => $doc->emitente_nome,
                 'emitenteDoc'  => $doc->emitente_doc,
                 'valor'        => $doc->valor,
