@@ -315,12 +315,21 @@ class PgdasdService
             ];
         }
 
-        $declaracao['estabelecimentos'] = [
-            [
-                'CnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
-                'atividades' => $atividades->map(fn (SimplesReceitaAtividade $atividade) => $this->montarAtividade($atividade))->values()->all(),
-            ],
-        ];
+        $estabelecimento = ['CnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? '')];
+
+        // Documentação oficial da SERPRO (entregar_declaracao_mensal_entrada):
+        // "Se não houve atividade para o estabelecimento, não enviar esta
+        // lista" — ou seja, pra uma declaração sem movimento (sem nenhuma
+        // atividade lançada) a chave "atividades" tem que ficar OMITIDA, não
+        // enviada como array vazio. Confirmado em produção (2026-08-04,
+        // MACHADINHO): mandar "atividades": [] foi rejeitado com "O valor da
+        // atividade deve ser maior que zero" (a API tentou validar um item
+        // que não existia).
+        if ($atividades->isNotEmpty()) {
+            $estabelecimento['atividades'] = $atividades->map(fn (SimplesReceitaAtividade $atividade) => $this->montarAtividade($atividade))->values()->all();
+        }
+
+        $declaracao['estabelecimentos'] = [$estabelecimento];
 
         return $declaracao;
     }
