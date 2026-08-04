@@ -419,16 +419,28 @@
         return (str || '').replace(/\D/g, '');
     }
 
-    // tpNF (0=entrada, 1=saída) é o campo oficial do próprio XML — usa ele sempre que
-    // disponível. Não dá pra confiar só em "quem emitiu": uma NF-e de entrada emitida
-    // pelo próprio destinatário (ex.: compra de produtor rural) tem a empresa consultada
-    // como emitente mesmo sendo uma entrada de mercadoria. O fallback por emitente só
-    // cobre CT-e (que não tem tpNF) e documentos antigos ainda sem esse campo salvo.
+    // tpNF (0=entrada, 1=saída) é sempre da perspectiva de quem EMITIU a nota — não da
+    // empresa que estamos consultando. Uma venda normal de terceiro pra o cliente tem
+    // tpNF=1 (saída do terceiro), mas é uma entrada pro cliente. Por isso a direção real
+    // depende de duas coisas: se o cliente é o emitente ou o destinatário, e o tpNF.
+    // - Cliente é o emitente: direção = tpNF direto (0=entrada — nota de entrada emitida
+    //   pelo próprio destinatário, ex. compra de produtor rural; 1=saída — venda normal).
+    // - Cliente é o destinatário: direção = oposto do tpNF (terceiro emite saída -> é
+    //   entrada pro cliente; terceiro emite entrada, ex. devolução -> é saída pro cliente).
+    // Sem tpNf (CT-e, ou documento antigo ainda não migrado): cai no fallback por emitente.
     function direcaoDoc(doc) {
-        if (doc.tpNf === 0 || doc.tpNf === '0') return 'entrada';
-        if (doc.tpNf === 1 || doc.tpNf === '1') return 'saida';
+        const clienteEhEmitente = !!clienteCnpj && soDigitos(doc.emitenteDoc) === clienteCnpj;
+
+        if (doc.tpNf === 0 || doc.tpNf === '0' || doc.tpNf === 1 || doc.tpNf === '1') {
+            const ehSaidaDoEmitente = Number(doc.tpNf) === 1;
+            if (clienteEhEmitente) {
+                return ehSaidaDoEmitente ? 'saida' : 'entrada';
+            }
+            return ehSaidaDoEmitente ? 'entrada' : 'saida';
+        }
+
         if (!clienteCnpj) return null;
-        return soDigitos(doc.emitenteDoc) === clienteCnpj ? 'saida' : 'entrada';
+        return clienteEhEmitente ? 'saida' : 'entrada';
     }
 
     function docsFiltrados() {
