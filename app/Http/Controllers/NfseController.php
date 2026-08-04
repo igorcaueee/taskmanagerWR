@@ -144,7 +144,7 @@ class NfseController extends Controller
             return response()->json(['error' => 'Certificado digital não configurado para este cliente. Configure-o antes de buscar.'], 422);
         }
 
-        Log::info('[NFS-e] buscar: iniciando chunk', [
+        Log::debug('[NFS-e] buscar: iniciando chunk', [
             'cliente_id'  => $validated['cliente_id'],
             'data_inicio' => $validated['data_inicio'],
             'data_fim'    => $validated['data_fim'],
@@ -155,7 +155,7 @@ class NfseController extends Controller
         try {
             $resultado = $this->nfse->buscarPorPeriodoChunk($cert, $validated['data_inicio'], $validated['data_fim'], $nsuInicio);
 
-            Log::info('[NFS-e] buscar: chunk concluído', [
+            Log::debug('[NFS-e] buscar: chunk concluído', [
                 'total'       => count($resultado['notas']),
                 'proximo_nsu' => $resultado['proximoNsu'],
                 'concluido'   => $resultado['concluido'],

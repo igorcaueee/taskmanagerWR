@@ -70,7 +70,7 @@ class NfeService
 
         $nsuAtual = $nsuInicio ?? (int) $certificado->ultimo_nsu_nfe;
 
-        Log::info('[NF-e] sincronizarChunk: iniciando', [
+        Log::debug('[NF-e] sincronizarChunk: iniciando', [
             'cliente_id'  => $certificado->cliente_id,
             'cnpj'        => $cnpj,
             'cUFAutor'    => $cUFAutor,
@@ -92,7 +92,7 @@ class NfeService
 
                 $cStat = $resp['cStat'] ?? '';
 
-                Log::info('[NF-e] sincronizarChunk: lote recebido', [
+                Log::debug('[NF-e] sincronizarChunk: lote recebido', [
                     'lote'      => $lotes,
                     'nsu_usado' => $nsuAtual,
                     'cStat'     => $cStat,
@@ -178,7 +178,7 @@ class NfeService
             }
         }
 
-        Log::info('[NF-e] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
+        Log::debug('[NF-e] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
         return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
     }
@@ -212,7 +212,7 @@ class NfeService
         $tpEvento = $get('tpEvento');
 
         if ($tpEvento !== '110111') {
-            Log::info('[NF-e] processarEvento: ignorado (não é cancelamento)', ['tpEvento' => $tpEvento ?: null]);
+            Log::debug('[NF-e] processarEvento: ignorado (não é cancelamento)', ['tpEvento' => $tpEvento ?: null]);
             return;
         }
 
@@ -315,7 +315,7 @@ XML;
 
     private function requisicaoSoap(string $endpoint, string $envelope, string $pemCert, string $pemKey): string
     {
-        Log::info('[NF-e] requisicaoSoap: enviando', ['url' => $endpoint]);
+        Log::debug('[NF-e] requisicaoSoap: enviando', ['url' => $endpoint]);
 
         $ch = curl_init();
 
@@ -340,7 +340,7 @@ XML;
         $curlErrNo = curl_errno($ch);
         unset($ch);
 
-        Log::info('[NF-e] requisicaoSoap: resposta recebida', [
+        Log::debug('[NF-e] requisicaoSoap: resposta recebida', [
             'httpCode'   => $httpCode,
             'curlErrNo'  => $curlErrNo,
             'curlError'  => $curlError ?: null,

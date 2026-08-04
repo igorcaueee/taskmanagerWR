@@ -52,7 +52,7 @@ class ConsultaCndClient
             $headers['x-signature'] = '1';
         }
 
-        Log::info('[ConsultaCnd] consultarCertidao: enviando', [
+        Log::debug('[ConsultaCnd] consultarCertidao: enviando', [
             'tipo_contribuinte' => $dados['TipoContribuinte'] ?? null,
         ]);
 
@@ -61,7 +61,7 @@ class ConsultaCndClient
             ->post($baseUrl, $dados);
 
         if ($resposta->status() === 401 && ! $tentandoNovamente) {
-            Log::info('[ConsultaCnd] consultarCertidao: token expirado, reautenticando');
+            Log::debug('[ConsultaCnd] consultarCertidao: token expirado, reautenticando');
             $this->auth->invalidarToken();
 
             return $this->consultarCertidao($dados, $carimboTempo, tentandoNovamente: true);

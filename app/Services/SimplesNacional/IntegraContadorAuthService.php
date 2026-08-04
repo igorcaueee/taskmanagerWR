@@ -48,7 +48,7 @@ class IntegraContadorAuthService
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $config->senha_certificado);
 
         try {
-            Log::info('[IntegraContador] autenticar: solicitando token', ['ambiente' => $config->ambiente]);
+            Log::debug('[IntegraContador] autenticar: solicitando token', ['ambiente' => $config->ambiente]);
 
             $resposta = Http::withOptions([
                 'cert' => $pemCert,
@@ -77,7 +77,7 @@ class IntegraContadorAuthService
                 throw new \RuntimeException('Resposta de autenticação da API Integra Contador não trouxe access_token/jwt_token.');
             }
 
-            Log::info('[IntegraContador] autenticar: token obtido com sucesso');
+            Log::debug('[IntegraContador] autenticar: token obtido com sucesso');
 
             return [
                 'access_token' => $dados['access_token'],

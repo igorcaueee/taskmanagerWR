@@ -46,7 +46,7 @@ class ConsultaCndAuthService
             throw new \RuntimeException('Configuração da API Consulta CND não encontrada. Cadastre o Consumer Key/Secret antes de consultar certidões.');
         }
 
-        Log::info('[ConsultaCnd] autenticar: solicitando token', ['ambiente' => $config->ambiente]);
+        Log::debug('[ConsultaCnd] autenticar: solicitando token', ['ambiente' => $config->ambiente]);
 
         $resposta = Http::asForm()
             ->withBasicAuth($config->consumer_key, $config->consumer_secret)
@@ -64,7 +64,7 @@ class ConsultaCndAuthService
             throw new \RuntimeException('Resposta de autenticação da API Consulta CND não trouxe access_token.');
         }
 
-        Log::info('[ConsultaCnd] autenticar: token obtido com sucesso');
+        Log::debug('[ConsultaCnd] autenticar: token obtido com sucesso');
 
         return $accessToken;
     }

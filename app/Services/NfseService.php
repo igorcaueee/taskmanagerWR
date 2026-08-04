@@ -352,7 +352,7 @@ class NfseService
     {
         $this->aguardarIntervaloMinimo();
 
-        Log::info('[NFS-e] requisicaoPem: enviando', ['method' => $method, 'url' => $url]);
+        Log::debug('[NFS-e] requisicaoPem: enviando', ['method' => $method, 'url' => $url]);
 
         $ch = curl_init();
 
@@ -377,7 +377,7 @@ class NfseService
         $curlErrNo = curl_errno($ch);
         unset($ch);
 
-        Log::info('[NFS-e] requisicaoPem: resposta recebida', [
+        Log::debug('[NFS-e] requisicaoPem: resposta recebida', [
             'httpCode'  => $httpCode,
             'curlErrNo' => $curlErrNo,
             'curlError' => $curlError ?: null,
@@ -422,7 +422,7 @@ class NfseService
 
     private function requisicaoBinariaPem(string $url, string $pemCert, string $pemKey): string
     {
-        Log::info('[NFS-e] DANFSE: enviando', ['url' => $url]);
+        Log::debug('[NFS-e] DANFSE: enviando', ['url' => $url]);
 
         $ch = curl_init();
 
@@ -442,7 +442,7 @@ class NfseService
         $curlError = curl_error($ch);
         unset($ch);
 
-        Log::info('[NFS-e] DANFSE: resposta', [
+        Log::debug('[NFS-e] DANFSE: resposta', [
             'httpCode'  => $httpCode,
             'curlError' => $curlError ?: null,
             'bodyLen'   => is_string($resposta) ? strlen($resposta) : 'false',
@@ -582,7 +582,7 @@ class NfseService
 </soap:Envelope>
 XML;
 
-        Log::info('[NFS-e] Tecnos: enviando ConsultaNFSeServicosPrestados', [
+        Log::debug('[NFS-e] Tecnos: enviando ConsultaNFSeServicosPrestados', [
             'cnpj'   => $cnpjPrestador,
             'im'     => $imPrestador,
             'numero' => $numero,
@@ -622,7 +622,7 @@ XML;
 
         $xmlResultado = html_entity_decode($m[1], ENT_XML1 | ENT_QUOTES, 'UTF-8');
 
-        Log::info('[NFS-e] Tecnos: resultado', ['xml' => substr($xmlResultado, 0, 500)]);
+        Log::debug('[NFS-e] Tecnos: resultado', ['xml' => substr($xmlResultado, 0, 500)]);
 
         // Procura por erros no retorno
         if (preg_match('/<Codigo>(E\d+)<\/Codigo>.*?<Mensagem>(.*?)<\/Mensagem>/s', $xmlResultado, $err)) {

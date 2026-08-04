@@ -76,7 +76,7 @@ class NfeIntegracaoRsService
 
         $nsuAtual = $nsuInicio ?? (int) $cliente->{$campoNsu};
 
-        Log::info('[NF-e RS] sincronizarChunk: iniciando', [
+        Log::debug('[NF-e RS] sincronizarChunk: iniciando', [
             'cliente_id'  => $cliente->id,
             'cnpj'        => $cnpj,
             'mod'         => $mod,
@@ -96,7 +96,7 @@ class NfeIntegracaoRsService
             while ($lotes < self::MAX_LOTES_POR_CHUNK) {
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cnpj, $mod, $nsuAtual, $pemCert, $pemKey);
 
-                Log::info('[NF-e RS] sincronizarChunk: lote recebido', [
+                Log::debug('[NF-e RS] sincronizarChunk: lote recebido', [
                     'mod'       => $mod,
                     'lote'      => $lotes,
                     'nsu_usado' => $nsuAtual,
@@ -136,7 +136,7 @@ class NfeIntegracaoRsService
                         continue;
                     }
 
-                    Log::info('[NF-e RS] sincronizarChunk: doc no lote', [
+                    Log::debug('[NF-e RS] sincronizarChunk: doc no lote', [
                         'mod'         => $mod,
                         'chave'       => $doc['chaveAcesso'] ?? null,
                         'tipo'        => $doc['tipo'] ?? null,
@@ -165,7 +165,7 @@ class NfeIntegracaoRsService
             }
         }
 
-        Log::info('[NF-e RS] sincronizarChunk: concluído', ['mod' => $mod, 'concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
+        Log::debug('[NF-e RS] sincronizarChunk: concluído', ['mod' => $mod, 'concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
         return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
     }
@@ -188,7 +188,7 @@ class NfeIntegracaoRsService
         $tpEvento = $get('tpEvento');
 
         if ($tpEvento !== '110111') {
-            Log::info('[NF-e RS] processarEvento: ignorado (não é cancelamento)', ['tpEvento' => $tpEvento ?: null]);
+            Log::debug('[NF-e RS] processarEvento: ignorado (não é cancelamento)', ['tpEvento' => $tpEvento ?: null]);
             return;
         }
 
@@ -285,7 +285,7 @@ XML;
 
     private function requisicaoSoap(string $endpoint, string $envelope, string $pemCert, string $pemKey): string
     {
-        Log::info('[NF-e RS] requisicaoSoap: enviando', ['url' => $endpoint]);
+        Log::debug('[NF-e RS] requisicaoSoap: enviando', ['url' => $endpoint]);
 
         // A Sefaz-RS rejeita (cStat 588) qualquer espaço/quebra de linha entre
         // tags — o envelope é escrito formatado no código por legibilidade,
@@ -321,7 +321,7 @@ XML;
         $curlErrNo = curl_errno($ch);
         unset($ch);
 
-        Log::info('[NF-e RS] requisicaoSoap: resposta recebida', [
+        Log::debug('[NF-e RS] requisicaoSoap: resposta recebida', [
             'httpCode'   => $httpCode,
             'curlErrNo'  => $curlErrNo,
             'curlError'  => $curlError ?: null,

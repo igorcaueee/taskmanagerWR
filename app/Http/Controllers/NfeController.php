@@ -105,7 +105,7 @@ class NfeController extends Controller
 
             $totalPaginas = max(1, (int) ceil($resultado['total'] / self::DOCUMENTOS_POR_PAGINA));
 
-            Log::info('[NF-e] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
+            Log::debug('[NF-e] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
 
             $payload = [
                 'success'       => true,
@@ -274,7 +274,7 @@ class NfeController extends Controller
 
             $totalPaginas = max(1, (int) ceil($resultado['total'] / self::DOCUMENTOS_POR_PAGINA));
 
-            Log::info('[NF-e RS] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
+            Log::debug('[NF-e RS] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
 
             return new JsonResponse(
                 [

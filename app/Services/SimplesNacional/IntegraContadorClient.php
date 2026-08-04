@@ -65,7 +65,7 @@ class IntegraContadorClient
             ],
         ];
 
-        Log::info('[IntegraContador] chamarServico: enviando', [
+        Log::debug('[IntegraContador] chamarServico: enviando', [
             'cliente_id' => $cliente->id,
             'idServico' => $idServico,
             'metodo' => $metodoGateway,
@@ -77,7 +77,7 @@ class IntegraContadorClient
             ->post($baseUrl . $metodoGateway, $payload);
 
         if ($resposta->status() === 401 && !$tentandoNovamente) {
-            Log::info('[IntegraContador] chamarServico: token expirado, reautenticando');
+            Log::debug('[IntegraContador] chamarServico: token expirado, reautenticando');
             $this->auth->invalidarTokens();
 
             return $this->chamarServico($metodoGateway, $idServico, $versaoSistema, $cliente, $dados, tentandoNovamente: true, idSistema: $idSistema);
