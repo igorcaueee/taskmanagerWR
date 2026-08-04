@@ -327,19 +327,39 @@ class PgdasdService
 
     /**
      * Monta uma entrada de "atividades" a partir de SimplesReceitaAtividade,
-     * convertendo os tributos com tipo_ajuste != "normal" em "isencoes"/
-     * "reducoes" — mapeamento (identificador = código da tabela oficial
-     * "Qualificação Tributária" 1/3/8/9/10/11, ou "Identificador de
-     * isenção/redução" 1/2 para isencao/reducao) baseado no modelo de
-     * terceiro, ainda não confirmado contra a API real.
+     * convertendo os tributos com tipo_ajuste != "normal" em "reducoes"/
+     * "qualificacoesTributarias".
+     *
+     * CORRIGIDO em 2026-08-04: imunidade/lançamento de ofício/substituição
+     * tributária/tributação monofásica/antecipação com encerramento/retenção
+     * de ISS iam antes pro array "isencoes" (com "identificador" = código da
+     * tabela "Qualificação Tributária" 1/3/8/9/10/11) — mas "isencoes"
+     * NÃO é esse array. Confirmado em produção com a WEIAND: idAtividade 5 +
+     * ICMS com identificador=8 (Substituição Tributária) em "isencoes" foi
+     * rejeitado com MSG_ISN_008 "Campo 'isencao/identificacao' inválido", e
+     * a mesma atividade SEM nenhuma qualificação foi rejeitada com MSG_E0044
+     * exigindo justamente essa informação — ou seja, o dado é obrigatório,
+     * só não pertencia a "isencoes". Consultando a documentação oficial da
+     * SERPRO (apicenter.estaleiro.serpro.gov.br/.../pgdasd/servicos/
+     * entregar_declaracao_mensal_entrada/ e .../dados_de_dominio/), o
+     * exemplo de payload mostra "receitasAtividade" com 4 arrays distintos:
+     * "isencoes" ({codTributo,valor,identificador}, identificador da tabela
+     * "Identificador de isenção/redução" 1=Normal/2=Cesta básica — mesma
+     * tabela usada em "reducoes"), "reducoes" (idem + percentualReducao), e
+     * "qualificacoesTributarias" ({codigoTributo,id}, id da tabela
+     * "Qualificação Tributária" 1/3/8/9/10/11) — é NESSE terceiro array que
+     * imunidade/lançamento de ofício/substituição/monofásica/antecipação/
+     * retenção de ISS entram. Ainda não testado com sucesso contra a API
+     * real (só sabemos que o formato antigo estava errado) — revalidar na
+     * próxima transmissão real com uma dessas qualificações.
      *
      * "exigibilidade_suspensa" não tem mapeamento confirmado no payload —
      * bloqueia a transmissão em vez de arriscar enviar campo errado.
      */
     private function montarAtividade(SimplesReceitaAtividade $atividade): array
     {
-        $isencoes = [];
         $reducoes = [];
+        $qualificacoesTributarias = [];
 
         foreach ($atividade->tributos as $tributo) {
             if ($tributo->tipo_ajuste === 'exigibilidade_suspensa') {
@@ -366,16 +386,20 @@ class PgdasdService
             if (
                 $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
                 && $tributo->tipo_ajuste !== 'normal'
-                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_TRATAMENTO_PROPRIO, true)
+                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SEM_SUBSTITUICAO, true)
             ) {
-                // Diferente do ISS, aqui não existe uma variante "com retenção"
-                // permitida — o par de atividades (sem/com substituição) já
-                // esgota a distinção, então qualquer qualificação tributária
-                // independente no ICMS dessas atividades é sempre conflitante.
-                throw new \RuntimeException("Atividade {$atividade->id_atividade}: o tratamento do ICMS (substituição tributária/monofásica/antecipação) já é definido pela própria descrição da atividade — não é possível aplicar também uma qualificação tributária independente no ICMS dessa atividade, a API rejeita como conflitante. Escolha a atividade \"sem substituição\" ou \"com substituição\" que reflita a receita, e deixe o ICMS como \"Normal\".");
+                throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituto tributário do ICMS\" (sem substituição na própria receita) — não é possível aplicar uma qualificação tributária independente no ICMS, a API rejeita como conflitante. Deixe o ICMS como \"Normal\".");
             }
 
-            $identificadorQualificacao = match ($tributo->tipo_ajuste) {
+            if (
+                $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
+                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SUBSTITUIDO, true)
+                && ! in_array($tributo->tipo_ajuste, ['substituicao_tributaria', 'tributacao_monofasica', 'antecipacao_encerramento'], true)
+            ) {
+                throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituído tributário do ICMS\" — é OBRIGATÓRIO marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento (não pode ficar \"Normal\"), confirmado em produção (MSG_E0044).");
+            }
+
+            $idQualificacao = match ($tributo->tipo_ajuste) {
                 'imunidade' => 1,
                 'lancamento_oficio' => 3,
                 'substituicao_tributaria' => 8,
@@ -385,11 +409,10 @@ class PgdasdService
                 default => null,
             };
 
-            if ($identificadorQualificacao !== null) {
-                $isencoes[] = [
-                    'codTributo' => $tributo->cod_tributo,
-                    'valor' => (float) $tributo->valor,
-                    'identificador' => $identificadorQualificacao,
+            if ($idQualificacao !== null) {
+                $qualificacoesTributarias[] = [
+                    'codigoTributo' => $tributo->cod_tributo,
+                    'id' => $idQualificacao,
                 ];
 
                 continue;
@@ -417,8 +440,9 @@ class PgdasdService
             'receitasAtividade' => [
                 [
                     'valor' => (float) $atividade->valor,
-                    'isencoes' => $isencoes,
+                    'isencoes' => [],
                     'reducoes' => $reducoes,
+                    'qualificacoesTributarias' => $qualificacoesTributarias,
                 ],
             ],
         ];

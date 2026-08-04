@@ -209,23 +209,10 @@
                 <div id="importDominioErro" class="hidden text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 mb-3"></div>
 
                 <div id="importDominioPreviaWrapper" class="hidden">
-                    <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">Período identificado: <strong id="importDominioPeriodo"></strong></p>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
-                            <thead class="bg-gray-50 dark:bg-slate-900">
-                                <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CNPJ (relatório)</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cliente no sistema</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">RBT12 / RBA</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita (competência/caixa)</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Atividades (uma por linha, do relatório)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="importDominioTabelaBody" class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700"></tbody>
-                        </table>
-                    </div>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">Período identificado: <strong id="importDominioPeriodo"></strong></p>
+                    <div id="importDominioTabelaBody" class="space-y-4"></div>
 
-                    <button type="button" id="btnConfirmarImportDominio" class="mt-3 py-2 px-4 bg-brand hover:bg-brand/80 text-white text-sm font-semibold rounded-lg transition-colors border-0">
+                    <button type="button" id="btnConfirmarImportDominio" class="mt-4 py-2 px-4 bg-brand hover:bg-brand/80 text-white text-sm font-semibold rounded-lg transition-colors border-0">
                         Confirmar e salvar
                     </button>
 
@@ -314,7 +301,8 @@
         window.PGDASD_ATIVIDADES_FATOR_R = @json($atividadesFatorR);
         window.PGDASD_ATIVIDADES_ISS_TRATAMENTO_PROPRIO = @json($atividadesIssTratamentoProprio);
         window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO = @json($atividadesIssComRetencao);
-        window.PGDASD_ATIVIDADES_ICMS_TRATAMENTO_PROPRIO = @json($atividadesIcmsTratamentoProprio);
+        window.PGDASD_ATIVIDADES_ICMS_SEM_SUBSTITUICAO = @json($atividadesIcmsSemSubstituicao);
+        window.PGDASD_ATIVIDADES_ICMS_SUBSTITUIDO = @json($atividadesIcmsSubstituido);
         window.PGDASD_TRIBUTO_ISS = 1010;
         window.PGDASD_TRIBUTO_ICMS = 1007;
     </script>
@@ -657,8 +645,15 @@
             return (window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO ?? []).includes(id) ? ['normal', 'retencao_iss'] : ['normal'];
         }
 
-        if (codTributo == window.PGDASD_TRIBUTO_ICMS && (window.PGDASD_ATIVIDADES_ICMS_TRATAMENTO_PROPRIO ?? []).includes(id)) {
+        if (codTributo == window.PGDASD_TRIBUTO_ICMS && (window.PGDASD_ATIVIDADES_ICMS_SEM_SUBSTITUICAO ?? []).includes(id)) {
             return ['normal'];
+        }
+
+        if (codTributo == window.PGDASD_TRIBUTO_ICMS && (window.PGDASD_ATIVIDADES_ICMS_SUBSTITUIDO ?? []).includes(id)) {
+            // Aqui é o oposto do caso acima: "Normal" NÃO é uma opção válida —
+            // essa atividade é "substituído tributário do ICMS", e a API exige
+            // uma dessas 3 qualificações (confirmado em produção, MSG_E0044).
+            return ['substituicao_tributaria', 'tributacao_monofasica', 'antecipacao_encerramento'];
         }
 
         return null;
@@ -668,7 +663,7 @@
         const opcoesPermitidas = opcoesAjustePermitidas(codTributo, idAtividade);
         let tipoAjuste = dadosExistentes?.tipo_ajuste ?? 'normal';
         if (opcoesPermitidas && !opcoesPermitidas.includes(tipoAjuste)) {
-            tipoAjuste = 'normal'; // valor salvo conflita com a atividade — volta pro único valor seguro
+            tipoAjuste = opcoesPermitidas[0]; // valor salvo conflita com a atividade — volta pro primeiro valor permitido
         }
         const identificador = dadosExistentes?.identificador_isencao ?? 1;
         const percentual = dadosExistentes?.percentual_reducao ?? '';
@@ -681,9 +676,13 @@
         const opcoesAjuste = opcoesPermitidas
             ? Object.fromEntries(Object.entries(OPCOES_AJUSTE).filter(([v]) => opcoesPermitidas.includes(v)))
             : OPCOES_AJUSTE;
+        // Só trava (disabled) quando sobra 1 única opção possível — quando são
+        // 3 (caso "substituído tributário do ICMS"), o usuário ainda precisa
+        // escolher qual das 3 se aplica de verdade à receita dele.
+        const travado = opcoesPermitidas && opcoesPermitidas.length === 1;
 
         cell.innerHTML = `
-            <select class="select-tipo-ajuste w-full text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1" ${opcoesPermitidas ? 'disabled title="Tratamento já definido pela própria atividade escolhida"' : ''}>
+            <select class="select-tipo-ajuste w-full text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1" ${travado ? 'disabled title="Tratamento já definido pela própria atividade escolhida"' : ''}>
                 ${Object.entries(opcoesAjuste).map(([v, l]) => `<option value="${v}" ${v === tipoAjuste ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}
             </select>
             <select class="select-identificador hidden w-full mt-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1">
@@ -1203,19 +1202,21 @@
      */
     function montarItemAtividadeDominio(a) {
         const item = document.createElement('div');
-        item.className = 'atividade-dominio-item mb-3 pb-3 border-b border-gray-100 dark:border-slate-700 last:border-b-0 last:mb-0 last:pb-0';
+        item.className = 'atividade-dominio-item rounded-lg overflow-hidden border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800';
 
         const avisoNaoReconhecido = (a.tributos_nao_reconhecidos ?? []).length > 0
-            ? `<div class="text-xs text-amber-600 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> Relatório mostra situação "${escapeHtml(a.tributos_nao_reconhecidos[0].situacao)}" que não foi possível aplicar automaticamente (não reconhecida, ou conflita com o tratamento de ISS já definido por esta atividade) — confira o tratamento tributário abaixo antes de salvar.</div>`
+            ? `<div class="text-xs text-amber-600 dark:text-amber-400 px-3 pt-2"><i class="fa-solid fa-triangle-exclamation"></i> Relatório mostra situação "${escapeHtml(a.tributos_nao_reconhecidos[0].situacao)}" que não foi possível aplicar automaticamente (não reconhecida, ou conflita com o tratamento já definido por esta atividade) — confira o tratamento tributário abaixo antes de salvar.</div>`
             : '';
 
         item.innerHTML = `
-            <select class="select-atividade-dominio text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-72">
-                ${montarSelectAtividadesDominio(a.id_atividade_sugerido)}
-            </select>
-            <div class="text-xs text-gray-400 mt-0.5">Confiança: ${Math.round((a.confianca_match ?? 0) * 100)}% — "${escapeHtml(a.tabela_texto ?? '—')}"</div>
+            <div class="bg-green-600 px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <select class="select-atividade-dominio text-xs rounded border border-white/30 bg-white/10 text-white px-2 py-1 w-72 focus:outline-none focus:ring-1 focus:ring-white/50">
+                    ${montarSelectAtividadesDominio(a.id_atividade_sugerido)}
+                </select>
+                <span class="text-xs text-green-100">Confiança: ${Math.round((a.confianca_match ?? 0) * 100)}% — "${escapeHtml(a.tabela_texto ?? '—')}"</span>
+            </div>
             ${avisoNaoReconhecido}
-            <div class="tributos-dominio-wrapper overflow-x-auto mt-1"></div>
+            <div class="tributos-dominio-wrapper overflow-x-auto p-3"></div>
         `;
 
         const wrapper = item.querySelector('.tributos-dominio-wrapper');
@@ -1245,7 +1246,7 @@
             const trBody = document.createElement('tr');
             const tdReceita = document.createElement('td');
             tdReceita.className = 'align-top py-1 pr-2';
-            tdReceita.innerHTML = `<input type="number" step="0.01" class="input-receita-atividade-dominio w-28 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 text-sm" value="${a.receita_tributada_total ?? ''}">`;
+            tdReceita.innerHTML = `<input type="number" step="0.01" class="input-receita-atividade-dominio w-32 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 text-sm" value="${a.receita_tributada_total ?? ''}">`;
             trBody.appendChild(tdReceita);
 
             atividade.tributos.forEach(codTributo => {
@@ -1286,9 +1287,9 @@
             return;
         }
 
-        const tr = target.closest('tr');
-        const checkboxCompetencia = tr.querySelector('.checkbox-regime-competencia');
-        const checkboxCaixa = tr.querySelector('.checkbox-regime-caixa');
+        const card = target.closest('.estabelecimento-dominio-item');
+        const checkboxCompetencia = card.querySelector('.checkbox-regime-competencia');
+        const checkboxCaixa = card.querySelector('.checkbox-regime-caixa');
 
         if (!target.checked) {
             target.checked = true; // não permite deixar as duas desmarcadas
@@ -1334,13 +1335,14 @@
             importDominioTabelaBody.innerHTML = '';
 
             data.estabelecimentos.forEach(e => {
-                const tr = document.createElement('tr');
-                tr.dataset.clienteId = e.cliente_id ?? '';
-                tr.dataset.anexoSugerido = e.anexo_sugerido ?? '';
+                const card = document.createElement('div');
+                card.className = 'estabelecimento-dominio-item rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/40 p-4';
+                card.dataset.clienteId = e.cliente_id ?? '';
+                card.dataset.anexoSugerido = e.anexo_sugerido ?? '';
 
                 const clienteHtml = e.cliente_id
-                    ? `<span class="text-green-700 dark:text-green-400">${escapeHtml(e.cliente_nome)}</span>`
-                    : `<span class="text-red-600">Não encontrado (CNPJ ${escapeHtml(e.cnpj)})</span>`;
+                    ? `<span class="text-green-700 dark:text-green-400 font-medium text-sm">${escapeHtml(e.cliente_nome)}</span>`
+                    : `<span class="text-red-600 font-medium text-sm">Não encontrado (CNPJ ${escapeHtml(e.cnpj)})</span>`;
 
                 // sugere caixa só quando o relatório já traz um valor de caixa; senão parte de competência.
                 // O valor é único e editável — o Domínio pode marcar como "competência" um cliente que na
@@ -1356,48 +1358,55 @@
                        </label>`
                     : '';
 
-                tr.innerHTML = `
-                    <td class="px-3 py-2 font-mono text-xs whitespace-nowrap align-top">${escapeHtml(e.cnpj)}</td>
-                    <td class="px-3 py-2 whitespace-nowrap align-top">${clienteHtml}${anexoHtml}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-xs align-top">RBT12: R$ ${formatarMoeda(e.rbt12)}<br>RBA atual: R$ ${formatarMoeda(e.rba_atual)}<br>RBA anterior: R$ ${formatarMoeda(e.rba_anterior)}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-xs align-top">
-                        <input type="number" step="0.01" class="input-valor-regime-dominio block mb-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-28" value="${valorInicial}">
-                        <label class="flex items-center gap-1.5 mb-1 cursor-pointer">
-                            <input type="checkbox" class="checkbox-regime-competencia" ${regimeSugerido === 'competencia' ? 'checked' : ''}>
-                            Competência
-                        </label>
-                        <label class="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" class="checkbox-regime-caixa" ${regimeSugerido === 'caixa' ? 'checked' : ''}>
-                            Caixa
-                        </label>
-                    </td>
-                    <td class="px-3 py-2 align-top">
-                        <div class="atividades-dominio-lista"></div>
-                        <div class="soma-atividades-dominio text-xs mt-1"></div>
-                    </td>
+                card.innerHTML = `
+                    <div class="flex flex-wrap items-start gap-x-6 gap-y-3 pb-3 mb-3 border-b border-gray-200 dark:border-slate-700">
+                        <div class="min-w-[12rem]">
+                            <div class="font-mono text-xs text-gray-400 dark:text-slate-500">${escapeHtml(e.cnpj)}</div>
+                            ${clienteHtml}
+                            ${anexoHtml}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">
+                            RBT12: R$ ${formatarMoeda(e.rbt12)}<br>
+                            RBA atual: R$ ${formatarMoeda(e.rba_atual)}<br>
+                            RBA anterior: R$ ${formatarMoeda(e.rba_anterior)}
+                        </div>
+                        <div class="text-xs">
+                            <input type="number" step="0.01" class="input-valor-regime-dominio block mb-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 w-28" value="${valorInicial}">
+                            <label class="flex items-center gap-1.5 mb-1 cursor-pointer">
+                                <input type="checkbox" class="checkbox-regime-competencia" ${regimeSugerido === 'competencia' ? 'checked' : ''}>
+                                Competência
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" class="checkbox-regime-caixa" ${regimeSugerido === 'caixa' ? 'checked' : ''}>
+                                Caixa
+                            </label>
+                        </div>
+                    </div>
+                    <div class="atividades-dominio-lista space-y-3"></div>
+                    <div class="soma-atividades-dominio text-xs mt-2"></div>
                 `;
 
-                const listaAtividades = tr.querySelector('.atividades-dominio-lista');
+                const listaAtividades = card.querySelector('.atividades-dominio-lista');
 
                 (e.atividades ?? []).forEach(a => {
                     listaAtividades.appendChild(montarItemAtividadeDominio(a));
                 });
 
-                const somaCell = tr.querySelector('.soma-atividades-dominio');
+                const somaCell = card.querySelector('.soma-atividades-dominio');
 
                 function atualizarSomaDominio() {
-                    const inputsReceita = Array.from(tr.querySelectorAll('.input-receita-atividade-dominio'));
+                    const inputsReceita = Array.from(card.querySelectorAll('.input-receita-atividade-dominio'));
                     const soma = inputsReceita.reduce((acc, input) => acc + (parseFloat(input.value) || 0), 0);
-                    const valorRegime = parseFloat(tr.querySelector('.input-valor-regime-dominio').value) || 0;
+                    const valorRegime = parseFloat(card.querySelector('.input-valor-regime-dominio').value) || 0;
                     const bate = Math.abs(soma - valorRegime) < 0.01;
                     somaCell.innerHTML = `Soma das atividades: R$ ${formatarMoeda(soma)} — Receita lançada: R$ ${formatarMoeda(valorRegime)} ${bate ? '<span class="text-green-600">✓ bate</span>' : '<span class="text-red-600">✗ não bate</span>'}`;
                 }
 
-                tr.addEventListener('input', atualizarSomaDominio);
-                tr.addEventListener('change', atualizarSomaDominio);
+                card.addEventListener('input', atualizarSomaDominio);
+                card.addEventListener('change', atualizarSomaDominio);
                 atualizarSomaDominio();
 
-                importDominioTabelaBody.appendChild(tr);
+                importDominioTabelaBody.appendChild(card);
             });
 
             importDominioPreviaWrapper.classList.remove('hidden');
@@ -1411,19 +1420,19 @@
     });
 
     btnConfirmarImportDominio.addEventListener('click', async function () {
-        const linhas = Array.from(importDominioTabelaBody.querySelectorAll('tr'));
+        const linhas = Array.from(importDominioTabelaBody.querySelectorAll('.estabelecimento-dominio-item'));
 
         const estabelecimentos = [];
         let temSemCliente = false;
 
-        linhas.forEach(tr => {
-            const clienteId = tr.dataset.clienteId;
+        linhas.forEach(card => {
+            const clienteId = card.dataset.clienteId;
             if (!clienteId) {
                 temSemCliente = true;
                 return; // pula estabelecimentos sem cliente encontrado
             }
 
-            const atividades = Array.from(tr.querySelectorAll('.atividade-dominio-item')).map(item => {
+            const atividades = Array.from(card.querySelectorAll('.atividade-dominio-item')).map(item => {
                 const receita = item.querySelector('.input-receita-atividade-dominio').value;
                 const tributos = [];
 
@@ -1451,9 +1460,9 @@
                 };
             });
 
-            const regimeApuracao = tr.querySelector('.checkbox-regime-caixa').checked ? 'caixa' : 'competencia';
-            const valorRegime = tr.querySelector('.input-valor-regime-dominio').value || null;
-            const checkboxAnexo = tr.querySelector('.checkbox-atualizar-anexo-dominio');
+            const regimeApuracao = card.querySelector('.checkbox-regime-caixa').checked ? 'caixa' : 'competencia';
+            const valorRegime = card.querySelector('.input-valor-regime-dominio').value || null;
+            const checkboxAnexo = card.querySelector('.checkbox-atualizar-anexo-dominio');
 
             estabelecimentos.push({
                 cliente_id: clienteId,
@@ -1463,7 +1472,7 @@
                 rpa_competencia: valorRegime,
                 rpa_caixa: regimeApuracao === 'caixa' ? valorRegime : null,
                 regime_apuracao: regimeApuracao,
-                anexo_simples: (checkboxAnexo && checkboxAnexo.checked) ? (ANEXO_ROMANO_PARA_NUMERO[tr.dataset.anexoSugerido] ?? tr.dataset.anexoSugerido) : null,
+                anexo_simples: (checkboxAnexo && checkboxAnexo.checked) ? (ANEXO_ROMANO_PARA_NUMERO[card.dataset.anexoSugerido] ?? card.dataset.anexoSugerido) : null,
                 atividades: atividades,
             });
         });
