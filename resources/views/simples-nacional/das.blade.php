@@ -312,6 +312,11 @@
         window.PGDASD_ATIVIDADES = @json($atividadesCatalogo);
         window.PGDASD_TRIBUTOS = @json($nomesTributos);
         window.PGDASD_ATIVIDADES_FATOR_R = @json($atividadesFatorR);
+        window.PGDASD_ATIVIDADES_ISS_TRATAMENTO_PROPRIO = @json($atividadesIssTratamentoProprio);
+        window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO = @json($atividadesIssComRetencao);
+        window.PGDASD_ATIVIDADES_ICMS_TRATAMENTO_PROPRIO = @json($atividadesIcmsTratamentoProprio);
+        window.PGDASD_TRIBUTO_ISS = 1010;
+        window.PGDASD_TRIBUTO_ICMS = 1007;
     </script>
     @include('simples-nacional._shared')
     <script>
@@ -639,8 +644,32 @@
         });
     }
 
-    function renderTributoCell(codTributo, dadosExistentes) {
-        const tipoAjuste = dadosExistentes?.tipo_ajuste ?? 'normal';
+    // Atividades cujo próprio nome já fixa o tratamento do ICMS/ISS (ex.: "Sem
+    // substituição tributária...", "Com retenção/substituição de ISS...") não
+    // aceitam também uma qualificação tributária independente por cima nesse
+    // tributo — a API rejeita como conflitante (ver PgdasdService::montarAtividade).
+    // Retorna null quando não há restrição (todas as opções continuam válidas),
+    // ou a lista de valores de tipo_ajuste permitidos quando há.
+    function opcoesAjustePermitidas(codTributo, idAtividade) {
+        const id = parseInt(idAtividade, 10);
+
+        if (codTributo == window.PGDASD_TRIBUTO_ISS && (window.PGDASD_ATIVIDADES_ISS_TRATAMENTO_PROPRIO ?? []).includes(id)) {
+            return (window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO ?? []).includes(id) ? ['normal', 'retencao_iss'] : ['normal'];
+        }
+
+        if (codTributo == window.PGDASD_TRIBUTO_ICMS && (window.PGDASD_ATIVIDADES_ICMS_TRATAMENTO_PROPRIO ?? []).includes(id)) {
+            return ['normal'];
+        }
+
+        return null;
+    }
+
+    function renderTributoCell(codTributo, dadosExistentes, idAtividade) {
+        const opcoesPermitidas = opcoesAjustePermitidas(codTributo, idAtividade);
+        let tipoAjuste = dadosExistentes?.tipo_ajuste ?? 'normal';
+        if (opcoesPermitidas && !opcoesPermitidas.includes(tipoAjuste)) {
+            tipoAjuste = 'normal'; // valor salvo conflita com a atividade — volta pro único valor seguro
+        }
         const identificador = dadosExistentes?.identificador_isencao ?? 1;
         const percentual = dadosExistentes?.percentual_reducao ?? '';
         const motivo = dadosExistentes?.motivo_suspensao ?? 1;
@@ -649,9 +678,13 @@
         cell.className = 'align-top px-2 py-2 tributo-row';
         cell.dataset.codTributo = codTributo;
 
+        const opcoesAjuste = opcoesPermitidas
+            ? Object.fromEntries(Object.entries(OPCOES_AJUSTE).filter(([v]) => opcoesPermitidas.includes(v)))
+            : OPCOES_AJUSTE;
+
         cell.innerHTML = `
-            <select class="select-tipo-ajuste w-full text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1">
-                ${Object.entries(OPCOES_AJUSTE).map(([v, l]) => `<option value="${v}" ${v === tipoAjuste ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}
+            <select class="select-tipo-ajuste w-full text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1" ${opcoesPermitidas ? 'disabled title="Tratamento já definido pela própria atividade escolhida"' : ''}>
+                ${Object.entries(opcoesAjuste).map(([v, l]) => `<option value="${v}" ${v === tipoAjuste ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}
             </select>
             <select class="select-identificador hidden w-full mt-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1">
                 <option value="1" ${identificador == 1 ? 'selected' : ''}>Normal</option>
@@ -730,7 +763,7 @@
             th.textContent = window.PGDASD_TRIBUTOS[codTributo] ?? codTributo;
             linhaCabecalho.appendChild(th);
 
-            linhaCorpo.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo]));
+            linhaCorpo.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo], idAtividade));
         });
 
         div.querySelector('.input-valor-atividade').addEventListener('input', atualizarSomaAtividades);
@@ -1221,7 +1254,7 @@
                 th.textContent = window.PGDASD_TRIBUTOS[codTributo] ?? codTributo;
                 trHead.appendChild(th);
 
-                trBody.appendChild(renderTributoCell(codTributo, tributosMap[codTributo]));
+                trBody.appendChild(renderTributoCell(codTributo, tributosMap[codTributo], idAtividade));
             });
 
             thead.appendChild(trHead);

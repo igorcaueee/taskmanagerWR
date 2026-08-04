@@ -72,6 +72,21 @@ class PgdasdAtividades
      */
     const ATIVIDADES_ISS_COM_RETENCAO = [12, 15, 18, 21, 24, 27];
 
+    /**
+     * Mesmo padrão de ATIVIDADES_ISS_TRATAMENTO_PROPRIO, mas pro ICMS:
+     * Anexo I Comércio (1/2) e Anexo II Indústria (4/5) têm um par de
+     * atividades "Sem substituição tributária/tributação monofásica/
+     * antecipação com encerramento (substituto tributário do ICMS)" (1/4) e
+     * "Com substituição tributária/tributação monofásica/antecipação com
+     * encerramento (substituído tributário do ICMS)" (2/5) — o tratamento do
+     * ICMS já é definido pela ESCOLHA do idAtividade, não dá pra sobrepor com
+     * uma qualificação tributária independente no tributo ICMS por cima.
+     * CONFIRMADO em produção (2026-08-04, WEIAND): idAtividade 5 + ICMS
+     * marcado como substituicao_tributaria (identificador 8) foi rejeitado
+     * com MSG_ISN_008 "Campo 'isencao/identificacao' inválido".
+     */
+    const ATIVIDADES_ICMS_TRATAMENTO_PROPRIO = [1, 2, 4, 5];
+
     const NOMES_TRIBUTOS = [
         self::TRIBUTO_IRPJ => 'IRPJ',
         self::TRIBUTO_CSLL => 'CSLL',

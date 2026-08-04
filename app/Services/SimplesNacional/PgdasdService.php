@@ -363,6 +363,18 @@ class PgdasdService
                 }
             }
 
+            if (
+                $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
+                && $tributo->tipo_ajuste !== 'normal'
+                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_TRATAMENTO_PROPRIO, true)
+            ) {
+                // Diferente do ISS, aqui não existe uma variante "com retenção"
+                // permitida — o par de atividades (sem/com substituição) já
+                // esgota a distinção, então qualquer qualificação tributária
+                // independente no ICMS dessas atividades é sempre conflitante.
+                throw new \RuntimeException("Atividade {$atividade->id_atividade}: o tratamento do ICMS (substituição tributária/monofásica/antecipação) já é definido pela própria descrição da atividade — não é possível aplicar também uma qualificação tributária independente no ICMS dessa atividade, a API rejeita como conflitante. Escolha a atividade \"sem substituição\" ou \"com substituição\" que reflita a receita, e deixe o ICMS como \"Normal\".");
+            }
+
             $identificadorQualificacao = match ($tributo->tipo_ajuste) {
                 'imunidade' => 1,
                 'lancamento_oficio' => 3,

@@ -95,14 +95,20 @@ class DominioImportParser
 
             switch ($tipo) {
                 case '17':
-                    // O valor vem logo após o rótulo (label, valor, "0", valor repetido) —
-                    // usar o ÚLTIMO item da linha (como era antes) quebra quando o Domínio
-                    // repete esse mesmo "tipo 17" numa seção de recap no fim do relatório
-                    // com um "Anexo:" grudado no final da linha (confirmado com um
-                    // relatório real em 2026-08-03): o último item vira "Anexo:" (não
-                    // numérico), e sobrescrevia o valor correto com null.
+                    // Depois do rótulo vêm 3 números nessa ordem fixa: Mercado
+                    // Interno, Mercado Externo, Total (confirmado contra o
+                    // relatório em PDF, que tem essas 3 colunas explícitas) —
+                    // usamos SEMPRE o Total ($tail[3]), não o Interno
+                    // ($tail[1]), senão empresa com receita de exportação
+                    // ficava com RPA/RBT12/RBA sem a parte externa. Usar uma
+                    // posição fixa (não o ÚLTIMO item da linha) também evita
+                    // quebrar quando o Domínio repete esse mesmo "tipo 17"
+                    // numa seção de recap no fim do relatório com um "Anexo:"
+                    // grudado no final da linha (confirmado com um relatório
+                    // real em 2026-08-03): o último item vira "Anexo:" (não
+                    // numérico), mas a posição 3 continua sendo o Total.
                     $label = $tail[0] ?? '';
-                    $total = $this->paraFloat($tail[1] ?? null);
+                    $total = $this->paraFloat($tail[3] ?? $tail[1] ?? null);
                     $labelNormalizado = $this->normalizar($label);
 
                     if (str_contains($labelNormalizado, 'competencia')) {

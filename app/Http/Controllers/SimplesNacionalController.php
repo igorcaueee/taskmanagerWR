@@ -105,6 +105,9 @@ class SimplesNacionalController extends Controller
             'atividadesCatalogo' => PgdasdAtividades::catalogo(),
             'nomesTributos' => PgdasdAtividades::NOMES_TRIBUTOS,
             'atividadesFatorR' => PgdasdAtividades::ATIVIDADES_FATOR_R,
+            'atividadesIssTratamentoProprio' => PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO,
+            'atividadesIssComRetencao' => PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO,
+            'atividadesIcmsTratamentoProprio' => PgdasdAtividades::ATIVIDADES_ICMS_TRATAMENTO_PROPRIO,
             'processamentos' => $processamentos,
             'periodo' => $periodo,
         ]);
