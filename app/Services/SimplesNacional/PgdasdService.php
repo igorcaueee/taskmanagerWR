@@ -124,8 +124,12 @@ class PgdasdService
      *         transmitir uma declaração com receita zero (declaração "sem movimento"
      *         é legítima na Receita Federal, mas queremos uma confirmação
      *         deliberada em vez de deixar passar um esquecimento de preenchimento).
+     * @param  bool  $confirmarRetificadora  precisa ser true explicitamente para
+     *         reenviar um período que já tem declaração ORIGINAL na Receita —
+     *         nesse caso a transmissão vai como retificadora (tipoDeclaracao=2,
+     *         substitui a declaração anterior), não como Original de novo.
      */
-    public function transmitirDeclaracaoDoCliente(Cliente $cliente, string $periodoApuracao, bool $confirmarReceitaZerada = false): SimplesDasProcessamento
+    public function transmitirDeclaracaoDoCliente(Cliente $cliente, string $periodoApuracao, bool $confirmarReceitaZerada = false, bool $confirmarRetificadora = false): SimplesDasProcessamento
     {
         if (empty($cliente->cpfcnpj)) {
             throw new \RuntimeException("Cliente {$cliente->nome} não tem CNPJ cadastrado — obrigatório para transmitir.");
@@ -169,9 +173,13 @@ class PgdasdService
             throw new \RuntimeException("Cliente {$cliente->nome}: a soma das receitas por atividade (R$ " . number_format($somaAtividades, 2, ',', '.') . ") não bate com a receita bruta do período em regime \"{$receita->regime_apuracao}\" (R$ " . number_format($valorTributavel, 2, ',', '.') . "). Ajuste os valores por atividade antes de transmitir.");
         }
 
-        if ($this->declaracaoJaExisteNaReceita($cliente, $periodoApuracao)) {
-            throw new \RuntimeException("Cliente {$cliente->nome} já tem uma declaração ORIGINAL transmitida para o período {$periodoApuracao} (confirmado via CONSDECLARACAO13). Este sistema ainda não implementa retificadora (tipoDeclaracao 2) — transmitir de novo como Original provavelmente será rejeitado pela Receita Federal.");
+        $jaTransmitidaNaReceita = $this->declaracaoJaExisteNaReceita($cliente, $periodoApuracao);
+
+        if ($jaTransmitidaNaReceita && !$confirmarRetificadora) {
+            throw new \RuntimeException("Cliente {$cliente->nome} já tem uma declaração ORIGINAL transmitida para o período {$periodoApuracao} (confirmado via CONSDECLARACAO13). Se você corrigiu os dados e quer substituir essa declaração, confirme explicitamente que esta transmissão é uma RETIFICADORA antes de continuar.");
         }
+
+        $tipoDeclaracao = $jaTransmitidaNaReceita ? 2 : 1;
 
         $exigeFolhaSalario = $atividades->contains(fn (SimplesReceitaAtividade $a) => in_array($a->id_atividade, PgdasdAtividades::ATIVIDADES_FATOR_R, true));
 
@@ -181,12 +189,12 @@ class PgdasdService
 
         $dadosApuracao = [
             'cnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
-            'declaracao' => $this->montarDeclaracao($cliente, $receita, $atividades, $periodoApuracao, $exigeFolhaSalario),
+            'declaracao' => $this->montarDeclaracao($cliente, $receita, $atividades, $periodoApuracao, $exigeFolhaSalario, $tipoDeclaracao),
             'indicadorTransmissao' => true,
             'indicadorComparacao' => false,
         ];
 
-        return $this->transmitirDeclaracao($cliente, $periodoApuracao, $dadosApuracao);
+        return $this->transmitirDeclaracao($cliente, $periodoApuracao, $dadosApuracao, $tipoDeclaracao);
     }
 
     /**
@@ -281,7 +289,7 @@ class PgdasdService
      *
      * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
      */
-    private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades, string $periodoApuracao, bool $exigeFolhaSalario): array
+    private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades, string $periodoApuracao, bool $exigeFolhaSalario, int $tipoDeclaracao = 1): array
     {
         // A API valida que receitaPaCompetenciaInterno/Externo (e o par
         // "Caixa") sejam exatamente a soma das atividades classificadas como
@@ -297,7 +305,7 @@ class PgdasdService
         );
 
         $declaracao = [
-            'tipoDeclaracao' => 1, // 1 = Original
+            'tipoDeclaracao' => $tipoDeclaracao, // 1 = Original, 2 = Retificadora
             'receitaPaCompetenciaInterno' => (float) $atividadesInterno->sum('valor'),
             'receitaPaCompetenciaExterno' => (float) $atividadesExterno->sum('valor'),
         ];
@@ -459,27 +467,32 @@ class PgdasdService
 
     /**
      * Transmite a declaração mensal, mas evita rechamar a API se este período
-     * já foi transmitido com sucesso para o cliente — a API é cobrada por chamada.
+     * já foi transmitido com sucesso para o cliente — a API é cobrada por
+     * chamada. Esse guard local só se aplica a Original (tipoDeclaracao=1):
+     * numa retificadora queremos SEMPRE rechamar a API de verdade, mesmo já
+     * havendo um registro de sucesso anterior — é justamente o objetivo.
      */
-    public function transmitirDeclaracao(Cliente $cliente, string $periodoApuracao, array $dadosApuracao): SimplesDasProcessamento
+    public function transmitirDeclaracao(Cliente $cliente, string $periodoApuracao, array $dadosApuracao, int $tipoDeclaracao = 1): SimplesDasProcessamento
     {
-        $jaProcessado = SimplesDasProcessamento::where('cliente_id', $cliente->id)
-            ->where('periodo_apuracao', $periodoApuracao)
-            ->whereIn('status', ['sucesso', 'ja_transmitido'])
-            ->first();
+        if ($tipoDeclaracao === 1) {
+            $jaProcessado = SimplesDasProcessamento::where('cliente_id', $cliente->id)
+                ->where('periodo_apuracao', $periodoApuracao)
+                ->whereIn('status', ['sucesso', 'ja_transmitido'])
+                ->first();
 
-        if ($jaProcessado) {
-            Log::info('[PGDASD] transmitirDeclaracao: já transmitido, ignorando', [
-                'cliente_id' => $cliente->id,
-                'periodo' => $periodoApuracao,
-            ]);
+            if ($jaProcessado) {
+                Log::info('[PGDASD] transmitirDeclaracao: já transmitido, ignorando', [
+                    'cliente_id' => $cliente->id,
+                    'periodo' => $periodoApuracao,
+                ]);
 
-            return $jaProcessado;
+                return $jaProcessado;
+            }
         }
 
         $registro = SimplesDasProcessamento::updateOrCreate(
             ['cliente_id' => $cliente->id, 'periodo_apuracao' => $periodoApuracao],
-            ['status' => 'pendente']
+            ['status' => 'pendente', 'tipo_declaracao' => $tipoDeclaracao]
         );
 
         try {

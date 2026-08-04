@@ -274,6 +274,9 @@
                                     <span class="px-2 py-1 rounded text-xs font-medium {{ $badges[$p->status] ?? 'bg-gray-100 text-gray-800' }}">
                                         {{ ucfirst(str_replace('_', ' ', $p->status)) }}
                                     </span>
+                                    @if ($p->tipo_declaracao === 2)
+                                        <span class="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">Retificadora</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $p->numero_recibo ?? '—' }}</td>
                                 <td class="px-6 py-4 text-sm text-red-700 dark:text-red-400">{{ $p->mensagem_erro ?? '—' }}</td>
@@ -507,7 +510,7 @@
             btnTransmitirDeclaracao.textContent = 'Transmitindo...';
             transmitirResultado.classList.add('hidden');
 
-            try {
+            async function enviarTransmissao(confirmarRetificadora) {
                 const resp = await fetch('{{ route('simples-nacional.transmitir') }}', {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
@@ -515,9 +518,38 @@
                         cliente_id: selectClienteTransmissao.value,
                         periodo_apuracao: periodo,
                         confirmar_receita_zerada: confirmarReceitaZerada,
+                        confirmar_retificadora: confirmarRetificadora,
                     }),
                 });
-                const data = await resp.json();
+                return { resp, data: await resp.json() };
+            }
+
+            try {
+                let { resp, data } = await enviarTransmissao(false);
+
+                // O backend só sabe se já existe declaração original depois de
+                // consultar a Receita (CONSDECLARACAO13) — por isso a confirmação
+                // de retificadora acontece aqui, reagindo ao erro específico, em
+                // vez de uma checagem client-side antecipada (evitaria a chamada,
+                // mas duplicaria a mesma consulta paga que o backend já faz).
+                if (!resp.ok && typeof data.error === 'string' && data.error.includes('RETIFICADORA')) {
+                    const resultRetificadora = await Swal.fire({
+                        title: 'Já existe uma declaração transmitida',
+                        html: data.error + '<br><br>Deseja transmitir como <strong>retificadora</strong> (substitui a declaração original desse período)?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sim, é retificadora',
+                        cancelButtonText: 'Cancelar',
+                    });
+
+                    if (!resultRetificadora.isConfirmed) {
+                        btnTransmitirDeclaracao.disabled = false;
+                        btnTransmitirDeclaracao.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Transmitir declaração (real)';
+                        return;
+                    }
+
+                    ({ resp, data } = await enviarTransmissao(true));
+                }
 
                 transmitirResultado.classList.remove('hidden');
                 transmitirResultado.classList.remove(

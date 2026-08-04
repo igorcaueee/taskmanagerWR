@@ -17,6 +17,7 @@ class SimplesDasProcessamento extends Model
         'cliente_id',
         'periodo_apuracao',
         'status',
+        'tipo_declaracao',
         'mensagem_erro',
         'numero_recibo',
         'das_pdf_path',

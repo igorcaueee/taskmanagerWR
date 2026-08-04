@@ -1035,6 +1035,7 @@ class SimplesNacionalController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'periodo_apuracao' => 'required|digits:6',
             'confirmar_receita_zerada' => 'nullable|boolean',
+            'confirmar_retificadora' => 'nullable|boolean',
         ]);
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
@@ -1044,6 +1045,7 @@ class SimplesNacionalController extends Controller
                 $cliente,
                 $validated['periodo_apuracao'],
                 (bool) ($validated['confirmar_receita_zerada'] ?? false),
+                (bool) ($validated['confirmar_retificadora'] ?? false),
             );
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
