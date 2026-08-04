@@ -156,7 +156,10 @@ class PgdasdService
             ->where('periodo_apuracao', $periodoApuracao)
             ->get();
 
-        if ($atividades->isEmpty()) {
+        // Uma declaração "sem movimento" de verdade (receita zerada,
+        // confirmada acima) não tem nenhuma atividade — diferente de uma
+        // receita > 0 sem atividade lançada, que aí sim é um esquecimento.
+        if ($atividades->isEmpty() && !$confirmarReceitaZerada) {
             throw new \RuntimeException("Cliente {$cliente->nome} não tem nenhuma atividade com receita lançada para o período {$periodoApuracao} — cadastre em \"Receitas por Atividade\" antes de transmitir.");
         }
 

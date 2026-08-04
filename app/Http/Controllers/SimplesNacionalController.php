@@ -941,7 +941,10 @@ class SimplesNacionalController extends Controller
             'estabelecimentos.*.rpa_caixa' => 'nullable|numeric|min:0',
             'estabelecimentos.*.regime_apuracao' => 'required|in:competencia,caixa',
             'estabelecimentos.*.anexo_simples' => 'nullable|string|max:10',
-            'estabelecimentos.*.atividades' => 'required|array|min:1',
+            // min:0 (não min:1): um estabelecimento "sem movimento" (receita
+            // zerada) não tem nenhum bloco de Anexo/Atividade no relatório do
+            // Domínio — é uma declaração legítima, não um erro de parseamento.
+            'estabelecimentos.*.atividades' => 'present|array',
             'estabelecimentos.*.atividades.*.id_atividade' => 'required|integer|min:1|max:43',
             'estabelecimentos.*.atividades.*.receita_tributada_total' => 'required|numeric|min:0',
             'estabelecimentos.*.atividades.*.tributos' => 'array',
