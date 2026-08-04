@@ -419,8 +419,14 @@
         return (str || '').replace(/\D/g, '');
     }
 
-    // Saída = documento emitido pela própria empresa selecionada; entrada = emitido por terceiros.
+    // tpNF (0=entrada, 1=saída) é o campo oficial do próprio XML — usa ele sempre que
+    // disponível. Não dá pra confiar só em "quem emitiu": uma NF-e de entrada emitida
+    // pelo próprio destinatário (ex.: compra de produtor rural) tem a empresa consultada
+    // como emitente mesmo sendo uma entrada de mercadoria. O fallback por emitente só
+    // cobre CT-e (que não tem tpNF) e documentos antigos ainda sem esse campo salvo.
     function direcaoDoc(doc) {
+        if (doc.tpNf === 0 || doc.tpNf === '0') return 'entrada';
+        if (doc.tpNf === 1 || doc.tpNf === '1') return 'saida';
         if (!clienteCnpj) return null;
         return soDigitos(doc.emitenteDoc) === clienteCnpj ? 'saida' : 'entrada';
     }

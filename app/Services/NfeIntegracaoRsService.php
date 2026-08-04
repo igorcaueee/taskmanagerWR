@@ -243,6 +243,7 @@ class NfeIntegracaoRsService
                 // Um cancelamento já detectado (via processarEvento) não pode ser desfeito por uma
                 // reissincronização do mesmo documento sem essa informação.
                 'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
+                'tp_nf'         => $doc['tpNf'] ?? $existente?->tp_nf,
                 'xml_content'   => $doc['xmlContent'] ?? null,
             ]
         );
@@ -412,6 +413,7 @@ XML;
         $dataEmissao  = $get('dhEmi');
         $emitenteNome = $get('xNome');
         $valor        = $get('vNF');
+        $tpNfStr      = $get('tpNF');
 
         if (!$dataEmissao && !$emitenteNome && !$valor) {
             Log::warning('[NF-e RS] normalizarDocumento: campos vazios após parse', [
@@ -431,6 +433,7 @@ XML;
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
             'valor'        => $valor,
             'situacao'     => $get('cSitNFe'),
+            'tpNf'         => $tpNfStr !== '' ? (int) $tpNfStr : null,
             'xmlContent'   => $xml,
         ];
     }

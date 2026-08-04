@@ -263,6 +263,7 @@ class NfeService
                 // reissincronização do mesmo documento sem essa informação (resumo/XML completo não
                 // carregam o cancelamento, só o evento separado carrega).
                 'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
+                'tp_nf'         => $doc['tpNf'] ?? $existente?->tp_nf,
                 'xml_content'   => $doc['xmlContent'] ?? null,
             ]
         );
@@ -428,6 +429,7 @@ XML;
         $dataEmissao   = $get('dhEmi');
         $emitenteNome  = $get('xNome');
         $valor         = $get('vNF') ?: $get('vCT');
+        $tpNfStr       = $get('tpNF');
 
         if (!$dataEmissao && !$emitenteNome && !$valor) {
             Log::warning('[NF-e] normalizarDocumento: campos vazios após parse', [
@@ -447,6 +449,7 @@ XML;
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
             'valor'        => $valor,
             'situacao'     => $get('cSitDFe'),
+            'tpNf'         => $tpNfStr !== '' ? (int) $tpNfStr : null,
             'xmlContent'   => $xml,
         ];
     }
