@@ -99,6 +99,9 @@
                         </option>
                     @endforeach
                 </select>
+                <p id="clienteCnpj" class="hidden mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    CNPJ: <span id="clienteCnpjValor" class="font-medium text-gray-700 dark:text-slate-300"></span>
+                </p>
 
                 {{-- Status do certificado --}}
                 <div id="certStatus" class="hidden mt-3">
@@ -296,8 +299,21 @@
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     const selectCliente = document.getElementById('selectCliente');
+    const clienteCnpjEl    = document.getElementById('clienteCnpj');
+    const clienteCnpjValor = document.getElementById('clienteCnpjValor');
     const cardFiltro     = document.getElementById('cardFiltro');
     const certStatus     = document.getElementById('certStatus');
+
+    function formatarCnpjCpf(valor) {
+        const digitos = (valor || '').replace(/\D/g, '');
+        if (digitos.length === 14) {
+            return digitos.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        if (digitos.length === 11) {
+            return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        }
+        return valor || '';
+    }
 
     const certOk      = document.getElementById('certOk');
     const certAlert   = document.getElementById('certAlert');
@@ -566,7 +582,8 @@
     // ─── Seleção de empresa ──────────────────────────────────────────────────
     selectCliente.addEventListener('change', async function () {
         const clienteId = this.value;
-        clienteCnpj = soDigitos(this.options[this.selectedIndex]?.dataset.cnpj);
+        const cnpjSelecionado = this.options[this.selectedIndex]?.dataset.cnpj ?? '';
+        clienteCnpj = soDigitos(cnpjSelecionado);
 
         esconderTodosEstados();
         estadoInicial.classList.remove('hidden');
@@ -574,8 +591,12 @@
         if (!clienteId) {
             cardFiltro.classList.add('hidden');
             certStatus.classList.add('hidden');
+            clienteCnpjEl.classList.add('hidden');
             return;
         }
+
+        clienteCnpjValor.textContent = formatarCnpjCpf(cnpjSelecionado);
+        clienteCnpjEl.classList.remove('hidden');
 
         cardFiltro.classList.remove('hidden');
 
