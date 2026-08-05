@@ -337,6 +337,12 @@ XML;
      * Evento de cancelamento (tpEvento 110111) não vira linha própria — mas
      * precisa atualizar a `situacao` do documento original, senão ele
      * continua marcado como normal para sempre mesmo depois de cancelado.
+     *
+     * Também reescreve o cStat/xMotivo dentro do próprio xml_content salvo —
+     * sem isso o XML baixado do cofre fica congelado no momento da
+     * autorização original (cStat 100), e ferramentas que leem o XML puro
+     * pra decidir a situação continuam vendo a nota como normal mesmo ela
+     * estando cancelada no nosso banco.
      */
     private function processarEvento(string $xml): void
     {
@@ -362,9 +368,47 @@ XML;
             return;
         }
 
-        $linhas = DocumentoFiscal::where('chave_acesso', $chave)->update(['situacao' => 'cancelada']);
+        $update = ['situacao' => 'cancelada'];
+
+        $existente = DocumentoFiscal::where('chave_acesso', $chave)->first();
+        if ($existente && !empty($existente->xml_content)) {
+            $update['xml_content'] = $this->marcarXmlComoCancelado($existente->xml_content);
+        }
+
+        $linhas = DocumentoFiscal::where('chave_acesso', $chave)->update($update);
 
         Log::info('[CT-e RS] processarEvento: cancelamento processado', ['chave' => $chave, 'linhas_afetadas' => $linhas]);
+    }
+
+    /**
+     * Reescreve cStat/xMotivo dentro de protCTe (grupo infProt) para refletir
+     * o cancelamento — mesma convenção usada por outros provedores (ex.:
+     * SIEG): cStat 101 "Cancelamento homologado", em vez de manter o cStat
+     * 100 "Autorizado" original congelado no XML.
+     */
+    private function marcarXmlComoCancelado(string $xml): string
+    {
+        libxml_use_internal_errors(true);
+        $obj = @new \SimpleXMLElement($xml);
+
+        if (!$obj) {
+            return $xml;
+        }
+
+        $cStatNos   = $obj->xpath("//*[local-name()='infProt']/*[local-name()='cStat']");
+        $xMotivoNos = $obj->xpath("//*[local-name()='infProt']/*[local-name()='xMotivo']");
+
+        if (empty($cStatNos)) {
+            return $xml;
+        }
+
+        $cStatNos[0][0] = '101';
+
+        if (!empty($xMotivoNos)) {
+            $xMotivoNos[0][0] = 'Cancelamento homologado';
+        }
+
+        return $obj->asXML() ?: $xml;
     }
 
     /**
