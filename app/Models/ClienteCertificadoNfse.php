@@ -16,6 +16,7 @@ class ClienteCertificadoNfse extends Model
         'ambiente',
         'ultimo_nsu',
         'ultimo_nsu_nfe',
+        'ultimo_nsu_cte',
         'vencimento',
     ];
 
@@ -24,6 +25,7 @@ class ClienteCertificadoNfse extends Model
         'vencimento'     => 'date',
         'ultimo_nsu'     => 'integer',
         'ultimo_nsu_nfe' => 'integer',
+        'ultimo_nsu_cte' => 'integer',
     ];
 
     public function cliente(): BelongsTo

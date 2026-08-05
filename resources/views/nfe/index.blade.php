@@ -755,7 +755,7 @@
         estadoLoading.classList.remove('hidden');
         document.getElementById('loadingTitulo').textContent = checkModoRs.checked
             ? 'Sincronizando com a Sefaz-RS (contabilidade)...'
-            : 'Sincronizando com o Ambiente Nacional (NFeDistribuicaoDFe)...';
+            : 'Sincronizando com o Ambiente Nacional (NFeDistribuicaoDFe / CTeDistribuicaoDFe)...';
         document.getElementById('loadingTempo').textContent = 'Iniciando...';
         btnBuscar.disabled = true;
         document.getElementById('btnBuscarLabel').textContent = 'Buscando...';
@@ -783,12 +783,17 @@
                     if (aviso) avisos.push(aviso);
                 }
             } else {
-                const aviso = await sincronizarFaseAteConcluir(
-                    '/nfe/sincronizar-chunk',
-                    bodyBase,
-                    'Buscando NF-e/CT-e'
-                );
-                if (aviso) avisos.push(aviso);
+                // NF-e (NFeDistribuicaoDFe) e CT-e (CTeDistribuicaoDFe) são webservices
+                // nacionais distintos, com NSU independente — mesmo padrão do modo RS.
+                const fasesNacional = [
+                    ['/nfe/sincronizar-chunk', 'Buscando NF-e'],
+                    ['/nfe/cte-nacional/sincronizar-chunk', 'Buscando CT-e'],
+                ];
+
+                for (const [url, label] of fasesNacional) {
+                    const aviso = await sincronizarFaseAteConcluir(url, bodyBase, label);
+                    if (aviso) avisos.push(aviso);
+                }
             }
 
             const url = checkModoRs.checked ? '/nfe/rs/buscar' : '/nfe/buscar';

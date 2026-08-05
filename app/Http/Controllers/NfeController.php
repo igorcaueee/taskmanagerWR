@@ -7,6 +7,7 @@ use App\Models\CertificadoContabilidade;
 use App\Models\Cliente;
 use App\Models\ClienteCertificadoNfse;
 use App\Models\DocumentoFiscal;
+use App\Services\CteDistribuicaoDFeService;
 use App\Services\CteIntegracaoRsService;
 use App\Services\NfeIntegracaoRsService;
 use App\Services\NfeService;
@@ -31,6 +32,7 @@ class NfeController extends Controller
         private NfeService $nfe,
         private NfeIntegracaoRsService $nfeRs,
         private CteIntegracaoRsService $cteRs,
+        private CteDistribuicaoDFeService $cteNacional,
         private NfseService $nfse,
     ) {}
 
@@ -76,6 +78,42 @@ class NfeController extends Controller
             ]);
         } catch (\Throwable $e) {
             Log::error('[NF-e] sincronizarChunk: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Sincroniza uma fatia (chunk) de CT-e via CTeDistribuicaoDFe (nacional),
+     * mesmo certificado do cliente usado em sincronizarChunk (NF-e) — ver
+     * CteDistribuicaoDFeService quanto ao que esse serviço traz/não traz.
+     */
+    public function sincronizarChunkCte(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'nsu_inicio' => 'sometimes|integer|min:0',
+        ]);
+
+        $cert = ClienteCertificadoNfse::with('cliente')->where('cliente_id', $validated['cliente_id'])->first();
+
+        if (! $cert) {
+            return response()->json(['error' => 'Certificado digital não configurado para este cliente. Configure-o na tela de NFS-e antes de buscar.'], 422);
+        }
+
+        $nsuInicio = array_key_exists('nsu_inicio', $validated) ? (int) $validated['nsu_inicio'] : null;
+
+        try {
+            $resultado = $this->cteNacional->sincronizarChunk($cert, $nsuInicio);
+
+            return response()->json([
+                'success' => true,
+                'concluido' => $resultado['concluido'],
+                'proximo_nsu' => $resultado['proximoNsu'],
+                'aviso' => $resultado['aviso'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[CT-e Nacional] sincronizarChunk: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
 
             return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
         }
