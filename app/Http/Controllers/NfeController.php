@@ -295,21 +295,36 @@ class NfeController extends Controller
         }
     }
 
+    // Limite de documentos por zip em lote — ver CofreFiscalController::MAX_ZIP.
+    const MAX_ZIP = 500;
+
     /**
-     * Gera um .zip com os XMLs enviados diretamente pelo frontend (sem re-fetch da API).
-     * Cada item: { nsu: int, xml: string }
+     * Gera um .zip com os XMLs dos documentos selecionados, buscando o
+     * xml_content direto do banco pela chave de acesso — o frontend manda só
+     * as chaves, não o XML inteiro de cada nota. Antes o XML de cada documento
+     * selecionado ia e voltava pela rede (frontend -> servidor), o que travava
+     * a geração do zip com poucas centenas de notas por causa do tamanho do
+     * payload (post_max_size) e de um limite artificial de 200 itens.
      */
     public function downloadZipXmls(Request $request)
     {
         $request->validate([
-            'items'       => 'required|array|min:1|max:200',
-            'items.*.nsu' => 'required',
-            'items.*.xml' => 'required|string|min:1',
-            'nome'        => 'nullable|string',
+            'chaves' => 'required|array|min:1|max:' . self::MAX_ZIP,
+            'chaves.*' => 'required|string',
+            'nome'   => 'nullable|string',
         ]);
 
         $nomeEmpresa = trim((string) $request->input('nome', ''));
         $nomeArquivo = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFe-CTe') . '.zip';
+
+        $documentos = DocumentoFiscal::whereIn('chave_acesso', $request->chaves)
+            ->whereNotNull('xml_content')
+            ->get(['tipo', 'chave_acesso', 'xml_content']);
+
+        if ($documentos->isEmpty()) {
+            return response()->json(['error' => 'Nenhum XML disponível para os documentos selecionados.'], 422);
+        }
+
         $zipPath = storage_path('app/temp/nfe_' . time() . '_' . rand(1000, 9999) . '.zip');
 
         if (!is_dir(dirname($zipPath))) {
@@ -322,8 +337,8 @@ class NfeController extends Controller
             return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
         }
 
-        foreach ($request->items as $item) {
-            $zip->addFromString("nfe_nsu{$item['nsu']}.xml", $item['xml']);
+        foreach ($documentos as $documento) {
+            $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
         }
 
         $zip->close();

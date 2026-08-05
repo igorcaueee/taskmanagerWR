@@ -1007,13 +1007,16 @@
     }
 
     // ─── Download ZIP (múltiplos, considerando seleção em todas as páginas) ──
+    // Manda só as chaves de acesso — o servidor busca o XML direto do banco. Mandar o
+    // XML inteiro de cada nota de volta pela rede travava a geração do zip com poucas
+    // centenas de documentos selecionados (tamanho do payload).
     btnDownloadZip.addEventListener('click', async function () {
-        const items = [...selecionados].map(nsu => {
+        const chaves = [...selecionados].map(nsu => {
             const doc = docsAtuais.find(d => String(d.nsu) === nsu);
-            return doc?.xmlContent ? { nsu, xml: doc.xmlContent } : null;
+            return doc?.chaveAcesso || null;
         }).filter(Boolean);
 
-        if (!items.length) {
+        if (!chaves.length) {
             Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhum XML disponível para os documentos selecionados.' });
             return;
         }
@@ -1030,7 +1033,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                 },
-                body: JSON.stringify({ items, nome: nomeEmpresa }),
+                body: JSON.stringify({ chaves, nome: nomeEmpresa }),
             });
 
             if (!resp.ok) {
