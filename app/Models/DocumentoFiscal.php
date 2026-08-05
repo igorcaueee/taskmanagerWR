@@ -27,13 +27,70 @@ class DocumentoFiscal extends Model
     ];
 
     protected $casts = [
-        'data_emissao'       => 'date',
+        'data_emissao' => 'date',
         'data_saida_entrada' => 'date',
     ];
 
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    /**
+     * Classifica o documento em 'entrada' ou 'saida' do ponto de vista do
+     * cliente (mesma lógica usada na tela de NF-e, função `direcaoDoc` em
+     * resources/views/nfe/index.blade.php — mantenha as duas em sincronia).
+     *
+     * tp_nf (0=entrada, 1=saída) é sempre da perspectiva de quem EMITIU a nota
+     * — não da empresa consultada. Uma venda normal de terceiro pro cliente
+     * tem tp_nf=1 (saída do terceiro), mas é uma entrada pro cliente. Por isso
+     * a direção real depende de duas coisas: se o cliente é o emitente ou o
+     * destinatário, e o tp_nf. Sem tp_nf (CT-e, ou documento antigo ainda não
+     * migrado), cai no fallback por emitente.
+     */
+    public function direcao(string $clienteCnpj): string
+    {
+        $clienteEhEmitente = $clienteCnpj !== '' && preg_replace('/\D/', '', (string) $this->emitente_doc) === $clienteCnpj;
+
+        if ($this->tp_nf !== null) {
+            $ehSaidaDoEmitente = (int) $this->tp_nf === 1;
+
+            return $clienteEhEmitente === $ehSaidaDoEmitente ? 'saida' : 'entrada';
+        }
+
+        return $clienteEhEmitente ? 'saida' : 'entrada';
+    }
+
+    /**
+     * Monta a expressão SQL usada para decidir em que período uma nota entra (ver
+     * comentário em doPeriodo) e o CNPJ (só dígitos) do cliente, usado como bind dela.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function dataEfetivaSql(int $clienteId): array
+    {
+        $clienteCnpj = preg_replace('/\D/', '', Cliente::find($clienteId)?->cpfcnpj ?? '');
+
+        $dataEfetiva = 'CASE WHEN emitente_doc = ? THEN data_emissao ELSE COALESCE(data_saida_entrada, data_emissao) END';
+
+        return [$dataEfetiva, $clienteCnpj];
+    }
+
+    /**
+     * Busca os documentos já sincronizados de um cliente, tipo e período —
+     * usado pelo relatório fiscal (Excel), que precisa de todos os documentos
+     * do período (não paginado) para extrair os itens do xml_content. O
+     * chamador deve iterar com cursor()/chunk() para não estourar memória.
+     */
+    public static function queryPeriodo(int $clienteId, string $tipo, string $dataInicio, string $dataFim)
+    {
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+
+        return static::where('cliente_id', $clienteId)
+            ->where('tipo', $tipo)
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim])
+            ->orderByRaw($dataEfetiva, [$clienteCnpj])
+            ->orderBy('id');
     }
 
     /**
@@ -52,9 +109,7 @@ class DocumentoFiscal extends Model
         // - Terceiro é o emitente (cliente é destinatário/remetente): usa a data de
         //   SAÍDA/ENTRADA (dhSaiEnt) quando existir — pro cliente, o que importa é quando a
         //   mercadoria de fato circulou na empresa dele, não quando o terceiro emitiu.
-        $clienteCnpj = preg_replace('/\D/', '', Cliente::find($clienteId)?->cpfcnpj ?? '');
-
-        $dataEfetiva = 'CASE WHEN emitente_doc = ? THEN data_emissao ELSE COALESCE(data_saida_entrada, data_emissao) END';
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
 
         $query = static::where('cliente_id', $clienteId)
             ->whereIn('tipo', $tipos)
@@ -67,19 +122,19 @@ class DocumentoFiscal extends Model
             ->forPage($page, $perPage)
             ->get()
             ->map(fn (DocumentoFiscal $doc) => [
-                'nsu'          => $doc->nsu,
-                'tipo'         => $doc->tipo,
-                'origem'       => $doc->origem,
-                'chaveAcesso'  => $doc->chave_acesso,
-                'numero'       => $doc->numero,
-                'dataEmissao'  => $doc->data_emissao?->format('Y-m-d\TH:i:s'),
+                'nsu' => $doc->nsu,
+                'tipo' => $doc->tipo,
+                'origem' => $doc->origem,
+                'chaveAcesso' => $doc->chave_acesso,
+                'numero' => $doc->numero,
+                'dataEmissao' => $doc->data_emissao?->format('Y-m-d\TH:i:s'),
                 'dataSaidaEntrada' => $doc->data_saida_entrada?->format('Y-m-d\TH:i:s'),
                 'emitenteNome' => $doc->emitente_nome,
-                'emitenteDoc'  => $doc->emitente_doc,
-                'valor'        => $doc->valor,
-                'situacao'     => $doc->situacao,
-                'tpNf'         => $doc->tp_nf,
-                'xmlContent'   => $doc->xml_content,
+                'emitenteDoc' => $doc->emitente_doc,
+                'valor' => $doc->valor,
+                'situacao' => $doc->situacao,
+                'tpNf' => $doc->tp_nf,
+                'xmlContent' => $doc->xml_content,
                 'sincronizadoEm' => $doc->updated_at?->format('Y-m-d\TH:i:s'),
             ])
             ->all();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\NfeRelatorioExport;
 use App\Models\CertificadoContabilidade;
 use App\Models\Cliente;
 use App\Models\ClienteCertificadoNfse;
@@ -9,9 +10,11 @@ use App\Models\DocumentoFiscal;
 use App\Services\CteIntegracaoRsService;
 use App\Services\NfeIntegracaoRsService;
 use App\Services\NfeService;
+use App\Services\NfeXmlParser;
 use App\Services\NfseService;
-use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use NFePHP\DA\CTe\Dacte;
 use NFePHP\DA\NFe\Danfce;
@@ -56,7 +59,7 @@ class NfeController extends Controller
 
         $cert = ClienteCertificadoNfse::with('cliente')->where('cliente_id', $validated['cliente_id'])->first();
 
-        if (!$cert) {
+        if (! $cert) {
             return response()->json(['error' => 'Certificado digital não configurado para este cliente. Configure-o na tela de NFS-e antes de buscar.'], 422);
         }
 
@@ -66,14 +69,15 @@ class NfeController extends Controller
             $resultado = $this->nfe->sincronizarChunk($cert, $nsuInicio);
 
             return response()->json([
-                'success'     => true,
-                'concluido'   => $resultado['concluido'],
+                'success' => true,
+                'concluido' => $resultado['concluido'],
                 'proximo_nsu' => $resultado['proximoNsu'],
-                'aviso'       => $resultado['aviso'],
+                'aviso' => $resultado['aviso'],
             ]);
         } catch (\Throwable $e) {
             Log::error('[NF-e] sincronizarChunk: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
         }
     }
 
@@ -84,10 +88,10 @@ class NfeController extends Controller
     public function buscar(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id'  => 'required|exists:clientes,id',
+            'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
-            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'page'        => 'sometimes|integer|min:1',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'page' => 'sometimes|integer|min:1',
         ]);
 
         $page = (int) ($validated['page'] ?? 1);
@@ -108,57 +112,126 @@ class NfeController extends Controller
             Log::debug('[NF-e] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
 
             $payload = [
-                'success'       => true,
-                'total'         => $resultado['total'],
-                'documentos'    => $resultado['documentos'],
-                'pagina'        => $page,
+                'success' => true,
+                'total' => $resultado['total'],
+                'documentos' => $resultado['documentos'],
+                'pagina' => $page,
                 'total_paginas' => $totalPaginas,
-                'concluido'     => $page >= $totalPaginas,
+                'concluido' => $page >= $totalPaginas,
             ];
             $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             if ($encoded === false) {
                 Log::error('[NF-e] buscar: json_encode falhou', ['erro' => json_last_error_msg()]);
-                return response()->json(['error' => 'Falha ao serializar resposta: ' . json_last_error_msg()], 500);
+
+                return response()->json(['error' => 'Falha ao serializar resposta: '.json_last_error_msg()], 500);
             }
 
             return new JsonResponse($payload, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (\Throwable $e) {
             Log::error('[NF-e] buscar: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Gera o relatório fiscal de NF-e/NFC-e (Excel, uma linha por item) do período,
+     * a partir dos documentos já sincronizados (tabela `documentos_fiscais`) — não
+     * consulta a Sefaz. Inclui documentos de qualquer origem (nacional ou RS).
+     *
+     * O parâmetro `tipo` permite gerar o relatório apenas de NF-e, apenas de
+     * NFC-e, ou ambos (padrão) — evitando processar o tipo que não interessa.
+     * O parâmetro `direcao` (entrada/saída) segue a mesma lógica do filtro da
+     * tela (ver DocumentoFiscal::direcao()).
+     */
+    public function exportarRelatorio(Request $request)
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'tipo' => 'nullable|in:nfe,nfce,ambos',
+            'direcao' => 'nullable|in:entrada,saida',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $tipo = $validated['tipo'] ?? 'ambos';
+        $direcao = $validated['direcao'] ?? null;
+        $clienteCnpj = preg_replace('/\D/', '', $cliente->cpfcnpj ?? '');
+
+        try {
+            $linhasNf = in_array($tipo, ['nfe', 'ambos'], true)
+                ? $this->linhasRelatorio($cliente->id, 'nfe', $validated['data_inicio'], $validated['data_fim'], $direcao, $clienteCnpj)
+                : null;
+
+            $linhasNfc = in_array($tipo, ['nfce', 'ambos'], true)
+                ? $this->linhasRelatorio($cliente->id, 'nfce', $validated['data_inicio'], $validated['data_fim'], $direcao, $clienteCnpj)
+                : null;
+
+            $sufixo = match ($tipo) {
+                'nfe' => 'NFe',
+                'nfce' => 'NFCe',
+                default => 'NFe_NFCe',
+            };
+
+            $nomeArquivo = "Relatorio_{$sufixo}_".preg_replace('/[^A-Za-z0-9_-]+/', '_', $cliente->nome)
+                ."_{$validated['data_inicio']}_a_{$validated['data_fim']}.xlsx";
+
+            return (new NfeRelatorioExport($linhasNf, $linhasNfc))->download($nomeArquivo);
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] exportarRelatorio: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado ao gerar o relatório: '.$e->getMessage()], 500);
+        }
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function linhasRelatorio(int $clienteId, string $tipo, string $dataInicio, string $dataFim, ?string $direcao, string $clienteCnpj): array
+    {
+        $linhas = [];
+
+        foreach (DocumentoFiscal::queryPeriodo($clienteId, $tipo, $dataInicio, $dataFim)->cursor() as $documento) {
+            if ($direcao !== null && $documento->direcao($clienteCnpj) !== $direcao) {
+                continue;
+            }
+
+            array_push($linhas, ...NfeXmlParser::paraRelatorio($documento));
+        }
+
+        return $linhas;
     }
 
     // ─── Certificado da contabilidade (webservice NFeIntegracao/RS) ───────────
 
     public function getCertificadoContabilidade(): JsonResponse
     {
-        abort_if(!auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
+        abort_if(! auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
 
         $cert = CertificadoContabilidade::first();
 
-        if (!$cert) {
+        if (! $cert) {
             return response()->json(['configurado' => false]);
         }
 
         return response()->json([
             'configurado' => true,
-            'arquivo_ok'  => file_exists(storage_path('app/' . $cert->arquivo)),
-            'ambiente'    => $cert->ambiente,
-            'vencimento'  => $cert->vencimento?->format('d/m/Y'),
-            'vencido'     => $cert->vencido(),
-            'alerta'      => $cert->venceEm30Dias(),
+            'arquivo_ok' => file_exists(storage_path('app/'.$cert->arquivo)),
+            'ambiente' => $cert->ambiente,
+            'vencimento' => $cert->vencimento?->format('d/m/Y'),
+            'vencido' => $cert->vencido(),
+            'alerta' => $cert->venceEm30Dias(),
         ]);
     }
 
     public function salvarCertificadoContabilidade(Request $request): JsonResponse
     {
-        abort_if(!auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
+        abort_if(! auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
 
         $validated = $request->validate([
             'certificado' => 'required|file|max:10240',
-            'senha'       => 'required|string|min:1',
-            'ambiente'    => 'required|in:homologacao,producao',
+            'senha' => 'required|string|min:1',
+            'ambiente' => 'required|in:homologacao,producao',
         ]);
 
         $file = $request->file('certificado');
@@ -169,31 +242,31 @@ class NfeController extends Controller
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        $dir      = 'nfe/certificados/contabilidade';
+        $dir = 'nfe/certificados/contabilidade';
         $destPath = storage_path("app/{$dir}");
 
-        if (!is_dir($destPath)) {
+        if (! is_dir($destPath)) {
             mkdir($destPath, 0755, true);
         }
 
         $destFile = "{$destPath}/certificado.pfx";
 
-        if (!copy($file->getRealPath(), $destFile)) {
+        if (! copy($file->getRealPath(), $destFile)) {
             return response()->json(['error' => 'Falha ao salvar o arquivo do certificado no servidor.'], 500);
         }
 
-        $cert = CertificadoContabilidade::first() ?? new CertificadoContabilidade();
+        $cert = CertificadoContabilidade::first() ?? new CertificadoContabilidade;
         $cert->fill([
-            'arquivo'    => "{$dir}/certificado.pfx",
-            'senha'      => $validated['senha'],
-            'ambiente'   => $validated['ambiente'],
+            'arquivo' => "{$dir}/certificado.pfx",
+            'senha' => $validated['senha'],
+            'ambiente' => $validated['ambiente'],
             'vencimento' => $vencimento,
         ])->save();
 
         return response()->json([
-            'success'    => true,
-            'message'    => 'Certificado da contabilidade salvo com sucesso!',
-            'vencimento' => $vencimento ? \Carbon\Carbon::parse($vencimento)->format('d/m/Y') : null,
+            'success' => true,
+            'message' => 'Certificado da contabilidade salvo com sucesso!',
+            'vencimento' => $vencimento ? Carbon::parse($vencimento)->format('d/m/Y') : null,
         ]);
     }
 
@@ -211,13 +284,13 @@ class NfeController extends Controller
     {
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
-            'fase'       => 'required|in:nfe,nfce,cte',
+            'fase' => 'required|in:nfe,nfce,cte',
             'nsu_inicio' => 'sometimes|integer|min:0',
         ]);
 
         $cert = CertificadoContabilidade::first();
 
-        if (!$cert) {
+        if (! $cert) {
             return response()->json(['error' => 'Certificado da contabilidade não configurado. Cadastre-o antes de buscar.'], 422);
         }
 
@@ -226,23 +299,24 @@ class NfeController extends Controller
 
         try {
             $resultado = match ($validated['fase']) {
-                'nfe'   => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFE, $nsuInicio),
-                'nfce'  => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFCE, $nsuInicio),
-                'cte'   => $this->cteRs->sincronizarChunk($cert, $cliente, $nsuInicio),
+                'nfe' => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFE, $nsuInicio),
+                'nfce' => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFCE, $nsuInicio),
+                'cte' => $this->cteRs->sincronizarChunk($cert, $cliente, $nsuInicio),
             };
 
             return response()->json([
-                'success'     => true,
-                'fase'        => $validated['fase'],
-                'concluido'   => $resultado['concluido'],
+                'success' => true,
+                'fase' => $validated['fase'],
+                'concluido' => $resultado['concluido'],
                 'proximo_nsu' => $resultado['proximoNsu'],
-                'aviso'       => $resultado['aviso'],
+                'aviso' => $resultado['aviso'],
             ]);
         } catch (\Throwable $e) {
             Log::error('[NF-e RS] sincronizarRsChunk: Throwable inesperado', [
                 'fase' => $validated['fase'], 'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
         }
     }
 
@@ -253,10 +327,10 @@ class NfeController extends Controller
     public function buscarRs(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id'  => 'required|exists:clientes,id',
+            'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
-            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'page'        => 'sometimes|integer|min:1',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'page' => 'sometimes|integer|min:1',
         ]);
 
         $page = (int) ($validated['page'] ?? 1);
@@ -278,12 +352,12 @@ class NfeController extends Controller
 
             return new JsonResponse(
                 [
-                    'success'       => true,
-                    'total'         => $resultado['total'],
-                    'documentos'    => $resultado['documentos'],
-                    'pagina'        => $page,
+                    'success' => true,
+                    'total' => $resultado['total'],
+                    'documentos' => $resultado['documentos'],
+                    'pagina' => $page,
                     'total_paginas' => $totalPaginas,
-                    'concluido'     => $page >= $totalPaginas,
+                    'concluido' => $page >= $totalPaginas,
                 ],
                 200,
                 [],
@@ -291,7 +365,8 @@ class NfeController extends Controller
             );
         } catch (\Throwable $e) {
             Log::error('[NF-e RS] buscar: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Erro inesperado: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
         }
     }
 
@@ -309,13 +384,13 @@ class NfeController extends Controller
     public function downloadZipXmls(Request $request)
     {
         $request->validate([
-            'chaves' => 'required|array|min:1|max:' . self::MAX_ZIP,
+            'chaves' => 'required|array|min:1|max:'.self::MAX_ZIP,
             'chaves.*' => 'required|string',
-            'nome'   => 'nullable|string',
+            'nome' => 'nullable|string',
         ]);
 
         $nomeEmpresa = trim((string) $request->input('nome', ''));
-        $nomeArquivo = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFe-CTe') . '.zip';
+        $nomeArquivo = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFe-CTe').'.zip';
 
         $documentos = DocumentoFiscal::whereIn('chave_acesso', $request->chaves)
             ->whereNotNull('xml_content')
@@ -325,13 +400,13 @@ class NfeController extends Controller
             return response()->json(['error' => 'Nenhum XML disponível para os documentos selecionados.'], 422);
         }
 
-        $zipPath = storage_path('app/temp/nfe_' . time() . '_' . rand(1000, 9999) . '.zip');
+        $zipPath = storage_path('app/temp/nfe_'.time().'_'.rand(1000, 9999).'.zip');
 
-        if (!is_dir(dirname($zipPath))) {
+        if (! is_dir(dirname($zipPath))) {
             mkdir(dirname($zipPath), 0755, true);
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
 
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
             return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
@@ -362,15 +437,15 @@ class NfeController extends Controller
 
         $documento = DocumentoFiscal::where('chave_acesso', $validated['chave_acesso'])->first();
 
-        if (!$documento || empty($documento->xml_content)) {
+        if (! $documento || empty($documento->xml_content)) {
             return response()->json(['error' => 'XML deste documento não está disponível para gerar o PDF.'], 422);
         }
 
         try {
             $gerador = match ($documento->tipo) {
-                'nfe'   => new Danfe($documento->xml_content),
-                'nfce'  => new Danfce($documento->xml_content),
-                'cte'   => new Dacte($documento->xml_content),
+                'nfe' => new Danfe($documento->xml_content),
+                'nfce' => new Danfce($documento->xml_content),
+                'cte' => new Dacte($documento->xml_content),
                 default => throw new \RuntimeException("Tipo de documento '{$documento->tipo}' não suporta geração de PDF."),
             };
 
@@ -379,14 +454,14 @@ class NfeController extends Controller
         } catch (\Throwable $e) {
             Log::warning('[NF-e] danfe: falha ao gerar PDF', [
                 'chave_acesso' => $validated['chave_acesso'],
-                'tipo'         => $documento->tipo,
-                'msg'          => $e->getMessage(),
+                'tipo' => $documento->tipo,
+                'msg' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'error' => 'Não foi possível gerar o PDF deste documento — provavelmente o XML completo ainda '
-                    . 'não está disponível (documento ainda em formato resumido, aguardando manifestação do '
-                    . 'destinatário). Detalhe técnico: ' . $e->getMessage(),
+                    .'não está disponível (documento ainda em formato resumido, aguardando manifestação do '
+                    .'destinatário). Detalhe técnico: '.$e->getMessage(),
             ], 422);
         }
 

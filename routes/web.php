@@ -8,6 +8,8 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\CofreFiscalController;
+use App\Http\Controllers\ConsultaCndController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmailCampanhaController;
 use App\Http\Controllers\FileExplorerController;
@@ -15,8 +17,6 @@ use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
-use App\Http\Controllers\ConsultaCndController;
-use App\Http\Controllers\CofreFiscalController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\NotaEmitenteController;
@@ -441,6 +441,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/sincronizar-chunk', [NfeController::class, 'sincronizarChunk'])->name('sincronizar-chunk');
     Route::post('/xml/zip-xmls', [NfeController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
     Route::get('/danfe', [NfeController::class, 'danfe'])->name('danfe');
+    Route::post('/relatorio', [NfeController::class, 'exportarRelatorio'])->name('relatorio');
 
     // NF-e / NFC-e — webservice de contabilistas (SEFAZ-RS)
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');

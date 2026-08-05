@@ -236,6 +236,11 @@
                             <i class="fa-solid fa-file-zipper"></i>
                             Baixar selecionados (.zip)
                         </button>
+                        <button type="button" id="btnExportarRelatorio"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors">
+                            <i class="fa-solid fa-file-excel text-green-600"></i>
+                            <span id="btnExportarRelatorioLabel">Exportar relatório (NF-e + NFC-e)</span>
+                        </button>
                     </div>
                 </div>
 
@@ -402,6 +407,8 @@
     const totalDocs      = document.getElementById('totalDocs');
     const checkTodos     = document.getElementById('checkTodos');
     const btnDownloadZip = document.getElementById('btnDownloadZip');
+    const btnExportarRelatorio = document.getElementById('btnExportarRelatorio');
+    const btnExportarRelatorioLabel = document.getElementById('btnExportarRelatorioLabel');
     const filtroTipo     = document.getElementById('filtroTipo');
     const filtroDirecao  = document.getElementById('filtroDirecao');
     const filtroSituacao = document.getElementById('filtroSituacao');
@@ -475,6 +482,7 @@
     }
 
     filtroDirecao.addEventListener('change', limparSelecaoAoFiltrar);
+    filtroDirecao.addEventListener('change', atualizarBotaoExportarRelatorio);
 
     function atualizarResumo() {
         const filtrados = docsFiltrados();
@@ -494,7 +502,32 @@
     }
 
     filtroTipo.addEventListener('change', limparSelecaoAoFiltrar);
+    filtroTipo.addEventListener('change', atualizarBotaoExportarRelatorio);
     filtroSituacao.addEventListener('change', limparSelecaoAoFiltrar);
+
+    // ─── Exportar relatório fiscal (Excel) — segue o filtro "Tipo" da toolbar ─
+    // '' (Todos os tipos) inclui CT-e na tabela, mas o relatório fiscal só existe
+    // para NF-e/NFC-e — nesse caso exporta os dois juntos e ignora o CT-e.
+    const TIPO_RELATORIO_POR_FILTRO = { '': 'ambos', nfe: 'nfe', nfce: 'nfce' };
+    const LABEL_RELATORIO_POR_FILTRO = {
+        '': 'Exportar relatório (NF-e + NFC-e)',
+        nfe: 'Exportar relatório (somente NF-e)',
+        nfce: 'Exportar relatório (somente NFC-e)',
+    };
+    const SUFIXO_DIRECAO_LABEL  = { '': '', entrada: ' — entradas', saida: ' — saídas' };
+    const SUFIXO_ARQUIVO_RELATORIO = { ambos: 'NFe_NFCe', nfe: 'NFe', nfce: 'NFCe' };
+    const SUFIXO_ARQUIVO_DIRECAO    = { '': '', entrada: '_Entradas', saida: '_Saidas' };
+
+    function atualizarBotaoExportarRelatorio() {
+        if (filtroTipo.value === 'cte') {
+            btnExportarRelatorio.classList.add('hidden');
+            return;
+        }
+
+        btnExportarRelatorio.classList.remove('hidden');
+        const labelTipo = LABEL_RELATORIO_POR_FILTRO[filtroTipo.value] ?? LABEL_RELATORIO_POR_FILTRO[''];
+        btnExportarRelatorioLabel.textContent = labelTipo + (SUFIXO_DIRECAO_LABEL[filtroDirecao.value] ?? '');
+    }
 
     btnPaginaAnterior.addEventListener('click', function () {
         if (paginaAtual > 1) {
@@ -804,6 +837,7 @@
             filtroSituacao.value = '';
             paginaAtual = 1;
             estadoResultados.classList.remove('hidden');
+            atualizarBotaoExportarRelatorio();
             renderizarPaginaAtual();
 
         } catch (e) {
@@ -1054,6 +1088,68 @@
         } finally {
             this.disabled = false;
             atualizarSelecao();
+        }
+    });
+
+    // ─── Exportar relatório fiscal (Excel, NF-e/NFC-e por item) ───────────────
+    // Usa a empresa e o período já selecionados no card de filtro — não depende
+    // da seleção de linhas na tabela (lê direto de `documentos_fiscais`), mas o
+    // botão só aparece depois de uma busca e segue o filtro "Tipo" selecionado.
+    btnExportarRelatorio.addEventListener('click', async function () {
+        const clienteId = selectCliente.value;
+
+        if (!clienteId) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione uma empresa.' });
+            return;
+        }
+        if (!dataInicio.value || !dataFim.value) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Preencha o período de busca.' });
+            return;
+        }
+
+        const tipo          = TIPO_RELATORIO_POR_FILTRO[filtroTipo.value] ?? 'ambos';
+        const direcao       = filtroDirecao.value || null;
+        const nomeEmpresa   = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() || 'NFe-NFCe';
+        const labelOriginal = btnExportarRelatorioLabel.textContent;
+
+        this.disabled = true;
+        btnExportarRelatorioLabel.textContent = 'Gerando...';
+
+        try {
+            const resp = await fetch('{{ route('nfe.relatorio') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify({
+                    cliente_id:  clienteId,
+                    data_inicio: dataInicio.value,
+                    data_fim:    dataFim.value,
+                    tipo:        tipo,
+                    direcao:     direcao,
+                }),
+            });
+
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao gerar o relatório.' });
+                return;
+            }
+
+            const blob   = await resp.blob();
+            const url    = URL.createObjectURL(blob);
+            const a      = document.createElement('a');
+            const sufixo = (SUFIXO_ARQUIVO_RELATORIO[tipo] ?? 'NFe_NFCe') + (SUFIXO_ARQUIVO_DIRECAO[filtroDirecao.value] ?? '');
+            a.href     = url;
+            a.download = `Relatorio_${sufixo}_${nomeEmpresa}_${dataInicio.value}_a_${dataFim.value}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            this.disabled = false;
+            btnExportarRelatorioLabel.textContent = labelOriginal;
         }
     });
 
