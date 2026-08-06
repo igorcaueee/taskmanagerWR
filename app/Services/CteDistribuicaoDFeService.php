@@ -179,11 +179,12 @@ class CteDistribuicaoDFeService
      */
     private function consultarNsu(string $endpoint, int $tpAmb, int $cUFAutor, string $cnpj, int $nsu, string $pemCert, string $pemKey): array
     {
-        $versao = self::VERSAO;
-        // O NFeDistribuicaoDFe (mesma infraestrutura nacional/RFB, mesma estrutura de
-        // distDFeInt) exige um SOAP Header (nfeCabecMsg com cUF/versaoDados) — testando
-        // se o CTeDistribuicaoDFe também exige o equivalente (cteCabecMsg), já que a
-        // omissão dele é a suspeita principal para o cStat 215 "Falha no esquema xml".
+        $versao  = self::VERSAO;
+        // Mesmo padrão do NfeService: o tipo TNSU exige 15 dígitos fixos (zero à
+        // esquerda), apesar da NT 2015.002 documentar o tamanho como "1-15" —
+        // mandar sem padding ("0" em vez de "000000000000000") gera cStat 215
+        // "Falha no esquema xml".
+        $ultNsu  = str_pad((string) $nsu, 15, '0', STR_PAD_LEFT);
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -200,7 +201,7 @@ class CteDistribuicaoDFeService
           <tpAmb>{$tpAmb}</tpAmb>
           <cUFAutor>{$cUFAutor}</cUFAutor>
           <CNPJ>{$cnpj}</CNPJ>
-          <distNSU><ultNSU>{$nsu}</ultNSU></distNSU>
+          <distNSU><ultNSU>{$ultNsu}</ultNSU></distNSU>
         </distDFeInt>
       </cteDadosMsg>
     </cteDistDFeInteresse>
