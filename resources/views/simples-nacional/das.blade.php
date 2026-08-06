@@ -999,11 +999,14 @@
                         amanha.setDate(amanha.getDate() + 1);
                         const minData = amanha.toISOString().slice(0, 10);
 
+                        const hoje = new Date();
+                        const dia20 = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-20`;
+
                         const escolhaData = await Swal.fire({
                             title: 'Emitir DAS',
                             html: `
                                 <p class="text-sm text-left mb-2">Deixe em branco para emitir com a data de hoje, ou escolha uma data futura para consolidar o DAS nela (igual ao "Consolidar para outra data" do e-CAC).</p>
-                                <input type="date" id="swalDataConsolidacao" min="${minData}" class="swal2-input" style="width: 80%;">
+                                <input type="date" id="swalDataConsolidacao" min="${minData}" value="${dia20}" class="swal2-input" style="width: 80%;">
                             `,
                             showCancelButton: true,
                             confirmButtonText: 'Emitir',
