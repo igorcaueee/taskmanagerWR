@@ -211,7 +211,7 @@ XML;
 
         $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
 
-        return $this->parseRetDistDFeInt($resposta);
+        return $this->parseRetDistDFeInt($resposta, $cnpj);
     }
 
     private function requisicaoSoap(string $endpoint, string $envelope, string $pemCert, string $pemKey): string
@@ -269,7 +269,7 @@ XML;
     /**
      * Extrai o retDistDFeInt e os docZip do envelope SOAP de resposta.
      */
-    private function parseRetDistDFeInt(string $soapXml): array
+    private function parseRetDistDFeInt(string $soapXml, string $cnpjCliente): array
     {
         libxml_use_internal_errors(true);
         $obj = new \SimpleXMLElement($soapXml);
@@ -288,7 +288,7 @@ XML;
             $schema = (string) $docZip->attributes()['schema'];
             $xml    = $this->descomprimirXml((string) $docZip);
 
-            $docs[] = $this->normalizarDocumento($nsu, $schema, $xml);
+            $docs[] = $this->normalizarDocumento($nsu, $schema, $xml, $cnpjCliente);
         }
 
         return [
@@ -304,7 +304,7 @@ XML;
      * Normaliza um docZip já descomprimido em array para a view, cobrindo
      * resumos (resCTe) e eventos (procEventoCTe).
      */
-    private function normalizarDocumento(string $nsu, string $schema, string $xml): array
+    private function normalizarDocumento(string $nsu, string $schema, string $xml, string $cnpjCliente): array
     {
         if (str_contains($schema, 'Evento')) {
             return ['nsu' => $nsu, 'tipo' => 'evento', 'xmlContent' => $xml];
@@ -345,8 +345,51 @@ XML;
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
             'valor'        => $valor,
             'situacao'     => $get('cSitCTe'),
+            'papelCte'     => $this->identificarPapelCte($obj, $cnpjCliente),
             'xmlContent'   => $xml,
         ];
+    }
+
+    /**
+     * Identifica o papel do cliente consultado dentro do CT-e (Emitente, Tomador,
+     * Remetente, Destinatário, Expedidor ou Recebedor) — ver mesma lógica em
+     * CteIntegracaoRsService::identificarPapelCte.
+     */
+    private function identificarPapelCte(\SimpleXMLElement $obj, string $cnpjCliente): ?string
+    {
+        if ($cnpjCliente === '') {
+            return null;
+        }
+
+        $docCnpj = fn(string $grupo) => trim((string) ($obj->xpath("//*[local-name()='{$grupo}']/*[local-name()='CNPJ']")[0] ?? ''));
+
+        $emitCnpj  = $docCnpj('emit');
+        $remCnpj   = $docCnpj('rem');
+        $destCnpj  = $docCnpj('dest');
+        $expedCnpj = $docCnpj('exped');
+        $recebCnpj = $docCnpj('receb');
+
+        $tomaNos    = $obj->xpath("//*[local-name()='toma']");
+        $tomaCodigo = $tomaNos ? trim((string) $tomaNos[0]) : '';
+
+        $tomadorCnpj = match ($tomaCodigo) {
+            '0'     => $remCnpj,
+            '1'     => $expedCnpj,
+            '2'     => $recebCnpj,
+            '3'     => $destCnpj,
+            '4'     => $docCnpj('toma4'),
+            default => null,
+        };
+
+        return match (true) {
+            $cnpjCliente === $emitCnpj                            => 'Emitente',
+            $tomadorCnpj !== null && $cnpjCliente === $tomadorCnpj => 'Tomador',
+            $cnpjCliente === $remCnpj                              => 'Remetente',
+            $cnpjCliente === $destCnpj                             => 'Destinatário',
+            $cnpjCliente === $expedCnpj                            => 'Expedidor',
+            $cnpjCliente === $recebCnpj                            => 'Recebedor',
+            default                                                => null,
+        };
     }
 
     /**
@@ -460,6 +503,7 @@ XML;
                 'emitente_doc'  => $doc['emitenteDoc'] ?? null,
                 'valor'         => $doc['valor'] ?: null,
                 'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
+                'papel_cte'     => $doc['papelCte'] ?? null,
                 'xml_content'   => $doc['xmlContent'] ?? null,
             ]
         );

@@ -193,7 +193,7 @@ XML;
 
         $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
 
-        return $this->parseRetDistCTeRS($resposta);
+        return $this->parseRetDistCTeRS($resposta, $cnpj);
     }
 
     private function requisicaoSoap(string $endpoint, string $envelope, string $pemCert, string $pemKey): string
@@ -254,7 +254,7 @@ XML;
     /**
      * Extrai o retDistCTeRS e os documentos do lote compactado (loteDistComp).
      */
-    private function parseRetDistCTeRS(string $soapXml): array
+    private function parseRetDistCTeRS(string $soapXml, string $cnpjCliente): array
     {
         libxml_use_internal_errors(true);
         $obj = new \SimpleXMLElement($soapXml);
@@ -279,7 +279,7 @@ XML;
                 $schema = (string) $proc->attributes()['schema'];
                 $xml    = $proc->asXML();
 
-                $docs[] = $this->normalizarDocumento($nsu, $chave, $schema, $xml);
+                $docs[] = $this->normalizarDocumento($nsu, $chave, $schema, $xml, $cnpjCliente);
             }
         }
 
@@ -291,7 +291,7 @@ XML;
         ];
     }
 
-    private function normalizarDocumento(string $nsu, string $chave, string $schema, string $xml): array
+    private function normalizarDocumento(string $nsu, string $chave, string $schema, string $xml, string $cnpjCliente): array
     {
         if (str_contains($schema, 'Evento')) {
             return ['nsu' => $nsu, 'tipo' => 'evento', 'xmlContent' => $xml];
@@ -329,8 +329,54 @@ XML;
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
             'valor'        => $valor,
             'situacao'     => $get('cSitCTe'),
+            'papelCte'     => $this->identificarPapelCte($obj, $cnpjCliente),
             'xmlContent'   => $xml,
         ];
+    }
+
+    /**
+     * Identifica o papel do cliente consultado dentro do CT-e (Emitente, Tomador,
+     * Remetente, Destinatário, Expedidor ou Recebedor) — importante porque o
+     * Tomador do Serviço (quem contratou e paga o frete) pode ser um terceiro
+     * diferente de quem aparece como remetente/destinatário/expedidor/recebedor.
+     */
+    private function identificarPapelCte(\SimpleXMLElement $obj, string $cnpjCliente): ?string
+    {
+        if ($cnpjCliente === '') {
+            return null;
+        }
+
+        $docCnpj = fn(string $grupo) => trim((string) ($obj->xpath("//*[local-name()='{$grupo}']/*[local-name()='CNPJ']")[0] ?? ''));
+
+        $emitCnpj  = $docCnpj('emit');
+        $remCnpj   = $docCnpj('rem');
+        $destCnpj  = $docCnpj('dest');
+        $expedCnpj = $docCnpj('exped');
+        $recebCnpj = $docCnpj('receb');
+
+        // <toma> pode estar dentro do grupo toma3 (código 0-3, referenciando um dos
+        // grupos acima) ou toma4 (tomador é um terceiro, com CNPJ/CPF próprio).
+        $tomaNos    = $obj->xpath("//*[local-name()='toma']");
+        $tomaCodigo = $tomaNos ? trim((string) $tomaNos[0]) : '';
+
+        $tomadorCnpj = match ($tomaCodigo) {
+            '0'     => $remCnpj,
+            '1'     => $expedCnpj,
+            '2'     => $recebCnpj,
+            '3'     => $destCnpj,
+            '4'     => $docCnpj('toma4'),
+            default => null,
+        };
+
+        return match (true) {
+            $cnpjCliente === $emitCnpj                              => 'Emitente',
+            $tomadorCnpj !== null && $cnpjCliente === $tomadorCnpj   => 'Tomador',
+            $cnpjCliente === $remCnpj                                => 'Remetente',
+            $cnpjCliente === $destCnpj                               => 'Destinatário',
+            $cnpjCliente === $expedCnpj                              => 'Expedidor',
+            $cnpjCliente === $recebCnpj                              => 'Recebedor',
+            default                                                  => null,
+        };
     }
 
     /**
@@ -450,6 +496,7 @@ XML;
                 // Um cancelamento já detectado (via processarEvento) não pode ser desfeito por uma
                 // reissincronização do mesmo documento sem essa informação.
                 'situacao'      => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
+                'papel_cte'     => $doc['papelCte'] ?? null,
                 'xml_content'   => $doc['xmlContent'] ?? null,
             ]
         );

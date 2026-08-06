@@ -920,6 +920,12 @@
                 ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 ml-1">Cancelada</span>'
                 : '';
 
+            // Só faz sentido pra CT-e: o Tomador do Serviço (quem contratou/paga o frete)
+            // pode ser um terceiro diferente de quem aparece como remetente/destinatário.
+            const papelBadge = (tipo === 'cte' && doc.papelCte)
+                ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 ml-1" title="Papel da empresa consultada neste CT-e">${doc.papelCte}</span>`
+                : '';
+
             const marcado = selecionados.has(String(nsu));
 
             const tr = document.createElement('tr');
@@ -930,7 +936,7 @@
                 <td class="px-4 py-3">
                     <input type="checkbox" class="check-doc rounded text-[#0084aa]" data-nsu="${nsu}" ${!temXml ? 'disabled' : ''} ${marcado ? 'checked' : ''}>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}${origemBadge}${canceladaBadge}</td>
+                <td class="px-4 py-3 whitespace-nowrap">${tipoBadge}${direcaoBadge}${papelBadge}${origemBadge}${canceladaBadge}</td>
                 <td class="px-4 py-3 font-medium text-gray-800 dark:text-slate-200">${numero}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${data}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">${dataSaiEnt}</td>

@@ -22,6 +22,7 @@ class DocumentoFiscal extends Model
         'valor',
         'situacao',
         'tp_nf',
+        'papel_cte',
         'data_saida_entrada',
         'xml_content',
     ];
@@ -134,6 +135,7 @@ class DocumentoFiscal extends Model
                 'valor' => $doc->valor,
                 'situacao' => $doc->situacao,
                 'tpNf' => $doc->tp_nf,
+                'papelCte' => $doc->papel_cte,
                 'xmlContent' => $doc->xml_content,
                 'sincronizadoEm' => $doc->updated_at?->format('Y-m-d\TH:i:s'),
             ])
