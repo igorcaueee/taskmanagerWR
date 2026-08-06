@@ -926,15 +926,15 @@ class TarefaController extends Controller
     {
         $hoje = Carbon::today();
 
-        $etapaAFazer = Etapa::where('nome', 'A Fazer')->first();
+        $etapasPendentesIds = Etapa::whereIn('nome', ['A Fazer', 'Andamento'])->pluck('id');
         $etapaTransferido = Etapa::where('nome', 'Transferido para o próximo ciclo')->first();
 
-        if (! $etapaAFazer) {
+        if ($etapasPendentesIds->isEmpty()) {
             return;
         }
 
         $tarefas = Tarefa::whereHas('ciclo', fn ($q) => $q->where('data_fim', '<', $hoje))
-            ->where('etapa_id', $etapaAFazer->id)
+            ->whereIn('etapa_id', $etapasPendentesIds)
             ->where('ciclo_id', '!=', $cicloAtual->id)
             ->get();
 
