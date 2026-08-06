@@ -63,15 +63,8 @@ class CofreFiscalController extends Controller
      */
     public function downloadZip(Request $request)
     {
-        $documentos = $this->filtrar($request)
-            ->whereNotNull('xml_content')
-            ->orderByDesc('data_emissao')
-            ->limit(self::MAX_ZIP)
-            ->get(['tipo', 'chave_acesso', 'xml_content']);
-
-        if ($documentos->isEmpty()) {
-            return response()->json(['error' => 'Nenhum documento com XML disponível para os filtros atuais.'], 422);
-        }
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
 
         $zipPath = storage_path('app/temp/cofre_' . time() . '_' . rand(1000, 9999) . '.zip');
 
@@ -85,11 +78,34 @@ class CofreFiscalController extends Controller
             return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
         }
 
-        foreach ($documentos as $documento) {
-            $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
+        // cursor() em vez de get(): com filtros amplos (milhares de docs) carregar o
+        // xml_content de todo mundo numa Collection de uma vez estourava o memory_limit
+        // padrão e corrompia o zip pela metade — ver mesmo fix em NfeController::downloadZipXmls.
+        $total = 0;
+
+        $this->filtrar($request)
+            ->whereNotNull('xml_content')
+            ->orderByDesc('data_emissao')
+            ->limit(self::MAX_ZIP)
+            ->select(['tipo', 'chave_acesso', 'xml_content'])
+            ->cursor()
+            ->each(function (DocumentoFiscal $documento) use ($zip, &$total) {
+                $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
+                $total++;
+            });
+
+        if ($total === 0) {
+            $zip->close();
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Nenhum documento com XML disponível para os filtros atuais.'], 422);
         }
 
-        $zip->close();
+        if (! $zip->close()) {
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Falha ao finalizar o arquivo ZIP.'], 500);
+        }
 
         return response()->download($zipPath, 'cofre-fiscal.zip', [
             'Content-Type' => 'application/zip',

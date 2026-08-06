@@ -408,8 +408,10 @@ class NfeController extends Controller
         }
     }
 
-    // Limite de documentos por zip em lote — ver CofreFiscalController::MAX_ZIP.
-    const MAX_ZIP = 500;
+    // Limite de chaves por requisição de zip — bem acima do que qualquer cliente tem de
+    // notas num período, só como proteção contra payloads absurdos (ver CofreFiscalController::MAX_ZIP,
+    // que tem um limite próprio menor por filtrar sem seleção manual do usuário).
+    const MAX_ZIP = 20000;
 
     /**
      * Gera um .zip com os XMLs dos documentos selecionados, buscando o
@@ -418,6 +420,12 @@ class NfeController extends Controller
      * selecionado ia e voltava pela rede (frontend -> servidor), o que travava
      * a geração do zip com poucas centenas de notas por causa do tamanho do
      * payload (post_max_size) e de um limite artificial de 200 itens.
+     *
+     * Usa cursor() em vez de get(): com milhares de notas, carregar todo mundo
+     * na memória de uma vez (uma Collection com o xml_content inteiro de cada
+     * documento) estourava o memory_limit padrão do PHP e corrompia o zip pela metade.
+     * Também eleva memory_limit/max_execution_time só para esta requisição — clientes
+     * com 4000+ notas passam do limite padrão só de tempo de I/O do banco + zip.
      */
     public function downloadZipXmls(Request $request)
     {
@@ -427,16 +435,11 @@ class NfeController extends Controller
             'nome' => 'nullable|string',
         ]);
 
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
+
         $nomeEmpresa = trim((string) $request->input('nome', ''));
         $nomeArquivo = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFe-CTe').'.zip';
-
-        $documentos = DocumentoFiscal::whereIn('chave_acesso', $request->chaves)
-            ->whereNotNull('xml_content')
-            ->get(['tipo', 'chave_acesso', 'xml_content']);
-
-        if ($documentos->isEmpty()) {
-            return response()->json(['error' => 'Nenhum XML disponível para os documentos selecionados.'], 422);
-        }
 
         $zipPath = storage_path('app/temp/nfe_'.time().'_'.rand(1000, 9999).'.zip');
 
@@ -450,11 +453,31 @@ class NfeController extends Controller
             return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
         }
 
-        foreach ($documentos as $documento) {
-            $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
+        $total = 0;
+
+        foreach (array_chunk($request->chaves, 500) as $chavesLote) {
+            DocumentoFiscal::whereIn('chave_acesso', $chavesLote)
+                ->whereNotNull('xml_content')
+                ->select(['tipo', 'chave_acesso', 'xml_content'])
+                ->cursor()
+                ->each(function (DocumentoFiscal $documento) use ($zip, &$total) {
+                    $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
+                    $total++;
+                });
         }
 
-        $zip->close();
+        if ($total === 0) {
+            $zip->close();
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Nenhum XML disponível para os documentos selecionados.'], 422);
+        }
+
+        if (! $zip->close()) {
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Falha ao finalizar o arquivo ZIP.'], 500);
+        }
 
         return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
