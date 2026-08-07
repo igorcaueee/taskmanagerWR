@@ -430,21 +430,15 @@ class PgdasdService
                     }
                 }
 
-                if (
-                    $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
-                    && in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
-                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SEM_SUBSTITUICAO, true)
-                ) {
-                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituto tributário do ICMS\" (sem substituição na própria receita) — não é possível marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento, a API rejeita como conflitante. Isenção/Redução/Imunidade/Lançamento de Ofício continuam permitidos normalmente.");
-                }
-
-                if (
-                    $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
-                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SUBSTITUIDO, true)
-                    && ! in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
-                ) {
-                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituído tributário do ICMS\" — é OBRIGATÓRIO marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento (não pode ficar \"Normal\"), confirmado em produção (MSG_E0044).");
-                }
+                // Removido o bloqueio local de combinação ICMS×atividade
+                // (ATIVIDADES_ICMS_SEM_SUBSTITUICAO/SUBSTITUIDO) a pedido do
+                // contador em 2026-08-07: ele precisa de liberdade pra escolher
+                // a qualificação tributária do ICMS mesmo quando o sistema acha
+                // que devia ser diferente — a sugestão de atividade é só um
+                // palpite (por similaridade de texto do relatório importado),
+                // não uma fonte de verdade. A validação real continua sendo a
+                // da Receita Federal: se a combinação for mesmo inválida, a API
+                // retorna o erro dela (ex.: MSG_E0044) na hora de transmitir.
 
                 $idQualificacao = match ($tributo->tipo_ajuste) {
                     'imunidade' => 1,

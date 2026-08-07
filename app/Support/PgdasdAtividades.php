@@ -72,44 +72,6 @@ class PgdasdAtividades
      */
     const ATIVIDADES_ISS_COM_RETENCAO = [12, 15, 18, 21, 24, 27];
 
-    /**
-     * Anexo I Comércio (1) e Anexo II Indústria (4) — "Sem substituição
-     * tributária/tributação monofásica/antecipação com encerramento
-     * (SUBSTITUTO tributário do ICMS)": o ICMS da própria atividade não pode
-     * ser marcado como Substituição Tributária/Tributação Monofásica/
-     * Antecipação com Encerramento (conflita com a própria atividade já ser
-     * "substituto tributário do ICMS"). Isenção/Redução/Imunidade/
-     * Lançamento de Ofício continuam válidos normalmente — confirmado no
-     * assistente oficial do e-CAC pra essa mesma atividade (print real,
-     * 2026-08-07): o select de ICMS oferece "Exigibilidade Suspensa,
-     * Imunidade, Isenção/Redução, Isenção/Redução Cesta Básica, Lançamento
-     * de Ofício". CORRIGIDO em 2026-08-07 — a versão anterior bloqueava
-     * QUALQUER qualificação (inclusive isenção/redução), baseada numa
-     * confirmação de produção (2026-08-04, WEIAND) que na verdade só cobria
-     * as 3 qualificações de substituição.
-     */
-    const ATIVIDADES_ICMS_SEM_SUBSTITUICAO = [1, 4];
-
-    /**
-     * Qualificações tributárias de ICMS que só fazem sentido pra atividades
-     * "substituído tributário do ICMS" (ATIVIDADES_ICMS_SUBSTITUIDO) — numa
-     * atividade ATIVIDADES_ICMS_SEM_SUBSTITUICAO, aplicar qualquer uma
-     * dessas no ICMS conflita com a própria atividade já ser "substituto
-     * tributário do ICMS" (o ICMS da atividade não é ele mesmo substituído).
-     */
-    const ICMS_QUALIFICACOES_SUBSTITUICAO = ['substituicao_tributaria', 'tributacao_monofasica', 'antecipacao_encerramento'];
-
-    /**
-     * Anexo I Comércio (2) e Anexo II Indústria (5) — "Com substituição
-     * tributária/tributação monofásica/antecipação com encerramento
-     * (SUBSTITUÍDO tributário do ICMS)": ao contrário do par acima, aqui é
-     * OBRIGATÓRIO marcar o ICMS com uma dessas 3 qualificações (não pode
-     * ficar "Normal") — CONFIRMADO em produção (2026-08-04, WEIAND, erro
-     * MSG_E0044: "não foi informada substituição, antecipação ou tributação
-     * monofásica. Esta informação é obrigatória.").
-     */
-    const ATIVIDADES_ICMS_SUBSTITUIDO = [2, 5];
-
     const NOMES_TRIBUTOS = [
         self::TRIBUTO_IRPJ => 'IRPJ',
         self::TRIBUTO_CSLL => 'CSLL',

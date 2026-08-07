@@ -465,9 +465,10 @@ class DominioImportParser
         // SUBSTITUÍDO). Quem decide de fato se o ICMS está substituído é o
         // texto da Tabela, não da Seção — sobrescreve o sinal genérico só
         // quando a categoria já filtrada é de comércio/indústria (únicas com
-        // a distinção ATIVIDADES_ICMS_SEM_SUBSTITUICAO/SUBSTITUIDO); em
-        // outras categorias (ex.: "substituição/retenção de ISS") o texto da
-        // Tabela não fala de ICMS e esse sinal não se aplica.
+        // essa distinção de ICMS substituído/não substituído no catálogo, ids
+        // 1/2/4/5 — ver PgdasdAtividades::catalogo()); em outras categorias
+        // (ex.: "substituição/retenção de ISS") o texto da Tabela não fala de
+        // ICMS e esse sinal não se aplica.
         if (in_array($categoriaFiltrada, ['revenda de mercadorias', 'venda de mercadorias industrializadas'], true)) {
             $polaridadeIcms = $this->polaridadeSubstituicaoIcms($tabelaTexto);
             if ($polaridadeIcms !== null) {
