@@ -21,6 +21,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL usa esse índice unique pra apoiar a foreign key de cliente_id
+        // (é a primeira coluna do composto) — não deixa dropar sem antes criar
+        // outro índice que sirva de apoio pra FK (erro 1553, confirmado em
+        // produção 2026-08-07: "Cannot drop index ... needed in a foreign key
+        // constraint").
+        Schema::table('simples_receitas_atividades', function (Blueprint $table) {
+            $table->index('cliente_id', 'sra_cliente_id_index');
+        });
+
         Schema::table('simples_receitas_atividades', function (Blueprint $table) {
             $table->dropUnique('sra_cliente_periodo_atividade_unique');
         });
@@ -30,6 +39,10 @@ return new class extends Migration
     {
         Schema::table('simples_receitas_atividades', function (Blueprint $table) {
             $table->unique(['cliente_id', 'periodo_apuracao', 'id_atividade'], 'sra_cliente_periodo_atividade_unique');
+        });
+
+        Schema::table('simples_receitas_atividades', function (Blueprint $table) {
+            $table->dropIndex('sra_cliente_id_index');
         });
     }
 };
