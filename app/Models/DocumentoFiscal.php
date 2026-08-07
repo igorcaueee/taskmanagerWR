@@ -38,6 +38,41 @@ class DocumentoFiscal extends Model
     }
 
     /**
+     * Alguns XMLs sincronizados via SEFAZ-RS (NfeIntegracaoRsService) antes da correção
+     * ficaram salvos com um invólucro <proc NSU="..." chAcesso="..." schema="..."> em volta
+     * do <nfeProc>/<resNFe> real. Sistemas de terceiros (ex.: Econet) rejeitam esse formato
+     * por não ser o XML padrão da NF-e. Removemos o wrapper aqui, no momento da entrega,
+     * para cobrir tanto os registros antigos quanto qualquer caso futuro equivalente.
+     */
+    public static function removerWrapperProc(?string $xml): ?string
+    {
+        if ($xml === null || (! str_contains($xml, '<proc ') && ! str_contains($xml, '<proc>'))) {
+            return $xml;
+        }
+
+        try {
+            libxml_use_internal_errors(true);
+            $elemento = new \SimpleXMLElement($xml);
+
+            if (strtolower($elemento->getName()) !== 'proc') {
+                return $xml;
+            }
+
+            $dom = dom_import_simplexml($elemento);
+
+            foreach ($dom->childNodes as $node) {
+                if ($node->nodeType === XML_ELEMENT_NODE) {
+                    return $node->ownerDocument->saveXML($node);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[NF-e] removerWrapperProc: falha ao processar XML', ['msg' => $e->getMessage()]);
+        }
+
+        return $xml;
+    }
+
+    /**
      * Classifica o documento em 'entrada' ou 'saida' do ponto de vista do
      * cliente (mesma lógica usada na tela de NF-e, função `direcaoDoc` em
      * resources/views/nfe/index.blade.php — mantenha as duas em sincronia).
@@ -136,7 +171,7 @@ class DocumentoFiscal extends Model
                 'situacao' => $doc->situacao,
                 'tpNf' => $doc->tp_nf,
                 'papelCte' => $doc->papel_cte,
-                'xmlContent' => $doc->xml_content,
+                'xmlContent' => self::removerWrapperProc($doc->xml_content),
                 'sincronizadoEm' => $doc->updated_at?->format('Y-m-d\TH:i:s'),
             ])
             ->all();

@@ -51,7 +51,7 @@ class CofreFiscalController extends Controller
             return response()->json(['error' => 'XML não disponível para este documento.'], 422);
         }
 
-        return response($documento->xml_content, 200, [
+        return response(DocumentoFiscal::removerWrapperProc($documento->xml_content), 200, [
             'Content-Type'        => 'application/xml',
             'Content-Disposition' => 'attachment; filename="' . $documento->tipo . '_' . $chaveAcesso . '.xml"',
         ]);
@@ -90,7 +90,10 @@ class CofreFiscalController extends Controller
             ->select(['tipo', 'chave_acesso', 'xml_content'])
             ->cursor()
             ->each(function (DocumentoFiscal $documento) use ($zip, &$total) {
-                $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
+                $zip->addFromString(
+                    "{$documento->tipo}_{$documento->chave_acesso}.xml",
+                    DocumentoFiscal::removerWrapperProc($documento->xml_content)
+                );
                 $total++;
             });
 
