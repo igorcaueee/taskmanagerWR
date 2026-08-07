@@ -91,6 +91,11 @@ class IntegraContadorClient
                 'idServico' => $idServico,
                 'status' => $resposta->status(),
                 'corpo' => $corpo ?: $resposta->body(),
+                // Payload que geramos e mandamos pra API — essencial pra depurar
+                // erros de validação (ex.: "soma dos valores das atividades
+                // diferente do valor total de receita do Pa") sem precisar
+                // reproduzir o cenário do zero.
+                'dados_enviados' => $dados,
             ]);
 
             throw new \RuntimeException($this->mensagemErro($resposta->status(), $corpo, $idServico, $cliente));
