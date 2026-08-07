@@ -304,15 +304,25 @@ class PgdasdService
             fn (SimplesReceitaAtividade $atividade) => PgdasdAtividades::ehParaExterior((int) $atividade->id_atividade)
         );
 
+        // round(..., 2) é necessário aqui, não só estético: somar os "valor"
+        // (decimal:2, vêm como string) de várias linhas produz artefatos de
+        // ponto flutuante (ex.: 254560.18000000002 em vez de 254560.18) — a
+        // API rejeitou o TRANSDECLARACAO11 com MSG_ISN_021 "A soma dos
+        // valores das atividades está diferente do valor total de receita do
+        // Pa" por causa desse resíduo (confirmado em produção 2026-08-07):
+        // ela deve comparar esse total com a soma que ELA MESMA recalcula a
+        // partir de "valorAtividade" por atividade (que são valores limpos,
+        // sem o mesmo resíduo), e a diferença de ~1e-11 já é suficiente pra
+        // reprovar.
         $declaracao = [
             'tipoDeclaracao' => $tipoDeclaracao, // 1 = Original, 2 = Retificadora
-            'receitaPaCompetenciaInterno' => (float) $atividadesInterno->sum('valor'),
-            'receitaPaCompetenciaExterno' => (float) $atividadesExterno->sum('valor'),
+            'receitaPaCompetenciaInterno' => round((float) $atividadesInterno->sum('valor'), 2),
+            'receitaPaCompetenciaExterno' => round((float) $atividadesExterno->sum('valor'), 2),
         ];
 
         if ($receita->regime_apuracao === 'caixa') {
-            $declaracao['receitaPaCaixaInterno'] = (float) $atividadesInterno->sum('valor');
-            $declaracao['receitaPaCaixaExterno'] = (float) $atividadesExterno->sum('valor');
+            $declaracao['receitaPaCaixaInterno'] = round((float) $atividadesInterno->sum('valor'), 2);
+            $declaracao['receitaPaCaixaExterno'] = round((float) $atividadesExterno->sum('valor'), 2);
         }
 
         if ($exigeFolhaSalario) {
@@ -468,7 +478,7 @@ class PgdasdService
                     // pra isenção em vez do 0 que vinha de percentual_reducao nulo.
                     $reducoes[] = [
                         'codTributo' => $tributo->cod_tributo,
-                        'valor' => (float) $tributo->valor,
+                        'valor' => round((float) $tributo->valor, 2),
                         'percentualReducao' => $tributo->tipo_ajuste === 'isencao' ? 100.0 : (float) ($tributo->percentual_reducao ?? 0),
                         'identificador' => $tributo->identificador_isencao ?? 1,
                     ];
@@ -476,7 +486,7 @@ class PgdasdService
             }
 
             $receitasAtividade[] = [
-                'valor' => (float) $atividade->valor,
+                'valor' => round((float) $atividade->valor, 2),
                 'isencoes' => [],
                 'reducoes' => $reducoes,
                 'qualificacoesTributarias' => $qualificacoesTributarias,
@@ -485,7 +495,10 @@ class PgdasdService
 
         return [
             'idAtividade' => $idAtividade,
-            'valorAtividade' => (float) $linhasDaAtividade->sum('valor'),
+            // round(..., 2): mesmo motivo do comentário em montarDeclaracao()
+            // — somar "valor" de várias linhas pode gerar resíduo de ponto
+            // flutuante que a API rejeita numa comparação de soma.
+            'valorAtividade' => round((float) $linhasDaAtividade->sum('valor'), 2),
             'receitasAtividade' => $receitasAtividade,
         ];
     }
