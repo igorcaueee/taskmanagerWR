@@ -699,7 +699,7 @@
         return null;
     }
 
-    function renderTributoCell(codTributo, dadosExistentes, idAtividade) {
+    function renderTributoCell(codTributo, dadosExistentes, idAtividade, valorLinha) {
         const opcoesPermitidas = opcoesAjustePermitidas(codTributo, idAtividade);
         let tipoAjuste = dadosExistentes?.tipo_ajuste ?? 'normal';
         if (opcoesPermitidas && !opcoesPermitidas.includes(tipoAjuste)) {
@@ -708,6 +708,15 @@
         const identificador = dadosExistentes?.identificador_isencao ?? 1;
         const percentual = dadosExistentes?.percentual_reducao ?? '';
         const motivo = dadosExistentes?.motivo_suspensao ?? 1;
+        // "valor" do tributo é a PARCELA da receita da linha sujeita à isenção/
+        // redução (pode ser menor que o total da linha) — mesmo campo "Parcela
+        // de receita com isenção/redução" do assistente do e-CAC (print real,
+        // 2026-08-07). Só existe pra isenção/redução: as demais qualificações
+        // (substituição/monofásica/etc.) não usam esse valor (ver
+        // PgdasdService::montarAtividade). Sem valor salvo, sugere a receita
+        // inteira da linha como ponto de partida (caso comum: toda a receita
+        // tem o mesmo tratamento) — o usuário ajusta se for só uma parte.
+        const valorParcela = dadosExistentes?.valor ?? valorLinha ?? '';
 
         const cell = document.createElement('td');
         cell.className = 'align-top px-2 py-2 tributo-row';
@@ -729,6 +738,7 @@
                 <option value="1" ${identificador == 1 ? 'selected' : ''}>Normal</option>
                 <option value="2" ${identificador == 2 ? 'selected' : ''}>Cesta básica</option>
             </select>
+            <input type="number" step="0.01" placeholder="Parcela (R$)" value="${valorParcela}" class="input-valor-parcela hidden w-full mt-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1">
             <input type="number" step="0.01" placeholder="% redução" value="${percentual}" class="input-percentual hidden w-full mt-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1">
             <select class="select-motivo hidden w-full mt-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1.5 py-1">
                 ${Object.entries(MOTIVOS_SUSPENSAO).map(([v, l]) => `<option value="${v}" ${v == motivo ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}
@@ -737,12 +747,14 @@
 
         const selectTipo = cell.querySelector('.select-tipo-ajuste');
         const selectIdent = cell.querySelector('.select-identificador');
+        const inputValorParcela = cell.querySelector('.input-valor-parcela');
         const inputPercentual = cell.querySelector('.input-percentual');
         const selectMotivo = cell.querySelector('.select-motivo');
 
         function atualizarVisibilidadeAjuste() {
             const v = selectTipo.value;
             selectIdent.classList.toggle('hidden', !(v === 'isencao' || v === 'reducao'));
+            inputValorParcela.classList.toggle('hidden', !(v === 'isencao' || v === 'reducao'));
             inputPercentual.classList.toggle('hidden', v !== 'reducao');
             selectMotivo.classList.toggle('hidden', v !== 'exigibilidade_suspensa');
         }
@@ -779,7 +791,7 @@
         tr.appendChild(tdValor);
 
         atividade.tributos.forEach(codTributo => {
-            tr.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo], idAtividade));
+            tr.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo], idAtividade, dadosExistentes?.valor));
         });
 
         const tdRemover = document.createElement('td');
@@ -907,6 +919,7 @@
                     if (tipoAjuste === 'normal') return;
 
                     const identificadorEl = row.querySelector('.select-identificador');
+                    const valorParcelaEl = row.querySelector('.input-valor-parcela');
                     const percentualEl = row.querySelector('.input-percentual');
                     const motivoEl = row.querySelector('.select-motivo');
 
@@ -916,7 +929,11 @@
                         identificador_isencao: (tipoAjuste === 'isencao' || tipoAjuste === 'reducao') ? parseInt(identificadorEl.value, 10) : null,
                         percentual_reducao: tipoAjuste === 'reducao' ? parseFloat(percentualEl.value || '0') : null,
                         motivo_suspensao: tipoAjuste === 'exigibilidade_suspensa' ? parseInt(motivoEl.value, 10) : null,
-                        valor: valor,
+                        // isenção/redução usam a parcela informada (pode ser menor
+                        // que a receita da linha); as demais qualificações não usam
+                        // esse valor (ver PgdasdService::montarAtividade), mas
+                        // mandamos a receita da linha como default por segurança.
+                        valor: (tipoAjuste === 'isencao' || tipoAjuste === 'reducao') ? parseFloat(valorParcelaEl.value || '0') : valor,
                     });
                 });
 
@@ -1333,7 +1350,7 @@
                 th.textContent = window.PGDASD_TRIBUTOS[codTributo] ?? codTributo;
                 trHead.appendChild(th);
 
-                trBody.appendChild(renderTributoCell(codTributo, tributosMap[codTributo], idAtividade));
+                trBody.appendChild(renderTributoCell(codTributo, tributosMap[codTributo], idAtividade, a.receita_tributada_total));
             });
 
             thead.appendChild(trHead);
