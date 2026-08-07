@@ -334,7 +334,26 @@ class PgdasdService
         // atividade deve ser maior que zero" (a API tentou validar um item
         // que não existia).
         if ($atividades->isNotEmpty()) {
-            $estabelecimento['atividades'] = $atividades->map(fn (SimplesReceitaAtividade $atividade) => $this->montarAtividade($atividade))->values()->all();
+            // Agrupa por id_atividade antes de montar o payload: o relatório do
+            // Domínio (e a tela manual, ver das.blade.php) permitem lançar a
+            // MESMA atividade em mais de uma linha no mesmo período — cada uma
+            // com sua própria receita e tratamento tributário por tributo (ex.:
+            // "revenda com substituição tributária" quebrada em "Tabela 1 -
+            // Substituição somente do ICMS" e "Tabela 4 - Substituição do PIS/
+            // PASEP, COFINS e do ICMS"). Enviar isso como DOIS objetos de
+            // "atividades" com o mesmo idAtividade fez a API rejeitar o
+            // TRANSDECLARACAO11 com "A soma dos valores das atividades está
+            // diferente do valor total de receita do Pa" (confirmado em
+            // produção 2026-08-07) — a API parece deduplicar/só considerar uma
+            // ocorrência por idAtividade na soma. O array "receitasAtividade"
+            // dentro de cada atividade já existe justamente pra isso: várias
+            // receitas/tratamentos sob o mesmo idAtividade, com "valorAtividade"
+            // sendo a soma de todas elas.
+            $estabelecimento['atividades'] = $atividades
+                ->groupBy('id_atividade')
+                ->map(fn ($linhasDaAtividade) => $this->montarAtividade($linhasDaAtividade))
+                ->values()
+                ->all();
         }
 
         $declaracao['estabelecimentos'] = [$estabelecimento];
@@ -372,96 +391,108 @@ class PgdasdService
      *
      * "exigibilidade_suspensa" não tem mapeamento confirmado no payload —
      * bloqueia a transmissão em vez de arriscar enviar campo errado.
+     *
+     * Recebe TODAS as linhas (SimplesReceitaAtividade) do mesmo id_atividade
+     * no período — pode ser mais de uma, ver comentário em montarDeclaracao()
+     * sobre por que elas precisam virar UM único objeto "atividade" com
+     * "valorAtividade" somado e "receitasAtividade" com um item por linha.
+     *
+     * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $linhasDaAtividade
      */
-    private function montarAtividade(SimplesReceitaAtividade $atividade): array
+    private function montarAtividade($linhasDaAtividade): array
     {
-        $reducoes = [];
-        $qualificacoesTributarias = [];
+        $idAtividade = $linhasDaAtividade->first()->id_atividade;
+        $receitasAtividade = [];
 
-        foreach ($atividade->tributos as $tributo) {
-            if ($tributo->tipo_ajuste === 'exigibilidade_suspensa') {
-                throw new \RuntimeException("Atividade {$atividade->id_atividade}: \"exigibilidade suspensa\" ainda não tem mapeamento confirmado no payload do TRANSDECLARACAO11 — remova esse ajuste ou aguarde essa funcionalidade antes de transmitir.");
-            }
+        foreach ($linhasDaAtividade as $atividade) {
+            $reducoes = [];
+            $qualificacoesTributarias = [];
 
-            if (
-                $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ISS
-                && $tributo->tipo_ajuste !== 'normal'
-                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO, true)
-            ) {
-                // "retencao_iss" é permitido nas atividades "com retenção/substituição"
-                // (o próprio nome da atividade já declara isso) — só bloqueamos as
-                // outras qualificações (isenção/imunidade/substituição/etc.), que
-                // conflitam com o tratamento de ISS já fixado pela atividade.
-                $retencaoPermitida = $tributo->tipo_ajuste === 'retencao_iss'
-                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO, true);
+            foreach ($atividade->tributos as $tributo) {
+                if ($tributo->tipo_ajuste === 'exigibilidade_suspensa') {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: \"exigibilidade suspensa\" ainda não tem mapeamento confirmado no payload do TRANSDECLARACAO11 — remova esse ajuste ou aguarde essa funcionalidade antes de transmitir.");
+                }
 
-                if (! $retencaoPermitida) {
-                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: o tratamento do ISS já é definido pela própria descrição da atividade (\"sem/com retenção...\") — não é possível aplicar também uma qualificação tributária (isenção/imunidade/substituição/etc.) no ISS dessa atividade, a API rejeita como conflitante. Se o ISS realmente não incide nessa receita, escolha uma atividade cuja descrição já reflita isso, ou deixe o ISS como \"Normal\".");
+                if (
+                    $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ISS
+                    && $tributo->tipo_ajuste !== 'normal'
+                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO, true)
+                ) {
+                    // "retencao_iss" é permitido nas atividades "com retenção/substituição"
+                    // (o próprio nome da atividade já declara isso) — só bloqueamos as
+                    // outras qualificações (isenção/imunidade/substituição/etc.), que
+                    // conflitam com o tratamento de ISS já fixado pela atividade.
+                    $retencaoPermitida = $tributo->tipo_ajuste === 'retencao_iss'
+                        && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO, true);
+
+                    if (! $retencaoPermitida) {
+                        throw new \RuntimeException("Atividade {$atividade->id_atividade}: o tratamento do ISS já é definido pela própria descrição da atividade (\"sem/com retenção...\") — não é possível aplicar também uma qualificação tributária (isenção/imunidade/substituição/etc.) no ISS dessa atividade, a API rejeita como conflitante. Se o ISS realmente não incide nessa receita, escolha uma atividade cuja descrição já reflita isso, ou deixe o ISS como \"Normal\".");
+                    }
+                }
+
+                if (
+                    $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
+                    && in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
+                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SEM_SUBSTITUICAO, true)
+                ) {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituto tributário do ICMS\" (sem substituição na própria receita) — não é possível marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento, a API rejeita como conflitante. Isenção/Redução/Imunidade/Lançamento de Ofício continuam permitidos normalmente.");
+                }
+
+                if (
+                    $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
+                    && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SUBSTITUIDO, true)
+                    && ! in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
+                ) {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituído tributário do ICMS\" — é OBRIGATÓRIO marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento (não pode ficar \"Normal\"), confirmado em produção (MSG_E0044).");
+                }
+
+                $idQualificacao = match ($tributo->tipo_ajuste) {
+                    'imunidade' => 1,
+                    'lancamento_oficio' => 3,
+                    'substituicao_tributaria' => 8,
+                    'tributacao_monofasica' => 9,
+                    'antecipacao_encerramento' => 10,
+                    'retencao_iss' => 11,
+                    default => null,
+                };
+
+                if ($idQualificacao !== null) {
+                    $qualificacoesTributarias[] = [
+                        'codigoTributo' => $tributo->cod_tributo,
+                        'id' => $idQualificacao,
+                    ];
+
+                    continue;
+                }
+
+                if ($tributo->tipo_ajuste === 'isencao' || $tributo->tipo_ajuste === 'reducao') {
+                    // "isencao" = redução de 100% (a tela não pede percentual pra
+                    // esse caso, ver renderTributoCell no das.blade.php) — a API
+                    // rejeita percentualReducao=0 como inválido (confirmado em
+                    // produção 2026-08-03, MSG_ISN_008 "Campo 'reducao/
+                    // percentualReducao' inválido"), então mandamos 100 fixo
+                    // pra isenção em vez do 0 que vinha de percentual_reducao nulo.
+                    $reducoes[] = [
+                        'codTributo' => $tributo->cod_tributo,
+                        'valor' => (float) $tributo->valor,
+                        'percentualReducao' => $tributo->tipo_ajuste === 'isencao' ? 100.0 : (float) ($tributo->percentual_reducao ?? 0),
+                        'identificador' => $tributo->identificador_isencao ?? 1,
+                    ];
                 }
             }
 
-            if (
-                $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
-                && in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
-                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SEM_SUBSTITUICAO, true)
-            ) {
-                throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituto tributário do ICMS\" (sem substituição na própria receita) — não é possível marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento, a API rejeita como conflitante. Isenção/Redução/Imunidade/Lançamento de Ofício continuam permitidos normalmente.");
-            }
-
-            if (
-                $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
-                && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SUBSTITUIDO, true)
-                && ! in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
-            ) {
-                throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituído tributário do ICMS\" — é OBRIGATÓRIO marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento (não pode ficar \"Normal\"), confirmado em produção (MSG_E0044).");
-            }
-
-            $idQualificacao = match ($tributo->tipo_ajuste) {
-                'imunidade' => 1,
-                'lancamento_oficio' => 3,
-                'substituicao_tributaria' => 8,
-                'tributacao_monofasica' => 9,
-                'antecipacao_encerramento' => 10,
-                'retencao_iss' => 11,
-                default => null,
-            };
-
-            if ($idQualificacao !== null) {
-                $qualificacoesTributarias[] = [
-                    'codigoTributo' => $tributo->cod_tributo,
-                    'id' => $idQualificacao,
-                ];
-
-                continue;
-            }
-
-            if ($tributo->tipo_ajuste === 'isencao' || $tributo->tipo_ajuste === 'reducao') {
-                // "isencao" = redução de 100% (a tela não pede percentual pra
-                // esse caso, ver renderTributoCell no das.blade.php) — a API
-                // rejeita percentualReducao=0 como inválido (confirmado em
-                // produção 2026-08-03, MSG_ISN_008 "Campo 'reducao/
-                // percentualReducao' inválido"), então mandamos 100 fixo
-                // pra isenção em vez do 0 que vinha de percentual_reducao nulo.
-                $reducoes[] = [
-                    'codTributo' => $tributo->cod_tributo,
-                    'valor' => (float) $tributo->valor,
-                    'percentualReducao' => $tributo->tipo_ajuste === 'isencao' ? 100.0 : (float) ($tributo->percentual_reducao ?? 0),
-                    'identificador' => $tributo->identificador_isencao ?? 1,
-                ];
-            }
+            $receitasAtividade[] = [
+                'valor' => (float) $atividade->valor,
+                'isencoes' => [],
+                'reducoes' => $reducoes,
+                'qualificacoesTributarias' => $qualificacoesTributarias,
+            ];
         }
 
         return [
-            'idAtividade' => $atividade->id_atividade,
-            'valorAtividade' => (float) $atividade->valor,
-            'receitasAtividade' => [
-                [
-                    'valor' => (float) $atividade->valor,
-                    'isencoes' => [],
-                    'reducoes' => $reducoes,
-                    'qualificacoesTributarias' => $qualificacoesTributarias,
-                ],
-            ],
+            'idAtividade' => $idAtividade,
+            'valorAtividade' => (float) $linhasDaAtividade->sum('valor'),
+            'receitasAtividade' => $receitasAtividade,
         ];
     }
 
