@@ -461,7 +461,10 @@ class NfeController extends Controller
                 ->select(['tipo', 'chave_acesso', 'xml_content'])
                 ->cursor()
                 ->each(function (DocumentoFiscal $documento) use ($zip, &$total) {
-                    $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.xml", $documento->xml_content);
+                    $zip->addFromString(
+                        "{$documento->tipo}_{$documento->chave_acesso}.xml",
+                        self::removerWrapperProc($documento->xml_content)
+                    );
                     $total++;
                 });
         }
@@ -482,6 +485,41 @@ class NfeController extends Controller
         return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Alguns XMLs sincronizados via SEFAZ-RS (NfeIntegracaoRsService) antes da correção
+     * ficaram salvos com um invólucro <proc NSU="..." chAcesso="..." schema="..."> em volta
+     * do <nfeProc>/<resNFe> real. Sistemas de terceiros (ex.: Econet) rejeitam esse formato
+     * por não ser o XML padrão da NF-e. Removemos o wrapper aqui, no momento da entrega,
+     * para cobrir tanto os registros antigos quanto qualquer caso futuro equivalente.
+     */
+    private static function removerWrapperProc(string $xml): string
+    {
+        if (! str_contains($xml, '<proc ') && ! str_contains($xml, '<proc>')) {
+            return $xml;
+        }
+
+        try {
+            libxml_use_internal_errors(true);
+            $elemento = new \SimpleXMLElement($xml);
+
+            if (strtolower($elemento->getName()) !== 'proc') {
+                return $xml;
+            }
+
+            $dom = dom_import_simplexml($elemento);
+
+            foreach ($dom->childNodes as $node) {
+                if ($node->nodeType === XML_ELEMENT_NODE) {
+                    return $node->ownerDocument->saveXML($node);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[NF-e] removerWrapperProc: falha ao processar XML', ['msg' => $e->getMessage()]);
+        }
+
+        return $xml;
     }
 
     /**

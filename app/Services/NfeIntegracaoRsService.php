@@ -417,7 +417,10 @@ XML;
                 $nsu    = (string) $proc->attributes()['NSU'];
                 $chave  = (string) $proc->attributes()['chAcesso'];
                 $schema = (string) $proc->attributes()['schema'];
-                $xml    = $proc->asXML();
+                // A SEFAZ-RS envolve cada documento num <proc NSU="..." chAcesso="..." schema="...">
+                // que não faz parte do padrão da NF-e (não é aceito por outros sistemas, ex. Econet).
+                // Extraímos apenas o elemento filho real (nfeProc/resNFe/procEventoNFe/etc.).
+                $xml = $this->extrairFilhoXml($proc);
 
                 $docs[] = $this->normalizarDocumento($nsu, $chave, $schema, $xml);
             }
@@ -429,6 +432,25 @@ XML;
             'ultNSU'  => $ultNSU,
             'docs'    => $docs,
         ];
+    }
+
+    /**
+     * Retorna o XML do primeiro elemento filho de um nó (ex.: <nfeProc> dentro de <proc>),
+     * descartando o elemento pai/wrapper e seus atributos (NSU, chAcesso, schema).
+     * Usa DOM em vez de SimpleXML::children() porque o filho costuma declarar seu próprio
+     * namespace (xmlns do portalfiscal), diferente do namespace do elemento pai.
+     */
+    private function extrairFilhoXml(\SimpleXMLElement $elemento): string
+    {
+        $domElemento = dom_import_simplexml($elemento);
+
+        foreach ($domElemento->childNodes as $node) {
+            if ($node->nodeType === XML_ELEMENT_NODE) {
+                return $node->ownerDocument->saveXML($node);
+            }
+        }
+
+        return $elemento->asXML();
     }
 
     /**
