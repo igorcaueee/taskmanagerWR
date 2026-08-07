@@ -677,15 +677,23 @@
             return (window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO ?? []).includes(id) ? ['normal', 'retencao_iss'] : ['normal'];
         }
 
+        const QUALIFICACOES_SUBSTITUICAO_ICMS = ['substituicao_tributaria', 'tributacao_monofasica', 'antecipacao_encerramento'];
+
         if (codTributo == window.PGDASD_TRIBUTO_ICMS && (window.PGDASD_ATIVIDADES_ICMS_SEM_SUBSTITUICAO ?? []).includes(id)) {
-            return ['normal'];
+            // O ICMS da própria atividade não pode ser marcado como
+            // Substituição/Monofásica/Antecipação (conflita com a atividade já
+            // ser "substituto tributário do ICMS") — mas Isenção/Redução/
+            // Imunidade/Lançamento de Ofício/Exigibilidade Suspensa continuam
+            // válidos normalmente, confirmado no assistente oficial do e-CAC
+            // pra essa mesma atividade (print real, 2026-08-07).
+            return Object.keys(OPCOES_AJUSTE).filter(v => !QUALIFICACOES_SUBSTITUICAO_ICMS.includes(v));
         }
 
         if (codTributo == window.PGDASD_TRIBUTO_ICMS && (window.PGDASD_ATIVIDADES_ICMS_SUBSTITUIDO ?? []).includes(id)) {
             // Aqui é o oposto do caso acima: "Normal" NÃO é uma opção válida —
             // essa atividade é "substituído tributário do ICMS", e a API exige
             // uma dessas 3 qualificações (confirmado em produção, MSG_E0044).
-            return ['substituicao_tributaria', 'tributacao_monofasica', 'antecipacao_encerramento'];
+            return QUALIFICACOES_SUBSTITUICAO_ICMS;
         }
 
         return null;

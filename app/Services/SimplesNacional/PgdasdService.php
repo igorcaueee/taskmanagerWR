@@ -402,16 +402,16 @@ class PgdasdService
 
             if (
                 $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
-                && $tributo->tipo_ajuste !== 'normal'
+                && in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
                 && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SEM_SUBSTITUICAO, true)
             ) {
-                throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituto tributário do ICMS\" (sem substituição na própria receita) — não é possível aplicar uma qualificação tributária independente no ICMS, a API rejeita como conflitante. Deixe o ICMS como \"Normal\".");
+                throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituto tributário do ICMS\" (sem substituição na própria receita) — não é possível marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento, a API rejeita como conflitante. Isenção/Redução/Imunidade/Lançamento de Ofício continuam permitidos normalmente.");
             }
 
             if (
                 $tributo->cod_tributo === PgdasdAtividades::TRIBUTO_ICMS
                 && in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_ICMS_SUBSTITUIDO, true)
-                && ! in_array($tributo->tipo_ajuste, ['substituicao_tributaria', 'tributacao_monofasica', 'antecipacao_encerramento'], true)
+                && ! in_array($tributo->tipo_ajuste, PgdasdAtividades::ICMS_QUALIFICACOES_SUBSTITUICAO, true)
             ) {
                 throw new \RuntimeException("Atividade {$atividade->id_atividade}: essa atividade é \"substituído tributário do ICMS\" — é OBRIGATÓRIO marcar o ICMS como Substituição Tributária, Tributação Monofásica ou Antecipação com Encerramento (não pode ficar \"Normal\"), confirmado em produção (MSG_E0044).");
             }
