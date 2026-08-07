@@ -744,8 +744,62 @@
         return cell;
     }
 
+    // Uma mesma atividade (id_atividade) pode ter mais de uma "linha" de
+    // receita no mesmo período, cada uma com seu próprio tratamento
+    // tributário por tributo — é assim que o relatório do Domínio quebra,
+    // por ex., "revenda com substituição tributária" (id=2) em "Tabela 1 -
+    // Substituição somente do ICMS" e "Tabela 4 - Substituição do PIS/
+    // PASEP, COFINS e do ICMS" (confirmado com um relatório real em
+    // 2026-08-07). Por isso o painel de cada atividade suporta múltiplas
+    // linhas (cada uma com receita + tributos própria), em vez de uma única
+    // receita fixa por atividade.
+    function adicionarLinhaAtividade(idAtividade, dadosExistentes) {
+        const atividade = window.PGDASD_ATIVIDADES[idAtividade];
+        const painel = painelAtividades.querySelector(`[data-id-atividade="${idAtividade}"]`);
+        if (!atividade || !painel) return;
+
+        const tbody = painel.querySelector('.linhas-atividade-tbody');
+        const tributosExistentesMap = {};
+        (dadosExistentes?.tributos ?? []).forEach(t => { tributosExistentesMap[t.cod_tributo] = t; });
+
+        const tr = document.createElement('tr');
+        tr.className = 'linha-atividade';
+
+        const tdValor = document.createElement('td');
+        tdValor.className = 'align-top py-2 pr-2';
+        tdValor.innerHTML = `<input type="number" step="0.01" class="input-valor-atividade w-32 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 text-sm" value="${dadosExistentes?.valor ?? ''}">`;
+        tr.appendChild(tdValor);
+
+        atividade.tributos.forEach(codTributo => {
+            tr.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo], idAtividade));
+        });
+
+        const tdRemover = document.createElement('td');
+        tdRemover.className = 'align-top py-2 pl-1';
+        tdRemover.innerHTML = `<button type="button" class="btn-remove-linha-atividade text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-transparent border-0 text-sm leading-none" title="Remover esta linha">&times;</button>`;
+        tr.appendChild(tdRemover);
+
+        tr.querySelector('.input-valor-atividade').addEventListener('input', atualizarSomaAtividades);
+        tr.querySelector('.btn-remove-linha-atividade').addEventListener('click', () => {
+            tr.remove();
+            // se era a última linha da atividade, some com o painel inteiro e desmarca o checkbox
+            if (painel.querySelectorAll('.linha-atividade').length === 0) {
+                const cb = checklistAtividades.querySelector(`.checkbox-atividade[value="${idAtividade}"]`);
+                if (cb) cb.checked = false;
+                painel.remove();
+                atualizarResumoAtividadesSelecionadas();
+            }
+            atualizarSomaAtividades();
+        });
+
+        tbody.appendChild(tr);
+    }
+
     function adicionarPainelAtividade(idAtividade, dadosExistentes) {
-        if (painelAtividades.querySelector(`[data-id-atividade="${idAtividade}"]`)) return;
+        if (painelAtividades.querySelector(`[data-id-atividade="${idAtividade}"]`)) {
+            adicionarLinhaAtividade(idAtividade, dadosExistentes);
+            return;
+        }
 
         const atividade = window.PGDASD_ATIVIDADES[idAtividade];
         if (!atividade) return;
@@ -761,45 +815,23 @@
                     <thead>
                         <tr>
                             <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">Receita (R$)</th>
-                            <th class="tributos-thead-cells"></th>
+                            ${atividade.tributos.map(codTributo => `<th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">${escapeHtml(String(window.PGDASD_TRIBUTOS[codTributo] ?? codTributo))}</th>`).join('')}
+                            <th></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td class="align-top py-2 pr-2">
-                                <input type="number" step="0.01" class="input-valor-atividade w-32 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-2 py-1 text-sm" value="${dadosExistentes?.valor ?? ''}">
-                            </td>
-                            <td class="tributos-tbody-cells"></td>
-                        </tr>
-                    </tbody>
+                    <tbody class="linhas-atividade-tbody"></tbody>
                 </table>
+                <button type="button" class="btn-add-linha-atividade text-xs text-brand hover:underline bg-transparent border-0 px-0 mt-2">+ nova receita para esta atividade</button>
             </div>
         `;
 
-        const tributosExistentesMap = {};
-        (dadosExistentes?.tributos ?? []).forEach(t => { tributosExistentesMap[t.cod_tributo] = t; });
-
-        // As células de tributo vêm como <td> soltos (um por tributo) — inserimos cada
-        // um como irmão do <td> placeholder da receita, e no cabeçalho o nome correspondente.
-        const linhaCabecalho = div.querySelector('thead tr');
-        const linhaCorpo = div.querySelector('tbody tr');
-        const thPlaceholder = div.querySelector('.tributos-thead-cells');
-        const tdPlaceholder = div.querySelector('.tributos-tbody-cells');
-        thPlaceholder.remove();
-        tdPlaceholder.remove();
-
-        atividade.tributos.forEach(codTributo => {
-            const th = document.createElement('th');
-            th.className = 'text-left text-gray-500 dark:text-slate-400 font-medium pb-1';
-            th.textContent = window.PGDASD_TRIBUTOS[codTributo] ?? codTributo;
-            linhaCabecalho.appendChild(th);
-
-            linhaCorpo.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo], idAtividade));
+        div.querySelector('.btn-add-linha-atividade').addEventListener('click', () => {
+            adicionarLinhaAtividade(idAtividade);
+            atualizarSomaAtividades();
         });
 
-        div.querySelector('.input-valor-atividade').addEventListener('input', atualizarSomaAtividades);
-
         painelAtividades.appendChild(div);
+        adicionarLinhaAtividade(idAtividade, dadosExistentes);
     }
 
     function removerPainelAtividade(idAtividade) {
@@ -810,8 +842,8 @@
 
     function atualizarSomaAtividades() {
         let soma = 0;
-        painelAtividades.querySelectorAll('.atividade-panel').forEach(p => {
-            soma += parseFloat(p.querySelector('.input-valor-atividade').value || '0');
+        painelAtividades.querySelectorAll('.input-valor-atividade').forEach(input => {
+            soma += parseFloat(input.value || '0');
         });
 
         const alvo = selectRegimeApuracao.value === 'caixa'
@@ -857,28 +889,31 @@
 
         painelAtividades.querySelectorAll('.atividade-panel').forEach(p => {
             const idAtividade = parseInt(p.dataset.idAtividade, 10);
-            const valor = parseFloat(p.querySelector('.input-valor-atividade').value || '0');
-            const tributos = [];
 
-            p.querySelectorAll('.tributo-row').forEach(row => {
-                const tipoAjuste = row.querySelector('.select-tipo-ajuste').value;
-                if (tipoAjuste === 'normal') return;
+            p.querySelectorAll('.linha-atividade').forEach(linha => {
+                const valor = parseFloat(linha.querySelector('.input-valor-atividade').value || '0');
+                const tributos = [];
 
-                const identificadorEl = row.querySelector('.select-identificador');
-                const percentualEl = row.querySelector('.input-percentual');
-                const motivoEl = row.querySelector('.select-motivo');
+                linha.querySelectorAll('.tributo-row').forEach(row => {
+                    const tipoAjuste = row.querySelector('.select-tipo-ajuste').value;
+                    if (tipoAjuste === 'normal') return;
 
-                tributos.push({
-                    cod_tributo: parseInt(row.dataset.codTributo, 10),
-                    tipo_ajuste: tipoAjuste,
-                    identificador_isencao: (tipoAjuste === 'isencao' || tipoAjuste === 'reducao') ? parseInt(identificadorEl.value, 10) : null,
-                    percentual_reducao: tipoAjuste === 'reducao' ? parseFloat(percentualEl.value || '0') : null,
-                    motivo_suspensao: tipoAjuste === 'exigibilidade_suspensa' ? parseInt(motivoEl.value, 10) : null,
-                    valor: valor,
+                    const identificadorEl = row.querySelector('.select-identificador');
+                    const percentualEl = row.querySelector('.input-percentual');
+                    const motivoEl = row.querySelector('.select-motivo');
+
+                    tributos.push({
+                        cod_tributo: parseInt(row.dataset.codTributo, 10),
+                        tipo_ajuste: tipoAjuste,
+                        identificador_isencao: (tipoAjuste === 'isencao' || tipoAjuste === 'reducao') ? parseInt(identificadorEl.value, 10) : null,
+                        percentual_reducao: tipoAjuste === 'reducao' ? parseFloat(percentualEl.value || '0') : null,
+                        motivo_suspensao: tipoAjuste === 'exigibilidade_suspensa' ? parseInt(motivoEl.value, 10) : null,
+                        valor: valor,
+                    });
                 });
-            });
 
-            atividades.push({ id_atividade: idAtividade, valor, tributos });
+                atividades.push({ id_atividade: idAtividade, valor, tributos });
+            });
         });
 
         if (atividades.length === 0) {
