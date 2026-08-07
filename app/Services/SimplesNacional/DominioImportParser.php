@@ -426,6 +426,7 @@ class DominioImportParser
         $catalogo = PgdasdAtividades::catalogo();
 
         $catalogoFiltrado = null;
+        $categoriaFiltrada = null;
         foreach (self::CATEGORIA_POR_PALAVRA_CHAVE as $palavraChave => $trechoCategoria) {
             if (! str_contains($alvo, $palavraChave)) {
                 continue;
@@ -435,6 +436,7 @@ class DominioImportParser
 
             if (! empty($subset)) {
                 $catalogoFiltrado = $subset;
+                $categoriaFiltrada = $trechoCategoria;
                 break;
             }
         }
@@ -450,6 +452,29 @@ class DominioImportParser
         $alvoNegado = $this->contemNegacao($alvo);
         $alvoSubstituicao = $this->polaridadeSubstituicao($alvo);
         $alvoExterior = $this->polaridadeExterior($alvo);
+
+        // Para revenda/venda de mercadorias, o texto da Seção é ambíguo: tanto
+        // "Substituição tributária somente do ICMS" quanto "... somente do
+        // PIS/PASEP e da COFINS" ficam sob a mesma Seção II ("sujeitas a
+        // substituição tributária, exceto as receitas decorrentes de
+        // exportação"), então polaridadeSubstituicao($alvo) sempre bate como
+        // "com substituição" pras duas — mesmo quando só PIS/COFINS são
+        // monofásicos e o ICMS continua Tributado/Normal (confirmado com um
+        // relatório real em 2026-08-07: Tabela 7 "somente do PIS/PASEP e da
+        // COFINS" casava com a atividade 2, cuja descrição fala de ICMS
+        // SUBSTITUÍDO). Quem decide de fato se o ICMS está substituído é o
+        // texto da Tabela, não da Seção — sobrescreve o sinal genérico só
+        // quando a categoria já filtrada é de comércio/indústria (únicas com
+        // a distinção ATIVIDADES_ICMS_SEM_SUBSTITUICAO/SUBSTITUIDO); em
+        // outras categorias (ex.: "substituição/retenção de ISS") o texto da
+        // Tabela não fala de ICMS e esse sinal não se aplica.
+        if (in_array($categoriaFiltrada, ['revenda de mercadorias', 'venda de mercadorias industrializadas'], true)) {
+            $polaridadeIcms = $this->polaridadeSubstituicaoIcms($tabelaTexto);
+            if ($polaridadeIcms !== null) {
+                $alvoSubstituicao = $polaridadeIcms;
+            }
+        }
+
         $sobreviventes = 0;
 
         foreach ($catalogoFiltrado ?? $catalogo as $id => $info) {
@@ -562,6 +587,40 @@ class DominioImportParser
         }
 
         return null;
+    }
+
+    /**
+     * Polaridade de "substituição tributária" restrita ao que realmente
+     * importa pro par de atividades 1/2 (e 4/5, indústria) do catálogo: se o
+     * ICMS DA PRÓPRIA ATIVIDADE está substituído ou não — não se há
+     * substituição tributária de QUALQUER tributo na tabela. O relatório do
+     * Domínio tem tabelas de substituição que não envolvem ICMS nenhum (ex.:
+     * "Tabela 7 - Substituição tributária somente do PIS/PASEP e da COFINS"),
+     * nas quais o ICMS continua "Tributado"/Normal — mesma convenção de
+     * retorno de polaridadeSubstituicao() (true = negado/"sem substituição
+     * de ICMS", false = afirmado/"com substituição de ICMS", null = tabela
+     * não fala de substituição).
+     */
+    private function polaridadeSubstituicaoIcms(string $tabelaTexto): ?bool
+    {
+        $t = $this->normalizar($tabelaTexto);
+
+        if (! str_contains($t, 'substitui')) {
+            return null;
+        }
+
+        if (preg_match('/\bsem\b[a-z ]{0,20}substitui/', $t)) {
+            return true;
+        }
+
+        if (str_contains($t, 'icms')) {
+            return false;
+        }
+
+        // Fala de substituição tributária mas não cita ICMS no texto da
+        // Tabela (ex.: "somente do PIS/PASEP e da COFINS") -> a substituição
+        // é de outro tributo, o ICMS da atividade permanece normal.
+        return true;
     }
 
     /**
