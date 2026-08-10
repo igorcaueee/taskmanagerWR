@@ -703,7 +703,8 @@ document.addEventListener('click', function (e) {
 // --- Departamento por responsável ---
 (function () {
     const depMap = @json($usuariosDepartamentos ?? []);
-    const selectResponsavel = document.querySelector('[name="responsavel_id"]');
+    const formTarefaEl = document.getElementById('modalContent') || document;
+    const selectResponsavel = formTarefaEl.querySelector('[name="responsavel_id"]');
     const displayDep = document.getElementById('display-departamento');
 
     function atualizarDepartamento() {
