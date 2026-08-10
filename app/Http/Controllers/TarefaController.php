@@ -329,6 +329,7 @@ class TarefaController extends Controller
 
         $duplicatas = [];
         $novasTarefasIds = [];
+        $primeiroCicloId = null;
         foreach ($clienteIds as $clienteId) {
             foreach ($tipoIds as $tipoId) {
                 $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
@@ -368,6 +369,7 @@ class TarefaController extends Controller
                     $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
                 }
                 $cicloParaTipo = Ciclo::findOrCreateForDate(Carbon::parse($dataParaTipo))->id;
+                $primeiroCicloId ??= $cicloParaTipo;
                 $dataFimParaTipo = $frequencia !== 'nenhuma'
                     ? Carbon::parse($dataParaTipo)->addYear()->toDateString()
                     : null;
@@ -437,7 +439,12 @@ class TarefaController extends Controller
             ? "{$count} tarefas criadas com sucesso."
             : 'Tarefa criada com sucesso.';
 
-        $redirectUrl = $request->headers->get('referer') ?? route('tarefas.list');
+        $redirectUrl = $primeiroCicloId
+            ? route('tarefas.list', [
+                'ciclo_id' => $primeiroCicloId,
+                'responsavel_id' => $data['responsavel_id'],
+            ])
+            : ($request->headers->get('referer') ?? route('tarefas.list'));
 
         return redirect($redirectUrl)
             ->with('success', $mensagem)
