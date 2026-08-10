@@ -7,6 +7,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteConhecimentoController;
+use App\Http\Controllers\InstrucaoLiriController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CofreFiscalController;
 use App\Http\Controllers\ConsultaCndController;
@@ -320,6 +321,13 @@ Route::post('/admin/blog', [BlogController::class, 'save'])->name('blog.admin.sa
 Route::put('/admin/blog/{id}', [BlogController::class, 'update'])->name('blog.admin.update')->middleware(['auth', 'admin']);
 Route::delete('/admin/blog/{id}', [BlogController::class, 'delete'])->name('blog.admin.delete')->middleware(['auth', 'admin']);
 Route::post('/admin/blog/gerar-ia', [BlogController::class, 'gerarIA'])->name('blog.admin.gerar-ia')->middleware(['auth', 'admin']);
+// Instruções da LIRI (RAG manual: conhecimento geral usado pelo chatbot)
+Route::get('/liri/instrucoes', [InstrucaoLiriController::class, 'index'])->name('liri.instrucoes.index')->middleware('auth');
+Route::get('/liri/instrucoes/criar', [InstrucaoLiriController::class, 'formCreate'])->name('liri.instrucoes.form.create')->middleware('auth');
+Route::post('/liri/instrucoes', [InstrucaoLiriController::class, 'store'])->name('liri.instrucoes.store')->middleware('auth');
+Route::get('/liri/instrucoes/{id}/editar', [InstrucaoLiriController::class, 'formEdit'])->name('liri.instrucoes.form.edit')->middleware('auth');
+Route::put('/liri/instrucoes/{id}', [InstrucaoLiriController::class, 'update'])->name('liri.instrucoes.update')->middleware('auth');
+Route::delete('/liri/instrucoes/{id}', [InstrucaoLiriController::class, 'destroy'])->name('liri.instrucoes.destroy')->middleware('auth');
 // Email Campanhas (Newsletter)
 Route::get('/email-campanhas', [EmailCampanhaController::class, 'index'])->name('email-campanhas.index')->middleware(['auth', 'email-marketing']);
 Route::get('/email-campanhas/criar', [EmailCampanhaController::class, 'create'])->name('email-campanhas.create')->middleware(['auth', 'email-marketing']);

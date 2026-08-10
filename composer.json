@@ -16,7 +16,9 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "nfephp-org/sped-da": "^0.1.26",
-        "phpoffice/phpspreadsheet": "^5.7"
+        "phpoffice/phpspreadsheet": "^5.7",
+        "phpoffice/phpword": "^1.4",
+        "smalot/pdfparser": "^2.12"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\ClienteConhecimento;
+use App\Models\InstrucaoLiri;
 use App\Models\Tarefa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -140,6 +141,23 @@ INSTRUCTIONS;
         }
 
         $lines[] = '=== FIM DOS DADOS DO SISTEMA ===';
+
+        // Instruções gerais cadastradas pelo escritório (lições, procedimentos, orientações)
+        $instrucoes = InstrucaoLiri::query()->orderByDesc('created_at')->get();
+
+        if ($instrucoes->isNotEmpty()) {
+            $lines[] = '';
+            $lines[] = '=== INSTRUÇÕES E CONHECIMENTO DO ESCRITÓRIO ===';
+            foreach ($instrucoes as $instrucao) {
+                $conteudoTruncado = mb_substr($instrucao->conteudo, 0, 4000);
+                if (mb_strlen($instrucao->conteudo) > 4000) {
+                    $conteudoTruncado .= '...';
+                }
+                $lines[] = "[{$instrucao->titulo}]";
+                $lines[] = $conteudoTruncado;
+            }
+            $lines[] = '=== FIM DAS INSTRUÇÕES DO ESCRITÓRIO ===';
+        }
 
         // Conhecimento específico por cliente (todos os clientes com entradas cadastradas)
         $conhecimentos = ClienteConhecimento::query()
