@@ -558,6 +558,20 @@ document.addEventListener('click', function (e) {
     const inputTitulo = document.querySelector('[name="titulo"]');
     const inputTituloManual = document.getElementById('input-titulo-manual');
 
+    // O tipo guarda apenas o "dia de vencimento padrão" (ex: dia 20). Aplicamos esse
+    // dia sobre o mês/ano atual, em vez de usar a data absoluta cadastrada no tipo
+    // (que fica desatualizada), espelhando a lógica do backend (TarefaController::save).
+    window.aplicarDiaDoTipoAoMesAtual = function (dataVencTipo) {
+        if (!dataVencTipo) return '';
+        const dia = parseInt(dataVencTipo.split('-')[2], 10);
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = hoje.getMonth();
+        const ultimoDiaDoMes = new Date(ano, mes + 1, 0).getDate();
+        const diaFinal = Math.min(dia, ultimoDiaDoMes);
+        return ano + '-' + String(mes + 1).padStart(2, '0') + '-' + String(diaFinal).padStart(2, '0');
+    };
+
     // Quando o usuário digita no título, marca como edição manual: esse título
     // passa a valer só para esta tarefa, mesmo que um tipo com título padrão
     // esteja selecionado.
@@ -574,7 +588,7 @@ document.addEventListener('click', function (e) {
             const selected = selectTipo.options[selectTipo.selectedIndex];
             const dataVenc = selected.dataset.dataVencimento;
             const tituloPadrao = selected.dataset.tituloPadrao;
-            if (dataVenc && inputData) inputData.value = dataVenc;
+            if (dataVenc && inputData) inputData.value = window.aplicarDiaDoTipoAoMesAtual(dataVenc);
             if (tituloPadrao && inputTitulo && !inputTitulo.value.trim()) inputTitulo.value = tituloPadrao;
         });
         return;
@@ -589,7 +603,7 @@ document.addEventListener('click', function (e) {
         if (!li) return;
         const dataVenc = li.dataset.dataVencimento;
         const tituloPadrao = li.dataset.tituloPadrao;
-        if (dataVenc && inputData) inputData.value = dataVenc;
+        if (dataVenc && inputData) inputData.value = window.aplicarDiaDoTipoAoMesAtual(dataVenc);
         if (tituloPadrao && inputTitulo && !inputTitulo.value.trim()) inputTitulo.value = tituloPadrao;
     });
 }());
@@ -664,7 +678,7 @@ function atualizarVisibilidadeCamposTipo(checked) {
 
     if (checked.length > 0 && !algumSemData && datasDistintas.length === 1) {
         if (!dataInput.value.trim()) {
-            dataInput.value = datasDistintas[0];
+            dataInput.value = window.aplicarDiaDoTipoAoMesAtual(datasDistintas[0]);
         }
         dataInput.removeAttribute('required');
     } else if (checked.length === 0) {

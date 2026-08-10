@@ -323,18 +323,28 @@ class TarefaController extends Controller
             ? TipoTarefa::whereIn('id', $data['tipo_tarefa_ids'])->get()->keyBy('id')
             : collect();
 
-        // Data de referência: usa a do form; se não houver (todos os tipos têm data), usa a do primeiro tipo
-        $dataReferencia = $data['data_vencimento']
-            ?? ($tiposMap->first()?->data_vencimento?->format('Y-m-d') ?? now()->toDateString());
+        // Data de referência: usa a do form; se não houver, usa hoje.
+        $dataReferencia = $data['data_vencimento'] ?? now()->toDateString();
+
+        // O tipo guarda apenas o "dia de vencimento padrão"; aplicamos esse dia sobre o
+        // mês/ano de referência em vez de usar a data absoluta cadastrada no tipo, que
+        // fica desatualizada com o passar dos meses.
+        $dataComDiaDoTipo = function (?TipoTarefa $tipo, string $referencia): string {
+            if (! $tipo || ! $tipo->data_vencimento) {
+                return $referencia;
+            }
+            $base = Carbon::parse($referencia);
+            $dia = min($tipo->data_vencimento->day, $base->daysInMonth);
+
+            return $base->copy()->day($dia)->toDateString();
+        };
 
         $duplicatas = [];
         $novasTarefasIds = [];
         $primeiroCicloId = null;
         foreach ($clienteIds as $clienteId) {
             foreach ($tipoIds as $tipoId) {
-                $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
-                    ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
-                    : $dataReferencia;
+                $dataParaTipo = $dataComDiaDoTipo($tipoId ? $tiposMap->get($tipoId) : null, $dataReferencia);
                 if ($frequencia !== 'nenhuma' && $primeiraExecucao === 'proximo_mes') {
                     $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
                 }
@@ -362,9 +372,7 @@ class TarefaController extends Controller
 
         foreach ($clienteIds as $clienteId) {
             foreach ($tipoIds as $tipoId) {
-                $dataParaTipo = ($tipoId && $tiposMap->has($tipoId) && $tiposMap[$tipoId]->data_vencimento)
-                    ? $tiposMap[$tipoId]->data_vencimento->format('Y-m-d')
-                    : $dataReferencia;
+                $dataParaTipo = $dataComDiaDoTipo($tipoId ? $tiposMap->get($tipoId) : null, $dataReferencia);
                 if ($frequencia !== 'nenhuma' && $primeiraExecucao === 'proximo_mes') {
                     $dataParaTipo = Carbon::parse($dataParaTipo)->addMonthNoOverflow()->toDateString();
                 }
