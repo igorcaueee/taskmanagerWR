@@ -20,6 +20,7 @@ use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
+use App\Http\Controllers\NfseEmissaoController;
 use App\Http\Controllers\NotaEmitenteController;
 use App\Http\Controllers\NotaEmitidaController;
 use App\Http\Controllers\NotificacaoController;
@@ -374,6 +375,15 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');
     Route::post('/exportar-excel-nsus', [NfseController::class, 'exportarExcelNsus'])->name('exportar-excel-nsus');
+
+    // Emissão de NFS-e
+    Route::get('/consultar-cnpj/{cnpj}', [NfseEmissaoController::class, 'consultarCnpjTomador'])->name('consultar-cnpj')->where('cnpj', '[0-9./-]+');
+    Route::get('/emitir/{cliente}', [NfseEmissaoController::class, 'form'])->name('emitir.form');
+    Route::post('/emitir/{cliente}', [NfseEmissaoController::class, 'emitir'])->name('emitir');
+    Route::post('/emitir/{cliente}/dados-fiscais', [NfseEmissaoController::class, 'salvarDadosFiscais'])->name('emitir.dados-fiscais');
+    Route::get('/emissoes/{cliente}', [NfseEmissaoController::class, 'listar'])->name('emissoes');
+    Route::post('/emissoes/{emissao}/cancelar', [NfseEmissaoController::class, 'cancelar'])->name('emissoes.cancelar');
+    Route::post('/emissoes/{emissao}/substituir', [NfseEmissaoController::class, 'substituir'])->name('emissoes.substituir');
 });
 
 // Simples Nacional — processamento do DAS via Integra Contador (SERPRO)

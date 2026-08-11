@@ -231,6 +231,54 @@ class NfseService
     }
 
     /**
+     * Envia a DPS (já assinada digitalmente) para emissão da NFS-e (POST /nfse).
+     *
+     * NOTA: o manual não documenta um exemplo de request — o formato do body
+     * abaixo (envelope JSON com o XML em GZip+Base64, espelhando o formato já
+     * usado no retorno da consulta) precisa ser confirmado contra o Swagger de
+     * homologação antes de considerar este método pronto para produção.
+     */
+    public function enviarDps(ClienteCertificadoNfse $certificado, string $xmlDpsAssinado): array
+    {
+        $certPath = storage_path('app/' . $certificado->arquivo);
+        $base     = $this->baseUrl($certificado);
+
+        [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
+
+        try {
+            $body = json_encode(['dpsXmlGZipB64' => base64_encode(gzencode($xmlDpsAssinado))]);
+            return $this->requisicaoPem('POST', "{$base}/nfse", $pemCert, $pemKey, $body);
+        } finally {
+            foreach ($tempFiles as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /**
+     * Envia um Pedido de Registro de Evento (cancelamento, substituição etc.)
+     * para uma NFS-e já emitida (POST /nfse/{chaveAcesso}/eventos).
+     *
+     * NOTA: mesma ressalva do enviarDps() quanto ao formato exato do payload.
+     */
+    public function enviarEvento(ClienteCertificadoNfse $certificado, string $chaveAcesso, string $xmlEventoAssinado): array
+    {
+        $certPath = storage_path('app/' . $certificado->arquivo);
+        $base     = $this->baseUrl($certificado);
+
+        [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
+
+        try {
+            $body = json_encode(['pedidoRegistroEventoXmlGZipB64' => base64_encode(gzencode($xmlEventoAssinado))]);
+            return $this->requisicaoPem('POST', "{$base}/nfse/" . urlencode($chaveAcesso) . '/eventos', $pemCert, $pemKey, $body);
+        } finally {
+            foreach ($tempFiles as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /**
      * Valida o .pfx + senha via OpenSSL e retorna a data de vencimento.
      */
     public function validarCertificado(string $pfxPath, string $senha): ?string
@@ -348,15 +396,15 @@ class NfseService
         self::$ultimaRequisicaoEm = microtime(true);
     }
 
-    private function requisicaoPem(string $method, string $url, string $pemCert, string $pemKey): array
+    private function requisicaoPem(string $method, string $url, string $pemCert, string $pemKey, ?string $body = null): array
     {
         $this->aguardarIntervaloMinimo();
 
-        Log::debug('[NFS-e] requisicaoPem: enviando', ['method' => $method, 'url' => $url]);
+        Log::debug('[NFS-e] requisicaoPem: enviando', ['method' => $method, 'url' => $url, 'temBody' => $body !== null]);
 
         $ch = curl_init();
 
-        curl_setopt_array($ch, [
+        $opcoes = [
             CURLOPT_URL            => $url,
             CURLOPT_CUSTOMREQUEST  => $method,
             CURLOPT_RETURNTRANSFER => true,
@@ -369,7 +417,13 @@ class NfseService
                 'Content-Type: application/json',
                 'Accept: application/json',
             ],
-        ]);
+        ];
+
+        if ($body !== null) {
+            $opcoes[CURLOPT_POSTFIELDS] = $body;
+        }
+
+        curl_setopt_array($ch, $opcoes);
 
         $resposta  = curl_exec($ch);
         $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);

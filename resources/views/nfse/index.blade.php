@@ -15,6 +15,8 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulte e baixe XMLs das Notas Fiscais de Serviço Eletrônicas diretamente do portal nacional do governo.</p>
     </div>
 
+    @include('nfse._tabs')
+
     {{-- ─── Linha de topo: cards de configuração ──────────────────────────── --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
@@ -364,8 +366,17 @@
         cardCertificado.classList.remove('hidden');
         cardFiltro.classList.remove('hidden');
 
+        localStorage.setItem('nfseClienteAtual', clienteId);
+
         await carregarStatusCertificado(clienteId);
     });
+
+    // Restaura a última empresa selecionada (compartilhada com as abas Emitir/Notas emitidas)
+    const clienteSalvo = localStorage.getItem('nfseClienteAtual');
+    if (clienteSalvo && selectCliente.querySelector(`option[value="${clienteSalvo}"]`)) {
+        selectCliente.value = clienteSalvo;
+        selectCliente.dispatchEvent(new Event('change'));
+    }
 
     async function carregarStatusCertificado(clienteId) {
         const resp = await fetch(`/nfse/certificado/${clienteId}`, {

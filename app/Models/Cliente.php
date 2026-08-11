@@ -125,4 +125,14 @@ class Cliente extends Authenticatable
     {
         return $this->hasMany(SimplesDasProcessamento::class)->orderByDesc('periodo_apuracao');
     }
+
+    public function dadosFiscaisNfse(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ClienteDadosFiscaisNfse::class);
+    }
+
+    public function nfseEmissoes(): HasMany
+    {
+        return $this->hasMany(NfseEmissao::class)->orderByDesc('created_at');
+    }
 }
