@@ -47,6 +47,17 @@ step "Reiniciando filas"
 php artisan queue:restart
 ok "Filas reiniciadas"
 
+step "Reiniciando PHP-FPM (limpa bytecode do OPcache)"
+if sudo systemctl reload php8.3-fpm 2>/dev/null; then
+    ok "PHP-FPM recarregado (php8.3-fpm)"
+elif sudo systemctl reload php-fpm 2>/dev/null; then
+    ok "PHP-FPM recarregado (php-fpm)"
+else
+    echo -e "${RED}✘ Não foi possível recarregar o PHP-FPM automaticamente.${NC}"
+    echo -e "${YELLOW}  Com opcache.validate_timestamps=0, as views/controllers atualizados só${NC}"
+    echo -e "${YELLOW}  entram em vigor após um restart/reload manual do PHP-FPM.${NC}"
+fi
+
 # O chat interno depende do Laravel Reverb (WebSocket) rodando como processo
 # persistente em produção (ex: supervisor/systemd rodando `php artisan reverb:start`).
 # Esse processo não é gerenciado por este script — reinicie-o manualmente/via
