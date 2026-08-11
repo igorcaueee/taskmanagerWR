@@ -860,7 +860,7 @@ class TarefaController extends Controller
                 break;
             }
 
-            Tarefa::create([
+            $novaOcorrencia = Tarefa::create([
                 'titulo' => $tarefa->titulo,
                 'descricao' => $tarefa->descricao,
                 'tipo_tarefa_id' => $tarefa->tipo_tarefa_id,
@@ -879,6 +879,8 @@ class TarefaController extends Controller
                 'requer_envio_arquivo' => $tarefa->requer_envio_arquivo,
                 'ciclo_id' => Ciclo::findOrCreateForDate($proximaData)->id,
             ]);
+
+            $novaOcorrencia->clientes()->sync($tarefa->clientes->pluck('id'));
 
             $dataAtual = $proximaData;
         }

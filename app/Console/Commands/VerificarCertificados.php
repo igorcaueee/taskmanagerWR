@@ -81,7 +81,7 @@ class VerificarCertificados extends Command
             $dataTarefa = $vencimento->copy()->subDays(30);
             $ciclo = Ciclo::findOrCreateForDate($dataTarefa->copy());
 
-            Tarefa::create([
+            $tarefaCertificado = Tarefa::create([
                 'titulo' => $titulo,
                 'descricao' => "Certificado digital do cliente {$cliente->nome} vence em {$vencimento->format('d/m/Y')}. Providenciar renovação.",
                 'cliente_id' => $cliente->id,
@@ -95,6 +95,8 @@ class VerificarCertificados extends Command
                 'frequencia' => 'nenhuma',
                 'ciclo_id' => $ciclo->id,
             ]);
+
+            $tarefaCertificado->clientes()->sync([$cliente->id]);
 
             $criadas++;
             $this->line("  ✓ Tarefa criada para: {$cliente->nome}");

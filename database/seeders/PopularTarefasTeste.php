@@ -114,7 +114,7 @@ class PopularTarefasTeste extends Seeder
                 // Varia as datas: algumas atrasadas, algumas futuras
                 $diasOffset = ($index % 3 === 0) ? -rand(1, 10) : rand(1, 30);
 
-                Tarefa::create([
+                $tarefaTeste = Tarefa::create([
                     'titulo' => $titulo,
                     'descricao' => "Tarefa de teste do departamento {$nomeDep}.",
                     'cliente_id' => $cliente->id,
@@ -126,6 +126,8 @@ class PopularTarefasTeste extends Seeder
                     'prioridade' => $prioridade,
                     'atrasada' => $diasOffset < 0,
                 ]);
+
+                $tarefaTeste->clientes()->sync([$cliente->id]);
 
                 $count++;
             }
