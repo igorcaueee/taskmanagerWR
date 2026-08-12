@@ -353,7 +353,7 @@
                 <span class="text-white/50 text-sm leading-tight">Anos de<br>experiência</span>
             </div>
             <div class="flex items-center gap-3 bg-black/50 backdrop-blur-sm border border-brand/30 rounded-xl px-5 py-3">
-                <span class="text-brand font-bold text-2xl">56</span>
+                <span class="text-brand font-bold text-2xl">73</span>
                 <span class="text-white/50 text-sm leading-tight">Cidades<br>atendidas</span>
             </div>
         </div>
