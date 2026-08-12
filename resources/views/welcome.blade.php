@@ -417,7 +417,7 @@
             $stats = [
                 ['value' => 500, 'suffix' => '+', 'label' => 'Clientes atendidos',     'icon' => 'fa-trophy'],
                 ['value' => 17,  'suffix' => '+', 'label' => 'Anos de experiência',    'icon' => 'fa-clock'],
-                ['value' => 56,  'suffix' => '',  'label' => 'Cidades atendidas',      'icon' => 'fa-map-marker-alt'],
+                ['value' => 73,  'suffix' => '',  'label' => 'Cidades atendidas',      'icon' => 'fa-map-marker-alt'],
                 ['value' => 25,  'suffix' => '',  'label' => 'Colaboradores',          'icon' => 'fa-users'],
             ];
             @endphp
