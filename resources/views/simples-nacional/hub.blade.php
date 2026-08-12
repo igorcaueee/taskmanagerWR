@@ -62,6 +62,31 @@
                 </div>
             </a>
 
+            @php $podeAcessarReinf = auth()->user()?->canAcessarReinf() ?? false; @endphp
+            @if($podeAcessarReinf)
+                <a href="{{ route('reinf.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group relative">
+                    <span class="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full px-2 py-0.5">Em desenvolvimento</span>
+                    <div class="flex items-center gap-4">
+                        <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-shield"></i></div>
+                        <div>
+                            <h2 class="font-semibold text-gray-800 dark:text-slate-100">EFD-Reinf — Fechamento</h2>
+                            <p class="text-sm text-gray-500 dark:text-slate-400">Enviar/consultar R-2099 e R-4099 (certificado do cliente)</p>
+                        </div>
+                    </div>
+                </a>
+            @else
+                <div class="opacity-50 grayscale cursor-not-allowed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm relative" title="Restrito a Diretor e TI — feature em desenvolvimento">
+                    <span class="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-full px-2 py-0.5">Em desenvolvimento</span>
+                    <div class="flex items-center gap-4">
+                        <div class="bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-400 rounded-lg p-3 text-2xl"><i class="fa-solid fa-file-shield"></i></div>
+                        <div>
+                            <h2 class="font-semibold text-gray-600 dark:text-slate-300">EFD-Reinf — Fechamento</h2>
+                            <p class="text-sm text-gray-500 dark:text-slate-400">Restrito a Diretor e TI</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <a href="{{ route('simples-nacional.defis.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">
                     <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-lines"></i></div>

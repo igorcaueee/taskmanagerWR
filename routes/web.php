@@ -21,6 +21,7 @@ use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\NfeController;
 use App\Http\Controllers\NfseController;
 use App\Http\Controllers\NfseEmissaoController;
+use App\Http\Controllers\ReinfController;
 use App\Http\Controllers\NotaEmitenteController;
 use App\Http\Controllers\NotaEmitidaController;
 use App\Http\Controllers\NotificacaoController;
@@ -384,6 +385,14 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/emissoes/{cliente}', [NfseEmissaoController::class, 'listar'])->name('emissoes');
     Route::post('/emissoes/{emissao}/cancelar', [NfseEmissaoController::class, 'cancelar'])->name('emissoes.cancelar');
     Route::post('/emissoes/{emissao}/substituir', [NfseEmissaoController::class, 'substituir'])->name('emissoes.substituir');
+});
+
+// EFD-Reinf — envio/consulta de fechamento (R-2099/R-4099) via API nativa da
+// Receita (mTLS + certificado do próprio cliente), não SERPRO/Integra Contador.
+Route::middleware(['auth', 'reinf-access'])->prefix('reinf')->name('reinf.')->group(function () {
+    Route::get('/tela', [ReinfController::class, 'tela'])->name('tela');
+    Route::post('/enviar', [ReinfController::class, 'enviar'])->name('enviar');
+    Route::post('/{fechamento}/consultar', [ReinfController::class, 'consultar'])->name('consultar');
 });
 
 // Simples Nacional — processamento do DAS via Integra Contador (SERPRO)
