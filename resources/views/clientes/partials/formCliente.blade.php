@@ -239,6 +239,14 @@
             </label>
         </div>
 
+        <div>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input name="importar_notas_fiscais" type="checkbox" class="rounded border-gray-300"
+                       {{ old('importar_notas_fiscais', $isEditing ? $cliente->importar_notas_fiscais : ($prefill['importar_notas_fiscais'] ?? false)) ? 'checked' : '' }}>
+                Importar notas (NF-e/NFC-e/CT-e via SEFAZ-RS)
+            </label>
+        </div>
+
         @if(isset($produtos) && $produtos->isNotEmpty())
             @php
                 $produtosSelecionados = old('produtos', $isEditing ? $cliente->produtos->pluck('id')->toArray() : ($prefill['produtos'] ?? []));

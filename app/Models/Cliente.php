@@ -44,6 +44,7 @@ class Cliente extends Authenticatable
         'ultimo_nsu_nfe_rs',
         'ultimo_nsu_nfce_rs',
         'ultimo_nsu_cte_rs',
+        'importar_notas_fiscais',
     ];
 
     protected $casts = [
@@ -56,6 +57,7 @@ class Cliente extends Authenticatable
         'portal_ultimo_acesso' => 'datetime',
         'acesso_extrato' => 'boolean',
         'senha_portal_plain' => 'encrypted',
+        'importar_notas_fiscais' => 'boolean',
     ];
 
     /**
@@ -134,5 +136,10 @@ class Cliente extends Authenticatable
     public function nfseEmissoes(): HasMany
     {
         return $this->hasMany(NfseEmissao::class)->orderByDesc('created_at');
+    }
+
+    public function sincronizacoesFiscaisRs(): HasMany
+    {
+        return $this->hasMany(SincronizacaoFiscalRs::class)->orderByDesc('executado_em');
     }
 }

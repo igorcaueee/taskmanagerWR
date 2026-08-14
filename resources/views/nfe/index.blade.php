@@ -27,6 +27,10 @@
                     Certificado digital da própria contabilidade (webservice de contabilistas da SEFAZ-RS), usado por padrão para trazer NF-e, NFC-e e CT-e de qualquer cliente que tenha autorizado o acesso via e-CAC — sem precisar do certificado individual de cada empresa. Quem busca escolhe o modo (contabilidade ou certificado do cliente) direto no card de período de busca.
                 </p>
             </div>
+            <a href="{{ route('nfe.rs.sincronizacao.tela') }}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 bg-white dark:bg-slate-800 no-underline whitespace-nowrap">
+                <i class="fa-solid fa-list-check"></i> Acompanhar sincronização automática
+            </a>
         </div>
 
         <div id="certContabilidadeStatus" class="mt-3 space-y-2">

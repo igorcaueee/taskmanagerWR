@@ -476,6 +476,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
     Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
     Route::post('/rs/sincronizar-chunk', [NfeController::class, 'sincronizarRsChunk'])->name('rs.sincronizar-chunk');
+    Route::get('/rs/sincronizacao/tela', [NfeController::class, 'telaSincronizacaoRs'])->name('rs.sincronizacao.tela');
 });
 
 Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(function () {

@@ -7,6 +7,7 @@ use App\Models\CertificadoContabilidade;
 use App\Models\Cliente;
 use App\Models\ClienteCertificadoNfse;
 use App\Models\DocumentoFiscal;
+use App\Models\SincronizacaoFiscalRs;
 use App\Services\CteDistribuicaoDFeService;
 use App\Services\CteIntegracaoRsService;
 use App\Services\NfeIntegracaoRsService;
@@ -43,6 +44,30 @@ class NfeController extends Controller
             ->get(['id', 'nome', 'cpfcnpj']);
 
         return view('nfe.index', compact('clientes'));
+    }
+
+    /**
+     * Painel de acompanhamento do cron `fiscal:sincronizar-notas-rs` — mostra
+     * o log gravado em `sincronizacoes_fiscais_rs` (uma linha por
+     * cliente/fase/execução), com filtros por cliente e status.
+     */
+    public function telaSincronizacaoRs(Request $request)
+    {
+        abort_if(! auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
+
+        $sincronizacoes = SincronizacaoFiscalRs::with('cliente')
+            ->when($request->filled('cliente_id'), fn ($q) => $q->where('cliente_id', $request->get('cliente_id')))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->get('status')))
+            ->orderByDesc('executado_em')
+            ->paginate(30)
+            ->withQueryString();
+
+        $clientes = Cliente::where('status', 'ativo')
+            ->where('importar_notas_fiscais', true)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        return view('nfe.sincronizacao-rs', compact('sincronizacoes', 'clientes'));
     }
 
     /**

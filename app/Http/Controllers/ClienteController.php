@@ -131,7 +131,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'importar_notas_fiscais', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
         $data['status'] = 'ativo';
 
         $validator = Validator::make($data, [
@@ -145,6 +145,7 @@ class ClienteController extends Controller
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
             'fator_r' => ['nullable'],
+            'importar_notas_fiscais' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
             'vencimento_certificado' => ['nullable', 'date'],
@@ -160,6 +161,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
+        $data['importar_notas_fiscais'] = isset($data['importar_notas_fiscais']);
 
         Cliente::create($data);
 
@@ -176,7 +178,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'importar_notas_fiscais', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
 
         $validator = Validator::make($data, [
             'nome' => ['required', 'string', 'max:255'],
@@ -189,6 +191,7 @@ class ClienteController extends Controller
             'cidade' => ['nullable', 'string', 'max:255'],
             'estado' => ['nullable', 'string', 'max:2'],
             'fator_r' => ['nullable'],
+            'importar_notas_fiscais' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date'],
             'vencimento_certificado' => ['nullable', 'date'],
@@ -204,6 +207,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
+        $data['importar_notas_fiscais'] = isset($data['importar_notas_fiscais']);
 
         $regimeAnterior = $cliente->regime_tributario;
 

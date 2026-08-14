@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('campanhas:enviar-agendadas')->everyMinute();
 Schedule::command('ciclos:passar-afazer')->monthlyOn(1, '07:00');
 Schedule::command('certificados:verificar')->dailyAt('08:00');
+Schedule::command('fiscal:sincronizar-notas-rs')->dailyAt('18:30')->withoutOverlapping()->runInBackground();
