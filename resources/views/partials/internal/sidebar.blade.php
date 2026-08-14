@@ -80,7 +80,7 @@
                 </svg>
             </button>
             <div id="submenu-apps" class="hidden pl-3 mt-1 space-y-1">
-                <a href="https://charming-fiscal-flow-hub.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-chart-pie"></i> WR Dashboard Fiscal</a>
+                <a href="https://dashboard-wr.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-chart-pie"></i> WR Dashboard Fiscal</a>
                 <a href="https://fiery-smart-ledger-sync.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-scale-balanced"></i> ConciliaAI</a>
                 <a href="https://wr-payroll-flow.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-coins"></i> WR Custos</a>
                 <a href="https://conferencia-fiscal.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-invoice"></i> Conferência Fiscal</a>
