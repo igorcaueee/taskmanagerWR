@@ -72,7 +72,7 @@ class CteIntegracaoRsService
 
         $nsuAtual = $nsuInicio ?? (int) $cliente->ultimo_nsu_cte_rs;
 
-        Log::debug('[CT-e RS] sincronizarChunk: iniciando', [
+        Log::info('[CT-e RS] sincronizarChunk: iniciando', [
             'cliente_id'  => $cliente->id,
             'cnpj'        => $cnpj,
             'tpAmb'       => $tpAmb,
@@ -91,7 +91,7 @@ class CteIntegracaoRsService
             while ($lotes < self::MAX_LOTES_POR_CHUNK) {
                 $resp = $this->consultarNsu($endpoint, $tpAmb, $cnpj, $nsuAtual, $pemCert, $pemKey);
 
-                Log::debug('[CT-e RS] sincronizarChunk: lote recebido', [
+                Log::info('[CT-e RS] sincronizarChunk: lote recebido', [
                     'lote'      => $lotes,
                     'nsu_usado' => $nsuAtual,
                     'cStat'     => $resp['cStat'],
@@ -176,7 +176,7 @@ class CteIntegracaoRsService
             }
         }
 
-        Log::debug('[CT-e RS] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
+        Log::info('[CT-e RS] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
         return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
     }
@@ -220,7 +220,7 @@ XML;
 
     private function requisicaoSoap(string $endpoint, string $envelope, string $pemCert, string $pemKey): string
     {
-        Log::debug('[CT-e RS] requisicaoSoap: enviando', ['url' => $endpoint]);
+        Log::info('[CT-e RS] requisicaoSoap: enviando', ['url' => $endpoint]);
 
         // Mesma exigência do webservice de NF-e RS: sem espaço/quebra de linha entre tags.
         $envelope = trim(preg_replace('/>\s+</', '><', $envelope));
@@ -250,7 +250,7 @@ XML;
         $curlErrNo = curl_errno($ch);
         unset($ch);
 
-        Log::debug('[CT-e RS] requisicaoSoap: resposta recebida', [
+        Log::info('[CT-e RS] requisicaoSoap: resposta recebida', [
             'httpCode'   => $httpCode,
             'curlErrNo'  => $curlErrNo,
             'curlError'  => $curlError ?: null,
