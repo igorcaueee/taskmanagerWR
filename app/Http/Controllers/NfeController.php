@@ -145,6 +145,38 @@ class NfeController extends Controller
     }
 
     /**
+     * Busca um único CT-e pela chave de acesso (via CTeIntegracao/SEFAZ-RS) e
+     * salva no cofre — cobre o caso de um documento não vir na sincronização
+     * sequencial por NSU mesmo estando dentro do período (ver
+     * CteIntegracaoRsService::buscarPorChave).
+     */
+    public function buscarCtePorChave(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id'   => 'required|exists:clientes,id',
+            'chave_acesso' => 'required|string',
+        ]);
+
+        $cert = CertificadoContabilidade::first();
+
+        if (! $cert) {
+            return response()->json(['error' => 'Certificado da contabilidade não configurado. Cadastre-o antes de buscar.'], 422);
+        }
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resultado = $this->cteRs->buscarPorChave($cert, $cliente, $validated['chave_acesso']);
+
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            Log::error('[CT-e RS] buscarCtePorChave: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Lê os documentos já sincronizados (tabela `documentos_fiscais`) para o
      * período informado — não consulta a Sefaz (ver sincronizarChunk).
      */

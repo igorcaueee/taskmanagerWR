@@ -181,6 +181,104 @@ class CteIntegracaoRsService
         return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
     }
 
+    /**
+     * Busca um único CT-e diretamente pela chave de acesso (consulta `solDFe`,
+     * em vez de `solRel` por NSU) e salva em `documentos_fiscais` se encontrado.
+     *
+     * Existe pra cobrir o caso — raro, mas real — de um NSU específico não
+     * aparecer na sincronização sequencial por faixa de NSU mesmo estando
+     * dentro do período já coberto (a própria SVRS reconhece que a recepção
+     * não é estritamente sequencial). Quando isso acontece, o documento ainda
+     * é recuperável direto pela chave, então esse é o caminho manual pra
+     * preencher esses buracos pontuais sem precisar resetar o cofre inteiro.
+     *
+     * Retorna ['sucesso' => bool, 'mensagem' => string].
+     */
+    public function buscarPorChave(CertificadoContabilidade $certificado, Cliente $cliente, string $chaveAcesso): array
+    {
+        $chaveAcesso = preg_replace('/\D/', '', $chaveAcesso);
+
+        if (strlen($chaveAcesso) !== 44) {
+            return ['sucesso' => false, 'mensagem' => 'Chave de acesso inválida — precisa ter 44 dígitos.'];
+        }
+
+        $certPath = storage_path('app/' . $certificado->arquivo);
+        $cnpj     = preg_replace('/[.\-\/\s]/', '', $cliente->cpfcnpj ?? '');
+        $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
+        $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
+
+        [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
+
+        try {
+            $resp = $this->consultarPorChave($endpoint, $tpAmb, $cnpj, $chaveAcesso, $pemCert, $pemKey);
+
+            Log::info('[CT-e RS] buscarPorChave', [
+                'cliente_id' => $cliente->id,
+                'chave'      => $chaveAcesso,
+                'cStat'      => $resp['cStat'],
+                'xMotivo'    => $resp['xMotivo'],
+                'qtd_docs'   => count($resp['docs']),
+            ]);
+
+            if ($resp['cStat'] !== '118') {
+                return ['sucesso' => false, 'mensagem' => "Sefaz-RS retornou: {$resp['xMotivo']} (cStat {$resp['cStat']})"];
+            }
+
+            $ctesSalvos = 0;
+
+            foreach ($resp['docs'] as $doc) {
+                if ($doc['tipo'] === 'evento') {
+                    $this->processarEvento($doc['xmlContent'] ?? '');
+                    continue;
+                }
+
+                $this->persistir($cliente->id, $doc);
+                $ctesSalvos++;
+            }
+
+            if ($ctesSalvos === 0) {
+                return ['sucesso' => false, 'mensagem' => 'A Sefaz encontrou a chave, mas só retornou eventos (ex.: cancelamento), não o CT-e em si.'];
+            }
+
+            return ['sucesso' => true, 'mensagem' => 'CT-e encontrado e salvo no cofre com sucesso.'];
+        } finally {
+            foreach ($tempFiles as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
+    private function consultarPorChave(string $endpoint, int $tpAmb, string $cnpj, string $chaveAcesso, string $pemCert, string $pemKey): array
+    {
+        $mod = self::MOD_CTE;
+
+        $envelope = <<<XML
+<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
+      <xml>
+        <distCTeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
+          <tpAmb>{$tpAmb}</tpAmb>
+          <verAplic>TaskManagerWR</verAplic>
+          <cUF>43</cUF>
+          <CNPJ>{$cnpj}</CNPJ>
+          <mod>{$mod}</mod>
+          <solDFe>
+            <chAcesso>{$chaveAcesso}</chAcesso>
+          </solDFe>
+        </distCTeRS>
+      </xml>
+    </cteIntegracaoContab>
+  </soap12:Body>
+</soap12:Envelope>
+XML;
+
+        $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
+
+        return $this->parseRetDistCTeRS($resposta, $cnpj);
+    }
+
     private function consultarNsu(string $endpoint, int $tpAmb, string $cnpj, int $ultNSU, string $pemCert, string $pemKey): array
     {
         $cUF = self::CUF_RS;

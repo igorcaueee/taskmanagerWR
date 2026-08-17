@@ -163,6 +163,25 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <span id="btnBuscarLabel">Buscar NF-e / NFC-e / CT-e</span>
                 </button>
+
+                {{-- CT-e às vezes fica fora da sincronização sequencial por NSU mesmo dentro
+                     do período (reconhecido pela própria SVRS) — esse campo busca um CT-e
+                     específico direto pela chave de acesso, sem depender da faixa de NSU. --}}
+                <div id="areaBuscarCtePorChave" class="hidden mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
+                    <button type="button" id="btnToggleBuscarChave"
+                            class="text-xs text-gray-500 dark:text-slate-400 hover:text-[#0084aa] flex items-center gap-1">
+                        <i class="fa-solid fa-chevron-right text-[10px]" id="iconToggleBuscarChave"></i>
+                        Nota de CT-e não apareceu na busca? Buscar por chave específica
+                    </button>
+                    <div id="formBuscarChave" class="hidden mt-2 flex gap-2">
+                        <input type="text" id="inputChaveCte" maxlength="44" placeholder="Chave de acesso (44 dígitos)"
+                               class="flex-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0084aa]">
+                        <button type="button" id="btnBuscarChave"
+                                class="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap">
+                            Buscar e salvar
+                        </button>
+                    </div>
+                </div>
             </div>
 
     </div>
@@ -327,6 +346,60 @@
     const dataInicio = document.getElementById('dataInicio');
     const dataFim    = document.getElementById('dataFim');
     const btnBuscar  = document.getElementById('btnBuscar');
+
+    // ─── Buscar CT-e por chave específica (SEFAZ-RS) ───────────────────────────
+    const areaBuscarCtePorChave = document.getElementById('areaBuscarCtePorChave');
+    const btnToggleBuscarChave  = document.getElementById('btnToggleBuscarChave');
+    const iconToggleBuscarChave = document.getElementById('iconToggleBuscarChave');
+    const formBuscarChave       = document.getElementById('formBuscarChave');
+    const inputChaveCte         = document.getElementById('inputChaveCte');
+    const btnBuscarChave        = document.getElementById('btnBuscarChave');
+
+    btnToggleBuscarChave.addEventListener('click', function () {
+        formBuscarChave.classList.toggle('hidden');
+        iconToggleBuscarChave.classList.toggle('fa-chevron-right');
+        iconToggleBuscarChave.classList.toggle('fa-chevron-down');
+    });
+
+    btnBuscarChave.addEventListener('click', async function () {
+        const clienteId = selectCliente.value;
+        const chave = soDigitos(inputChaveCte.value);
+
+        if (!clienteId) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione uma empresa primeiro.' });
+            return;
+        }
+        if (chave.length !== 44) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'A chave de acesso precisa ter 44 dígitos.' });
+            return;
+        }
+
+        this.disabled = true;
+        const labelOrig = this.textContent;
+        this.textContent = 'Buscando...';
+
+        try {
+            const resp = await fetch('/nfe/rs/cte/buscar-por-chave', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                body: JSON.stringify({ cliente_id: clienteId, chave_acesso: chave }),
+            });
+            const data = await resp.json().catch(() => ({}));
+
+            if (!resp.ok || !data.sucesso) {
+                Swal.fire({ icon: 'error', title: 'Não encontrado', text: data.mensagem ?? data.error ?? 'Falha ao buscar o CT-e.' });
+                return;
+            }
+
+            Swal.fire({ icon: 'success', title: 'Encontrado!', text: data.mensagem + ' Clique em "Buscar" pra atualizar a lista.' });
+            inputChaveCte.value = '';
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            this.disabled = false;
+            this.textContent = labelOrig;
+        }
+    });
 
     // ─── Busca via contabilidade (SEFAZ-RS) ────────────────────────────────────
     const checkModoRs     = document.getElementById('checkModoRs');
@@ -603,6 +676,7 @@
         clienteCnpjEl.classList.remove('hidden');
 
         cardFiltro.classList.remove('hidden');
+        atualizarVisibilidadeBuscarChave();
 
         if (checkModoRs.checked) {
             certStatus.classList.add('hidden'); // status do certificado é o da contabilidade, já exibido acima
@@ -612,8 +686,15 @@
         await carregarStatusCertificado(clienteId);
     });
 
+    // "Buscar CT-e por chave" só faz sentido no modo contabilidade (SEFAZ-RS) —
+    // é o CTeIntegracao que suporta consulta por chave específica.
+    function atualizarVisibilidadeBuscarChave() {
+        areaBuscarCtePorChave.classList.toggle('hidden', !checkModoRs.checked);
+    }
+
     checkModoRs.addEventListener('change', function () {
         certStatus.classList.add('hidden');
+        atualizarVisibilidadeBuscarChave();
         if (selectCliente.value && !this.checked) {
             carregarStatusCertificado(selectCliente.value);
         }
