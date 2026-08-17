@@ -448,7 +448,11 @@ XML;
             'emitenteNome' => $this->utf8Safe($emitenteNome),
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
             'valor'        => $valor,
-            'situacao'     => $get('cSitCTe'),
+            // cSitCTe só existe em resumos de lote (distribuição por NSU) — uma consulta
+            // direta por chave (solDFe) traz o CT-e completo, sem essa tag, então fica
+            // vazio; normaliza pra null aqui (não string vazia) pra não gravar lixo em
+            // `situacao` e deixar o fallback do persistir() ('cancelada' preservado) funcionar.
+            'situacao'     => $get('cSitCTe') ?: null,
             'papelCte'     => $this->identificarPapelCte($obj, $cnpjCliente),
             'xmlContent'   => $xml,
         ];

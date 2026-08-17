@@ -344,7 +344,10 @@ XML;
             'emitenteNome' => $this->utf8Safe($emitenteNome),
             'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
             'valor'        => $valor,
-            'situacao'     => $get('cSitCTe'),
+            // cSitCTe só existe em resumos de lote — se algum dia esse service ganhar uma
+            // consulta direta por chave (só a RS tem hoje), o CT-e completo não teria essa
+            // tag; normaliza pra null (não string vazia) por segurança.
+            'situacao'     => $get('cSitCTe') ?: null,
             'papelCte'     => $this->identificarPapelCte($obj, $cnpjCliente),
             'xmlContent'   => $xml,
         ];
