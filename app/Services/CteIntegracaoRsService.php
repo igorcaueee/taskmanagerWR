@@ -19,27 +19,26 @@ use Illuminate\Support\Facades\Log;
  * Análogo ao NfeIntegracaoRsService, mas para CT-e (modelo 57): a requisição
  * tem indEmit/indToma (não indDest) e o campo obrigatório mod=57.
  *
- * Confirmado no XSD oficial (distCTeRS_v1.00.xsd): apesar do nome do arquivo e
- * da tabela do Boletim Técnico chamarem o elemento raiz de "distCTeRS", o XSD
- * declara `<xs:element name="distNFeRS" type="TDistCTeRS">` — a SEFAZ-RS
- * reaproveitou o schema do NF-e e esqueceu de renomear o elemento. É
- * `distNFeRS` (não `distCTeRS`) que precisa ir no XML, senão a Sefaz rejeita
- * com cStat 243 "XML Mal Formado".
+ * Elemento raiz é `distCTeRS` (não `distNFeRS`) — apesar do XSD publicado no
+ * portal da SVRS (distCTeRS_v1.00.xsd) declarar `<xs:element name="distNFeRS"
+ * type="TDistCTeRS">` (reaproveitando o nome do NF-e), a implementação real
+ * do servidor diverge do XSD documentado e exige o nome do arquivo mesmo
+ * (`distCTeRS`). Confirmado por escrito pelo suporte técnico da SVRS (NAVI —
+ * Núcleo de Atendimento Virtual, chamado PFV-763139-D7J8Q, 08/2026): "o
+ * WebService utilizado é de distribuição de CT-e, porém está sendo enviado
+ * com tag raiz de NF-e". Enviar `distNFeRS` gerava cStat 239 "Cabecalho -
+ * Versao do arquivo XML nao suportada" indefinidamente, independente de
+ * qualquer outro ajuste (versao, mod, cabeçalho SOAP etc.) — o XSD publicado
+ * pela SVRS para esse serviço específico está incorreto/desatualizado.
  *
  * Nome do parâmetro do SOAP body confirmado via WSDL real (baixado com o
  * certificado da contabilidade através de `php artisan cte:buscar-wsdl`):
  * diferente do NF-e RS (wrapper `nfeDadosMsgDownload`), o CTeIntegracao usa
  * apenas `<xml>` como elemento — não existe um `cteDadosMsgDownload`.
  *
- * O atributo `versao` do `distNFeRS` é "1.00" — confirmado no XSD real
+ * O atributo `versao` do `distCTeRS` é "1.00" — confirmado no XSD real
  * (dfe-portal.svrs.rs.gov.br/Schemas/PRCTE/leiauteDistCTeRS_v1.00.xsd), cujo
  * tipo TVerDFe restringe o valor ao padrão fixo "1\.00" (sem outra opção).
- * Tentativas de usar "4.00"/"2.00" (numa suposição equivocada de que a versão
- * do LAYOUT DE EMISSÃO do CT-e, essa sim atualizada para 4.00 desde 01/02/2024
- * por um sistema totalmente diferente, também se aplicaria a este wrapper de
- * distribuição para contabilistas) geram cStat 239 "Cabecalho - Versao do
- * arquivo XML nao suportada" — só passam da validação estrutural (243, quando
- * elemento/wrapper estava errado) para cair nessa checagem de versão inválida.
  */
 class CteIntegracaoRsService
 {
@@ -101,17 +100,40 @@ class CteIntegracaoRsService
                     'qtd_docs'  => count($resp['docs']),
                 ]);
 
-                // 678 = consumo indevido; 8005 = fora do prazo de download (janela de ~3 meses).
-                if (in_array($resp['cStat'], ['678', '8005'], true)) {
+                // 678 = consumo indevido — não dá pra tentar de novo na mesma chamada (é bloqueio
+                // temporário), então calibra o NSU se vier e para.
+                if ($resp['cStat'] === '678') {
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
                         $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
                     }
 
-                    $aviso = $resp['cStat'] === '678'
-                        ? 'A Sefaz-RS rejeitou a sincronização de CT-e por "consumo indevido" — aguarde e tente '
-                            . 'novamente mais tarde. Mostrando os documentos já sincronizados anteriormente.'
-                        : 'Não há mais CT-e dentro do prazo de download. Mostrando os documentos já sincronizados.';
+                    $aviso = 'A Sefaz-RS rejeitou a sincronização de CT-e por "consumo indevido" — aguarde e tente '
+                        . 'novamente mais tarde. Mostrando os documentos já sincronizados anteriormente.';
+                    $concluido = true;
+                    break;
+                }
+
+                // 8005 = fora do prazo de download (janela de retenção) — diferente do 678, aqui não
+                // é bloqueio temporário: a resposta não traz <ultNSU>, só o NSU mínimo válido embutido
+                // no texto do xMotivo (ex.: "...CT-e nao disponivel[NSUMin: 5040911654]"). Extrai esse
+                // valor e tenta de novo na mesma chamada a partir dele, em vez de desistir.
+                if ($resp['cStat'] === '8005') {
+                    if (!empty($resp['ultNSU'])) {
+                        $nsuAtual = (int) $resp['ultNSU'];
+                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                        $lotes++;
+                        continue;
+                    }
+
+                    if (preg_match('/NSUMin:\s*(\d+)/i', (string) $resp['xMotivo'], $m)) {
+                        $nsuAtual = (int) $m[1];
+                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                        $lotes++;
+                        continue;
+                    }
+
+                    $aviso = 'Não há mais CT-e dentro do prazo de download. Mostrando os documentos já sincronizados.';
                     $concluido = true;
                     break;
                 }
@@ -172,7 +194,7 @@ class CteIntegracaoRsService
   <soap12:Body>
     <cteIntegracaoContab xmlns="http://www.portalfiscal.inf.br/cte/wsdl/CTeIntegracao">
       <xml>
-        <distNFeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
+        <distCTeRS xmlns="http://www.portalfiscal.inf.br/cte" versao="1.00">
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
@@ -184,7 +206,7 @@ class CteIntegracaoRsService
             <indToma>3</indToma>
             <ultNSU>{$ultNSU}</ultNSU>
           </solRel>
-        </distNFeRS>
+        </distCTeRS>
       </xml>
     </cteIntegracaoContab>
   </soap12:Body>
