@@ -136,6 +136,10 @@
                        maxlength="{{ $isPJ ? 18 : 14 }}"
                        required
                        value="{{ old('cpfcnpj', $isEditing ? $cliente->cpfcnpj : ($prefill['cpfcnpj'] ?? '')) }}">
+                <p id="aviso-cpfcnpj-duplicado" class="hidden mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    Já existe um cliente cadastrado com este documento: <a href="#" id="link-cliente-duplicado" class="underline font-medium"></a>
+                </p>
             </div>
         </div>
 
@@ -559,6 +563,44 @@
         }
         if (charsBeforeCursor === 0) { newPos = 0; }
         this.setSelectionRange(newPos, newPos);
+    });
+
+    // Verifica se já existe cliente cadastrado com o mesmo CPF/CNPJ
+    const avisoDuplicado = document.getElementById('aviso-cpfcnpj-duplicado');
+    const linkClienteDuplicado = document.getElementById('link-cliente-duplicado');
+    const excluirId = {{ $isEditing ? $cliente->id : 'null' }};
+    let timerVerificacao = null;
+
+    function esconderAvisoDuplicado() {
+        avisoDuplicado.classList.add('hidden');
+    }
+
+    inputCpfCnpj.addEventListener('input', function () {
+        esconderAvisoDuplicado();
+        clearTimeout(timerVerificacao);
+
+        const documento = this.value.replace(/[^A-Z0-9]/gi, '');
+        if (documento.length < 11) { return; }
+
+        timerVerificacao = setTimeout(function () {
+            const params = new URLSearchParams({ cpfcnpj: documento });
+            if (excluirId) { params.set('excluir_id', excluirId); }
+
+            fetch('{{ route('clientes.verificar-documento') }}?' + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then(r => r.json())
+                .then(function (data) {
+                    if (data.existe && data.cliente) {
+                        linkClienteDuplicado.textContent = data.cliente.nome;
+                        linkClienteDuplicado.href = data.cliente.url;
+                        avisoDuplicado.classList.remove('hidden');
+                    } else {
+                        esconderAvisoDuplicado();
+                    }
+                })
+                .catch(function () {});
+        }, 400);
     });
 
     // Initialize on load

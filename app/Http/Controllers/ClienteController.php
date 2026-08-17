@@ -31,6 +31,34 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ClienteController extends Controller
 {
+    /**
+     * Expressão SQL que remove pontuação (. - /) do CPF/CNPJ armazenado,
+     * permitindo buscar digitando só os números.
+     */
+    private function cpfCnpjNormalizadoSql(): string
+    {
+        return "REPLACE(REPLACE(REPLACE(cpfcnpj, '.', ''), '-', ''), '/', '')";
+    }
+
+    private function aplicarFiltroBusca($query, string $busca): void
+    {
+        $like = '%'.$busca.'%';
+        $documento = preg_replace('/[^A-Za-z0-9]/', '', $busca);
+        $normalizadoSql = $this->cpfCnpjNormalizadoSql();
+
+        $query->where(function ($q) use ($like, $documento, $normalizadoSql) {
+            $q->where('nome', 'like', $like)
+                ->orWhere('cpfcnpj', 'like', $like)
+                ->orWhere('cidade', 'like', $like)
+                ->orWhere('estado', 'like', $like)
+                ->orWhere('regime_tributario', 'like', $like);
+
+            if ($documento !== '') {
+                $q->orWhereRaw("{$normalizadoSql} LIKE ?", ['%'.$documento.'%']);
+            }
+        });
+    }
+
     public function busca(Request $request): JsonResponse
     {
         $busca = $request->string('q')->trim();
@@ -40,10 +68,16 @@ class ClienteController extends Controller
         }
 
         $like = '%'.$busca.'%';
+        $documento = preg_replace('/[^A-Za-z0-9]/', '', (string) $busca);
+        $normalizadoSql = $this->cpfCnpjNormalizadoSql();
 
-        $clientes = Cliente::where(function ($q) use ($like) {
+        $clientes = Cliente::where(function ($q) use ($like, $documento, $normalizadoSql) {
             $q->where('nome', 'like', $like)
                 ->orWhere('cpfcnpj', 'like', $like);
+
+            if ($documento !== '') {
+                $q->orWhereRaw("{$normalizadoSql} LIKE ?", ['%'.$documento.'%']);
+            }
         })
             ->orderBy('nome')
             ->limit(8)
@@ -59,19 +93,41 @@ class ClienteController extends Controller
         ]));
     }
 
+    public function verificarDocumento(Request $request): JsonResponse
+    {
+        $documento = preg_replace('/[^A-Za-z0-9]/', '', (string) $request->string('cpfcnpj'));
+
+        if ($documento === '') {
+            return response()->json(['existe' => false]);
+        }
+
+        $normalizadoSql = $this->cpfCnpjNormalizadoSql();
+
+        $query = Cliente::whereRaw("{$normalizadoSql} = ?", [$documento]);
+
+        if ($request->filled('excluir_id')) {
+            $query->where('id', '!=', $request->integer('excluir_id'));
+        }
+
+        $cliente = $query->first(['id', 'nome', 'status']);
+
+        return response()->json([
+            'existe' => (bool) $cliente,
+            'cliente' => $cliente ? [
+                'id' => $cliente->id,
+                'nome' => $cliente->nome,
+                'status' => $cliente->status,
+                'url' => route('clientes.show', $cliente->id),
+            ] : null,
+        ]);
+    }
+
     public function showClientes(Request $request): View
     {
         $query = Cliente::orderBy('nome');
 
         if ($request->filled('busca')) {
-            $busca = '%'.$request->string('busca').'%';
-            $query->where(function ($q) use ($busca) {
-                $q->where('nome', 'like', $busca)
-                    ->orWhere('cpfcnpj', 'like', $busca)
-                    ->orWhere('cidade', 'like', $busca)
-                    ->orWhere('estado', 'like', $busca)
-                    ->orWhere('regime_tributario', 'like', $busca);
-            });
+            $this->aplicarFiltroBusca($query, $request->string('busca')->trim()->toString());
         }
 
         if ($request->filled('tipo')) {
@@ -497,14 +553,7 @@ class ClienteController extends Controller
         $query = Cliente::orderBy('nome');
 
         if ($request->filled('busca')) {
-            $busca = '%'.$request->string('busca').'%';
-            $query->where(function ($q) use ($busca) {
-                $q->where('nome', 'like', $busca)
-                    ->orWhere('cpfcnpj', 'like', $busca)
-                    ->orWhere('cidade', 'like', $busca)
-                    ->orWhere('estado', 'like', $busca)
-                    ->orWhere('regime_tributario', 'like', $busca);
-            });
+            $this->aplicarFiltroBusca($query, $request->string('busca')->trim()->toString());
         }
 
         if ($request->filled('tipo')) {

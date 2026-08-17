@@ -140,6 +140,7 @@ Route::post('/leads/{id}/delegar-tarefa', [FunilController::class, 'delegarTaref
 Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clientes')->middleware('auth');
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');
 Route::get('/clientes/busca', [ClienteController::class, 'busca'])->name('clientes.busca')->middleware('auth');
+Route::get('/clientes/verificar-documento', [ClienteController::class, 'verificarDocumento'])->name('clientes.verificar-documento')->middleware('auth');
 Route::get('/clientes/{id}/detalhe', [ClienteController::class, 'showCliente'])->name('clientes.show')->middleware('auth');
 Route::get('/clientes/import/form', [ClienteController::class, 'formImportClientes'])->name('clientes.import.form')->middleware('auth');
 Route::get('/clientes/import/template', [ClienteController::class, 'templateClientes'])->name('clientes.import.template')->middleware('auth');
