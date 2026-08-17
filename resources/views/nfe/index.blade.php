@@ -237,7 +237,13 @@
                             Selecionar todas
                         </label>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <input type="text" id="filtroBusca" placeholder="Buscar número, emitente ou chave..."
+                               class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa] w-48">
+                        <input type="date" id="filtroDataInicio" title="Data emissão — de"
+                               class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
+                        <input type="date" id="filtroDataFim" title="Data emissão — até"
+                               class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
                         <select id="filtroDirecao"
                                 class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
                             <option value="">Entradas e saídas</option>
@@ -502,9 +508,12 @@
     const btnDownloadZip = document.getElementById('btnDownloadZip');
     const btnExportarRelatorio = document.getElementById('btnExportarRelatorio');
     const btnExportarRelatorioLabel = document.getElementById('btnExportarRelatorioLabel');
-    const filtroTipo     = document.getElementById('filtroTipo');
-    const filtroDirecao  = document.getElementById('filtroDirecao');
-    const filtroSituacao = document.getElementById('filtroSituacao');
+    const filtroTipo       = document.getElementById('filtroTipo');
+    const filtroDirecao    = document.getElementById('filtroDirecao');
+    const filtroSituacao   = document.getElementById('filtroSituacao');
+    const filtroBusca      = document.getElementById('filtroBusca');
+    const filtroDataInicio = document.getElementById('filtroDataInicio');
+    const filtroDataFim    = document.getElementById('filtroDataFim');
 
     let docsAtuais   = [];
     let clienteCnpj  = ''; // CNPJ (só dígitos) da empresa selecionada, usado para classificar entrada/saída
@@ -561,6 +570,23 @@
             docs = docs.filter(d => d.situacao !== 'cancelada');
         }
 
+        // Refina dentro do período já buscado — não dispara nova consulta à Sefaz.
+        if (filtroDataInicio.value) {
+            docs = docs.filter(d => d.dataEmissao && d.dataEmissao.slice(0, 10) >= filtroDataInicio.value);
+        }
+        if (filtroDataFim.value) {
+            docs = docs.filter(d => d.dataEmissao && d.dataEmissao.slice(0, 10) <= filtroDataFim.value);
+        }
+
+        const termoBusca = filtroBusca.value.trim().toLowerCase();
+        if (termoBusca) {
+            docs = docs.filter(d =>
+                String(d.numero ?? '').toLowerCase().includes(termoBusca)
+                || String(d.emitenteNome ?? '').toLowerCase().includes(termoBusca)
+                || String(d.chaveAcesso ?? '').toLowerCase().includes(termoBusca)
+            );
+        }
+
         return docs;
     }
 
@@ -597,6 +623,9 @@
     filtroTipo.addEventListener('change', limparSelecaoAoFiltrar);
     filtroTipo.addEventListener('change', atualizarBotaoExportarRelatorio);
     filtroSituacao.addEventListener('change', limparSelecaoAoFiltrar);
+    filtroDataInicio.addEventListener('change', limparSelecaoAoFiltrar);
+    filtroDataFim.addEventListener('change', limparSelecaoAoFiltrar);
+    filtroBusca.addEventListener('input', limparSelecaoAoFiltrar);
 
     // ─── Exportar relatório fiscal (Excel) — segue o filtro "Tipo" da toolbar ─
     // '' (Todos os tipos) inclui CT-e na tabela, mas o relatório fiscal só existe
@@ -946,6 +975,9 @@
             filtroTipo.value = '';
             filtroDirecao.value = '';
             filtroSituacao.value = '';
+            filtroBusca.value = '';
+            filtroDataInicio.value = '';
+            filtroDataFim.value = '';
             paginaAtual = 1;
             estadoResultados.classList.remove('hidden');
             atualizarBotaoExportarRelatorio();
