@@ -186,10 +186,9 @@ class NfeController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'page' => 'sometimes|integer|min:1',
+            'cursor_data' => 'sometimes|date_format:Y-m-d',
+            'cursor_id' => 'sometimes|integer|min:1',
         ]);
-
-        $page = (int) ($validated['page'] ?? 1);
 
         try {
             $resultado = DocumentoFiscal::doPeriodo(
@@ -198,21 +197,19 @@ class NfeController extends Controller
                 $validated['data_inicio'],
                 $validated['data_fim'],
                 ['nacional'],
-                $page,
+                $validated['cursor_data'] ?? null,
+                isset($validated['cursor_id']) ? (int) $validated['cursor_id'] : null,
                 self::DOCUMENTOS_POR_PAGINA
             );
 
-            $totalPaginas = max(1, (int) ceil($resultado['total'] / self::DOCUMENTOS_POR_PAGINA));
-
-            Log::debug('[NF-e] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
+            Log::debug('[NF-e] buscar: página carregada', ['cursor' => $validated['cursor_id'] ?? null, 'concluido' => $resultado['concluido'], 'total' => $resultado['total']]);
 
             $payload = [
                 'success' => true,
                 'total' => $resultado['total'],
                 'documentos' => $resultado['documentos'],
-                'pagina' => $page,
-                'total_paginas' => $totalPaginas,
-                'concluido' => $page >= $totalPaginas,
+                'proximo_cursor' => $resultado['proximoCursor'],
+                'concluido' => $resultado['concluido'],
             ];
             $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -425,10 +422,9 @@ class NfeController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'page' => 'sometimes|integer|min:1',
+            'cursor_data' => 'sometimes|date_format:Y-m-d',
+            'cursor_id' => 'sometimes|integer|min:1',
         ]);
-
-        $page = (int) ($validated['page'] ?? 1);
 
         try {
             $resultado = DocumentoFiscal::doPeriodo(
@@ -437,22 +433,20 @@ class NfeController extends Controller
                 $validated['data_inicio'],
                 $validated['data_fim'],
                 ['rs'],
-                $page,
+                $validated['cursor_data'] ?? null,
+                isset($validated['cursor_id']) ? (int) $validated['cursor_id'] : null,
                 self::DOCUMENTOS_POR_PAGINA
             );
 
-            $totalPaginas = max(1, (int) ceil($resultado['total'] / self::DOCUMENTOS_POR_PAGINA));
-
-            Log::debug('[NF-e RS] buscar: página carregada', ['page' => $page, 'total_paginas' => $totalPaginas, 'total' => $resultado['total']]);
+            Log::debug('[NF-e RS] buscar: página carregada', ['cursor' => $validated['cursor_id'] ?? null, 'concluido' => $resultado['concluido'], 'total' => $resultado['total']]);
 
             return new JsonResponse(
                 [
                     'success' => true,
                     'total' => $resultado['total'],
                     'documentos' => $resultado['documentos'],
-                    'pagina' => $page,
-                    'total_paginas' => $totalPaginas,
-                    'concluido' => $page >= $totalPaginas,
+                    'proximo_cursor' => $resultado['proximoCursor'],
+                    'concluido' => $resultado['concluido'],
                 ],
                 200,
                 [],

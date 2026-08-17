@@ -933,30 +933,41 @@
 
             const url = checkModoRs.checked ? '/nfe/rs/buscar' : '/nfe/buscar';
 
-            // A lista é paginada no backend (cada documento carrega o XML inteiro;
-            // trazer um período com milhares de docs de uma vez estoura a memória
-            // do PHP) — busca página a página até "concluido", igual ao padrão de
-            // sincronização em chunks acima.
-            let pagina        = 1;
-            let totalPaginas  = 1;
-            let documentos    = [];
+            // A lista é paginada no backend por cursor/keyset (cada documento carrega
+            // o XML inteiro; trazer um período com milhares de docs de uma vez
+            // estoura a memória do PHP) — busca "página" a "página" até "concluido",
+            // igual ao padrão de sincronização em chunks acima. Cursor em vez de
+            // número de página: com OFFSET, o cron de sincronização automática
+            // rodando em paralelo pode inserir/atualizar um documento entre duas
+            // chamadas e deslocar o offset, fazendo um documento existente nunca
+            // aparecer na busca (confirmado em produção com clientes grandes).
+            let cursor      = null;
+            let concluido   = false;
+            let documentos  = [];
+            let numChamada  = 1;
 
             do {
-                document.getElementById('loadingTempo').textContent = totalPaginas > 1
-                    ? `Carregando resultados... (página ${pagina} de ${totalPaginas})`
+                document.getElementById('loadingTempo').textContent = numChamada > 1
+                    ? `Carregando resultados... (parte ${numChamada})`
                     : 'Carregando resultados...';
 
-                const data = await chamarChunk(url, {
+                const body = {
                     cliente_id:  clienteId,
                     data_inicio: dataInicio.value,
                     data_fim:    dataFim.value,
-                    page:        pagina,
-                });
+                };
+                if (cursor) {
+                    body.cursor_data = cursor.data;
+                    body.cursor_id   = cursor.id;
+                }
 
-                documentos   = documentos.concat(data.documentos ?? []);
-                totalPaginas = data.total_paginas ?? 1;
-                pagina++;
-            } while (pagina <= totalPaginas);
+                const data = await chamarChunk(url, body);
+
+                documentos = documentos.concat(data.documentos ?? []);
+                cursor     = data.proximo_cursor ?? null;
+                concluido  = data.concluido ?? true;
+                numChamada++;
+            } while (!concluido && cursor);
 
             esconderTodosEstados();
 

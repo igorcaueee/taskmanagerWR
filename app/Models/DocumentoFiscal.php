@@ -131,11 +131,22 @@ class DocumentoFiscal extends Model
 
     /**
      * Busca os documentos já sincronizados de um cliente num período, no
-     * formato de array que a tela de NF-e já espera. Paginado — cada
-     * documento carrega o xml_content inteiro, então trazer tudo de uma vez
-     * num período grande (milhares de docs) estoura o memory_limit do PHP.
+     * formato de array que a tela de NF-e já espera. Paginado por cursor
+     * (keyset) — cada documento carrega o xml_content inteiro, então trazer
+     * tudo de uma vez num período grande (milhares de docs) estoura o
+     * memory_limit do PHP.
+     *
+     * Usa cursor (data_efetiva, id) em vez de OFFSET (forPage): com OFFSET,
+     * o cron de sincronização automática rodando em paralelo pode inserir/
+     * atualizar um documento entre duas chamadas de página e deslocar o
+     * offset das páginas seguintes, fazendo um documento "cair no buraco"
+     * entre duas páginas e nunca mais ser exibido. Isso foi confirmado em
+     * produção (RM Automotive/ALL IN, clientes grandes com 10+ páginas —
+     * documentos recuperados manualmente via buscarPorChave() apareciam no
+     * Cofre Fiscal mas sumiam da busca por período). Cursor não sofre disso:
+     * cada chamada só pede "o que vem depois do último id já visto".
      */
-    public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim, ?array $origens = null, int $page = 1, int $perPage = 500): array
+    public static function doPeriodo(int $clienteId, array $tipos, string $dataInicio, string $dataFim, ?array $origens = null, ?string $cursorData = null, ?int $cursorId = null, int $perPage = 500): array
     {
         // O Sefaz usa datas diferentes pra decidir em que período uma nota entra, dependendo
         // de quem emitiu (confirmado testando os dois casos: bate exato com o extrato da
@@ -154,9 +165,16 @@ class DocumentoFiscal extends Model
 
         $total = (clone $query)->count();
 
-        $documentos = $query->orderByRaw("{$dataEfetiva}", [$clienteCnpj])->orderBy('id')
-            ->forPage($page, $perPage)
-            ->get()
+        if ($cursorData !== null && $cursorId !== null) {
+            $query->whereRaw("({$dataEfetiva}, id) > (?, ?)", [$clienteCnpj, $cursorData, $cursorId]);
+        }
+
+        $registros = $query->selectRaw("documentos_fiscais.*, {$dataEfetiva} as data_efetiva_cursor", [$clienteCnpj])
+            ->orderByRaw("{$dataEfetiva}", [$clienteCnpj])->orderBy('id')
+            ->limit($perPage)
+            ->get();
+
+        $documentos = $registros
             ->map(fn (DocumentoFiscal $doc) => [
                 'nsu' => $doc->nsu,
                 'tipo' => $doc->tipo,
@@ -176,6 +194,13 @@ class DocumentoFiscal extends Model
             ])
             ->all();
 
-        return ['total' => $total, 'documentos' => $documentos];
+        $ultimo = $registros->last();
+
+        return [
+            'total' => $total,
+            'documentos' => $documentos,
+            'proximoCursor' => $ultimo ? ['data' => $ultimo->data_efetiva_cursor, 'id' => $ultimo->id] : null,
+            'concluido' => $registros->count() < $perPage,
+        ];
     }
 }
