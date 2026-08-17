@@ -169,7 +169,7 @@
                      específico direto pela chave de acesso, sem depender da faixa de NSU. --}}
                 <div id="areaBuscarCtePorChave" class="hidden mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
                     <button type="button" id="btnToggleBuscarChave"
-                            class="text-xs text-gray-500 dark:text-slate-400 hover:text-[#0084aa] flex items-center gap-1">
+                            class="bg-transparent border-0 appearance-none p-0 text-xs text-gray-500 dark:text-slate-400 hover:text-[#0084aa] flex items-center gap-1 cursor-pointer">
                         <i class="fa-solid fa-chevron-right text-[10px]" id="iconToggleBuscarChave"></i>
                         Nota de CT-e não apareceu na busca? Buscar por chave específica
                     </button>
