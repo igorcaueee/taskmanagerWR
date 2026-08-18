@@ -115,7 +115,16 @@
 }());
 </script>
 
-            <span class="hidden sm:block text-sm text-gray-600 dark:text-slate-400">{{ auth()->user()?->nome }}</span>
+            <div class="hidden sm:flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-brand shrink-0 flex items-center justify-center overflow-hidden">
+                    @if (auth()->user()?->foto_url)
+                        <img src="{{ auth()->user()->foto_url }}" alt="{{ auth()->user()->nome }}" class="w-full h-full object-cover">
+                    @else
+                        <i class="fa-solid fa-user text-white text-xs"></i>
+                    @endif
+                </div>
+                <span class="text-sm text-gray-600 dark:text-slate-400">{{ auth()->user()?->nome }}</span>
+            </div>
 
             {{-- Chat --}}
             <a href="{{ route('chat.index') }}" title="Chat"
