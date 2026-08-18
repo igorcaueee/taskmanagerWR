@@ -239,6 +239,12 @@ class NfeController extends Controller
      */
     public function exportarRelatorio(Request $request)
     {
+        // Clientes com muitos documentos (ex.: NFC-e de varejo/food service) passam do
+        // memory_limit/max_execution_time padrão só juntando as linhas + gerando o xlsx —
+        // mesmo ajuste já usado em downloadZipXmls/CofreFiscalController::downloadZip.
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
+
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
