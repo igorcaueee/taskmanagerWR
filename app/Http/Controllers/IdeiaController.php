@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ideia;
 use App\Models\Usuario;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,13 @@ use Illuminate\View\View;
 
 class IdeiaController extends Controller
 {
+    public function pendentesCount(): JsonResponse
+    {
+        return response()->json([
+            'pendentes' => Ideia::where('status', 'pendente')->count(),
+        ]);
+    }
+
     public function index(Request $request): View
     {
         $query = Ideia::with('colaborador')->orderByDesc('created_at');

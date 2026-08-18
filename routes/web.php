@@ -356,6 +356,7 @@ Route::post('/q/{slug}/responder', [QuestionarioController::class, 'responder'])
 
 // Ideias & Correções routes
 Route::get('/ideias', [IdeiaController::class, 'index'])->name('ideias.index')->middleware('auth');
+Route::get('/ideias/pendentes-count', [IdeiaController::class, 'pendentesCount'])->name('ideias.pendentes-count')->middleware('auth');
 Route::get('/ideias/form', [IdeiaController::class, 'form'])->name('ideias.form')->middleware('auth');
 Route::get('/ideias/{id}/form', [IdeiaController::class, 'formEdit'])->name('ideias.form.edit')->middleware('auth');
 Route::post('/ideias/save', [IdeiaController::class, 'store'])->name('ideias.store')->middleware('auth');

@@ -133,6 +133,13 @@
                 <span id="chat-badge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center leading-none"></span>
             </a>
 
+            {{-- Ideias & Correções --}}
+            <a href="{{ route('ideias.index') }}" title="Ideias &amp; Correções"
+                class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 relative no-underline">
+                <i class="fa-solid fa-lightbulb text-sm"></i>
+                <span id="ideias-badge" class="hidden absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500"></span>
+            </a>
+
             {{-- Assistente de IA --}}
             <button id="chatbot-toggle" type="button" title="Liri — Assistente de Contabilidade"
                 class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-150 border-0 bg-transparent cursor-pointer">
@@ -629,6 +636,24 @@
     // Polling a cada 1s como reforço/alternativa ao WebSocket — garante
     // toast, som e badge mesmo se o Reverb estiver fora do ar.
     setInterval(carregar, 1000);
+}());
+
+// Bolinha de ideias pendentes
+(function () {
+    const badge = document.getElementById('ideias-badge');
+    if (!badge) { return; }
+
+    function carregar() {
+        fetch('{{ route("ideias.pendentes-count") }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                badge.classList.toggle('hidden', !(data.pendentes > 0));
+            })
+            .catch(function () {});
+    }
+
+    carregar();
+    setInterval(carregar, 30000);
 }());
 
 // Aviso de nova versão do sistema disponível
