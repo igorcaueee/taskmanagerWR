@@ -402,6 +402,12 @@ class CofreFiscalController extends Controller
      */
     public function exportarRelatorio(Request $request)
     {
+        // Clientes com muitos documentos passam do memory_limit/max_execution_time padrão
+        // só juntando as linhas + gerando o xlsx — mesmo ajuste usado em downloadZip e em
+        // NfeController::exportarRelatorio (mesmo padrão, controller diferente).
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
+
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
             'ano' => 'required|integer|digits:4',
