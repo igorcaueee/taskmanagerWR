@@ -469,6 +469,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/buscar', [NfeController::class, 'buscar'])->name('buscar');
     Route::post('/sincronizar-chunk', [NfeController::class, 'sincronizarChunk'])->name('sincronizar-chunk');
     Route::post('/cte-nacional/sincronizar-chunk', [NfeController::class, 'sincronizarChunkCte'])->name('cte-nacional.sincronizar-chunk');
+    Route::post('/buscar-por-chave', [NfeController::class, 'buscarNfePorChaveNacional'])->name('buscar-por-chave');
     Route::post('/xml/zip-xmls', [NfeController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
     Route::post('/xml/zip-pdfs', [NfeController::class, 'downloadZipPdfs'])->name('xml.zip-pdfs');
     Route::get('/danfe', [NfeController::class, 'danfe'])->name('danfe');
@@ -481,6 +482,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/rs/sincronizar-chunk', [NfeController::class, 'sincronizarRsChunk'])->name('rs.sincronizar-chunk');
     Route::get('/rs/sincronizacao/tela', [NfeController::class, 'telaSincronizacaoRs'])->name('rs.sincronizacao.tela');
     Route::post('/rs/cte/buscar-por-chave', [NfeController::class, 'buscarCtePorChave'])->name('rs.cte.buscar-por-chave');
+    Route::post('/rs/buscar-por-chave', [NfeController::class, 'buscarNfePorChave'])->name('rs.buscar-por-chave');
 });
 
 Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(function () {

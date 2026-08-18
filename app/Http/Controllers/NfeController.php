@@ -177,6 +177,66 @@ class NfeController extends Controller
     }
 
     /**
+     * Busca uma única NF-e/NFC-e pela chave de acesso via SEFAZ-RS
+     * (certificado da contabilidade) e salva no cofre — mesmo padrão do
+     * buscarCtePorChave, ver NfeIntegracaoRsService::buscarPorChave.
+     */
+    public function buscarNfePorChave(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id'   => 'required|exists:clientes,id',
+            'chave_acesso' => 'required|string',
+        ]);
+
+        $cert = CertificadoContabilidade::first();
+
+        if (! $cert) {
+            return response()->json(['error' => 'Certificado da contabilidade não configurado. Cadastre-o antes de buscar.'], 422);
+        }
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        try {
+            $resultado = $this->nfeRs->buscarPorChave($cert, $cliente, $validated['chave_acesso']);
+
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            Log::error('[NF-e RS] buscarNfePorChave: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Busca uma única NF-e pela chave de acesso via webservice nacional
+     * (certificado do próprio cliente) — cobre empresas fora do RS, ver
+     * NfeService::buscarPorChave.
+     */
+    public function buscarNfePorChaveNacional(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id'   => 'required|exists:clientes,id',
+            'chave_acesso' => 'required|string',
+        ]);
+
+        $cert = ClienteCertificadoNfse::with('cliente')->where('cliente_id', $validated['cliente_id'])->first();
+
+        if (! $cert) {
+            return response()->json(['error' => 'Certificado digital não configurado para este cliente. Configure-o na tela de NFS-e antes de buscar.'], 422);
+        }
+
+        try {
+            $resultado = $this->nfe->buscarPorChave($cert, $validated['chave_acesso']);
+
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] buscarNfePorChaveNacional: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Lê os documentos já sincronizados (tabela `documentos_fiscais`) para o
      * período informado — não consulta a Sefaz (ver sincronizarChunk).
      */

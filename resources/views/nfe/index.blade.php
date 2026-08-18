@@ -164,14 +164,16 @@
                     <span id="btnBuscarLabel">Buscar NF-e / NFC-e / CT-e</span>
                 </button>
 
-                {{-- CT-e às vezes fica fora da sincronização sequencial por NSU mesmo dentro
-                     do período (reconhecido pela própria SVRS) — esse campo busca um CT-e
-                     específico direto pela chave de acesso, sem depender da faixa de NSU. --}}
+                {{-- Uma nota específica às vezes fica fora da sincronização sequencial por
+                     NSU mesmo dentro do período (falha reconhecida pela própria Sefaz), ou é
+                     antiga demais pra valer a pena resincronizar o histórico inteiro de um
+                     cliente (ex.: migrando de outro provedor) — esse campo busca um único
+                     documento direto pela chave de acesso, sem depender da faixa de NSU. --}}
                 <div id="areaBuscarCtePorChave" class="hidden mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
                     <button type="button" id="btnToggleBuscarChave"
                             class="bg-transparent border-0 appearance-none p-0 text-xs text-gray-500 dark:text-slate-400 hover:text-[#0084aa] flex items-center gap-1 cursor-pointer">
                         <i class="fa-solid fa-chevron-right text-[10px]" id="iconToggleBuscarChave"></i>
-                        Nota de CT-e não apareceu na busca? Buscar por chave específica
+                        Nota não apareceu na busca? Buscar por chave específica
                     </button>
                     <div id="formBuscarChave" class="hidden mt-2 flex gap-2">
                         <input type="text" id="inputChaveCte" maxlength="44" placeholder="Chave de acesso (44 dígitos)"
@@ -385,12 +387,35 @@
             return;
         }
 
+        // Modelo do documento vem embutido na própria chave (posições 21-22, 1-indexed):
+        // 55=NF-e, 65=NFC-e, 57=CT-e — decide qual endpoint chamar sem precisar perguntar.
+        const modelo = chave.substring(20, 22);
+        const ehCte = modelo === '57';
+        const ehNfce = modelo === '65';
+
+        let url;
+        if (ehCte) {
+            if (!checkModoRs.checked) {
+                Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca de CT-e por chave só está disponível com o certificado da contabilidade (marque a opção acima).' });
+                return;
+            }
+            url = '/nfe/rs/cte/buscar-por-chave';
+        } else if (checkModoRs.checked) {
+            url = '/nfe/rs/buscar-por-chave';
+        } else {
+            if (ehNfce) {
+                Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca de NFC-e por chave só está disponível com o certificado da contabilidade (marque a opção acima).' });
+                return;
+            }
+            url = '/nfe/buscar-por-chave';
+        }
+
         this.disabled = true;
         const labelOrig = this.textContent;
         this.textContent = 'Buscando...';
 
         try {
-            const resp = await fetch('/nfe/rs/cte/buscar-por-chave', {
+            const resp = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
                 body: JSON.stringify({ cliente_id: clienteId, chave_acesso: chave }),
@@ -398,7 +423,7 @@
             const data = await resp.json().catch(() => ({}));
 
             if (!resp.ok || !data.sucesso) {
-                Swal.fire({ icon: 'error', title: 'Não encontrado', text: data.mensagem ?? data.error ?? 'Falha ao buscar o CT-e.' });
+                Swal.fire({ icon: 'error', title: 'Não encontrado', text: data.mensagem ?? data.error ?? 'Falha ao buscar o documento.' });
                 return;
             }
 
@@ -721,10 +746,10 @@
         await carregarStatusCertificado(clienteId);
     });
 
-    // "Buscar CT-e por chave" só faz sentido no modo contabilidade (SEFAZ-RS) —
-    // é o CTeIntegracao que suporta consulta por chave específica.
+    // Disponível nos dois modos (RS e nacional) — o próprio clique decide o endpoint
+    // certo a partir do modelo embutido na chave, só precisa de uma empresa selecionada.
     function atualizarVisibilidadeBuscarChave() {
-        areaBuscarCtePorChave.classList.toggle('hidden', !checkModoRs.checked);
+        areaBuscarCtePorChave.classList.toggle('hidden', !selectCliente.value);
     }
 
     checkModoRs.addEventListener('change', function () {

@@ -184,6 +184,71 @@ class NfeService
     }
 
     /**
+     * Busca um único documento diretamente pela chave de acesso (consulta
+     * `consChNFe` do distDFeInt, em vez do feed sequencial por NSU) e salva
+     * no cofre — útil pra recuperar notas antigas pontuais sem resincronizar
+     * o histórico inteiro de um cliente (ex.: migrando de outro provedor tipo
+     * SIEG e só precisando de alguns casos específicos). Sem garantia de
+     * funcionar para documentos muito antigos: a Sefaz pode não manter o
+     * registro indefinidamente fora da janela normal de distribuição — teste
+     * caso a caso.
+     */
+    public function buscarPorChave(ClienteCertificadoNfse $certificado, string $chaveAcesso): array
+    {
+        $chaveAcesso = preg_replace('/\D/', '', $chaveAcesso);
+
+        if (strlen($chaveAcesso) !== 44) {
+            return ['sucesso' => false, 'mensagem' => 'Chave de acesso inválida — precisa ter 44 dígitos.'];
+        }
+
+        $certPath = storage_path('app/' . $certificado->arquivo);
+        $cnpj     = preg_replace('/[.\-\/\s]/', '', $certificado->cliente->cpfcnpj ?? '');
+        $cUFAutor = $this->cUFAutor($certificado);
+        $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
+        $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
+
+        [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
+
+        try {
+            $resp = $this->consultarPorChave($endpoint, $tpAmb, $cUFAutor, $cnpj, $chaveAcesso, $pemCert, $pemKey);
+
+            Log::info('[NF-e] buscarPorChave', [
+                'cliente_id' => $certificado->cliente_id,
+                'chave'      => $chaveAcesso,
+                'cStat'      => $resp['cStat'],
+                'xMotivo'    => $resp['xMotivo'],
+                'qtd_docs'   => count($resp['docs']),
+            ]);
+
+            if ($resp['cStat'] !== '138') {
+                return ['sucesso' => false, 'mensagem' => "Sefaz retornou: {$resp['xMotivo']} (cStat {$resp['cStat']})"];
+            }
+
+            $docsSalvos = 0;
+
+            foreach ($resp['docs'] as $doc) {
+                if ($doc['tipo'] === 'evento') {
+                    $this->processarEvento($doc['xmlContent'] ?? '');
+                    continue;
+                }
+
+                $this->persistir($certificado->cliente_id, 'nacional', $doc);
+                $docsSalvos++;
+            }
+
+            if ($docsSalvos === 0) {
+                return ['sucesso' => false, 'mensagem' => 'A Sefaz encontrou a chave, mas só retornou eventos (ex.: cancelamento), não o documento em si.'];
+            }
+
+            return ['sucesso' => true, 'mensagem' => 'Documento encontrado e salvo no cofre com sucesso.'];
+        } finally {
+            foreach ($tempFiles as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /**
      * Grava ou atualiza um documento normalizado (ver normalizarDocumento) na
      * tabela `documentos_fiscais`, identificado pela chave de acesso.
      *
@@ -358,6 +423,42 @@ XML;
         return $this->parseRetDistDFeInt($resposta);
     }
 
+    /**
+     * Mesmo envelope de consultarNsu, trocando <distNSU> por <consChNFe> —
+     * consulta um único documento pela chave em vez do feed sequencial.
+     */
+    private function consultarPorChave(string $endpoint, int $tpAmb, int $cUFAutor, string $cnpj, string $chaveAcesso, string $pemCert, string $pemKey): array
+    {
+        $versao = self::VERSAO;
+        $envelope = <<<XML
+<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Header>
+    <nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe">
+      <cUF>{$cUFAutor}</cUF>
+      <versaoDados>{$versao}</versaoDados>
+    </nfeCabecMsg>
+  </soap12:Header>
+  <soap12:Body>
+    <nfeDistDFeInteresse xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe">
+      <nfeDadosMsg>
+        <distDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="{$versao}">
+          <tpAmb>{$tpAmb}</tpAmb>
+          <cUFAutor>{$cUFAutor}</cUFAutor>
+          <CNPJ>{$cnpj}</CNPJ>
+          <consChNFe><chNFe>{$chaveAcesso}</chNFe></consChNFe>
+        </distDFeInt>
+      </nfeDadosMsg>
+    </nfeDistDFeInteresse>
+  </soap12:Body>
+</soap12:Envelope>
+XML;
+
+        $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
+
+        return $this->parseRetDistDFeInt($resposta);
+    }
+
     private function requisicaoSoap(string $endpoint, string $envelope, string $pemCert, string $pemKey): string
     {
         Log::debug('[NF-e] requisicaoSoap: enviando', ['url' => $endpoint]);
@@ -495,7 +596,10 @@ XML;
             'emitenteNome'     => $this->utf8Safe($emitenteNome),
             'emitenteDoc'      => $get('CNPJ') ?: $get('CPF'),
             'valor'            => $valor,
-            'situacao'         => $get('cSitDFe'),
+            // cSitDFe só existe em resumos (resNFe/resCTe) — uma consulta direta por chave
+            // (consChNFe) traz o documento completo, sem essa tag; normaliza pra null (não
+            // string vazia) pra não gravar lixo em `situacao`.
+            'situacao'         => $get('cSitDFe') ?: null,
             'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
             'xmlContent'   => $xml,
         ];
