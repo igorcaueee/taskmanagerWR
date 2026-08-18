@@ -17,14 +17,27 @@
                 Para trazer notas novas, use a <a href="{{ route('nfe.index') }}" class="underline text-[#0084aa]">busca de NF-e/CT-e</a>.
             </p>
         </div>
-        @if($nivel === 'documentos')
-        <a href="{{ route('cofre-fiscal.zip', request()->query()) }}"
-           class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors"
-           title="Baixar .zip com os XMLs que batem com os filtros atuais (máx. {{ $maxZip }})">
-            <i class="fa-solid fa-file-zipper"></i>
-            Baixar ZIP (filtro atual)
-        </a>
-        @endif
+        <div class="flex items-center gap-2">
+            @if(in_array($nivel, ['tipos', 'documentos'], true))
+            <button type="button" id="btnExportarRelatorioCofre"
+                    data-cliente-id="{{ request('cliente_id') }}"
+                    data-ano="{{ request('ano') }}"
+                    data-mes="{{ request('mes') }}"
+                    data-tipo-atual="{{ $nivel === 'documentos' ? request('tipo') : '' }}"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-sm font-semibold rounded-lg transition-colors">
+                <i class="fa-solid fa-file-excel text-green-600"></i>
+                Exportar relatório mensal (Excel)
+            </button>
+            @endif
+            @if($nivel === 'documentos')
+            <a href="{{ route('cofre-fiscal.zip', request()->query()) }}"
+               class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors"
+               title="Baixar .zip com os XMLs que batem com os filtros atuais (máx. {{ $maxZip }})">
+                <i class="fa-solid fa-file-zipper"></i>
+                Baixar ZIP (filtro atual)
+            </a>
+            @endif
+        </div>
     </div>
 
     {{-- Breadcrumb --}}
@@ -285,6 +298,101 @@
 @push('scripts')
 <script>
 (function () {
+    const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    const btnExportarRelatorioCofre = document.getElementById('btnExportarRelatorioCofre');
+
+    if (btnExportarRelatorioCofre) {
+        btnExportarRelatorioCofre.addEventListener('click', async function () {
+            const clienteId = this.dataset.clienteId;
+            const ano = this.dataset.ano;
+            const mes = this.dataset.mes;
+            const tipoAtual = this.dataset.tipoAtual;
+
+            const { value: tipos } = await Swal.fire({
+                title: 'Exportar relatório mensal',
+                html: `
+                    <div class="text-left text-sm flex flex-col gap-2">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="swalTipoNfe" ${tipoAtual === '' || tipoAtual === 'nfe' ? 'checked' : ''}>
+                            NF-e (com IBS/CBS por item)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="swalTipoNfce" ${tipoAtual === '' || tipoAtual === 'nfce' ? 'checked' : ''}>
+                            NFC-e (com IBS/CBS por item)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="swalTipoCte" ${tipoAtual === '' || tipoAtual === 'cte' ? 'checked' : ''}>
+                            CT-e (com IBS/CBS a nível de documento)
+                        </label>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Gerar Excel',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0084aa',
+                preConfirm: () => {
+                    const tipos = [];
+                    if (document.getElementById('swalTipoNfe').checked) tipos.push('nfe');
+                    if (document.getElementById('swalTipoNfce').checked) tipos.push('nfce');
+                    if (document.getElementById('swalTipoCte').checked) tipos.push('cte');
+
+                    if (tipos.length === 0) {
+                        Swal.showValidationMessage('Selecione ao menos um tipo de nota.');
+                        return false;
+                    }
+
+                    return tipos;
+                },
+            });
+
+            if (!tipos) {
+                return;
+            }
+
+            const labelOriginal = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
+
+            try {
+                const resp = await fetch('{{ route('cofre-fiscal.relatorio') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF,
+                    },
+                    body: JSON.stringify({
+                        cliente_id: clienteId,
+                        ano: ano,
+                        mes: mes,
+                        tipos: tipos,
+                    }),
+                });
+
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao gerar o relatório.' });
+                    return;
+                }
+
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Relatorio_Cofre_${ano}_${mes}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60_000);
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+            } finally {
+                this.disabled = false;
+                this.innerHTML = labelOriginal;
+            }
+        });
+    }
+
     document.querySelectorAll('.btn-ver-pdf').forEach(function (btn) {
         btn.addEventListener('click', async function () {
             const chave = this.dataset.chave;

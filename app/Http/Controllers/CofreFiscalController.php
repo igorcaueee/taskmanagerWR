@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\NfeRelatorioExport;
 use App\Models\Cliente;
 use App\Models\DocumentoFiscal;
+use App\Services\NfeXmlParser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use ZipArchive;
 
@@ -309,6 +312,77 @@ class CofreFiscalController extends Controller
         return response()->download($zipPath, 'cofre-fiscal.zip', [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Gera o relatório mensal em Excel (NF-e/NFC-e com IBS/CBS por item, CT-e com
+     * IBS/CBS a nível de documento) para o Cliente/Ano/Mês da pasta atual, restrito
+     * aos tipos de nota marcados em `tipos[]`. Mesmo padrão de resposta (stream do
+     * .xlsx, erro em JSON) usado por NfeController::exportarRelatorio.
+     */
+    public function exportarRelatorio(Request $request)
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'ano' => 'required|integer|digits:4',
+            'mes' => 'required|integer|between:1,12',
+            'tipos' => 'required|array|min:1',
+            'tipos.*' => 'in:nfe,nfce,cte',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $tipos = $validated['tipos'];
+
+        $dataInicio = sprintf('%04d-%02d-01', $validated['ano'], $validated['mes']);
+        $dataFim = date('Y-m-t', strtotime($dataInicio));
+
+        try {
+            $linhasNf = in_array('nfe', $tipos, true)
+                ? $this->linhasRelatorio($cliente->id, 'nfe', $dataInicio, $dataFim)
+                : null;
+
+            $linhasNfc = in_array('nfce', $tipos, true)
+                ? $this->linhasRelatorio($cliente->id, 'nfce', $dataInicio, $dataFim)
+                : null;
+
+            $linhasCte = in_array('cte', $tipos, true)
+                ? $this->linhasRelatorioCte($cliente->id, $dataInicio, $dataFim)
+                : null;
+
+            $mesLabel = self::MESES[$validated['mes']] ?? $validated['mes'];
+            $nomeCliente = preg_replace('/[^A-Za-z0-9_-]+/', '_', $cliente->nome);
+            $nomeArquivo = "Relatorio_Cofre_{$mesLabel}_{$validated['ano']}_{$nomeCliente}.xlsx";
+
+            return (new NfeRelatorioExport($linhasNf, $linhasNfc, $linhasCte))->download($nomeArquivo);
+        } catch (\Throwable $e) {
+            Log::error('[Cofre Fiscal] exportarRelatorio: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado ao gerar o relatório: '.$e->getMessage()], 500);
+        }
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function linhasRelatorio(int $clienteId, string $tipo, string $dataInicio, string $dataFim): array
+    {
+        $linhas = [];
+
+        foreach (DocumentoFiscal::queryPeriodo($clienteId, $tipo, $dataInicio, $dataFim)->cursor() as $documento) {
+            array_push($linhas, ...NfeXmlParser::paraRelatorio($documento));
+        }
+
+        return $linhas;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function linhasRelatorioCte(int $clienteId, string $dataInicio, string $dataFim): array
+    {
+        $linhas = [];
+
+        foreach (DocumentoFiscal::queryPeriodo($clienteId, 'cte', $dataInicio, $dataFim)->cursor() as $documento) {
+            array_push($linhas, ...NfeXmlParser::paraRelatorioCte($documento));
+        }
+
+        return $linhas;
     }
 
     /**

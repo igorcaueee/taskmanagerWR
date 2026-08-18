@@ -10,8 +10,10 @@ use App\Models\DocumentoFiscal;
  * replica as colunas do relatório que a contabilidade já usa hoje num
  * sistema pago (ver App\Exports\NfeRelatorioExport).
  *
- * Cobre apenas NF-e (mod 55) e NFC-e (mod 65) — CT-e não tem itens de
- * produto e fica fora deste relatório.
+ * paraRelatorio() cobre NF-e (mod 55) e NFC-e (mod 65), uma linha por item.
+ * paraRelatorioCte() cobre CT-e (mod 57) à parte — não tem itens de produto,
+ * então gera uma única linha por documento com os tributos a nível de
+ * cabeçalho (ver método para detalhes).
  *
  * Quando o XML salvo é só o resumo da distribuição (resNFe, sem <det>) ou o
  * documento ainda não tem xml_content, a nota ainda entra no relatório com
@@ -89,6 +91,123 @@ class NfeXmlParser
         }
 
         return array_map(fn (\SimpleXMLElement $det) => array_merge($cabecalho, self::extrairItem($det)), $dets);
+    }
+
+    /**
+     * Extrai de um CT-e (XML completo, procCTe/CTe) uma única linha (CT-e não
+     * tem itens de produto — os tributos ficam a nível de documento, dentro
+     * de <imp>, não por <det> como na NF-e).
+     */
+    public static function paraRelatorioCte(DocumentoFiscal $documento): array
+    {
+        $xml = $documento->xml_content;
+
+        if (empty($xml)) {
+            return self::linhaCteSemDetalhes($documento);
+        }
+
+        libxml_use_internal_errors(true);
+
+        try {
+            $raiz = new \SimpleXMLElement($xml);
+        } catch (\Throwable) {
+            return self::linhaCteSemDetalhes($documento);
+        }
+
+        $infCte = self::descendente($raiz, 'infCte');
+
+        if (! $infCte) {
+            return self::linhaCteSemDetalhes($documento);
+        }
+
+        $ide = self::filho($infCte, 'ide');
+        $emit = self::filho($infCte, 'emit');
+        $rem = self::filho($infCte, 'rem');
+        $dest = self::filho($infCte, 'dest');
+        $enderEmit = self::filho($emit, 'enderEmit');
+        $enderDest = self::filho($dest, 'enderDest');
+        $vPrest = self::filho($infCte, 'vPrest');
+        $imp = self::filho($infCte, 'imp');
+        $icmsContainer = self::filho($imp, 'ICMS');
+        $icms = self::primeiroFilho($icmsContainer);
+
+        // Mesmo grupo da reforma tributária usado na NF-e (ver extrairItem) — a nível de
+        // documento aqui, não por item, já que CT-e não tem <det>. Ainda sem exemplos reais
+        // de XML de CT-e com esse grupo preenchido (transição da reforma em andamento); os
+        // campos ficam em branco até o layout entrar em produção.
+        $ibsCbs = self::filho($imp, 'IBSCBS');
+        $gIbsCbs = self::filho($ibsCbs, 'gIBSCBS');
+        $gIbsUF = self::filho($gIbsCbs, 'gIBSUF');
+        $gIbsMun = self::filho($gIbsCbs, 'gIBSMun');
+        $gCbs = self::filho($gIbsCbs, 'gCBS');
+
+        [$dataEmis, $horaEmis] = self::dataHora(self::txt($ide, 'dhEmi'));
+
+        $chaveAcesso = preg_replace('/^CTe/', '', trim((string) $infCte['Id'])) ?: $documento->chave_acesso;
+
+        return [[
+            'Chave_Acesso' => $chaveAcesso ?: $documento->chave_acesso,
+            'Mod_Doc' => self::txt($ide, 'mod'),
+            'Serie' => self::txt($ide, 'serie'),
+            'Nº_Doc' => self::txt($ide, 'nCT'),
+            'Data_Emis' => $dataEmis,
+            'Hora_Emis' => $horaEmis,
+            'Nat_Oper' => self::txt($ide, 'natOp'),
+            'CFOP' => self::txt($ide, 'CFOP'),
+
+            'CNPJ_Emit' => self::txt($emit, 'CNPJ') ?? self::txt($emit, 'CPF'),
+            'Razao_Social_Emit' => self::txt($emit, 'xNome'),
+            'IE_Emit' => self::txt($emit, 'IE'),
+            'Munic_Emit' => self::txt($enderEmit, 'xMun'),
+            'UF_Emit' => self::txt($enderEmit, 'UF'),
+
+            'CNPJ/CPF_Rem' => self::txt($rem, 'CNPJ') ?? self::txt($rem, 'CPF'),
+            'Razao/Nome_Rem' => self::txt($rem, 'xNome'),
+
+            'CNPJ/CPF_Dest' => self::txt($dest, 'CNPJ') ?? self::txt($dest, 'CPF'),
+            'Razao/Nome_Dest' => self::txt($dest, 'xNome'),
+            'Munic_Dest' => self::txt($enderDest, 'xMun'),
+            'UF_Dest' => self::txt($enderDest, 'UF'),
+
+            'Munic_Ini' => self::txt($ide, 'xMunIni'),
+            'UF_Ini' => self::txt($ide, 'UFIni'),
+            'Munic_Fim' => self::txt($ide, 'xMunFim'),
+            'UF_Fim' => self::txt($ide, 'UFFim'),
+
+            'V_Prest' => self::num($vPrest, 'vTPrest'),
+            'V_Receber' => self::num($vPrest, 'vRec'),
+
+            'CST_ICMS' => self::txt($icms, 'CST'),
+            'V_BC_ICMS' => self::num($icms, 'vBC'),
+            '%_ICMS' => self::num($icms, 'pICMS'),
+            'V_ICMS' => self::num($icms, 'vICMS'),
+
+            'CST_IBS_CBS' => self::txt($ibsCbs, 'CST'),
+            'Cod_Class_Trib_IBS_CBS' => self::txt($ibsCbs, 'cClassTrib'),
+            'V_BC_IBS_CBS' => self::num($gIbsCbs, 'vBC'),
+            '%_IBS_UF' => self::num($gIbsUF, 'pIBSUF'),
+            'V_IBS_UF' => self::num($gIbsUF, 'vIBSUF'),
+            '%_IBS_Mun' => self::num($gIbsMun, 'pIBSMun'),
+            'V_IBS_Mun' => self::num($gIbsMun, 'vIBSMun'),
+            '%_CBS' => self::num($gCbs, 'pCBS'),
+            'V_CBS' => self::num($gCbs, 'vCBS'),
+
+            'Status_Doc' => self::statusDoc($documento),
+        ]];
+    }
+
+    private static function linhaCteSemDetalhes(DocumentoFiscal $documento): array
+    {
+        return [[
+            'Chave_Acesso' => $documento->chave_acesso,
+            'Mod_Doc' => '57',
+            'Nº_Doc' => $documento->numero,
+            'Data_Emis' => $documento->data_emissao?->format('d/m/Y'),
+            'CNPJ_Emit' => $documento->emitente_doc,
+            'Razao_Social_Emit' => $documento->emitente_nome,
+            'V_Prest' => $documento->valor,
+            'Status_Doc' => self::statusDoc($documento),
+        ]];
     }
 
     // ─── Cabeçalho (dados que se repetem em todos os itens da nota) ───────────
@@ -186,6 +305,17 @@ class NfeXmlParser
         $issqn = self::filho($imposto, 'ISSQN');
         $icmsUFDest = self::filho($imposto, 'ICMSUFDest');
         $ipiDevol = self::filho($impDevol, 'IPI');
+
+        // Reforma Tributária (NT 2023.004 e seguintes) — grupo novo dentro de <imposto>,
+        // ao lado de ICMS/IPI/PIS/COFINS. Layout ainda em fase de transição em 2026: nas
+        // notas emitidas antes da obrigatoriedade, esse grupo simplesmente não existe no
+        // XML e todos os campos abaixo ficam em branco (comportamento esperado, não é bug).
+        $ibsCbs = self::filho($imposto, 'IBSCBS');
+        $gIbsCbs = self::filho($ibsCbs, 'gIBSCBS');
+        $gIbsUF = self::filho($gIbsCbs, 'gIBSUF');
+        $gIbsMun = self::filho($gIbsCbs, 'gIBSMun');
+        $gCbs = self::filho($gIbsCbs, 'gCBS');
+        $gIS = self::filho($ibsCbs, 'gIS');
 
         return [
             'Item' => (string) ($det['nItem'] ?? ''),
@@ -296,6 +426,20 @@ class NfeXmlParser
             'Dados_Adicionais_Produto' => self::txt($det, 'infAdProd'),
 
             'Cod. Pedido' => self::txt($prod, 'xPed'),
+
+            'CST_IBS_CBS' => self::txt($ibsCbs, 'CST'),
+            'Cod_Class_Trib_IBS_CBS' => self::txt($ibsCbs, 'cClassTrib'),
+            'V_BC_IBS_CBS' => self::num($gIbsCbs, 'vBC'),
+            '%_IBS_UF' => self::num($gIbsUF, 'pIBSUF'),
+            'V_IBS_UF' => self::num($gIbsUF, 'vIBSUF'),
+            '%_IBS_Mun' => self::num($gIbsMun, 'pIBSMun'),
+            'V_IBS_Mun' => self::num($gIbsMun, 'vIBSMun'),
+            '%_CBS' => self::num($gCbs, 'pCBS'),
+            'V_CBS' => self::num($gCbs, 'vCBS'),
+            'CST_IS' => self::txt($gIS, 'CSTIS'),
+            'V_BC_IS' => self::num($gIS, 'vBCIS'),
+            '%_IS' => self::num($gIS, 'pIS'),
+            'V_IS' => self::num($gIS, 'vIS'),
         ];
     }
 

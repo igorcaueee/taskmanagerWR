@@ -36,7 +36,19 @@ class NfeRelatorioExport
         'V_ISS_Ret', 'Indicador_Exigib', 'Cod_Serv_Mun', 'Cod_Mun_Incid_ISS', 'Indicad_Incent_Fiscal',
         'Mod_Frete', 'CNPJ_Transp', 'Razao/Nome_Transp', 'IE_Transp', 'Munic_Transp', 'UF_Transp',
         'Dados_Adicionais_Produto', 'Dados_Adicionais_Interesse_Fisco', 'Dados_Adicionais_Interesse_Contribuinte',
-        'Chave_NFe_Devolvida', 'Per_NFe_Devolv', 'Nº_NFe_Devolv', 'Cod. Pedido', 'Status_Doc',
+        'Chave_NFe_Devolvida', 'Per_NFe_Devolv', 'Nº_NFe_Devolv', 'Cod. Pedido',
+        'CST_IBS_CBS', 'Cod_Class_Trib_IBS_CBS', 'V_BC_IBS_CBS', '%_IBS_UF', 'V_IBS_UF', '%_IBS_Mun', 'V_IBS_Mun',
+        '%_CBS', 'V_CBS', 'CST_IS', 'V_BC_IS', '%_IS', 'V_IS', 'Status_Doc',
+    ];
+
+    private const COLUNAS_CTE = [
+        'Chave_Acesso', 'Mod_Doc', 'Serie', 'Nº_Doc', 'Data_Emis', 'Hora_Emis', 'Nat_Oper', 'CFOP',
+        'CNPJ_Emit', 'Razao_Social_Emit', 'IE_Emit', 'Munic_Emit', 'UF_Emit',
+        'CNPJ/CPF_Rem', 'Razao/Nome_Rem', 'CNPJ/CPF_Dest', 'Razao/Nome_Dest', 'Munic_Dest', 'UF_Dest',
+        'Munic_Ini', 'UF_Ini', 'Munic_Fim', 'UF_Fim', 'V_Prest', 'V_Receber',
+        'CST_ICMS', 'V_BC_ICMS', '%_ICMS', 'V_ICMS',
+        'CST_IBS_CBS', 'Cod_Class_Trib_IBS_CBS', 'V_BC_IBS_CBS', '%_IBS_UF', 'V_IBS_UF', '%_IBS_Mun', 'V_IBS_Mun',
+        '%_CBS', 'V_CBS', 'Status_Doc',
     ];
 
     private const COLUNAS_NFC = [
@@ -52,17 +64,19 @@ class NfeRelatorioExport
         'Cod_Enq_IPI', 'CST_IPI', 'V_BC_IPI', '%_IPI', 'V_IPI', 'CST_PIS', 'V_BC_PIS', '%_PIS', 'V_PIS',
         'CST_COF', 'V_BC_COF', '%_COF', 'V_COF', 'Mod_Frete', 'CNPJ_Transp', 'Razao/Nome_Transp', 'IE_Transp',
         'Munic_Transp', 'UF_Transp', 'Dados_Adicionais_Interesse_Fisco', 'Dados_Adicionais_Interesse_Contribuinte',
-        'Status_Doc',
+        'CST_IBS_CBS', 'Cod_Class_Trib_IBS_CBS', 'V_BC_IBS_CBS', '%_IBS_UF', 'V_IBS_UF', '%_IBS_Mun', 'V_IBS_Mun',
+        '%_CBS', 'V_CBS', 'CST_IS', 'V_BC_IS', '%_IS', 'V_IS', 'Status_Doc',
     ];
 
     /**
-     * Passe `null` em `$linhasNf` ou `$linhasNfc` para gerar o relatório apenas
-     * com a outra aba (exportação individual de NF-e ou de NFC-e).
+     * Passe `null` em `$linhasNf`/`$linhasNfc`/`$linhasCte` para gerar o relatório
+     * apenas com as demais abas (ex.: exportação individual de NF-e ou de NFC-e).
      *
      * @param  ?array<int, array<string, mixed>>  $linhasNf
      * @param  ?array<int, array<string, mixed>>  $linhasNfc
+     * @param  ?array<int, array<string, mixed>>  $linhasCte
      */
-    public function __construct(private ?array $linhasNf, private ?array $linhasNfc) {}
+    public function __construct(private ?array $linhasNf, private ?array $linhasNfc, private ?array $linhasCte = null) {}
 
     public function download(string $filename): StreamedResponse
     {
@@ -76,6 +90,11 @@ class NfeRelatorioExport
 
         if ($this->linhasNfc !== null) {
             $this->buildAba($spreadsheet, 'NFC', self::COLUNAS_NFC, $this->linhasNfc, $primeira);
+            $primeira = false;
+        }
+
+        if ($this->linhasCte !== null) {
+            $this->buildAba($spreadsheet, 'CTe', self::COLUNAS_CTE, $this->linhasCte, $primeira);
             $primeira = false;
         }
 
