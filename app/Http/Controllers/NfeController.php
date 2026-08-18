@@ -584,4 +584,90 @@ class NfeController extends Controller
             'Content-Type' => 'application/pdf',
         ]);
     }
+
+    /**
+     * Gera um .zip com os PDFs (DANFE/DACTE) dos documentos selecionados,
+     * montando cada PDF localmente a partir do xml_content via nfephp-org/sped-da
+     * — mesmo esquema de downloadZipXmls(), trocando o conteúdo do XML pelo PDF
+     * renderizado. Documentos cujo XML ainda está em formato resumido (sem
+     * manifestação do destinatário) não geram DANFE completo; esses são pulados
+     * e reportados ao final em vez de derrubar o zip inteiro.
+     */
+    public function downloadZipPdfs(Request $request)
+    {
+        $request->validate([
+            'chaves' => 'required|array|min:1|max:'.self::MAX_ZIP,
+            'chaves.*' => 'required|string',
+            'nome' => 'nullable|string',
+        ]);
+
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
+
+        $nomeEmpresa = trim((string) $request->input('nome', ''));
+        $nomeArquivo = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFe-CTe').'-PDFs.zip';
+
+        $zipPath = storage_path('app/temp/nfe_pdfs_'.time().'_'.rand(1000, 9999).'.zip');
+
+        if (! is_dir(dirname($zipPath))) {
+            mkdir(dirname($zipPath), 0755, true);
+        }
+
+        $zip = new ZipArchive;
+
+        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+            return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
+        }
+
+        $total = 0;
+        $falhas = 0;
+
+        foreach (array_chunk($request->chaves, 500) as $chavesLote) {
+            DocumentoFiscal::whereIn('chave_acesso', $chavesLote)
+                ->whereNotNull('xml_content')
+                ->select(['tipo', 'chave_acesso', 'xml_content'])
+                ->cursor()
+                ->each(function (DocumentoFiscal $documento) use ($zip, &$total, &$falhas) {
+                    try {
+                        $gerador = match ($documento->tipo) {
+                            'nfe' => new Danfe($documento->xml_content),
+                            'nfce' => new Danfce($documento->xml_content),
+                            'cte' => new Dacte($documento->xml_content),
+                            default => throw new \RuntimeException("Tipo '{$documento->tipo}' não suporta PDF."),
+                        };
+
+                        $gerador->monta();
+                        $pdf = $gerador->render();
+
+                        $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.pdf", $pdf);
+                        $total++;
+                    } catch (\Throwable $e) {
+                        $falhas++;
+                        Log::warning('[NF-e] downloadZipPdfs: falha ao gerar PDF', [
+                            'chave_acesso' => $documento->chave_acesso,
+                            'tipo' => $documento->tipo,
+                            'msg' => $e->getMessage(),
+                        ]);
+                    }
+                });
+        }
+
+        if ($total === 0) {
+            $zip->close();
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Nenhum PDF pôde ser gerado para os documentos selecionados.'], 422);
+        }
+
+        if (! $zip->close()) {
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Falha ao finalizar o arquivo ZIP.'], 500);
+        }
+
+        return response()->download($zipPath, $nomeArquivo, [
+            'Content-Type' => 'application/zip',
+            'X-Pdfs-Falhas' => (string) $falhas,
+        ])->deleteFileAfterSend(true);
+    }
 }

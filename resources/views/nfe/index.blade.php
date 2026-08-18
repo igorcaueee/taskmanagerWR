@@ -268,6 +268,11 @@
                             <i class="fa-solid fa-file-zipper"></i>
                             Baixar selecionados (.zip)
                         </button>
+                        <button type="button" id="btnDownloadZipPdf"
+                                class="hidden items-center gap-1.5 px-3 py-1.5 bg-[#0084aa] hover:bg-[#006e8e] text-white text-xs font-semibold rounded-lg transition-colors">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            Baixar PDFs selecionados (.zip)
+                        </button>
                         <button type="button" id="btnExportarRelatorio"
                                 class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors">
                             <i class="fa-solid fa-file-excel text-green-600"></i>
@@ -506,6 +511,7 @@
     const totalDocs      = document.getElementById('totalDocs');
     const checkTodos     = document.getElementById('checkTodos');
     const btnDownloadZip = document.getElementById('btnDownloadZip');
+    const btnDownloadZipPdf = document.getElementById('btnDownloadZipPdf');
     const btnExportarRelatorio = document.getElementById('btnExportarRelatorio');
     const btnExportarRelatorioLabel = document.getElementById('btnExportarRelatorioLabel');
     const filtroTipo       = document.getElementById('filtroTipo');
@@ -1146,9 +1152,16 @@
             btnDownloadZip.classList.remove('hidden');
             btnDownloadZip.classList.add('flex');
             btnDownloadZip.innerHTML = `<i class="fa-solid fa-file-zipper"></i> Baixar ${selecionados.size} XML(s) (.zip)`;
+
+            btnDownloadZipPdf.classList.remove('hidden');
+            btnDownloadZipPdf.classList.add('flex');
+            btnDownloadZipPdf.innerHTML = `<i class="fa-solid fa-file-pdf"></i> Baixar ${selecionados.size} PDF(s) (.zip)`;
         } else {
             btnDownloadZip.classList.add('hidden');
             btnDownloadZip.classList.remove('flex');
+
+            btnDownloadZipPdf.classList.add('hidden');
+            btnDownloadZipPdf.classList.remove('flex');
         }
     }
 
@@ -1243,6 +1256,63 @@
             a.download = `${nomeEmpresa}.zip`;
             a.click();
             URL.revokeObjectURL(url);
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+        } finally {
+            this.disabled = false;
+            atualizarSelecao();
+        }
+    });
+
+    // ─── Download ZIP de PDFs (DANFE/DACTE) — mesmo esquema do ZIP de XMLs ────
+    btnDownloadZipPdf.addEventListener('click', async function () {
+        const chaves = [...selecionados].map(nsu => {
+            const doc = docsAtuais.find(d => String(d.nsu) === nsu);
+            return doc?.chaveAcesso || null;
+        }).filter(Boolean);
+
+        if (!chaves.length) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhum documento disponível para os itens selecionados.' });
+            return;
+        }
+
+        const nomeEmpresa = selectCliente.options[selectCliente.selectedIndex]?.text?.trim() || 'NFe-CTe';
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando ZIP...';
+
+        try {
+            const resp = await fetch('/nfe/xml/zip-pdfs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify({ chaves, nome: nomeEmpresa }),
+            });
+
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao gerar ZIP de PDFs.' });
+                return;
+            }
+
+            const falhas = Number(resp.headers.get('X-Pdfs-Falhas') || 0);
+            const blob = await resp.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `${nomeEmpresa}-PDFs.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            if (falhas > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ZIP gerado com ressalvas',
+                    text: `${falhas} documento(s) não puderam ter o PDF gerado (provavelmente XML ainda em formato resumido) e foram pulados.`,
+                });
+            }
         } catch {
             Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
         } finally {

@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use NFePHP\DA\CTe\Dacte;
+use NFePHP\DA\NFe\Danfce;
+use NFePHP\DA\NFe\Danfe;
 use ZipArchive;
 
 /**
@@ -311,6 +314,83 @@ class CofreFiscalController extends Controller
 
         return response()->download($zipPath, 'cofre-fiscal.zip', [
             'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Gera um .zip com os PDFs (DANFE/DACTE) de todos os documentos que batem
+     * com os filtros atuais, montando cada PDF localmente a partir do
+     * xml_content via nfephp-org/sped-da — mesmo esquema de downloadZip(),
+     * trocando o conteúdo do XML pelo PDF renderizado. Documentos cujo XML
+     * ainda está em formato resumido não geram DANFE completo; são pulados
+     * e contados em $falhas em vez de derrubar o zip inteiro.
+     */
+    public function downloadZipPdfs(Request $request)
+    {
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
+
+        $zipPath = storage_path('app/temp/cofre_pdfs_' . time() . '_' . rand(1000, 9999) . '.zip');
+
+        if (!is_dir(dirname($zipPath))) {
+            mkdir(dirname($zipPath), 0755, true);
+        }
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+            return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
+        }
+
+        $total = 0;
+        $falhas = 0;
+
+        $this->filtrar($request)
+            ->whereNotNull('xml_content')
+            ->orderByDesc('data_emissao')
+            ->limit(self::MAX_ZIP)
+            ->select(['tipo', 'chave_acesso', 'xml_content'])
+            ->cursor()
+            ->each(function (DocumentoFiscal $documento) use ($zip, &$total, &$falhas) {
+                try {
+                    $gerador = match ($documento->tipo) {
+                        'nfe' => new Danfe($documento->xml_content),
+                        'nfce' => new Danfce($documento->xml_content),
+                        'cte' => new Dacte($documento->xml_content),
+                        default => throw new \RuntimeException("Tipo '{$documento->tipo}' não suporta PDF."),
+                    };
+
+                    $gerador->monta();
+                    $pdf = $gerador->render();
+
+                    $zip->addFromString("{$documento->tipo}_{$documento->chave_acesso}.pdf", $pdf);
+                    $total++;
+                } catch (\Throwable $e) {
+                    $falhas++;
+                    Log::warning('[Cofre Fiscal] downloadZipPdfs: falha ao gerar PDF', [
+                        'chave_acesso' => $documento->chave_acesso,
+                        'tipo' => $documento->tipo,
+                        'msg' => $e->getMessage(),
+                    ]);
+                }
+            });
+
+        if ($total === 0) {
+            $zip->close();
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Nenhum PDF pôde ser gerado para os documentos filtrados.'], 422);
+        }
+
+        if (! $zip->close()) {
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Falha ao finalizar o arquivo ZIP.'], 500);
+        }
+
+        return response()->download($zipPath, 'cofre-fiscal-pdfs.zip', [
+            'Content-Type' => 'application/zip',
+            'X-Pdfs-Falhas' => (string) $falhas,
         ])->deleteFileAfterSend(true);
     }
 

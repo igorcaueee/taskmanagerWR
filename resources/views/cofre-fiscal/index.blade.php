@@ -36,6 +36,12 @@
                 <i class="fa-solid fa-file-zipper"></i>
                 Baixar ZIP (filtro atual)
             </a>
+            <a href="{{ route('cofre-fiscal.zip-pdfs', request()->query()) }}"
+               class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors"
+               title="Baixar .zip com os PDFs (DANFE/DACTE) dos documentos que batem com os filtros atuais (máx. {{ $maxZip }})">
+                <i class="fa-solid fa-file-pdf"></i>
+                Baixar PDFs (filtro atual)
+            </a>
             @endif
         </div>
     </div>

@@ -470,6 +470,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/sincronizar-chunk', [NfeController::class, 'sincronizarChunk'])->name('sincronizar-chunk');
     Route::post('/cte-nacional/sincronizar-chunk', [NfeController::class, 'sincronizarChunkCte'])->name('cte-nacional.sincronizar-chunk');
     Route::post('/xml/zip-xmls', [NfeController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
+    Route::post('/xml/zip-pdfs', [NfeController::class, 'downloadZipPdfs'])->name('xml.zip-pdfs');
     Route::get('/danfe', [NfeController::class, 'danfe'])->name('danfe');
     Route::post('/relatorio', [NfeController::class, 'exportarRelatorio'])->name('relatorio');
 
@@ -486,6 +487,7 @@ Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(
     Route::get('/', [CofreFiscalController::class, 'index'])->name('index');
     Route::get('/xml/{chaveAcesso}', [CofreFiscalController::class, 'downloadXml'])->name('xml');
     Route::get('/zip', [CofreFiscalController::class, 'downloadZip'])->name('zip');
+    Route::get('/zip-pdfs', [CofreFiscalController::class, 'downloadZipPdfs'])->name('zip-pdfs');
     Route::post('/relatorio', [CofreFiscalController::class, 'exportarRelatorio'])->name('relatorio');
 });
 
