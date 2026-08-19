@@ -268,6 +268,7 @@ Route::post('/tarefas/{id}/inativar', [TarefaController::class, 'inativar'])->na
 Route::post('/tarefas/{id}/ativar', [TarefaController::class, 'ativar'])->name('tarefas.ativar')->middleware('auth');
 Route::post('/tarefas/{id}/duplicar', [TarefaController::class, 'duplicar'])->name('tarefas.duplicar')->middleware('auth');
 Route::post('/tarefas/{id}/renovar-recorrencia', [TarefaController::class, 'renovarRecorrencia'])->name('tarefas.renovar-recorrencia')->middleware('auth');
+Route::post('/tarefas/transferir-responsavel', [TarefaController::class, 'bulkTransferirResponsavel'])->name('tarefas.bulk-transferir-responsavel')->middleware('auth');
 Route::post('/tarefas/{id}/upload', [TarefaController::class, 'uploadArquivo'])->name('tarefas.upload')->middleware('auth');
 Route::get('/tarefas/uploads-portal', [TarefaController::class, 'uploadsPortal'])->name('tarefas.uploads-portal')->middleware('auth');
 Route::get('/tarefas/uploads-portal/{upload}/historico', [TarefaController::class, 'uploadsHistorico'])->name('tarefas.uploads-portal.historico')->middleware('auth');

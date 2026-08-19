@@ -10,10 +10,29 @@
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-slate-100"><i class="fa-solid fa-chart-gantt"></i> Pipeline</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Arraste as tarefas entre as etapas para atualizar o status.</p>
             </div>
-            <button type="button"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80 text-sm"
-                    data-modal-url="{{ route('tarefas.form.create') }}">
-                <i class="fa-solid fa-plus"></i> Nova Tarefa
+            <div class="flex items-center gap-2">
+                <button type="button" id="btn-toggle-selecao"
+                        class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <i class="fa-regular fa-square-check"></i> Selecionar
+                </button>
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 focus:outline-none hover:bg-brand/80 text-sm"
+                        data-modal-url="{{ route('tarefas.form.create') }}">
+                    <i class="fa-solid fa-plus"></i> Nova Tarefa
+                </button>
+            </div>
+        </div>
+
+        {{-- Bulk action bar --}}
+        <div id="kanban-bulk-bar" class="hidden items-center gap-3 mb-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg px-4 py-2">
+            <span id="kanban-bulk-count" class="text-sm text-indigo-700 dark:text-indigo-300 font-medium">0 selecionada(s)</span>
+            <button type="button" id="btn-bulk-transferir"
+                    class="ml-auto inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded border-0 text-sm hover:bg-indigo-700">
+                <i class="fa-solid fa-right-left"></i> Transferir responsável
+            </button>
+            <button type="button" id="btn-bulk-cancelar"
+                    class="px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
+                Cancelar
             </button>
         </div>
 
@@ -312,6 +331,9 @@
     }
     .kanban-column.drag-over {
         border-radius: 0 0 0.75rem 0.75rem;
+    }
+    #kanban-board.select-mode .kanban-select-checkbox {
+        display: block;
     }
     .kanban-card-nova {
         animation: kanban-card-piscar 0.85s ease-in-out infinite;
@@ -1251,6 +1273,117 @@
             showToast('Erro ao voltar etapa. Tente novamente.', 'red');
         }
     }
+
+    // ── Seleção em massa / transferência de responsável (kanban) ─────────────
+    const usuariosTransferenciaData = @json($usuariosTransferencia->map(fn($u) => ['id' => $u->id, 'nome' => $u->nome])->values());
+    const kanbanBoard = document.getElementById('kanban-board');
+    const bulkBar = document.getElementById('kanban-bulk-bar');
+    const bulkCount = document.getElementById('kanban-bulk-count');
+    const selecionadas = new Set();
+
+    function atualizarContagemSelecao() {
+        bulkCount.textContent = `${selecionadas.size} selecionada(s)`;
+    }
+
+    document.getElementById('btn-toggle-selecao').addEventListener('click', () => {
+        const ativo = kanbanBoard.classList.toggle('select-mode');
+        bulkBar.classList.toggle('hidden', !ativo);
+        bulkBar.classList.toggle('flex', ativo);
+        if (!ativo) {
+            selecionadas.clear();
+            document.querySelectorAll('.kanban-select-checkbox').forEach(cb => { cb.checked = false; });
+            atualizarContagemSelecao();
+        }
+    });
+
+    document.getElementById('btn-bulk-cancelar').addEventListener('click', () => {
+        document.getElementById('btn-toggle-selecao').click();
+    });
+
+    document.addEventListener('change', (e) => {
+        const cb = e.target.closest('.kanban-select-checkbox');
+        if (!cb) { return; }
+        if (cb.checked) { selecionadas.add(cb.dataset.tarefaId); } else { selecionadas.delete(cb.dataset.tarefaId); }
+        atualizarContagemSelecao();
+    });
+
+    document.getElementById('btn-bulk-transferir').addEventListener('click', async () => {
+        if (selecionadas.size === 0) {
+            showToast('Selecione ao menos uma tarefa.', 'amber');
+            return;
+        }
+
+        const temRecorrente = [...selecionadas].some(id =>
+            document.querySelector(`.kanban-select-checkbox[data-tarefa-id="${id}"]`)?.dataset.recorrente === '1'
+        );
+
+        const usuarioOptions = usuariosTransferenciaData.map(u =>
+            `<option value="${u.id}">${u.nome}</option>`
+        ).join('');
+
+        const { value: form, isConfirmed } = await Swal.fire({
+            title: 'Transferir responsável',
+            html: `<p class="text-sm text-gray-500 mb-3">Transferir <strong>${selecionadas.size}</strong> tarefa(s) para:</p>
+                   <div class="text-left mb-3">
+                       <select id="swal-novo-responsavel" class="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                           <option value="">Selecione um responsável...</option>
+                           ${usuarioOptions}
+                       </select>
+                   </div>
+                   ${temRecorrente ? `
+                   <label class="flex items-center gap-2 text-left text-sm text-gray-600">
+                       <input type="checkbox" id="swal-aplicar-futuras" class="rounded">
+                       Aplicar também às ocorrências futuras das tarefas recorrentes selecionadas
+                   </label>` : ''}`,
+            showCancelButton: true,
+            confirmButtonText: 'Transferir',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#4f46e5',
+            preConfirm: () => {
+                const responsavelId = document.getElementById('swal-novo-responsavel').value;
+                if (!responsavelId) {
+                    Swal.showValidationMessage('Selecione um responsável.');
+                    return false;
+                }
+                return {
+                    responsavel_id: responsavelId,
+                    aplicar_futuras: document.getElementById('swal-aplicar-futuras')?.checked ?? false,
+                };
+            },
+        });
+
+        if (!isConfirmed || !form) { return; }
+
+        try {
+            const res = await fetch('{{ route('tarefas.bulk-transferir-responsavel') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    tarefa_ids: [...selecionadas],
+                    responsavel_id: form.responsavel_id,
+                    aplicar_futuras: form.aplicar_futuras,
+                }),
+            });
+
+            if (!res.ok) { throw new Error(); }
+            const data = await res.json();
+
+            await Swal.fire({
+                icon: data.puladas > 0 ? 'warning' : 'success',
+                title: 'Transferência concluída',
+                text: `${data.transferidas} tarefa(s) transferida(s)` +
+                      (data.puladas > 0 ? `, ${data.puladas} pulada(s) por falta de permissão.` : '.'),
+            });
+
+            window.location.reload();
+        } catch {
+            Swal.fire('Erro', 'Não foi possível transferir as tarefas. Tente novamente.', 'error');
+        }
+    });
 
     // ── Duplicar tarefa para outros clientes (kanban) ────────────────────────
     const clientesData = @json($clientes->map(fn($c) => ['id' => $c->id, 'nome' => $c->nome])->values());

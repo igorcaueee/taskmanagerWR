@@ -193,6 +193,10 @@ class TarefaController extends Controller
         $clientes = Cliente::orderBy('nome')->get();
         $tiposTarefa = TipoTarefa::orderBy('nome')->get();
 
+        $usuariosTransferencia = $podeVerTodas
+            ? Usuario::orderBy('nome')->get()
+            : Usuario::where('departamento_id', $usuario->departamento_id)->orderBy('nome')->get();
+
         return view('tarefas.list', compact(
             'tarefas',
             'etapas',
@@ -207,6 +211,7 @@ class TarefaController extends Controller
             'cicloPrev',
             'cicloNext',
             'filtroDataAtivo',
+            'usuariosTransferencia',
         ));
     }
 
@@ -597,6 +602,139 @@ class TarefaController extends Controller
         }
 
         return Redirect::back()->with('success', 'Tarefa atualizada com sucesso.');
+    }
+
+    public function bulkTransferirResponsavel(Request $request): JsonResponse
+    {
+        $usuario = Auth::user();
+
+        $data = $request->validate([
+            'tarefa_ids' => ['required', 'array', 'min:1'],
+            'tarefa_ids.*' => ['integer', 'exists:tarefas,id'],
+            'responsavel_id' => ['required', 'exists:usuarios,id'],
+            'aplicar_futuras' => ['nullable', 'boolean'],
+        ]);
+
+        $aplicarFuturas = (bool) ($data['aplicar_futuras'] ?? false);
+        $tarefas = Tarefa::whereIn('id', $data['tarefa_ids'])->where('ativo', true)->get();
+
+        $transferidas = 0;
+        $puladas = 0;
+
+        foreach ($tarefas as $tarefa) {
+            if (! $usuario->canEditarQualquerTarefa() && (int) $tarefa->responsavel_id !== (int) $usuario->id) {
+                $puladas++;
+
+                continue;
+            }
+
+            $podeMudarResponsavel = (int) $usuario->id === (int) $tarefa->supervisor_id;
+
+            $podeTransferirNoDepartamento = ! $podeMudarResponsavel
+                && $usuario->departamento_id !== null
+                && (int) $usuario->departamento_id === (int) $tarefa->departamento_id;
+
+            if ($podeMudarResponsavel) {
+                $novoResponsavelId = $data['responsavel_id'];
+            } elseif ($podeTransferirNoDepartamento) {
+                $candidato = Usuario::find($data['responsavel_id']);
+                $novoResponsavelId = ($candidato && (int) $candidato->departamento_id === (int) $usuario->departamento_id)
+                    ? $candidato->id
+                    : $tarefa->responsavel_id;
+            } else {
+                $novoResponsavelId = $tarefa->responsavel_id;
+            }
+
+            $responsavelAnteriorId = $tarefa->responsavel_id;
+            $responsavelMudou = (int) ($responsavelAnteriorId ?? 0) !== (int) $novoResponsavelId;
+
+            if (! $responsavelMudou) {
+                $puladas++;
+
+                continue;
+            }
+
+            $departamentoId = Usuario::find($novoResponsavelId)?->departamento_id
+                ?? $tarefa->departamento_id
+                ?? Departamento::orderBy('id')->value('id');
+
+            $tarefa->update([
+                'responsavel_id' => $novoResponsavelId,
+                'departamento_id' => $departamentoId,
+            ]);
+
+            RelTarefa::create([
+                'tarefa_id' => $tarefa->id,
+                'etapa_anterior_id' => null,
+                'etapa_nova_id' => null,
+                'responsavel_anterior_id' => $responsavelAnteriorId,
+                'responsavel_novo_id' => $novoResponsavelId,
+                'alterado_por' => Auth::id(),
+            ]);
+
+            if ($aplicarFuturas && $tarefa->recorrente) {
+                $originalId = $tarefa->tarefa_original_id ?? $tarefa->id;
+
+                $futuras = Tarefa::where(function ($q) use ($originalId) {
+                        $q->where('id', $originalId)->orWhere('tarefa_original_id', $originalId);
+                    })
+                    ->where('id', '!=', $tarefa->id)
+                    ->where('data_vencimento', '>', $tarefa->data_vencimento)
+                    ->where('ativo', true)
+                    ->get();
+
+                foreach ($futuras as $futura) {
+                    $futuraPodeMudar = (int) $usuario->id === (int) $futura->supervisor_id;
+
+                    $futuraPodeTransferirNoDepartamento = ! $futuraPodeMudar
+                        && $usuario->departamento_id !== null
+                        && (int) $usuario->departamento_id === (int) $futura->departamento_id;
+
+                    if ($futuraPodeMudar) {
+                        $futuroResponsavelId = $data['responsavel_id'];
+                    } elseif ($futuraPodeTransferirNoDepartamento) {
+                        $candidatoFutura = Usuario::find($data['responsavel_id']);
+                        $futuroResponsavelId = ($candidatoFutura && (int) $candidatoFutura->departamento_id === (int) $usuario->departamento_id)
+                            ? $candidatoFutura->id
+                            : $futura->responsavel_id;
+                    } else {
+                        $futuroResponsavelId = $futura->responsavel_id;
+                    }
+
+                    if ((int) $futuroResponsavelId === (int) $futura->responsavel_id) {
+                        continue;
+                    }
+
+                    $futura->update([
+                        'responsavel_id' => $futuroResponsavelId,
+                        'departamento_id' => Usuario::find($futuroResponsavelId)?->departamento_id
+                            ?? $futura->departamento_id
+                            ?? Departamento::orderBy('id')->value('id'),
+                    ]);
+                }
+            }
+
+            if ($novoResponsavelId && (int) $novoResponsavelId !== (int) Auth::id()) {
+                try {
+                    Notificacao::create([
+                        'usuario_id' => $novoResponsavelId,
+                        'tipo'       => 'tarefa_atribuida',
+                        'mensagem'   => "{$usuario->nome} transferiu a tarefa \"{$tarefa->titulo}\" para você.",
+                        'tarefa_id'  => $tarefa->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Falha ao criar notificação: ' . $e->getMessage());
+                }
+            }
+
+            $transferidas++;
+        }
+
+        return response()->json([
+            'transferidas' => $transferidas,
+            'puladas' => $puladas,
+            'total' => $tarefas->count(),
+        ]);
     }
 
     public function delete(int $id): RedirectResponse

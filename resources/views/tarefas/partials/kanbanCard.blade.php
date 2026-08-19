@@ -14,7 +14,7 @@
     $ehTarefaNova = in_array($tarefa->id, session('novas_tarefas_ids', []));
 @endphp
 
-<div class="kanban-card rounded-lg shadow-sm border p-2 cursor-grab active:cursor-grabbing select-none {{ $ehTarefaNova ? 'kanban-card-nova' : '' }}
+<div class="kanban-card relative rounded-lg shadow-sm border p-2 cursor-grab active:cursor-grabbing select-none {{ $ehTarefaNova ? 'kanban-card-nova' : '' }}
     {{ $estaConcluida ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700' }}"
      style="border-left: 4px solid {{ $tarefa->etapa->cor ?? '#6b7280' }} !important;"
      draggable="true"
@@ -23,6 +23,15 @@
      data-requer-arquivo="{{ $tarefa->requer_envio_arquivo ? '1' : '0' }}"
      ondragstart="handleDragStart(event, {{ $tarefa->id }})"
      ondragend="handleDragEnd()">
+
+    @if (auth()->user()->canEditarQualquerTarefa() || $tarefa->responsavel_id == auth()->id())
+        <input type="checkbox"
+               class="kanban-select-checkbox hidden absolute top-2 right-2 w-4 h-4 rounded border-gray-300 text-brand accent-[#0084aa] cursor-pointer z-10"
+               data-tarefa-id="{{ $tarefa->id }}"
+               data-recorrente="{{ $tarefa->recorrente ? '1' : '0' }}"
+               onclick="event.stopPropagation()"
+               ondragstart="event.stopPropagation()">
+    @endif
 
     @if ($tarefa->passou_ciclo && ! $estaConcluida)
         <div class="flex items-center gap-1 text-amber-600 text-xs font-medium mb-1">
