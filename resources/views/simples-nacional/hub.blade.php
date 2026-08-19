@@ -101,8 +101,8 @@
                 <div class="flex items-center gap-4">
                     <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-hand-holding-dollar"></i></div>
                     <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Parcelamentos (PARCSN)</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Histórico, detalhes e parcelas pendentes</p>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Parcelamentos</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">PARCSN, PARCSN-ESP, PERTSN e RELPSN — histórico, detalhes e parcelas pendentes</p>
                     </div>
                 </div>
             </a>

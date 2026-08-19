@@ -114,7 +114,10 @@ class SimplesNacionalController extends Controller
 
     public function telaParcelamentos()
     {
-        return view('simples-nacional.parcelamentos', ['clientes' => $this->clientesSimplesAtivos()]);
+        return view('simples-nacional.parcelamentos', [
+            'clientes' => $this->clientesSimplesAtivos(),
+            'programas' => ParcelamentoService::programasValidos(),
+        ]);
     }
 
     public function telaParcelamentosMei()
@@ -294,13 +297,16 @@ class SimplesNacionalController extends Controller
     }
 
     /**
-     * Lista o histórico de parcelamentos PARCSN do cliente (PEDIDOSPARC163),
-     * com a situação de cada um — é o ponto de partida para achar qual
-     * parcelamento está ativo/com gargalo.
+     * Lista o histórico de parcelamentos do cliente no programa escolhido
+     * (PARCSN/PARCSN-ESP/PERTSN/RELPSN), com a situação de cada um — é o
+     * ponto de partida para achar qual parcelamento está ativo/com gargalo.
      */
     public function consultarParcelamentosPedidos(Request $request, ParcelamentoService $parcelamento): JsonResponse
     {
-        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoService::programasValidos())],
+        ]);
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
 
@@ -309,7 +315,7 @@ class SimplesNacionalController extends Controller
         }
 
         try {
-            $resposta = $parcelamento->consultarPedidos($cliente);
+            $resposta = $parcelamento->consultarPedidos($cliente, $validated['programa']);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -321,20 +327,21 @@ class SimplesNacionalController extends Controller
     }
 
     /**
-     * Detalha um parcelamento específico (OBTERPARC164): consolidação
+     * Detalha um parcelamento específico do programa escolhido: consolidação
      * original e demonstrativo de pagamentos mês a mês.
      */
     public function consultarParcelamentoDetalhe(Request $request, ParcelamentoService $parcelamento): JsonResponse
     {
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoService::programasValidos())],
             'numero_parcelamento' => 'required|string',
         ]);
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
 
         try {
-            $resposta = $parcelamento->consultarParcelamento($cliente, $validated['numero_parcelamento']);
+            $resposta = $parcelamento->consultarParcelamento($cliente, $validated['programa'], $validated['numero_parcelamento']);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -345,17 +352,20 @@ class SimplesNacionalController extends Controller
     }
 
     /**
-     * Lista as parcelas do parcelamento ativo do cliente ainda pendentes de
-     * emissão/pagamento (PARCELASPARAGERAR162) — a fila de gargalo em si.
+     * Lista as parcelas do parcelamento ativo do cliente nesse programa
+     * ainda pendentes de emissão/pagamento — a fila de gargalo em si.
      */
     public function consultarParcelasPendentes(Request $request, ParcelamentoService $parcelamento): JsonResponse
     {
-        $validated = $request->validate(['cliente_id' => 'required|exists:clientes,id']);
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoService::programasValidos())],
+        ]);
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
 
         try {
-            $resposta = $parcelamento->consultarParcelasParaImpressao($cliente);
+            $resposta = $parcelamento->consultarParcelasParaImpressao($cliente, $validated['programa']);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -366,26 +376,27 @@ class SimplesNacionalController extends Controller
     }
 
     /**
-     * Emite o DAS de uma parcela pendente (GERARDAS161) — o campo do PDF vem
-     * como "docArrecadacaoPdfB64" (ver buscarCampoPdf), sem "nomeArquivo".
+     * Emite o DAS de uma parcela pendente do programa escolhido — o campo do
+     * PDF vem como "docArrecadacaoPdfB64" (ver buscarCampoPdf), sem "nomeArquivo".
      */
     public function emitirDasParcelamento(Request $request, ParcelamentoService $parcelamento): JsonResponse
     {
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
+            'programa' => ['required', 'string', Rule::in(ParcelamentoService::programasValidos())],
             'parcela' => 'required|digits:6',
         ]);
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
 
         try {
-            $resposta = $parcelamento->emitirDas($cliente, $validated['parcela']);
+            $resposta = $parcelamento->emitirDas($cliente, $validated['programa'], $validated['parcela']);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
         $dados = json_decode($resposta['dados'] ?? '{}', true) ?? [];
-        $nomeArquivo = "DAS-PARCELAMENTO-{$validated['parcela']}-{$cliente->id}.pdf";
+        $nomeArquivo = "DAS-{$validated['programa']}-{$validated['parcela']}-{$cliente->id}.pdf";
         $arquivo = $this->extrairPdfAvulso($dados, $nomeArquivo);
 
         return response()->json(['success' => true, 'arquivo' => $arquivo]);

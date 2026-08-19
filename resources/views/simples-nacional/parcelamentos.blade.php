@@ -6,17 +6,17 @@
     <div class="max-w-7xl mx-auto py-6 px-4">
         <div class="mb-6">
             <a href="{{ route('simples-nacional.index') }}" title="Voltar" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-brand hover:bg-brand/10 no-underline"><i class="fa-solid fa-arrow-left"></i></a>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1"><i class="fa-solid fa-hand-holding-dollar"></i> Parcelamentos (PARCSN)</h1>
-            <p class="text-gray-700 dark:text-gray-300">Histórico de parcelamentos do cliente, detalhamento e parcelas pendentes de emissão.</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1"><i class="fa-solid fa-hand-holding-dollar"></i> Parcelamentos</h1>
+            <p class="text-gray-700 dark:text-gray-300">Histórico de parcelamentos do cliente, detalhamento e parcelas pendentes de emissão — PARCSN, PARCSN-ESP, PERTSN e RELPSN.</p>
         </div>
 
-        {{-- ─── Parcelamentos do cliente (PARCSN) ───────────────────────────────── --}}
+        {{-- ─── Parcelamentos do cliente ──────────────────────────────────────── --}}
         <div id="cardParcelamentos" class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 mb-6">
             <h2 class="font-semibold text-gray-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2 mb-1">
-                <i class="fa-solid fa-hand-holding-dollar text-brand"></i> Parcelamentos do cliente (PARCSN)
+                <i class="fa-solid fa-hand-holding-dollar text-brand"></i> Parcelamentos do cliente
             </h2>
             <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">
-                Veja o histórico de parcelamentos do Simples Nacional do cliente, o detalhamento de cada um (valor consolidado, parcelas pagas) e quais parcelas ainda estão pendentes de emissão — é aí que aparece o gargalo.
+                Veja o histórico de parcelamentos do Simples Nacional do cliente no programa escolhido, o detalhamento de cada um (valor consolidado, parcelas pagas) e quais parcelas ainda estão pendentes de emissão — é aí que aparece o gargalo.
             </p>
 
             <div class="flex flex-wrap gap-3 items-end mb-4">
@@ -27,6 +27,14 @@
                         <option value="">Selecione...</option>
                         @foreach($clientes as $cli)
                             <option value="{{ $cli->id }}">{{ $cli->nome }} — {{ $cli->cpfcnpj }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Programa</label>
+                    <select id="selectProgramaParcelamentos" class="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                        @foreach($programas as $programa)
+                            <option value="{{ $programa }}">{{ $programa }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -76,6 +84,7 @@
     @include('simples-nacional._shared')
     <script>
     const selectClienteParcelamentos   = document.getElementById('selectClienteParcelamentos');
+    const selectProgramaParcelamentos  = document.getElementById('selectProgramaParcelamentos');
     const btnBuscarParcelamentos       = document.getElementById('btnBuscarParcelamentos');
     const btnBuscarParcelasPendentes   = document.getElementById('btnBuscarParcelasPendentes');
     const parcelamentosErro            = document.getElementById('parcelamentosErro');
@@ -93,6 +102,7 @@
 
     btnBuscarParcelamentos.addEventListener('click', async function () {
         const clienteId = selectClienteParcelamentos.value;
+        const programa = selectProgramaParcelamentos.value;
 
         if (!clienteId) {
             Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione o cliente.' });
@@ -107,6 +117,7 @@
         try {
             const url = new URL('{{ route('simples-nacional.parcelamentos.pedidos') }}');
             url.searchParams.set('cliente_id', clienteId);
+            url.searchParams.set('programa', programa);
 
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
             const data = await resp.json();
@@ -120,7 +131,7 @@
             parcelamentosTabelaBody.innerHTML = '';
 
             if (!data.pedidos || data.pedidos.length === 0) {
-                parcelamentosTabelaBody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Nenhum parcelamento encontrado para este cliente.</td></tr>';
+                parcelamentosTabelaBody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Nenhum parcelamento encontrado para este cliente/programa.</td></tr>';
             }
 
             (data.pedidos ?? []).forEach(pedido => {
@@ -147,7 +158,7 @@
                         const respDetalhe = await fetch('{{ route('simples-nacional.parcelamentos.detalhe') }}', {
                             method: 'POST',
                             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ cliente_id: clienteId, numero_parcelamento: String(numero) }),
+                            body: JSON.stringify({ cliente_id: clienteId, programa: programa, numero_parcelamento: String(numero) }),
                         });
                         const dataDetalhe = await respDetalhe.json();
 
@@ -209,6 +220,7 @@
 
     btnBuscarParcelasPendentes.addEventListener('click', async function () {
         const clienteId = selectClienteParcelamentos.value;
+        const programa = selectProgramaParcelamentos.value;
 
         if (!clienteId) {
             Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione o cliente.' });
@@ -224,6 +236,7 @@
         try {
             const url = new URL('{{ route('simples-nacional.parcelamentos.pendentes') }}');
             url.searchParams.set('cliente_id', clienteId);
+            url.searchParams.set('programa', programa);
 
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
             const data = await resp.json();
@@ -263,7 +276,7 @@
                         const respEmitir = await fetch('{{ route('simples-nacional.parcelamentos.emitir-das') }}', {
                             method: 'POST',
                             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ cliente_id: clienteId, parcela: String(parcela) }),
+                            body: JSON.stringify({ cliente_id: clienteId, programa: programa, parcela: String(parcela) }),
                         });
                         const dataEmitir = await respEmitir.json();
 
