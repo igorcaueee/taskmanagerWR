@@ -1439,7 +1439,14 @@
                        </label>`
                     : '';
 
+                const alertasHtml = (e.alertas_receita ?? []).map(alerta => `
+                    <div class="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 mb-2">
+                        <span>⚠</span><span>${escapeHtml(alerta.mensagem)}</span>
+                    </div>
+                `).join('');
+
                 card.innerHTML = `
+                    ${alertasHtml}
                     <div class="flex flex-wrap items-start gap-x-6 gap-y-3 pb-3 mb-3 border-b border-gray-200 dark:border-slate-700">
                         <div class="min-w-[12rem]">
                             <div class="font-mono text-xs text-gray-400 dark:text-slate-500">${escapeHtml(e.cnpj)}</div>

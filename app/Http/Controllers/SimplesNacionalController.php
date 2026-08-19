@@ -929,6 +929,7 @@ class SimplesNacionalController extends Controller
                 'rpa_caixa' => $e['rpa_caixa'],
                 'anexo_sugerido' => $e['anexo_sugerido'] ?? null,
                 'atividades' => $atividades,
+                'alertas_receita' => $this->alertasReceitaDominio($cliente, $resultado['periodo_apuracao'], $e['rpa_competencia']),
             ];
         });
 
@@ -937,6 +938,66 @@ class SimplesNacionalController extends Controller
             'periodo_apuracao' => $resultado['periodo_apuracao'],
             'estabelecimentos' => $estabelecimentos,
         ]);
+    }
+
+    /**
+     * Compara a receita do período importado com o histórico já lançado do
+     * cliente (últimos 6 meses) e sinaliza casos suspeitos — receita
+     * zerada/ausente ou variação grande (>50%) em relação à média — para o
+     * usuário conferir antes de confirmar a importação. Não bloqueia nada,
+     * só avisa.
+     */
+    private function alertasReceitaDominio(?Cliente $cliente, ?string $periodoApuracao, $receitaAtual): array
+    {
+        $alertas = [];
+        $receitaAtual = $receitaAtual !== null ? (float) $receitaAtual : null;
+
+        if ($receitaAtual === null || $receitaAtual <= 0.0) {
+            $alertas[] = [
+                'tipo' => 'receita_zerada',
+                'mensagem' => 'Receita do período está zerada ou não foi identificada no relatório.',
+            ];
+        }
+
+        if (! $cliente || ! $periodoApuracao) {
+            return $alertas;
+        }
+
+        $historico = SimplesReceitaMensal::where('cliente_id', $cliente->id)
+            ->where('periodo_apuracao', '<', $periodoApuracao)
+            ->orderByDesc('periodo_apuracao')
+            ->limit(6)
+            ->pluck('receita_bruta_competencia')
+            ->map(fn ($v) => (float) $v)
+            ->filter(fn ($v) => $v > 0.0)
+            ->values();
+
+        if ($historico->isEmpty() || $receitaAtual === null) {
+            return $alertas;
+        }
+
+        $media = $historico->avg();
+
+        if ($media > 0.0) {
+            $variacao = ($receitaAtual - $media) / $media;
+
+            if (abs($variacao) >= 0.5) {
+                $alertas[] = [
+                    'tipo' => $variacao > 0 ? 'receita_acima_media' : 'receita_abaixo_media',
+                    'mensagem' => sprintf(
+                        'Receita está %s%% %s da média dos últimos %d meses (R$ %s).',
+                        number_format(abs($variacao) * 100, 0, ',', '.'),
+                        $variacao > 0 ? 'acima' : 'abaixo',
+                        $historico->count(),
+                        number_format($media, 2, ',', '.')
+                    ),
+                    'media_historica' => round($media, 2),
+                    'variacao_percentual' => round($variacao * 100, 1),
+                ];
+            }
+        }
+
+        return $alertas;
     }
 
     /**
