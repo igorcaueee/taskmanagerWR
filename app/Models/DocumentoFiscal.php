@@ -73,6 +73,42 @@ class DocumentoFiscal extends Model
     }
 
     /**
+     * Acrescenta o CEST (<det><prod><CEST>) ao final da descrição do produto
+     * (<xProd>) antes de gerar o DANFE/DANFE-NFC-e, replicando o formato que
+     * o Sieg já usa nos XMLs baixados por lá. A lib nfephp-org/sped-da lê
+     * xProd direto do XML, então o ajuste é feito aqui, sem tocar no vendor.
+     */
+    public static function adicionarCestNaDescricao(?string $xml): ?string
+    {
+        if ($xml === null || ! str_contains($xml, '<CEST>')) {
+            return $xml;
+        }
+
+        try {
+            libxml_use_internal_errors(true);
+            $dom = new \DOMDocument();
+            $dom->loadXML($xml);
+
+            foreach ($dom->getElementsByTagName('prod') as $prod) {
+                $cest = $prod->getElementsByTagName('CEST')->item(0);
+                $xProd = $prod->getElementsByTagName('xProd')->item(0);
+
+                if ($cest === null || $xProd === null || trim($cest->nodeValue) === '') {
+                    continue;
+                }
+
+                $xProd->nodeValue = trim($xProd->nodeValue).' - CEST: '.trim($cest->nodeValue);
+            }
+
+            return $dom->saveXML();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[NF-e] adicionarCestNaDescricao: falha ao processar XML', ['msg' => $e->getMessage()]);
+        }
+
+        return $xml;
+    }
+
+    /**
      * Classifica o documento em 'entrada' ou 'saida' do ponto de vista do
      * cliente (mesma lógica usada na tela de NF-e, função `direcaoDoc` em
      * resources/views/nfe/index.blade.php — mantenha as duas em sincronia).

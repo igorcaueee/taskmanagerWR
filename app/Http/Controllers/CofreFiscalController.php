@@ -354,8 +354,8 @@ class CofreFiscalController extends Controller
             ->each(function (DocumentoFiscal $documento) use ($zip, &$total, &$falhas) {
                 try {
                     $gerador = match ($documento->tipo) {
-                        'nfe' => new Danfe($documento->xml_content),
-                        'nfce' => new Danfce($documento->xml_content),
+                        'nfe' => new Danfe(DocumentoFiscal::adicionarCestNaDescricao($documento->xml_content)),
+                        'nfce' => new Danfce(DocumentoFiscal::adicionarCestNaDescricao($documento->xml_content)),
                         'cte' => new Dacte($documento->xml_content),
                         default => throw new \RuntimeException("Tipo '{$documento->tipo}' não suporta PDF."),
                     };
