@@ -53,7 +53,11 @@ async function protegerComConfigSerpro(containerId) {
             container.innerHTML = `
                 <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-700 rounded-lg px-3 py-2">
                     <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>A API Integra Contador (SERPRO) ainda não está configurada. <a href="{{ route('simples-nacional.configuracao.tela') }}" class="underline text-brand">Configurar agora</a>.</span>
+                    @if(auth()->user()?->canAcessarConfiguracaoApi())
+                        <span>A API Integra Contador (SERPRO) ainda não está configurada. <a href="{{ route('simples-nacional.configuracao.tela') }}" class="underline text-brand">Configurar agora</a>.</span>
+                    @else
+                        <span>A API Integra Contador (SERPRO) ainda não está configurada. Solicite ao TI para configurar.</span>
+                    @endif
                 </div>
             `;
         }

@@ -401,7 +401,7 @@ Route::middleware(['auth', 'reinf-access'])->prefix('reinf')->name('reinf.')->gr
 // Simples Nacional — processamento do DAS via Integra Contador (SERPRO)
 Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')->group(function () {
     Route::get('/', [SimplesNacionalController::class, 'index'])->name('index');
-    Route::get('/configuracao/tela', [SimplesNacionalController::class, 'telaConfiguracao'])->name('configuracao.tela');
+    Route::get('/configuracao', [SimplesNacionalController::class, 'getConfiguracao'])->name('configuracao.get');
     Route::get('/das/tela', [SimplesNacionalController::class, 'telaDas'])->name('das.tela');
     Route::get('/parcelamentos/tela', [SimplesNacionalController::class, 'telaParcelamentos'])->name('parcelamentos.tela');
     Route::get('/parcelamentos-mei/tela', [SimplesNacionalController::class, 'telaParcelamentosMei'])->name('parcelamentos-mei.tela');
@@ -411,12 +411,6 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::get('/procuracoes/tela', [SimplesNacionalController::class, 'telaProcuracoes'])->name('procuracoes.tela');
     Route::get('/mit/tela', [SimplesNacionalController::class, 'telaMit'])->name('mit.tela');
     Route::get('/dctfweb/tela', [SimplesNacionalController::class, 'telaDctfWeb'])->name('dctfweb.tela');
-    Route::get('/configuracao', [SimplesNacionalController::class, 'getConfiguracao'])->name('configuracao.get');
-    Route::post('/configuracao', [SimplesNacionalController::class, 'salvarConfiguracao'])->name('configuracao.salvar');
-    Route::post('/configuracao/testar', [SimplesNacionalController::class, 'testarConexao'])->name('configuracao.testar');
-    Route::post('/configuracao/testar-consulta-demo', [SimplesNacionalController::class, 'testarConsultaDemo'])->name('configuracao.testar-consulta-demo');
-    Route::post('/configuracao/testar-consulta-recibo', [SimplesNacionalController::class, 'testarConsultaRecibo'])->name('configuracao.testar-consulta-recibo');
-    Route::get('/configuracao/download-teste/{arquivo}', [SimplesNacionalController::class, 'downloadTeste'])->name('configuracao.download-teste');
     Route::get('/declaracoes', [SimplesNacionalController::class, 'consultarDeclaracoes'])->name('declaracoes');
     Route::post('/declaracoes/rbt12', [SimplesNacionalController::class, 'buscarRbt12'])->name('declaracoes.rbt12');
     Route::post('/declaracoes/extrato', [SimplesNacionalController::class, 'consultarExtrato'])->name('declaracoes.extrato');
@@ -462,6 +456,16 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::post('/dctfweb/recibo', [SimplesNacionalController::class, 'consultarReciboDctfWeb'])->name('dctfweb.recibo');
     Route::post('/dctfweb/completa', [SimplesNacionalController::class, 'consultarDeclaracaoCompletaDctfWeb'])->name('dctfweb.completa');
     Route::post('/dctfweb/xml', [SimplesNacionalController::class, 'consultarXmlDctfWeb'])->name('dctfweb.xml');
+});
+
+// Simples Nacional — Configuração da API (certificado do escritório e chaves SERPRO) — apenas TI
+Route::middleware(['auth', 'ti-access'])->prefix('simples-nacional')->name('simples-nacional.')->group(function () {
+    Route::get('/configuracao/tela', [SimplesNacionalController::class, 'telaConfiguracao'])->name('configuracao.tela');
+    Route::post('/configuracao', [SimplesNacionalController::class, 'salvarConfiguracao'])->name('configuracao.salvar');
+    Route::post('/configuracao/testar', [SimplesNacionalController::class, 'testarConexao'])->name('configuracao.testar');
+    Route::post('/configuracao/testar-consulta-demo', [SimplesNacionalController::class, 'testarConsultaDemo'])->name('configuracao.testar-consulta-demo');
+    Route::post('/configuracao/testar-consulta-recibo', [SimplesNacionalController::class, 'testarConsultaRecibo'])->name('configuracao.testar-consulta-recibo');
+    Route::get('/configuracao/download-teste/{arquivo}', [SimplesNacionalController::class, 'downloadTeste'])->name('configuracao.download-teste');
 });
 
 // NF-e / CT-e — Distribuição DFe (Ambiente Nacional)

@@ -256,4 +256,10 @@ class Usuario extends Authenticatable
     {
         return in_array($this->cargo, ['diretor', 'ti']);
     }
+
+    // Apenas TI acessa a Configuração da API (certificado e chaves SERPRO)
+    public function canAcessarConfiguracaoApi(): bool
+    {
+        return $this->cargo === 'ti';
+    }
 }

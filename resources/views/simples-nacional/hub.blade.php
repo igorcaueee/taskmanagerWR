@@ -12,15 +12,17 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a href="{{ route('simples-nacional.configuracao.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
-                <div class="flex items-center gap-4">
-                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-key"></i></div>
-                    <div>
-                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">Configuração da API</h2>
-                        <p class="text-sm text-gray-500 dark:text-slate-400">Certificado do escritório e chaves SERPRO</p>
+            @if(auth()->user()?->canAcessarConfiguracaoApi())
+                <a href="{{ route('simples-nacional.configuracao.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-key"></i></div>
+                        <div>
+                            <h2 class="font-semibold text-gray-800 dark:text-slate-100">Configuração da API</h2>
+                            <p class="text-sm text-gray-500 dark:text-slate-400">Certificado do escritório e chaves SERPRO</p>
+                        </div>
                     </div>
-                </div>
-            </a>
+                </a>
+            @endif
 
             <a href="{{ route('nfse.index') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">

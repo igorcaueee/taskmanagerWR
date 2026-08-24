@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsureEmailMarketing;
 use App\Http\Middleware\EnsureNetworkAccess;
 use App\Http\Middleware\EnsurePrecificacaoAccess;
 use App\Http\Middleware\EnsureReinfAccess;
+use App\Http\Middleware\EnsureTiAccess;
 use App\Http\Middleware\PortalAuth;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'colaboradores.edit' => EnsureColaboradoresEdit::class,
             'admin' => EnsureAdmin::class,
             'reinf-access' => EnsureReinfAccess::class,
+            'ti-access' => EnsureTiAccess::class,
             'portal.auth' => PortalAuth::class,
             'portal.precificacao' => EnsurePrecificacaoAccess::class,
         ]);
