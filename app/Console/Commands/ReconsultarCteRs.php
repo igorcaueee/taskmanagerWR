@@ -19,13 +19,13 @@ use Illuminate\Support\Facades\Log;
  * estritamente sequencial).
  *
  * Complementa `fiscal:sincronizar-notas-rs`: aquele avança o checkpoint pra
- * frente todo dia; este volta um pouco atrás (--janela, padrão 5000) e reconsulta até
+ * frente todo dia; este volta um pouco atrás (--janela, padrão 50000) e reconsulta até
  * o NSU atual de novo, sem nunca regredir o checkpoint salvo (ver
  * CteIntegracaoRsService::atualizarCheckpoint). Documentos já salvos são
  * apenas re-verificados (updateOrCreate por chave de acesso é idempotente);
  * só os que faltavam entram como novidade.
  */
-#[Signature('fiscal:reconsultar-cte-rs {--cliente= : ID ou CNPJ do cliente (opcional — se omitido, reconsulta TODOS os clientes elegíveis)} {--janela= : Quantas posições de NSU voltar a partir do checkpoint (padrão 5000 — clientes de alto volume de NSU podem precisar de um valor maior)}')]
+#[Signature('fiscal:reconsultar-cte-rs {--cliente= : ID ou CNPJ do cliente (opcional — se omitido, reconsulta TODOS os clientes elegíveis)} {--janela= : Quantas posições de NSU voltar a partir do checkpoint (padrão 50000)}')]
 #[Description('Reconsulta uma janela de NSU anterior ao checkpoint de cada cliente pra recapturar CT-e que chegaram fora de ordem na Sefaz-RS.')]
 class ReconsultarCteRs extends Command
 {
@@ -35,7 +35,7 @@ class ReconsultarCteRs extends Command
     // mesmo pra clientes de alto volume — reconsultar de mais só custa tempo
     // de execução (documentos repetidos são no-op), nunca risco de dado
     // incorreto.
-    private const JANELA_NSU_PADRAO = 5000;
+    private const JANELA_NSU_PADRAO = 50000;
 
     private const PAUSA_ENTRE_CLIENTES_SEGUNDOS = 2;
 
