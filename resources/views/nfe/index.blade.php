@@ -659,24 +659,20 @@
     filtroBusca.addEventListener('input', limparSelecaoAoFiltrar);
 
     // ─── Exportar relatório fiscal (Excel) — segue o filtro "Tipo" da toolbar ─
-    // '' (Todos os tipos) inclui CT-e na tabela, mas o relatório fiscal só existe
-    // para NF-e/NFC-e — nesse caso exporta os dois juntos e ignora o CT-e.
-    const TIPO_RELATORIO_POR_FILTRO = { '': 'ambos', nfe: 'nfe', nfce: 'nfce' };
+    // '' (Todos os tipos) inclui CT-e na tabela, mas o relatório junto (NF-e + NFC-e)
+    // ignora o CT-e — para exportar CT-e é preciso filtrar o tipo antes.
+    const TIPO_RELATORIO_POR_FILTRO = { '': 'ambos', nfe: 'nfe', nfce: 'nfce', cte: 'cte' };
     const LABEL_RELATORIO_POR_FILTRO = {
         '': 'Exportar relatório (NF-e + NFC-e)',
         nfe: 'Exportar relatório (somente NF-e)',
         nfce: 'Exportar relatório (somente NFC-e)',
+        cte: 'Exportar relatório (somente CT-e)',
     };
     const SUFIXO_DIRECAO_LABEL  = { '': '', entrada: ' — entradas', saida: ' — saídas' };
-    const SUFIXO_ARQUIVO_RELATORIO = { ambos: 'NFe_NFCe', nfe: 'NFe', nfce: 'NFCe' };
+    const SUFIXO_ARQUIVO_RELATORIO = { ambos: 'NFe_NFCe', nfe: 'NFe', nfce: 'NFCe', cte: 'CTe' };
     const SUFIXO_ARQUIVO_DIRECAO    = { '': '', entrada: '_Entradas', saida: '_Saidas' };
 
     function atualizarBotaoExportarRelatorio() {
-        if (filtroTipo.value === 'cte') {
-            btnExportarRelatorio.classList.add('hidden');
-            return;
-        }
-
         btnExportarRelatorio.classList.remove('hidden');
         const labelTipo = LABEL_RELATORIO_POR_FILTRO[filtroTipo.value] ?? LABEL_RELATORIO_POR_FILTRO[''];
         btnExportarRelatorioLabel.textContent = labelTipo + (SUFIXO_DIRECAO_LABEL[filtroDirecao.value] ?? '');

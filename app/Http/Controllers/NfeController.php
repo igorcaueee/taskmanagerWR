@@ -309,7 +309,7 @@ class NfeController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'tipo' => 'nullable|in:nfe,nfce,ambos',
+            'tipo' => 'nullable|in:nfe,nfce,ambos,cte',
             'direcao' => 'nullable|in:entrada,saida',
         ]);
 
@@ -327,16 +327,21 @@ class NfeController extends Controller
                 ? $this->linhasRelatorio($cliente->id, 'nfce', $validated['data_inicio'], $validated['data_fim'], $direcao, $clienteCnpj)
                 : null;
 
+            $linhasCte = $tipo === 'cte'
+                ? $this->linhasRelatorioCte($cliente->id, $validated['data_inicio'], $validated['data_fim'], $direcao, $clienteCnpj)
+                : null;
+
             $sufixo = match ($tipo) {
                 'nfe' => 'NFe',
                 'nfce' => 'NFCe',
+                'cte' => 'CTe',
                 default => 'NFe_NFCe',
             };
 
             $nomeArquivo = "Relatorio_{$sufixo}_".preg_replace('/[^A-Za-z0-9_-]+/', '_', $cliente->nome)
                 ."_{$validated['data_inicio']}_a_{$validated['data_fim']}.xlsx";
 
-            return (new NfeRelatorioExport($linhasNf, $linhasNfc))->download($nomeArquivo);
+            return (new NfeRelatorioExport($linhasNf, $linhasNfc, $linhasCte))->download($nomeArquivo);
         } catch (\Throwable $e) {
             Log::error('[NF-e] exportarRelatorio: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
 
@@ -355,6 +360,22 @@ class NfeController extends Controller
             }
 
             array_push($linhas, ...NfeXmlParser::paraRelatorio($documento));
+        }
+
+        return $linhas;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function linhasRelatorioCte(int $clienteId, string $dataInicio, string $dataFim, ?string $direcao, string $clienteCnpj): array
+    {
+        $linhas = [];
+
+        foreach (DocumentoFiscal::queryPeriodo($clienteId, 'cte', $dataInicio, $dataFim)->cursor() as $documento) {
+            if ($direcao !== null && $documento->direcao($clienteCnpj) !== $direcao) {
+                continue;
+            }
+
+            array_push($linhas, ...NfeXmlParser::paraRelatorioCte($documento));
         }
 
         return $linhas;
