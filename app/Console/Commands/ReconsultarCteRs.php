@@ -19,22 +19,23 @@ use Illuminate\Support\Facades\Log;
  * estritamente sequencial).
  *
  * Complementa `fiscal:sincronizar-notas-rs`: aquele avança o checkpoint pra
- * frente todo dia; este volta um pouco atrás (JANELA_NSU) e reconsulta até
+ * frente todo dia; este volta um pouco atrás (--janela, padrão 5000) e reconsulta até
  * o NSU atual de novo, sem nunca regredir o checkpoint salvo (ver
  * CteIntegracaoRsService::atualizarCheckpoint). Documentos já salvos são
  * apenas re-verificados (updateOrCreate por chave de acesso é idempotente);
  * só os que faltavam entram como novidade.
  */
-#[Signature('fiscal:reconsultar-cte-rs')]
+#[Signature('fiscal:reconsultar-cte-rs {--cliente= : ID ou CNPJ do cliente (opcional — se omitido, reconsulta TODOS os clientes elegíveis)} {--janela= : Quantas posições de NSU voltar a partir do checkpoint (padrão 5000 — clientes de alto volume de NSU podem precisar de um valor maior)}')]
 #[Description('Reconsulta uma janela de NSU anterior ao checkpoint de cada cliente pra recapturar CT-e que chegaram fora de ordem na Sefaz-RS.')]
 class ReconsultarCteRs extends Command
 {
-    // Quantas posições de NSU voltar a partir do checkpoint atual. NSU não
-    // tem relação fixa com tempo, mas numa janela dessa magnitude cobre
-    // folgadamente alguns dias de emissão mesmo pra clientes de alto volume —
-    // reconsultar de mais só custa tempo de execução (documentos repetidos
-    // são no-op), nunca risco de dado incorreto.
-    private const JANELA_NSU = 5000;
+    // Quantas posições de NSU voltar a partir do checkpoint atual, por padrão
+    // (sobrescrito por --janela). NSU não tem relação fixa com tempo, mas
+    // numa janela dessa magnitude cobre folgadamente alguns dias de emissão
+    // mesmo pra clientes de alto volume — reconsultar de mais só custa tempo
+    // de execução (documentos repetidos são no-op), nunca risco de dado
+    // incorreto.
+    private const JANELA_NSU_PADRAO = 5000;
 
     private const PAUSA_ENTRE_CLIENTES_SEGUNDOS = 2;
 
@@ -54,9 +55,27 @@ class ReconsultarCteRs extends Command
             return self::FAILURE;
         }
 
+        $janela = (int) ($this->option('janela') ?: self::JANELA_NSU_PADRAO);
+
+        $filtroCliente = $this->option('cliente');
+        $clienteUnico = null;
+
+        if ($filtroCliente) {
+            $clienteUnico = ctype_digit((string) $filtroCliente)
+                ? Cliente::find($filtroCliente)
+                : Cliente::whereRaw("REPLACE(REPLACE(REPLACE(cpfcnpj, '.', ''), '-', ''), '/', '') = ?", [preg_replace('/[.\-\/\s]/', '', (string) $filtroCliente)])->first();
+
+            if (! $clienteUnico) {
+                $this->error("Cliente não encontrado para \"{$filtroCliente}\" (tente o ID ou o CNPJ).");
+
+                return self::FAILURE;
+            }
+        }
+
         $clientes = Cliente::where('status', 'ativo')
             ->where('importar_notas_fiscais', true)
             ->where('ultimo_nsu_cte_rs', '>', 0)
+            ->when($clienteUnico, fn ($q) => $q->where('id', $clienteUnico->id))
             ->get();
 
         if ($clientes->isEmpty()) {
@@ -65,11 +84,13 @@ class ReconsultarCteRs extends Command
             return self::SUCCESS;
         }
 
+        $this->info("Janela de reconsulta: {$janela} NSU.");
+
         $totalSucesso = 0;
         $totalErro = 0;
 
         foreach ($clientes as $indice => $cliente) {
-            $nsuInicio = max(1, (int) $cliente->ultimo_nsu_cte_rs - self::JANELA_NSU);
+            $nsuInicio = max(1, (int) $cliente->ultimo_nsu_cte_rs - $janela);
 
             $this->info("Reconsultando: {$cliente->nome} (a partir do NSU {$nsuInicio})");
 
