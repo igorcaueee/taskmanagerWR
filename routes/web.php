@@ -487,6 +487,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/rs/sincronizar-chunk', [NfeController::class, 'sincronizarRsChunk'])->name('rs.sincronizar-chunk');
     Route::get('/rs/sincronizacao/tela', [NfeController::class, 'telaSincronizacaoRs'])->name('rs.sincronizacao.tela');
     Route::post('/rs/cte/buscar-por-chave', [NfeController::class, 'buscarCtePorChave'])->name('rs.cte.buscar-por-chave');
+    Route::post('/rs/cte/buscar-por-chave-lote', [NfeController::class, 'buscarCtePorChaveLote'])->name('rs.cte.buscar-por-chave-lote');
     Route::post('/rs/buscar-por-chave', [NfeController::class, 'buscarNfePorChave'])->name('rs.buscar-por-chave');
 });
 

@@ -61,9 +61,18 @@ class CteIntegracaoRsService
      * partir do NSU indicado (ou do último salvo, se omitido), para a tabela
      * `documentos_fiscais`, usando o certificado da contabilidade.
      *
+     * $modoBackfill: usado pela reconsulta de janela (ver comando
+     * `fiscal:reconsultar-cte-rs`), que deliberadamente começa num NSU
+     * *anterior* ao checkpoint atual pra recapturar CT-e que a Sefaz-RS
+     * entregou fora de ordem (ver nota em buscarPorChave). Nesse modo o
+     * checkpoint `ultimo_nsu_cte_rs` só avança, nunca regride — sem essa
+     * proteção, cada reconsulta empurraria o checkpoint pra trás e a
+     * sincronização normal do dia seguinte reprocessaria o mesmo período
+     * inteiro de novo.
+     *
      * Retorna ['concluido' => bool, 'proximoNsu' => int, 'aviso' => ?string].
      */
-    public function sincronizarChunk(CertificadoContabilidade $certificado, Cliente $cliente, ?int $nsuInicio = null): array
+    public function sincronizarChunk(CertificadoContabilidade $certificado, Cliente $cliente, ?int $nsuInicio = null, bool $modoBackfill = false): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/[.\-\/\s]/', '', $cliente->cpfcnpj ?? '');
@@ -105,7 +114,7 @@ class CteIntegracaoRsService
                 if ($resp['cStat'] === '678') {
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
-                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                        $this->atualizarCheckpoint($cliente, $nsuAtual, $modoBackfill);
                     }
 
                     $aviso = 'A Sefaz-RS rejeitou a sincronização de CT-e por "consumo indevido" — aguarde e tente '
@@ -121,14 +130,14 @@ class CteIntegracaoRsService
                 if ($resp['cStat'] === '8005') {
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
-                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                        $this->atualizarCheckpoint($cliente, $nsuAtual, $modoBackfill);
                         $lotes++;
                         continue;
                     }
 
                     if (preg_match('/NSUMin:\s*(\d+)/i', (string) $resp['xMotivo'], $m)) {
                         $nsuAtual = (int) $m[1];
-                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                        $this->atualizarCheckpoint($cliente, $nsuAtual, $modoBackfill);
                         $lotes++;
                         continue;
                     }
@@ -141,7 +150,7 @@ class CteIntegracaoRsService
                 if (empty($resp['docs'])) {
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
-                        $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                        $this->atualizarCheckpoint($cliente, $nsuAtual, $modoBackfill);
                     }
                     $concluido = true;
                     break;
@@ -160,7 +169,7 @@ class CteIntegracaoRsService
 
                 if (!empty($resp['ultNSU'])) {
                     $nsuAtual = (int) $resp['ultNSU'];
-                    $cliente->update(['ultimo_nsu_cte_rs' => $nsuAtual]);
+                    $this->atualizarCheckpoint($cliente, $nsuAtual, $modoBackfill);
                 }
 
                 if (!$loteCheio) {
@@ -179,6 +188,20 @@ class CteIntegracaoRsService
         Log::info('[CT-e RS] sincronizarChunk: concluído', ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
         return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
+    }
+
+    /**
+     * Grava o novo NSU no checkpoint do cliente — em modo backfill, só grava
+     * se o novo valor for maior que o atual, pra uma reconsulta de janela
+     * antiga nunca regredir o ponto de onde a sincronização normal continua.
+     */
+    private function atualizarCheckpoint(Cliente $cliente, int $novoNsu, bool $modoBackfill): void
+    {
+        if ($modoBackfill && $novoNsu <= (int) $cliente->ultimo_nsu_cte_rs) {
+            return;
+        }
+
+        $cliente->update(['ultimo_nsu_cte_rs' => $novoNsu]);
     }
 
     /**

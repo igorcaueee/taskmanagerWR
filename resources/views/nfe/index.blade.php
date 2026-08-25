@@ -175,13 +175,18 @@
                         <i class="fa-solid fa-chevron-right text-[10px]" id="iconToggleBuscarChave"></i>
                         Nota não apareceu na busca? Buscar por chave específica
                     </button>
-                    <div id="formBuscarChave" class="hidden mt-2 flex gap-2">
-                        <input type="text" id="inputChaveCte" maxlength="44" placeholder="Chave de acesso (44 dígitos)"
-                               class="flex-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0084aa]">
-                        <button type="button" id="btnBuscarChave"
-                                class="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap">
-                            Buscar e salvar
-                        </button>
+                    <div id="formBuscarChave" class="hidden mt-2">
+                        <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-1">
+                            Uma chave por linha (44 dígitos cada). Com mais de uma linha, só CT-e via contabilidade (SEFAZ-RS) é suportado.
+                        </p>
+                        <div class="flex gap-2">
+                            <textarea id="inputChaveCte" rows="2" placeholder="Chave de acesso (44 dígitos) — uma por linha"
+                                   class="flex-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0084aa] font-mono"></textarea>
+                            <button type="button" id="btnBuscarChave"
+                                    class="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap self-start">
+                                Buscar e salvar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -376,45 +381,97 @@
 
     btnBuscarChave.addEventListener('click', async function () {
         const clienteId = selectCliente.value;
-        const chave = soDigitos(inputChaveCte.value);
+        const chaves = inputChaveCte.value
+            .split('\n')
+            .map(l => soDigitos(l))
+            .filter(l => l.length > 0);
 
         if (!clienteId) {
             Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Selecione uma empresa primeiro.' });
             return;
         }
-        if (chave.length !== 44) {
-            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'A chave de acesso precisa ter 44 dígitos.' });
+        if (chaves.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Informe ao menos uma chave de acesso.' });
             return;
         }
-
-        // Modelo do documento vem embutido na própria chave (posições 21-22, 1-indexed):
-        // 55=NF-e, 65=NFC-e, 57=CT-e — decide qual endpoint chamar sem precisar perguntar.
-        const modelo = chave.substring(20, 22);
-        const ehCte = modelo === '57';
-        const ehNfce = modelo === '65';
-
-        let url;
-        if (ehCte) {
-            if (!checkModoRs.checked) {
-                Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca de CT-e por chave só está disponível com o certificado da contabilidade (marque a opção acima).' });
-                return;
-            }
-            url = '/nfe/rs/cte/buscar-por-chave';
-        } else if (checkModoRs.checked) {
-            url = '/nfe/rs/buscar-por-chave';
-        } else {
-            if (ehNfce) {
-                Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca de NFC-e por chave só está disponível com o certificado da contabilidade (marque a opção acima).' });
-                return;
-            }
-            url = '/nfe/buscar-por-chave';
+        const chaveInvalida = chaves.find(c => c.length !== 44);
+        if (chaveInvalida) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: `Chave inválida (precisa ter 44 dígitos): ${chaveInvalida}` });
+            return;
         }
 
         this.disabled = true;
         const labelOrig = this.textContent;
-        this.textContent = 'Buscando...';
 
         try {
+            if (chaves.length > 1) {
+                // Busca em lote: só suportada pra CT-e via contabilidade (SEFAZ-RS) hoje.
+                if (!checkModoRs.checked) {
+                    Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca em lote só está disponível pra CT-e com o certificado da contabilidade (marque a opção acima).' });
+                    return;
+                }
+                const modeloDiferente = chaves.find(c => c.substring(20, 22) !== '57');
+                if (modeloDiferente) {
+                    Swal.fire({ icon: 'warning', title: 'Atenção', text: `Busca em lote só suporta CT-e. Chave fora do padrão: ${modeloDiferente}` });
+                    return;
+                }
+
+                this.textContent = `Buscando ${chaves.length}...`;
+                const resp = await fetch('/nfe/rs/cte/buscar-por-chave-lote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                    body: JSON.stringify({ cliente_id: clienteId, chaves_acesso: chaves }),
+                });
+                const data = await resp.json().catch(() => ({}));
+
+                if (!resp.ok || !data.resultados) {
+                    Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao buscar os documentos.' });
+                    return;
+                }
+
+                const sucessos = data.resultados.filter(r => r.sucesso);
+                const falhas = data.resultados.filter(r => !r.sucesso);
+                const listaFalhas = falhas.map(r => `• ${r.chave_acesso.slice(-8)}: ${r.mensagem}`).join('<br>');
+
+                Swal.fire({
+                    icon: falhas.length === 0 ? 'success' : 'warning',
+                    title: `${sucessos.length} de ${data.resultados.length} encontrado(s)`,
+                    html: falhas.length ? `Falharam:<br>${listaFalhas}` : 'Clique em "Buscar" pra atualizar a lista.',
+                });
+                if (falhas.length === 0) {
+                    inputChaveCte.value = '';
+                } else {
+                    inputChaveCte.value = falhas.map(r => r.chave_acesso).join('\n');
+                }
+                return;
+            }
+
+            const chave = chaves[0];
+
+            // Modelo do documento vem embutido na própria chave (posições 21-22, 1-indexed):
+            // 55=NF-e, 65=NFC-e, 57=CT-e — decide qual endpoint chamar sem precisar perguntar.
+            const modelo = chave.substring(20, 22);
+            const ehCte = modelo === '57';
+            const ehNfce = modelo === '65';
+
+            let url;
+            if (ehCte) {
+                if (!checkModoRs.checked) {
+                    Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca de CT-e por chave só está disponível com o certificado da contabilidade (marque a opção acima).' });
+                    return;
+                }
+                url = '/nfe/rs/cte/buscar-por-chave';
+            } else if (checkModoRs.checked) {
+                url = '/nfe/rs/buscar-por-chave';
+            } else {
+                if (ehNfce) {
+                    Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busca de NFC-e por chave só está disponível com o certificado da contabilidade (marque a opção acima).' });
+                    return;
+                }
+                url = '/nfe/buscar-por-chave';
+            }
+
+            this.textContent = 'Buscando...';
             const resp = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },

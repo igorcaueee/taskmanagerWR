@@ -177,6 +177,44 @@ class NfeController extends Controller
     }
 
     /**
+     * Busca vários CT-e's de uma vez, cada um pela própria chave de acesso
+     * (mesmo caminho de buscarCtePorChave, chamado em sequência) — cobre o
+     * caso de recuperar em lote documentos que a sincronização por NSU
+     * pulou (ex.: divergência encontrada comparando com relatório da SEFAZ).
+     */
+    public function buscarCtePorChaveLote(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id'    => 'required|exists:clientes,id',
+            'chaves_acesso' => 'required|array|min:1',
+            'chaves_acesso.*' => 'string',
+        ]);
+
+        $cert = CertificadoContabilidade::first();
+
+        if (! $cert) {
+            return response()->json(['error' => 'Certificado da contabilidade não configurado. Cadastre-o antes de buscar.'], 422);
+        }
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+
+        $resultados = [];
+
+        foreach ($validated['chaves_acesso'] as $chave) {
+            try {
+                $resultado = $this->cteRs->buscarPorChave($cert, $cliente, $chave);
+            } catch (\Throwable $e) {
+                Log::error('[CT-e RS] buscarCtePorChaveLote: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'chave' => $chave, 'trace' => $e->getTraceAsString()]);
+                $resultado = ['sucesso' => false, 'mensagem' => 'Erro inesperado: '.$e->getMessage()];
+            }
+
+            $resultados[] = array_merge(['chave_acesso' => $chave], $resultado);
+        }
+
+        return response()->json(['resultados' => $resultados]);
+    }
+
+    /**
      * Busca uma única NF-e/NFC-e pela chave de acesso via SEFAZ-RS
      * (certificado da contabilidade) e salva no cofre — mesmo padrão do
      * buscarCtePorChave, ver NfeIntegracaoRsService::buscarPorChave.
