@@ -466,6 +466,14 @@ XML;
 </soap12:Envelope>
 XML;
 
+        // TEMP DEBUG — remover depois de diagnosticar o cStat 215 recorrente em buscarPorChave
+        Log::debug('[NF-e] consultarPorChave: envelope montado', [
+            'cnpj'      => $cnpj,
+            'strlenCnpj' => strlen($cnpj),
+            'tagDoc'    => $tagDoc,
+            'envelope'  => $envelope,
+        ]);
+
         $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
 
         return $this->parseRetDistDFeInt($resposta);
