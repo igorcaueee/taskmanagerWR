@@ -443,7 +443,10 @@ class CofreFiscalController extends Controller
 
         Log::info('[Cofre Fiscal] uploadZip: zip aberto', ['arquivo_original' => $arquivo->getClientOriginalName(), 'num_files' => $zip->numFiles]);
 
-        $clienteId = $validated['cliente_id'];
+        // (int) é necessário aqui: o valor chega como string do multipart/form-data, enquanto
+        // $existente->cliente_id vem como int do Eloquent — sem o cast, a comparação abaixo
+        // com !== (estrita) nunca bate, mesmo sendo o mesmo cliente.
+        $clienteId = (int) $validated['cliente_id'];
         $importados = 0;
         $atualizados = 0;
         $ignoradosInvalidos = 0;
