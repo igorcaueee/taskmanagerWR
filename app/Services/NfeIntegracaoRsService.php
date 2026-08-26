@@ -362,6 +362,7 @@ class NfeIntegracaoRsService
     private function consultarNsu(string $endpoint, int $tpAmb, string $cnpj, string $mod, int $ultNSU, string $pemCert, string $pemKey): array
     {
         $cUF = self::CUF_RS;
+        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
@@ -373,7 +374,7 @@ class NfeIntegracaoRsService
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <mod>{$mod}</mod>
           <solRel>
             <indXML>1</indXML>
@@ -400,6 +401,7 @@ XML;
     private function consultarPorChave(string $endpoint, int $tpAmb, string $cnpj, string $mod, string $chaveAcesso, string $pemCert, string $pemKey): array
     {
         $cUF = self::CUF_RS;
+        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
@@ -411,7 +413,7 @@ XML;
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <mod>{$mod}</mod>
           <solDFe>
             <chAcesso>{$chaveAcesso}</chAcesso>

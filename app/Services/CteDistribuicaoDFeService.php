@@ -185,6 +185,7 @@ class CteDistribuicaoDFeService
         // mandar sem padding ("0" em vez de "000000000000000") gera cStat 215
         // "Falha no esquema xml".
         $ultNsu  = str_pad((string) $nsu, 15, '0', STR_PAD_LEFT);
+        $tagDoc  = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -200,7 +201,7 @@ class CteDistribuicaoDFeService
         <distDFeInt xmlns="http://www.portalfiscal.inf.br/cte" versao="{$versao}">
           <tpAmb>{$tpAmb}</tpAmb>
           <cUFAutor>{$cUFAutor}</cUFAutor>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <distNSU><ultNSU>{$ultNsu}</ultNSU></distNSU>
         </distDFeInt>
       </cteDadosMsg>

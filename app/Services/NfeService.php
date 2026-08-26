@@ -393,6 +393,7 @@ class NfeService
     {
         $ultNsu  = str_pad((string) $nsu, 15, '0', STR_PAD_LEFT);
         $versao  = self::VERSAO;
+        $tagDoc  = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -409,7 +410,7 @@ class NfeService
 
           <tpAmb>{$tpAmb}</tpAmb>
           <cUFAutor>{$cUFAutor}</cUFAutor>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <distNSU><ultNSU>{$ultNsu}</ultNSU></distNSU>
         </distDFeInt>
       </nfeDadosMsg>
@@ -430,6 +431,7 @@ XML;
     private function consultarPorChave(string $endpoint, int $tpAmb, int $cUFAutor, string $cnpj, string $chaveAcesso, string $pemCert, string $pemKey): array
     {
         $versao = self::VERSAO;
+        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -445,7 +447,7 @@ XML;
         <distDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="{$versao}">
           <tpAmb>{$tpAmb}</tpAmb>
           <cUFAutor>{$cUFAutor}</cUFAutor>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <consChNFe><chNFe>{$chaveAcesso}</chNFe></consChNFe>
         </distDFeInt>
       </nfeDadosMsg>

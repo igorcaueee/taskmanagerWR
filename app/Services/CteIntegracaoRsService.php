@@ -274,6 +274,7 @@ class CteIntegracaoRsService
     private function consultarPorChave(string $endpoint, int $tpAmb, string $cnpj, string $chaveAcesso, string $pemCert, string $pemKey): array
     {
         $mod = self::MOD_CTE;
+        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
@@ -285,7 +286,7 @@ class CteIntegracaoRsService
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>43</cUF>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <mod>{$mod}</mod>
           <solDFe>
             <chAcesso>{$chaveAcesso}</chAcesso>
@@ -306,6 +307,7 @@ XML;
     {
         $cUF = self::CUF_RS;
         $mod = self::MOD_CTE;
+        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
         // Diferente do webservice de NF-e RS (SOAP 1.1): o CTeIntegracao exige SOAP 1.2 —
         // a Sefaz rejeita com "VersionMismatch" se enviado como 1.1.
@@ -319,7 +321,7 @@ XML;
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
-          <CNPJ>{$cnpj}</CNPJ>
+          <{$tagDoc}>{$cnpj}</{$tagDoc}>
           <mod>{$mod}</mod>
           <solRel>
             <indXML>1</indXML>
