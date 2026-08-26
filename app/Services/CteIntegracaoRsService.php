@@ -274,8 +274,11 @@ class CteIntegracaoRsService
     private function consultarPorChave(string $endpoint, int $tpAmb, string $cnpj, string $chaveAcesso, string $pemCert, string $pemKey): array
     {
         $mod = self::MOD_CTE;
-        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
+        // Diferente do webservice nacional (CTeDistribuicaoDFe), o schema do distCTeRS
+        // não tem <xs:choice> CNPJ/CPF — só existe o elemento <CNPJ>, mesmo
+        // quando o valor é um CPF (11 dígitos). Usar <CPF> aqui gera cStat 215
+        // ("invalid child element 'CPF' ... expected: 'CNPJ'").
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -286,7 +289,7 @@ class CteIntegracaoRsService
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>43</cUF>
-          <{$tagDoc}>{$cnpj}</{$tagDoc}>
+          <CNPJ>{$cnpj}</CNPJ>
           <mod>{$mod}</mod>
           <solDFe>
             <chAcesso>{$chaveAcesso}</chAcesso>
@@ -307,10 +310,10 @@ XML;
     {
         $cUF = self::CUF_RS;
         $mod = self::MOD_CTE;
-        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
         // Diferente do webservice de NF-e RS (SOAP 1.1): o CTeIntegracao exige SOAP 1.2 —
         // a Sefaz rejeita com "VersionMismatch" se enviado como 1.1.
+        // O schema do distCTeRS também não tem <xs:choice> CNPJ/CPF — só <CNPJ>.
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -321,7 +324,7 @@ XML;
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
-          <{$tagDoc}>{$cnpj}</{$tagDoc}>
+          <CNPJ>{$cnpj}</CNPJ>
           <mod>{$mod}</mod>
           <solRel>
             <indXML>1</indXML>

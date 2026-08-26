@@ -362,8 +362,10 @@ class NfeIntegracaoRsService
     private function consultarNsu(string $endpoint, int $tpAmb, string $cnpj, string $mod, int $ultNSU, string $pemCert, string $pemKey): array
     {
         $cUF = self::CUF_RS;
-        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
+        // Diferente do webservice nacional (distDFeInt), o schema do distNFeRS
+        // não tem <xs:choice> CNPJ/CPF — só existe o elemento <CNPJ>, mesmo
+        // quando o valor é um CPF (11 dígitos). Usar <CPF> aqui gera cStat 215.
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
@@ -374,7 +376,7 @@ class NfeIntegracaoRsService
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
-          <{$tagDoc}>{$cnpj}</{$tagDoc}>
+          <CNPJ>{$cnpj}</CNPJ>
           <mod>{$mod}</mod>
           <solRel>
             <indXML>1</indXML>
@@ -401,7 +403,6 @@ XML;
     private function consultarPorChave(string $endpoint, int $tpAmb, string $cnpj, string $mod, string $chaveAcesso, string $pemCert, string $pemKey): array
     {
         $cUF = self::CUF_RS;
-        $tagDoc = strlen($cnpj) === 11 ? 'CPF' : 'CNPJ';
 
         $envelope = <<<XML
 <?xml version="1.0" encoding="utf-8"?>
@@ -413,7 +414,7 @@ XML;
           <tpAmb>{$tpAmb}</tpAmb>
           <verAplic>TaskManagerWR</verAplic>
           <cUF>{$cUF}</cUF>
-          <{$tagDoc}>{$cnpj}</{$tagDoc}>
+          <CNPJ>{$cnpj}</CNPJ>
           <mod>{$mod}</mod>
           <solDFe>
             <chAcesso>{$chaveAcesso}</chAcesso>
