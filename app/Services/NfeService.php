@@ -217,6 +217,18 @@ class NfeService
         $tpAmb    = $certificado->ambiente === 'producao' ? 1 : 2;
         $endpoint = $certificado->ambiente === 'producao' ? self::ENDPOINT_PRODUCAO : self::ENDPOINT_HOMOLOGACAO;
 
+        // O Ambiente Nacional só permite consulta de documento específico (consChNFe)
+        // quando o autor do pedido é identificado por CNPJ — para CPF, só o feed por
+        // NSU (distNSU) é aceito. Tentar consChNFe com CPF sempre retorna cStat 215
+        // "Falha no esquema xml", então nem vale fazer a chamada.
+        if (strlen($cnpj) === 11) {
+            return [
+                'sucesso'  => false,
+                'mensagem' => 'A Sefaz não permite buscar um documento específico por chave quando o cliente é '
+                    . 'pessoa física (CPF) — só a sincronização por período (NSU) é aceita nesse caso.',
+            ];
+        }
+
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
 
         try {
@@ -465,14 +477,6 @@ XML;
   </soap12:Body>
 </soap12:Envelope>
 XML;
-
-        // TEMP DEBUG — remover depois de diagnosticar o cStat 215 recorrente em buscarPorChave
-        Log::debug('[NF-e] consultarPorChave: envelope montado', [
-            'cnpj'      => $cnpj,
-            'strlenCnpj' => strlen($cnpj),
-            'tagDoc'    => $tagDoc,
-            'envelope'  => $envelope,
-        ]);
 
         $resposta = $this->requisicaoSoap($endpoint, $envelope, $pemCert, $pemKey);
 
