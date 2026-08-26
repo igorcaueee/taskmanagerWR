@@ -174,6 +174,13 @@
                                         <i class="fa-solid fa-download text-xs"></i>
                                     </a>
                                 @endif
+                                @if(auth()->user()?->canEditarClientes())
+                                    <button type="button" onclick="abrirModalCertificado()"
+                                            title="{{ $cliente->certificadoNfse ? 'Atualizar certificado digital' : 'Anexar certificado digital' }}"
+                                            class="text-gray-400 hover:text-[#0084aa] dark:hover:text-[#0084aa] transition-colors bg-transparent border-0 p-0">
+                                        <i class="fa-solid fa-certificate text-xs"></i>
+                                    </button>
+                                @endif
                             </dd>
                         </div>
                         <div>
@@ -589,6 +596,109 @@
             </div>` : ''}
         </div>
     `;
+
+    window.abrirModalCertificado = async function() {
+        let status = {};
+        try {
+            const resp = await fetch(`/nfse/certificado/${CLIENTE_ID}`, { headers: { 'Accept': 'application/json' } });
+            status = await resp.json();
+        } catch (e) {}
+
+        let statusHtml = '';
+        if (status.configurado && status.arquivo_ok) {
+            if (status.vencido) {
+                statusHtml = `<div class="flex items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 mb-3"><i class="fa-solid fa-circle-xmark"></i><span>Certificado <strong>vencido</strong> em ${status.vencimento}.</span></div>`;
+            } else if (status.alerta) {
+                statusHtml = `<div class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 mb-3"><i class="fa-solid fa-triangle-exclamation"></i><span>Certificado vence em breve: <strong>${status.vencimento}</strong>.</span></div>`;
+            } else {
+                statusHtml = `<div class="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2 mb-3"><i class="fa-solid fa-shield-halved"></i><span>Certificado configurado — vence <strong>${status.vencimento}</strong>.</span></div>`;
+            }
+        } else if (status.configurado && !status.arquivo_ok) {
+            statusHtml = `<div class="flex items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 mb-3"><i class="fa-solid fa-circle-xmark"></i><span>Arquivo do certificado não encontrado no servidor. Faça o upload novamente.</span></div>`;
+        }
+
+        const ambienteAtual = status.ambiente ?? 'producao';
+
+        Swal.fire({
+            title: 'Certificado Digital',
+            html: `
+                <div class="text-left space-y-3">
+                    ${statusHtml}
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Arquivo .pfx / .p12</label>
+                        <input type="file" id="cert-file" accept=".pfx,.p12"
+                               class="w-full text-sm text-gray-700 dark:text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#0084aa]/10 file:text-[#0084aa] hover:file:bg-[#0084aa]/20 cursor-pointer border border-gray-300 dark:border-slate-600 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Senha do certificado</label>
+                        <div class="relative">
+                            <input type="password" id="cert-senha" placeholder="••••••••" class="swal2-input" style="margin:0;width:100%;">
+                            <button type="button" id="cert-btn-show-senha"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 bg-transparent border-0 p-0 leading-none">
+                                <i class="fa-regular fa-eye text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Ambiente</label>
+                        <select id="cert-ambiente" class="swal2-select" style="margin:0;width:100%;">
+                            <option value="producao" ${ambienteAtual === 'producao' ? 'selected' : ''}>Produção</option>
+                            <option value="homologacao" ${ambienteAtual === 'homologacao' ? 'selected' : ''}>Homologação (testes)</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Salvar certificado',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0084AA',
+            didOpen: () => {
+                document.getElementById('cert-btn-show-senha')?.addEventListener('click', function () {
+                    const input = document.getElementById('cert-senha');
+                    const visible = input.type === 'text';
+                    input.type = visible ? 'password' : 'text';
+                    this.querySelector('i').className = visible ? 'fa-regular fa-eye text-sm' : 'fa-regular fa-eye-slash text-sm';
+                });
+            },
+            preConfirm: async () => {
+                const file = document.getElementById('cert-file').files[0];
+                const senha = document.getElementById('cert-senha').value;
+                const ambiente = document.getElementById('cert-ambiente').value;
+
+                if (!file || !senha) {
+                    Swal.showValidationMessage('Selecione o arquivo e informe a senha do certificado.');
+                    return false;
+                }
+
+                const formData = new FormData();
+                formData.append('cliente_id', CLIENTE_ID);
+                formData.append('certificado', file);
+                formData.append('senha', senha);
+                formData.append('ambiente', ambiente);
+                formData.append('_token', CSRF);
+
+                const resp = await fetch('/nfse/certificado', { method: 'POST', body: formData });
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) {
+                    Swal.showValidationMessage(data.error ?? 'Falha ao salvar certificado.');
+                    return false;
+                }
+
+                return data;
+            },
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Certificado salvo!',
+                    text: result.value?.vencimento ? `Vence em ${result.value.vencimento}` : 'Certificado salvo com sucesso.',
+                    timer: 2000,
+                    showConfirmButton: false,
+                }).then(() => window.location.reload());
+            }
+        });
+    };
 
     window.abrirModalNovoUsuario = async function() {
         const pastas = await buscarPastasPortal();
