@@ -243,6 +243,13 @@
                             <input type="checkbox" id="checkTodos" class="rounded text-[#0084aa]">
                             Selecionar todas
                         </label>
+                        {{-- Soma só dos marcados via checkbox — útil pra conferir manualmente um
+                             subconjunto de notas (ex.: comparando com um relatório externo) sem
+                             precisar isolar elas num filtro. --}}
+                        <span id="totalSelecionadosWrap" class="hidden items-center gap-1 text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/40 rounded-lg px-2.5 py-1.5">
+                            <span id="totalSelecionados">0</span> selecionado(s):
+                            <span id="somaSelecionados" class="font-bold text-[#0084aa]"></span>
+                        </span>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <input type="text" id="filtroBusca" placeholder="Buscar número, emitente ou chave..."
@@ -1234,12 +1241,28 @@
             btnDownloadZipPdf.classList.remove('hidden');
             btnDownloadZipPdf.classList.add('flex');
             btnDownloadZipPdf.innerHTML = `<i class="fa-solid fa-file-pdf"></i> Baixar ${selecionados.size} PDF(s) (.zip)`;
+
+            // docsAtuais já tem o resultado inteiro do período em memória (não só a
+            // página atual), então a soma cobre a seleção mesmo espalhada entre páginas.
+            const somaSelecionadosValor = docsAtuais
+                .filter(d => selecionados.has(String(d.nsu)))
+                .reduce((acc, d) => acc + (parseFloat(d.valor) || 0), 0);
+
+            document.getElementById('totalSelecionados').textContent = selecionados.size;
+            document.getElementById('somaSelecionados').textContent = formatarMoeda(somaSelecionadosValor);
+            const wrapSelecionados = document.getElementById('totalSelecionadosWrap');
+            wrapSelecionados.classList.remove('hidden');
+            wrapSelecionados.classList.add('flex');
         } else {
             btnDownloadZip.classList.add('hidden');
             btnDownloadZip.classList.remove('flex');
 
             btnDownloadZipPdf.classList.add('hidden');
             btnDownloadZipPdf.classList.remove('flex');
+
+            const wrapSelecionados = document.getElementById('totalSelecionadosWrap');
+            wrapSelecionados.classList.add('hidden');
+            wrapSelecionados.classList.remove('flex');
         }
     }
 
