@@ -58,6 +58,81 @@ class NfeXmlParser
     ];
 
     /**
+     * Extrai os metadados de cabeçalho de um XML de NF-e/NFC-e/CT-e completo
+     * (nfeProc/cteProc ou o NFe/CTe assinado sem o wrapper de protocolo),
+     * no mesmo formato de array usado por NfeService/CteDistribuicaoDFeService
+     * antes de persistir em `documentos_fiscais` — usado pelo upload manual de
+     * XMLs no Cofre Fiscal (CofreFiscalController::uploadZip), onde o XML vem
+     * solto num .zip em vez de uma resposta da Sefaz já classificada.
+     *
+     * Retorna null quando o XML não é um NF-e/CT-e reconhecível (falta
+     * infNFe/infCte ou não dá pra extrair uma chave de acesso de 44 dígitos).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function extrairMetadados(string $xml): ?array
+    {
+        libxml_use_internal_errors(true);
+
+        try {
+            $obj = new \SimpleXMLElement($xml);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $get = fn (string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
+
+        $isCte = count($obj->xpath("//*[local-name()='infCte']")) > 0;
+        $isNfe = count($obj->xpath("//*[local-name()='infNFe']")) > 0;
+
+        if (!$isCte && !$isNfe) {
+            return null;
+        }
+
+        $chave = $isCte ? $get('chCTe') : $get('chNFe');
+
+        // Documento assinado mas ainda sem protocolo de autorização (sem chNFe/chCTe em
+        // infProt): a chave também está embutida no atributo Id de infNFe/infCte
+        // (formato "NFe44dígitos"/"CTe44dígitos").
+        if ($chave === '') {
+            $idNode = $obj->xpath("//*[local-name()='" . ($isCte ? 'infCte' : 'infNFe') . "']/@Id")[0] ?? null;
+            $chave = $idNode ? preg_replace('/\D/', '', (string) $idNode) : '';
+        }
+
+        if (strlen($chave) !== 44) {
+            return null;
+        }
+
+        // Modelo embutido nas posições 21-22 da chave (55=NF-e, 65=NFC-e) — mais confiável
+        // que a tag <mod>, que pode não existir dependendo do formato do XML (mesma
+        // convenção usada em NfeIntegracaoRsService::normalizarDocumento).
+        $modelo = substr($chave, 20, 2);
+        $tipoDoc = $isCte ? 'cte' : ($modelo === '65' ? 'nfce' : 'nfe');
+
+        $numero = $get('nNF') ?: $get('nCT');
+        if (!$numero) {
+            $numero = (string) (int) substr($chave, 25, 9);
+        }
+
+        $tpNfStr = $get('tpNF');
+        $emitenteNome = trim(mb_convert_encoding($get('xNome'), 'UTF-8', 'UTF-8'));
+
+        return [
+            'tipo'             => $tipoDoc,
+            'chaveAcesso'      => $chave,
+            'numero'           => $numero,
+            'dataEmissao'      => $get('dhEmi'),
+            'dataSaidaEntrada' => $get('dhSaiEnt') ?: $get('dSaiEnt'),
+            'emitenteNome'     => $emitenteNome !== '' ? $emitenteNome : null,
+            'emitenteDoc'      => $get('CNPJ') ?: $get('CPF'),
+            'valor'            => $get('vNF') ?: $get('vCT'),
+            'situacao'         => $get('cSitDFe') ?: $get('cSitCTe') ?: null,
+            'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
+            'xmlContent'       => $xml,
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public static function paraRelatorio(DocumentoFiscal $documento): array

@@ -30,6 +30,10 @@ class CofreFiscalController extends Controller
     // Limite de documentos por zip em lote — protege contra memória/tempo em filtros muito amplos.
     const MAX_ZIP = 500;
 
+    // Limite de XMLs por .zip enviado manualmente — mesmo racional do MAX_ZIP, mas pro sentido
+    // inverso (upload em vez de download).
+    const MAX_UPLOAD_XMLS = 2000;
+
     const MESES = [
         1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
         5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
@@ -47,6 +51,10 @@ class CofreFiscalController extends Controller
         $tipo = in_array($tipo, ['nfe', 'nfce', 'cte'], true) ? $tipo : null;
 
         $breadcrumbs = $this->montarBreadcrumbs($clienteId, $ano, $mes, $tipo);
+
+        // Compartilhado com a view independente do nível — o modal de upload de XMLs
+        // fica disponível em qualquer pasta do Cofre, não só na raiz (clientes).
+        view()->share('clientesUpload', Cliente::where('status', 'ativo')->orderBy('nome')->get(['id', 'nome']));
 
         if ($clienteId && $ano && $mes && $tipo) {
             return $this->nivelDocumentos($request, $clienteId, $ano, $mes, $tipo, $breadcrumbs);
@@ -392,6 +400,111 @@ class CofreFiscalController extends Controller
             'Content-Type' => 'application/zip',
             'X-Pdfs-Falhas' => (string) $falhas,
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Importa XMLs de NF-e/NFC-e/CT-e pra dentro do Cofre a partir de um .zip enviado
+     * manualmente pro cliente selecionado — usado quando a nota não veio pela
+     * distribuição DFe (nacional/RS) automática, ex.: XMLs recebidos de outra
+     * contabilidade na migração de um cliente. Só .zip é suportado (sem .rar: o
+     * servidor não tem unrar/7z instalado, nem a extensão PHP correspondente).
+     *
+     * Cada entrada .xml do zip é lida com NfeXmlParser::extrairMetadados() e gravada
+     * via updateOrCreate por chave_acesso — mesmo padrão de idempotência usado por
+     * NfeService::persistir/CteDistribuicaoDFeService::persistir, então reenviar o
+     * mesmo zip não duplica nada. Documentos cuja chave já pertence a OUTRO cliente
+     * são pulados (não reatribuídos), pra não corromper a pasta de outro cliente por
+     * upload no cliente errado.
+     */
+    public function uploadZip(Request $request)
+    {
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(300);
+
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'arquivo' => 'required|file|max:102400', // 100MB
+        ]);
+
+        $arquivo = $request->file('arquivo');
+
+        if (strtolower($arquivo->getClientOriginalExtension()) !== 'zip') {
+            return response()->json(['error' => 'Envie um arquivo .zip. Outros formatos (ex.: .rar) não são suportados — compacte os XMLs em .zip antes de enviar.'], 422);
+        }
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($arquivo->getRealPath()) !== true) {
+            return response()->json(['error' => 'Não foi possível abrir o arquivo .zip.'], 422);
+        }
+
+        $clienteId = $validated['cliente_id'];
+        $importados = 0;
+        $atualizados = 0;
+        $ignorados = 0;
+        $processados = 0;
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $nome = $zip->getNameIndex($i);
+
+            if ($nome === false || !str_ends_with(strtolower($nome), '.xml')) {
+                continue;
+            }
+
+            if ($processados >= self::MAX_UPLOAD_XMLS) {
+                $ignorados += $zip->numFiles - $i;
+                break;
+            }
+            $processados++;
+
+            $conteudo = $zip->getFromIndex($i);
+
+            $meta = $conteudo !== false ? NfeXmlParser::extrairMetadados($conteudo) : null;
+
+            if ($meta === null) {
+                $ignorados++;
+                continue;
+            }
+
+            $existente = DocumentoFiscal::where('chave_acesso', $meta['chaveAcesso'])->first();
+
+            if ($existente && $existente->cliente_id !== $clienteId) {
+                $ignorados++;
+                continue;
+            }
+
+            DocumentoFiscal::updateOrCreate(
+                ['chave_acesso' => $meta['chaveAcesso']],
+                [
+                    'cliente_id'         => $clienteId,
+                    'tipo'               => $meta['tipo'],
+                    'origem'             => $existente->origem ?? 'manual',
+                    'numero'             => $meta['numero'] ?: null,
+                    'data_emissao'       => !empty($meta['dataEmissao']) ? substr($meta['dataEmissao'], 0, 10) : null,
+                    'data_saida_entrada' => !empty($meta['dataSaidaEntrada']) ? substr($meta['dataSaidaEntrada'], 0, 10) : null,
+                    'emitente_nome'      => $meta['emitenteNome'],
+                    'emitente_doc'       => $meta['emitenteDoc'] ?: null,
+                    'valor'              => $meta['valor'] ?: null,
+                    'situacao'           => $existente?->situacao === 'cancelada' ? 'cancelada' : ($meta['situacao'] ?? null),
+                    'tp_nf'              => $meta['tpNf'] ?? $existente?->tp_nf,
+                    'xml_content'        => $meta['xmlContent'],
+                ]
+            );
+
+            $existente ? $atualizados++ : $importados++;
+        }
+
+        $zip->close();
+
+        if ($importados === 0 && $atualizados === 0) {
+            return response()->json(['error' => 'Nenhum XML de NF-e/NFC-e/CT-e válido foi encontrado no .zip.'], 422);
+        }
+
+        return response()->json([
+            'importados' => $importados,
+            'atualizados' => $atualizados,
+            'ignorados' => $ignorados,
+        ]);
     }
 
     /**

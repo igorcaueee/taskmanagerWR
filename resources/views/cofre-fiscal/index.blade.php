@@ -18,6 +18,12 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
+            <button type="button" id="btnUploadXmlsCofre"
+                    data-cliente-id="{{ request('cliente_id') }}"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-sm font-semibold rounded-lg transition-colors">
+                <i class="fa-solid fa-upload text-[#0084aa]"></i>
+                Enviar XMLs (.zip)
+            </button>
             @if(in_array($nivel, ['tipos', 'documentos'], true))
             <button type="button" id="btnExportarRelatorioCofre"
                     data-cliente-id="{{ request('cliente_id') }}"
@@ -306,6 +312,105 @@
 (function () {
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     const btnExportarRelatorioCofre = document.getElementById('btnExportarRelatorioCofre');
+    const btnUploadXmlsCofre = document.getElementById('btnUploadXmlsCofre');
+    const clientesUpload = @json($clientesUpload->map(fn ($c) => ['id' => $c->id, 'nome' => $c->nome]));
+
+    if (btnUploadXmlsCofre) {
+        btnUploadXmlsCofre.addEventListener('click', async function () {
+            const clienteIdAtual = this.dataset.clienteId;
+
+            const opcoesClientes = clientesUpload.map((c) =>
+                `<option value="${c.id}" ${String(c.id) === clienteIdAtual ? 'selected' : ''}>${c.nome}</option>`
+            ).join('');
+
+            const { value: form } = await Swal.fire({
+                title: 'Enviar XMLs para o Cofre',
+                html: `
+                    <div class="text-left text-sm flex flex-col gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Empresa</label>
+                            <select id="swalUploadCliente" class="swal2-select" style="width:100%;margin:0;display:block;">
+                                <option value="">Selecione...</option>
+                                ${opcoesClientes}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Arquivo .zip com os XMLs</label>
+                            <input type="file" id="swalUploadArquivo" accept=".zip" class="swal2-file" style="width:100%;margin:0;display:block;">
+                            <p class="text-xs text-gray-400 mt-1">Apenas .zip é suportado (não .rar) — compacte os XMLs em .zip antes de enviar.</p>
+                        </div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Enviar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0084aa',
+                preConfirm: () => {
+                    const clienteId = document.getElementById('swalUploadCliente').value;
+                    const arquivo = document.getElementById('swalUploadArquivo').files[0];
+
+                    if (!clienteId) {
+                        Swal.showValidationMessage('Selecione a empresa.');
+                        return false;
+                    }
+
+                    if (!arquivo) {
+                        Swal.showValidationMessage('Selecione o arquivo .zip.');
+                        return false;
+                    }
+
+                    if (!arquivo.name.toLowerCase().endsWith('.zip')) {
+                        Swal.showValidationMessage('Apenas .zip é suportado (não .rar).');
+                        return false;
+                    }
+
+                    return { clienteId, arquivo };
+                },
+            });
+
+            if (!form) {
+                return;
+            }
+
+            Swal.fire({
+                title: 'Enviando e processando XMLs...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => Swal.showLoading(),
+            });
+
+            const dadosForm = new FormData();
+            dadosForm.append('cliente_id', form.clienteId);
+            dadosForm.append('arquivo', form.arquivo);
+
+            try {
+                const resp = await fetch('{{ route('cofre-fiscal.upload') }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF },
+                    body: dadosForm,
+                });
+
+                const data = await resp.json().catch(() => ({}));
+
+                if (!resp.ok) {
+                    Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao processar o .zip.' });
+                    return;
+                }
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Importação concluída',
+                    html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>`,
+                    confirmButtonColor: '#0084aa',
+                });
+
+                window.location.href = '{{ route('cofre-fiscal.index') }}?cliente_id=' + form.clienteId;
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
+            }
+        });
+    }
 
     if (btnExportarRelatorioCofre) {
         btnExportarRelatorioCofre.addEventListener('click', async function () {

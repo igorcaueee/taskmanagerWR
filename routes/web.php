@@ -497,6 +497,7 @@ Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(
     Route::get('/zip', [CofreFiscalController::class, 'downloadZip'])->name('zip');
     Route::get('/zip-pdfs', [CofreFiscalController::class, 'downloadZipPdfs'])->name('zip-pdfs');
     Route::post('/relatorio', [CofreFiscalController::class, 'exportarRelatorio'])->name('relatorio');
+    Route::post('/upload', [CofreFiscalController::class, 'uploadZip'])->name('upload');
 });
 
 Route::middleware('auth')->prefix('cnd')->name('cnd.')->group(function () {
