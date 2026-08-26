@@ -113,11 +113,22 @@ class CteDistribuicaoDFeService
                     break;
                 }
 
+                // 137 = nenhum documento localizado neste NSU — pode ser apenas um gap
+                // (NSUs pulados que não pertencem a este interessado), não necessariamente
+                // o fim do feed. Só é seguro concluir quando ultNSU alcançou maxNSU.
                 if ($cStat === '137') {
                     if (isset($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
                         $certificado->update(['ultimo_nsu_cte' => $nsuAtual]);
                     }
+
+                    $maxNSUResp = isset($resp['maxNSU']) ? (int) $resp['maxNSU'] : null;
+
+                    if ($maxNSUResp !== null && $nsuAtual < $maxNSUResp) {
+                        $lotes++;
+                        continue;
+                    }
+
                     $concluido = true;
                     break;
                 }
