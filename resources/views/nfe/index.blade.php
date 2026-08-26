@@ -267,6 +267,7 @@
                         <select id="filtroTipo"
                                 class="text-xs border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#0084aa]">
                             <option value="">Todos os tipos</option>
+                            <option value="ambos">NF-e + NFC-e (sem CT-e)</option>
                             <option value="nfe">NF-e</option>
                             <option value="nfce">NFC-e</option>
                             <option value="cte">CT-e</option>
@@ -651,7 +652,9 @@
     function docsFiltrados() {
         let docs = docsAtuais;
 
-        if (filtroTipo.value) {
+        if (filtroTipo.value === 'ambos') {
+            docs = docs.filter(d => d.tipo === 'nfe' || d.tipo === 'nfce');
+        } else if (filtroTipo.value) {
             docs = docs.filter(d => d.tipo === filtroTipo.value);
         }
 
@@ -725,9 +728,10 @@
     // ─── Exportar relatório fiscal (Excel) — segue o filtro "Tipo" da toolbar ─
     // '' (Todos os tipos) inclui CT-e na tabela, mas o relatório junto (NF-e + NFC-e)
     // ignora o CT-e — para exportar CT-e é preciso filtrar o tipo antes.
-    const TIPO_RELATORIO_POR_FILTRO = { '': 'ambos', nfe: 'nfe', nfce: 'nfce', cte: 'cte' };
+    const TIPO_RELATORIO_POR_FILTRO = { '': 'ambos', ambos: 'ambos', nfe: 'nfe', nfce: 'nfce', cte: 'cte' };
     const LABEL_RELATORIO_POR_FILTRO = {
         '': 'Exportar relatório (NF-e + NFC-e)',
+        ambos: 'Exportar relatório (NF-e + NFC-e)',
         nfe: 'Exportar relatório (somente NF-e)',
         nfce: 'Exportar relatório (somente NFC-e)',
         cte: 'Exportar relatório (somente CT-e)',
