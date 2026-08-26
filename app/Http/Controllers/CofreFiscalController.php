@@ -433,15 +433,21 @@ class CofreFiscalController extends Controller
         }
 
         $zip = new ZipArchive();
+        $abriu = $zip->open($arquivo->getRealPath());
 
-        if ($zip->open($arquivo->getRealPath()) !== true) {
+        if ($abriu !== true) {
+            Log::warning('[Cofre Fiscal] uploadZip: falha ao abrir .zip', ['codigo_zip' => $abriu, 'arquivo_original' => $arquivo->getClientOriginalName()]);
+
             return response()->json(['error' => 'Não foi possível abrir o arquivo .zip.'], 422);
         }
+
+        Log::info('[Cofre Fiscal] uploadZip: zip aberto', ['arquivo_original' => $arquivo->getClientOriginalName(), 'num_files' => $zip->numFiles]);
 
         $clienteId = $validated['cliente_id'];
         $importados = 0;
         $atualizados = 0;
-        $ignorados = 0;
+        $ignoradosInvalidos = 0;
+        $ignoradosOutroCliente = 0;
         $processados = 0;
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -452,7 +458,7 @@ class CofreFiscalController extends Controller
             }
 
             if ($processados >= self::MAX_UPLOAD_XMLS) {
-                $ignorados += $zip->numFiles - $i;
+                $ignoradosInvalidos += $zip->numFiles - $i;
                 break;
             }
             $processados++;
@@ -462,14 +468,25 @@ class CofreFiscalController extends Controller
             $meta = $conteudo !== false ? NfeXmlParser::extrairMetadados($conteudo) : null;
 
             if ($meta === null) {
-                $ignorados++;
+                $ignoradosInvalidos++;
+                Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (não reconhecido)', [
+                    'nome' => $nome,
+                    'conteudo_leu' => $conteudo !== false,
+                    'tamanho' => $conteudo !== false ? strlen($conteudo) : null,
+                    'amostra' => $conteudo !== false ? substr($conteudo, 0, 300) : null,
+                ]);
                 continue;
             }
 
             $existente = DocumentoFiscal::where('chave_acesso', $meta['chaveAcesso'])->first();
 
             if ($existente && $existente->cliente_id !== $clienteId) {
-                $ignorados++;
+                $ignoradosOutroCliente++;
+                Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (chave já pertence a outro cliente)', [
+                    'chave_acesso' => $meta['chaveAcesso'],
+                    'cliente_id_selecionado' => $clienteId,
+                    'cliente_id_existente' => $existente->cliente_id,
+                ]);
                 continue;
             }
 
@@ -497,13 +514,18 @@ class CofreFiscalController extends Controller
         $zip->close();
 
         if ($importados === 0 && $atualizados === 0) {
+            if ($ignoradosOutroCliente > 0 && $ignoradosInvalidos === 0) {
+                return response()->json(['error' => "Todos os {$ignoradosOutroCliente} XML(s) reconhecidos já pertencem a OUTRO cliente no Cofre — nada foi importado pra não corromper a pasta dele. Confira se selecionou a empresa certa."], 422);
+            }
+
             return response()->json(['error' => 'Nenhum XML de NF-e/NFC-e/CT-e válido foi encontrado no .zip.'], 422);
         }
 
         return response()->json([
             'importados' => $importados,
             'atualizados' => $atualizados,
-            'ignorados' => $ignorados,
+            'ignorados' => $ignoradosInvalidos + $ignoradosOutroCliente,
+            'ignorados_outro_cliente' => $ignoradosOutroCliente,
         ]);
     }
 
