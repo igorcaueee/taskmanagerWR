@@ -53,8 +53,15 @@ class NfseService
     public function buscarPorPeriodoChunk(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim, int $nsuInicio = 0): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
-        $cnpj     = preg_replace('/[.\-\/\s]/', '', $certificado->cliente->cpfcnpj ?? '');
+        $cnpj     = preg_replace('/\D/', '', $certificado->cliente->cpfcnpj ?? '');
         $base     = $this->baseUrl($certificado);
+
+        if (!$this->cnpjEhValido($cnpj)) {
+            throw new \RuntimeException(
+                'O CNPJ cadastrado para este cliente é inválido (' . ($cnpj ?: 'vazio') . '). '
+                . 'A consulta de NFS-e só funciona com CNPJ — corrija o cadastro do cliente antes de buscar.'
+            );
+        }
 
         // Extrai PEM uma única vez — reutilizado em todos os lotes do chunk
         [$pemCert, $pemKey, $tempFiles] = $this->extrairPem($certPath, $certificado->senha);
@@ -73,7 +80,22 @@ class NfseService
 
                 $status = $resp['StatusProcessamento'] ?? '';
 
-                if (in_array($status, ['NENHUM_DOCUMENTO_LOCALIZADO', 'REJEICAO'])) {
+                if ($status === 'NENHUM_DOCUMENTO_LOCALIZADO') {
+                    $concluido = true;
+                    break;
+                }
+
+                // REJEICAO no primeiro lote (nada coletado ainda) é erro de verdade
+                // — CNPJ sem autorização no ADN, certificado divergente etc. Mostra
+                // a mensagem da API em vez de fingir "nenhuma nota encontrada".
+                if ($status === 'REJEICAO') {
+                    if (empty($notas) && $nsuInicio === 0) {
+                        $detalhe = $resp['Erros'][0]['Descricao']
+                            ?? $resp['Mensagem']
+                            ?? $resp['mensagem']
+                            ?? 'A API rejeitou a consulta. Verifique se o CNPJ está habilitado no Portal Nacional e se o certificado corresponde a ele.';
+                        throw new \RuntimeException('Consulta rejeitada pelo ADN: ' . $detalhe);
+                    }
                     $concluido = true;
                     break;
                 }
@@ -340,6 +362,28 @@ class NfseService
     }
 
     // ─── Helpers privados ────────────────────────────────────────────────────
+
+    /** Valida os 14 dígitos e os dois dígitos verificadores do CNPJ. */
+    private function cnpjEhValido(string $cnpj): bool
+    {
+        if (strlen($cnpj) !== 14 || preg_match('/^(\d)\1{13}$/', $cnpj)) {
+            return false;
+        }
+
+        foreach ([[5,4,3,2,9,8,7,6,5,4,3,2], [6,5,4,3,2,9,8,7,6,5,4,3,2]] as $i => $pesos) {
+            $soma = 0;
+            foreach ($pesos as $p => $peso) {
+                $soma += (int) $cnpj[$p] * $peso;
+            }
+            $resto = $soma % 11;
+            $dv    = $resto < 2 ? 0 : 11 - $resto;
+            if ((int) $cnpj[12 + $i] !== $dv) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private function baseUrl(ClienteCertificadoNfse $certificado): string
     {
