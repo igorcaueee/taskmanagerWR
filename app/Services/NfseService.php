@@ -364,13 +364,20 @@ class NfseService
                     sleep(10 * $i); // 10s, 20s
                 }
             } catch (\RuntimeException $e) {
-                $isTimeout = str_contains($e->getMessage(), 'timed out')
-                    || str_contains($e->getMessage(), 'Operation timed out')
-                    || str_contains($e->getMessage(), 'cURL #28');
+                $msg = $e->getMessage();
+                $isTimeout = str_contains($msg, 'timed out')
+                    || str_contains($msg, 'Operation timed out')
+                    || str_contains($msg, 'cURL #28');
 
-                if ($isTimeout && $i < $tentativas) {
-                    Log::warning('[NFS-e] timeout, aguardando antes de retry', ['tentativa' => $i, 'url' => $url]);
-                    sleep(15 * $i); // 15s, 30s
+                // Falha de handshake/leitura TLS do ADN (bad record mac, reset) — em
+                // geral some numa nova tentativa com conexão limpa.
+                $isTlsGlitch = str_contains($msg, 'cURL #56')
+                    || str_contains($msg, 'cURL #35')
+                    || str_contains($msg, 'decryption failed or bad record mac');
+
+                if (($isTimeout || $isTlsGlitch) && $i < $tentativas) {
+                    Log::warning('[NFS-e] falha de rede/TLS, aguardando antes de retry', ['tentativa' => $i, 'url' => $url, 'erro' => $msg]);
+                    sleep(($isTlsGlitch ? 3 : 15) * $i);
                 } else {
                     throw $e;
                 }
@@ -413,6 +420,14 @@ class NfseService
             CURLOPT_SSLCERT        => $pemCert,
             CURLOPT_SSLKEY         => $pemKey,
             CURLOPT_SSL_VERIFYPEER => true,
+            // O ADN (Cloudflare + OpenSSL 3) fecha a conexão com "decryption failed
+            // or bad record mac" (cURL #56) quando negocia TLS 1.3 ou reaproveita
+            // uma conexão keep-alive já corrompida. Fixar TLS 1.2, HTTP/1.1 e
+            // forçar conexão nova elimina esse erro intermitente.
+            CURLOPT_SSLVERSION     => CURL_SSLVERSION_TLSv1_2,
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+            CURLOPT_FRESH_CONNECT  => true,
+            CURLOPT_FORBID_REUSE   => true,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'Accept: application/json',
@@ -488,6 +503,10 @@ class NfseService
             CURLOPT_SSLCERT        => $pemCert,
             CURLOPT_SSLKEY         => $pemKey,
             CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSLVERSION     => CURL_SSLVERSION_TLSv1_2,
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+            CURLOPT_FRESH_CONNECT  => true,
+            CURLOPT_FORBID_REUSE   => true,
             CURLOPT_HTTPHEADER     => ['Accept: application/pdf'],
         ]);
 
