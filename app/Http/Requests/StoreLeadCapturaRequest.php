@@ -21,6 +21,7 @@ class StoreLeadCapturaRequest extends FormRequest
             'telefone' => ['nullable', 'string', 'max:20'],
             'empresa' => ['nullable', 'string', 'max:255'],
             'mensagem' => ['nullable', 'string', 'max:2000'],
+            'origem' => ['nullable', 'string', 'max:50'],
             'g-recaptcha-response' => ['required', 'string'],
         ];
     }

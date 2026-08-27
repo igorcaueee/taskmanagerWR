@@ -99,6 +99,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/funil/captura', [LeadCapturaController::class, 'showForm'])->name('funil.captura');
 Route::post('/funil/captura', [LeadCapturaController::class, 'store'])->name('funil.captura.store')->middleware('throttle:10,1');
 
+// Landing page de tráfego pago — troca de contador
+Route::get('/contabilidade', [LeadCapturaController::class, 'landingTrocaContador'])->name('lp.troca-contador');
+
 // Colabs routes (use GET for page views so they load in browser)
 Route::get('/dashboard', [DashboardController::class, 'showDashboard'])->name('dashboard')->middleware('auth');
 Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios')->middleware('auth');
