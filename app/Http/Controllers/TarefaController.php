@@ -262,7 +262,10 @@ class TarefaController extends Controller
         $authUsuario = Auth::user();
         $podeMudarResponsavel = (int) $authUsuario->id === (int) $tarefa->supervisor_id;
 
+        $podeTransferirEntreSetores = ! $podeMudarResponsavel && $authUsuario->canTransferirEntreSetores();
+
         $podeTransferirNoDepartamento = ! $podeMudarResponsavel
+            && ! $podeTransferirEntreSetores
             && $authUsuario->departamento_id !== null
             && (int) $authUsuario->departamento_id === (int) $tarefa->departamento_id;
 
@@ -272,7 +275,7 @@ class TarefaController extends Controller
 
         $tiposTarefa = TipoTarefa::orderBy('nome')->get();
 
-        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'podeTransferirNoDepartamento', 'responsaveisDepartamento', 'selectedClienteIds', 'tiposTarefa'));
+        return view('tarefas.partials.formTarefa', compact('tarefa', 'clientes', 'etapas', 'usuarios', 'usuariosDepartamentos', 'podeMudarResponsavel', 'podeTransferirNoDepartamento', 'podeTransferirEntreSetores', 'responsaveisDepartamento', 'selectedClienteIds', 'tiposTarefa'));
     }
 
     public function save(Request $request): RedirectResponse
@@ -506,11 +509,14 @@ class TarefaController extends Controller
 
         $podeMudarResponsavel = (int) $usuario->id === (int) $tarefa->supervisor_id;
 
+        $podeTransferirEntreSetores = ! $podeMudarResponsavel && $usuario->canTransferirEntreSetores();
+
         $podeTransferirNoDepartamento = ! $podeMudarResponsavel
+            && ! $podeTransferirEntreSetores
             && $usuario->departamento_id !== null
             && (int) $usuario->departamento_id === (int) $tarefa->departamento_id;
 
-        if ($podeMudarResponsavel) {
+        if ($podeMudarResponsavel || $podeTransferirEntreSetores) {
             $novoResponsavelId = $data['responsavel_id'] ?? null;
         } elseif ($podeTransferirNoDepartamento) {
             $candidato = Usuario::find($data['responsavel_id'] ?? null);

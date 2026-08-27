@@ -137,6 +137,13 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti', 'supervisor', 'supervisor_geral']);
     }
 
+    // Diretor, TI, Supervisor e Supervisor Geral podem transferir tarefa
+    // para colaborador de qualquer setor (não só do próprio departamento)
+    public function canTransferirEntreSetores(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti', 'supervisor', 'supervisor_geral']);
+    }
+
     // Apenas Diretor e TI podem criar/editar/excluir colaboradores
     public function canEditarColaboradores(): bool
     {

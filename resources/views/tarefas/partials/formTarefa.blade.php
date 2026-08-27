@@ -179,7 +179,8 @@
             @php
                 $podeMudarResponsavel = $podeMudarResponsavel ?? true;
                 $podeTransferirNoDepartamento = $podeTransferirNoDepartamento ?? false;
-                $podeAlterarResponsavel = $podeMudarResponsavel || $podeTransferirNoDepartamento;
+                $podeTransferirEntreSetores = $podeTransferirEntreSetores ?? false;
+                $podeAlterarResponsavel = $podeMudarResponsavel || $podeTransferirNoDepartamento || $podeTransferirEntreSetores;
                 $listaResponsaveis = ($isEditing && $podeTransferirNoDepartamento) ? $responsaveisDepartamento : $usuarios;
             @endphp
             <div>
@@ -199,6 +200,8 @@
                     <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Apenas o supervisor da tarefa pode alterar o responsável.</p>
                 @elseif ($isEditing && $podeTransferirNoDepartamento)
                     <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Você pode transferir para colaboradores do seu departamento.</p>
+                @elseif ($isEditing && $podeTransferirEntreSetores)
+                    <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Você pode transferir para colaboradores de qualquer setor.</p>
                 @endif
             </div>
         </div>
