@@ -124,6 +124,43 @@ document.addEventListener('DOMContentLoaded', () => {
 		window.openModal(btn.dataset.modalUrl, btn.dataset.modalWidth || null);
 	});
 
+	// Confirmação via SweetAlert em qualquer <form data-confirm="mensagem">
+	// (substitui o confirm() nativo do navegador). Opcionais:
+	//   data-confirm-title, data-confirm-ok, data-confirm-icon, data-confirm-danger="1"
+	document.addEventListener('submit', async function (e) {
+		const form = e.target;
+		if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-confirm')) {
+			return;
+		}
+		if (form.dataset.confirmed === '1') {
+			form.dataset.confirmed = '';
+			return;
+		}
+
+		e.preventDefault();
+
+		const danger = form.dataset.confirmDanger === '1';
+		const result = await Swal.fire({
+			title: form.dataset.confirmTitle || 'Confirmar ação',
+			text: form.dataset.confirm,
+			icon: form.dataset.confirmIcon || 'warning',
+			showCancelButton: true,
+			confirmButtonText: form.dataset.confirmOk || 'Confirmar',
+			cancelButtonText: 'Cancelar',
+			confirmButtonColor: danger ? '#dc2626' : '#2563eb',
+			cancelButtonColor: '#6b7280',
+		});
+
+		if (result.isConfirmed) {
+			form.dataset.confirmed = '1';
+			if (typeof form.requestSubmit === 'function') {
+				form.requestSubmit();
+			} else {
+				form.submit();
+			}
+		}
+	}, true);
+
 	// Phone mask (delegated so it works on AJAX-loaded inputs)
 	document.addEventListener('input', function (e) {
 		if (!e.target.classList.contains('telefone-mask')) {

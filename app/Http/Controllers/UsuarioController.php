@@ -10,10 +10,68 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UsuarioController extends Controller
 {
+    private const CARGOS = ['diretor', 'ti', 'supervisor', 'supervisor_geral', 'analista', 'assistente', 'auxiliar'];
+
+    /**
+     * Regras compartilhadas entre criar e editar colaborador (a regra de senha
+     * é adicionada por fora — obrigatória no cadastro, opcional na edição).
+     *
+     * @return array<string, mixed>
+     */
+    private function regrasColab(?int $ignoreId = null): array
+    {
+        $email = Rule::unique('usuarios', 'email');
+        if ($ignoreId) {
+            $email->ignore($ignoreId);
+        }
+
+        return [
+            'nome' => ['required', 'string', 'min:2', 'max:255'],
+            'email' => ['required', 'email:rfc', 'max:255', $email],
+            'cargo' => ['required', Rule::in(self::CARGOS)],
+            'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'telefone' => ['nullable', 'string', 'max:20', 'regex:/^\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}$/'],
+            'sexo' => ['nullable', Rule::in(['masculino', 'feminino', 'outro'])],
+            'data_nascimento' => ['nullable', 'date', 'before:today', 'after:1900-01-01'],
+            'data_registro' => ['nullable', 'date', 'before_or_equal:today'],
+            'status' => ['nullable', 'boolean'],
+            'departamento_id' => ['nullable', 'integer', 'exists:departamentos,id'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function mensagensColab(): array
+    {
+        return [
+            'nome.required' => 'O nome do colaborador é obrigatório.',
+            'nome.min' => 'O nome deve ter ao menos 2 caracteres.',
+            'email.required' => 'O e-mail é obrigatório.',
+            'email.email' => 'E-mail inválido.',
+            'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
+            'senha.required' => 'A senha é obrigatória.',
+            'senha.min' => 'A senha deve ter ao menos 8 caracteres.',
+            'cargo.required' => 'Selecione o cargo.',
+            'cargo.in' => 'Cargo inválido.',
+            'telefone.regex' => 'Telefone inválido. Use o formato (00) 00000-0000.',
+            'sexo.in' => 'Sexo inválido.',
+            'foto.image' => 'O arquivo enviado precisa ser uma imagem.',
+            'foto.mimes' => 'A foto deve ser JPG, PNG ou WEBP.',
+            'foto.max' => 'A foto não pode ultrapassar 2MB.',
+            'data_nascimento.before' => 'A data de nascimento deve ser no passado.',
+            'data_nascimento.date' => 'Data de nascimento inválida.',
+            'data_registro.before_or_equal' => 'A data de registro não pode ser futura.',
+            'data_registro.date' => 'Data de registro inválida.',
+            'departamento_id.exists' => 'Departamento inválido.',
+        ];
+    }
+
     public function showColaboradores(Request $request)
     {
         $query = Usuario::with('departamento')->orderBy('nome');
@@ -61,23 +119,11 @@ class UsuarioController extends Controller
     {
         $data = $request->only(['nome', 'email', 'senha', 'cargo', 'foto', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
 
-        $validator = Validator::make($data, [
-            'nome' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:usuarios,email'],
-            'senha' => ['required', 'string', 'min:8'],
-            'cargo' => ['required', 'in:diretor,ti,supervisor,supervisor_geral,analista,assistente,auxiliar'],
-            'foto' => ['nullable', 'image', 'max:2048'],
-            'telefone' => ['nullable', 'string', 'max:20'],
-            'sexo' => ['nullable', 'in:masculino,feminino,outro'],
-            'data_nascimento' => ['nullable', 'date'],
-            'data_registro' => ['nullable', 'date'],
-            'status' => ['nullable', 'boolean'],
-            'departamento_id' => ['nullable', 'exists:departamentos,id'],
-        ], [
-            'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
-            'foto.image' => 'O arquivo enviado precisa ser uma imagem.',
-            'foto.max' => 'A foto não pode ultrapassar 2MB.',
-        ]);
+        $validator = Validator::make(
+            $data,
+            $this->regrasColab() + ['senha' => ['required', 'string', 'min:8']],
+            $this->mensagensColab(),
+        );
 
         if ($validator->fails()) {
             return Redirect::back()->with('error', $validator->errors()->first())->withInput();
@@ -111,23 +157,11 @@ class UsuarioController extends Controller
 
         $data = $request->only(['nome', 'email', 'senha', 'cargo', 'foto', 'remover_foto', 'telefone', 'sexo', 'data_nascimento', 'data_registro', 'status', 'departamento_id']);
 
-        $validator = Validator::make($data, [
-            'nome' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:usuarios,email,'.$id],
-            'senha' => ['nullable', 'string', 'min:8'],
-            'cargo' => ['required', 'in:diretor,ti,supervisor,supervisor_geral,analista,assistente,auxiliar'],
-            'foto' => ['nullable', 'image', 'max:2048'],
-            'telefone' => ['nullable', 'string', 'max:20'],
-            'sexo' => ['nullable', 'in:masculino,feminino,outro'],
-            'data_nascimento' => ['nullable', 'date'],
-            'data_registro' => ['nullable', 'date'],
-            'status' => ['nullable', 'boolean'],
-            'departamento_id' => ['nullable', 'exists:departamentos,id'],
-        ], [
-            'email.unique' => 'Já existe um colaborador cadastrado com este e-mail.',
-            'foto.image' => 'O arquivo enviado precisa ser uma imagem.',
-            'foto.max' => 'A foto não pode ultrapassar 2MB.',
-        ]);
+        $validator = Validator::make(
+            $data,
+            $this->regrasColab($id) + ['senha' => ['nullable', 'string', 'min:8']],
+            $this->mensagensColab(),
+        );
 
         if ($validator->fails()) {
             return Redirect::back()->with('error', $validator->errors()->first())->withInput();

@@ -39,11 +39,11 @@
                         Sincronizar
                     </button>
                 </form>
-                <form method="POST" action="{{ route('google.calendar.disconnect') }}">
+                <form method="POST" action="{{ route('google.calendar.disconnect') }}"
+                      data-confirm="Desconectar o Google Calendar?" data-confirm-danger="1" data-confirm-ok="Desconectar">
                     @csrf
                     <button type="submit"
                             title="Desconectar Google Calendar"
-                            onclick="return confirm('Desconectar o Google Calendar?')"
                             class="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-700 border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 rounded text-sm hover:bg-red-50 dark:hover:bg-red-900/30 focus:outline-none">
                         <i class="fa-brands fa-google text-xs"></i> Desconectar
                     </button>

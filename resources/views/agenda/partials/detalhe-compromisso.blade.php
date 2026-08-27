@@ -43,7 +43,7 @@
             <i class="fa-solid fa-pen-to-square"></i> Editar
         </button>
         <form method="POST" action="{{ route('agenda.compromisso.destroy', $compromisso->id) }}"
-              onsubmit="return confirm('Excluir este compromisso?')">
+              data-confirm="Excluir este compromisso?" data-confirm-danger="1" data-confirm-ok="Excluir">
             @csrf
             @method('DELETE')
             <button type="submit"

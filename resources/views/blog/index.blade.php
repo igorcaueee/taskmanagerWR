@@ -93,7 +93,7 @@
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
                                 <form method="POST" action="{{ route('blog.admin.delete', $artigo->id) }}"
-                                      onsubmit="return confirm('Excluir este artigo?')">
+                                      data-confirm="Excluir este artigo?" data-confirm-danger="1" data-confirm-ok="Excluir">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs bg-transparent border-0 p-0 cursor-pointer" title="Excluir">

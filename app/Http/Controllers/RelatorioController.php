@@ -143,6 +143,7 @@ class RelatorioController extends Controller
         // ── Tarefas por recorrência ────────────────────────────────────
         $frequenciaLabels = [
             'nenhuma' => 'Não se repete',
+            'diaria' => 'Diária',
             'semanal' => 'Semanal',
             'mensal' => 'Mensal',
             'trimestral' => 'Trimestral',

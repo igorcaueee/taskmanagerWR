@@ -68,7 +68,7 @@
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
                                 <form method="POST" action="{{ route('liri.instrucoes.destroy', $instrucao->id) }}"
-                                      onsubmit="return confirm('Excluir esta instrução?')">
+                                      data-confirm="Excluir esta instrução?" data-confirm-danger="1" data-confirm-ok="Excluir">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 text-xs bg-transparent border-0 p-0 cursor-pointer" title="Excluir">

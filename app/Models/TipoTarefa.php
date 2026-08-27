@@ -23,4 +23,9 @@ class TipoTarefa extends Model
     {
         return $this->hasMany(Tarefa::class);
     }
+
+    public function regras(): HasMany
+    {
+        return $this->hasMany(TipoTarefaRegra::class);
+    }
 }

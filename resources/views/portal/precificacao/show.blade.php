@@ -51,10 +51,11 @@
                         <a href="{{ route('portal.precificacao.cenarios.form.edit', [$produto->id, $cenario->id]) }}" class="text-gray-500 dark:text-slate-400 no-underline hover:text-[#0084AA]">
                             <i class="fa-solid fa-pencil"></i>
                         </a>
-                        <form method="POST" action="{{ route('portal.precificacao.cenarios.delete', [$produto->id, $cenario->id]) }}" class="inline">
+                        <form method="POST" action="{{ route('portal.precificacao.cenarios.delete', [$produto->id, $cenario->id]) }}" class="inline"
+                              data-confirm="Excluir este cenário?" data-confirm-danger="1" data-confirm-ok="Excluir">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" onclick="return confirm('Excluir este cenário?')" class="bg-transparent border-0 p-0 text-red-500 hover:text-red-600">
+                            <button type="submit" class="bg-transparent border-0 p-0 text-red-500 hover:text-red-600">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                         </form>

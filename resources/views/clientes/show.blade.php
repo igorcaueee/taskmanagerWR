@@ -53,7 +53,7 @@
                         @endif
                         @if($cliente->logo && auth()->user()?->canEditarClientes())
                             <form method="POST" action="{{ route('clientes.logo.remove', $cliente->id) }}" class="inline"
-                                  onsubmit="return confirm('Remover a logo do cliente?')">
+                                  data-confirm="Remover a logo do cliente?" data-confirm-danger="1" data-confirm-ok="Remover">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" title="Remover logo"
@@ -545,6 +545,42 @@
         }
     }
 
+    function mascararTelefonePortal() {
+        const el = document.getElementById('pu-telefone');
+        if (!el) { return; }
+        el.addEventListener('input', function () {
+            let d = this.value.replace(/\D/g, '').slice(0, 11);
+            if (d.length > 6) {
+                this.value = `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(d.length - 4)}`;
+            } else if (d.length > 2) {
+                this.value = `(${d.slice(0, 2)}) ${d.slice(2)}`;
+            } else {
+                this.value = d;
+            }
+        });
+    }
+
+    // Validação no cliente antes de enviar. Retorna mensagem de erro ou null.
+    function validarFormUsuarioPortal(exigeSenha) {
+        const nome = document.getElementById('pu-nome').value.trim();
+        const username = document.getElementById('pu-username').value.trim();
+        const email = document.getElementById('pu-email').value.trim();
+        const telefone = document.getElementById('pu-telefone').value.trim();
+        const senha = document.getElementById('pu-password').value;
+
+        if (nome.length < 2) { return 'Informe o nome (mín. 2 caracteres).'; }
+        if (!/^[a-zA-Z0-9._-]{3,}$/.test(username)) {
+            return 'Usuário (login) inválido: mín. 3 caracteres, apenas letras, números, ponto, hífen e underline.';
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { return 'E-mail inválido.'; }
+        if (telefone && !/^\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}$/.test(telefone)) {
+            return 'Telefone inválido. Use o formato (00) 00000-0000.';
+        }
+        if ((exigeSenha || senha) && senha.length < 6) { return 'A senha deve ter ao menos 6 caracteres.'; }
+
+        return null;
+    }
+
     const camposFormUsuario = (dados = {}, pastas = []) => `
         <div class="text-left space-y-3">
             <div>
@@ -711,8 +747,12 @@
             confirmButtonColor: '#0084AA',
             didOpen: () => {
                 document.getElementById('pu-acesso-total')?.addEventListener('change', togglePastasAccess);
+                mascararTelefonePortal();
             },
             preConfirm: async () => {
+                const erro = validarFormUsuarioPortal(true);
+                if (erro) { Swal.showValidationMessage(erro); return false; }
+
                 const acessoTotal = document.getElementById('pu-acesso-total')?.checked ?? true;
                 const pastasPermitidas = acessoTotal
                     ? null
@@ -763,8 +803,12 @@
             confirmButtonColor: '#0084AA',
             didOpen: () => {
                 document.getElementById('pu-acesso-total')?.addEventListener('change', togglePastasAccess);
+                mascararTelefonePortal();
             },
             preConfirm: async () => {
+                const erro = validarFormUsuarioPortal(false);
+                if (erro) { Swal.showValidationMessage(erro); return false; }
+
                 const acessoTotal = document.getElementById('pu-acesso-total')?.checked ?? true;
                 const pastasPermitidas = acessoTotal
                     ? null

@@ -67,7 +67,52 @@
         @method('PUT')
     @endif
 
+    <input type="hidden" name="cnae_principal" id="input-cnae-principal"
+           value="{{ old('cnae_principal', $isEditing ? $cliente->cnae_principal : ($prefill['cnae_principal'] ?? '')) }}">
+    <input type="hidden" name="cnae_secundarios" id="input-cnae-secundarios"
+           value="{{ old('cnae_secundarios', $isEditing ? json_encode($cliente->cnae_secundarios ?? []) : ($prefill['cnae_secundarios'] ?? '')) }}">
+
     <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
+                <select name="tipo" id="select-tipo" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">
+                    <option value="1" {{ $tipoInicial === '1' ? 'selected' : '' }}>Pessoa Jurídica (CNPJ)</option>
+                    <option value="0" {{ $tipoInicial === '0' ? 'selected' : '' }}>Pessoa Física (CPF)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" id="label-cpfcnpj">{{ $isPJ ? 'CNPJ' : 'CPF' }}</label>
+                <input name="cpfcnpj" id="input-cpfcnpj" type="text"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                       placeholder="{{ $isPJ ? '00.000.000/0000-00' : '000.000.000-00' }}"
+                       maxlength="{{ $isPJ ? 18 : 14 }}"
+                       required
+                       value="{{ old('cpfcnpj', $isEditing ? $cliente->cpfcnpj : ($prefill['cpfcnpj'] ?? '')) }}">
+                <p id="status-busca-cnpj" class="hidden mt-1 text-xs"></p>
+                <p id="aviso-cpfcnpj-duplicado" class="hidden mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    Já existe um cliente cadastrado com este documento: <a href="#" id="link-cliente-duplicado" class="underline font-medium"></a>
+                </p>
+            </div>
+        </div>
+
+        <div id="regime-tributario-wrapper" class="{{ $isPJ ? '' : 'hidden' }}">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regime Tributário</label>
+            <select name="regime_tributario" id="select-regime" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
+                    {{ $isPJ ? 'required' : '' }}>
+                <option value="">— Selecione —</option>
+                @php $regimeAtual = mb_strtolower(old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? ''))); @endphp
+                @foreach(['Simples Nacional' => 'SIMPLES NACIONAL', 'Lucro Presumido' => 'LUCRO PRESUMIDO', 'Lucro Real' => 'LUCRO REAL', 'MEI' => 'MEI', 'Associação' => 'ASSOCIACAO'] as $value => $label)
+                    <option value="{{ $value }}"
+                        {{ $regimeAtual === mb_strtolower($value) ? 'selected' : '' }}>
+                        {{ $label }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
             <input name="nome" type="text"
@@ -117,45 +162,6 @@
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    placeholder="Ex: Comércio, Indústria, Serviços..."
                    value="{{ old('atividade', $isEditing ? $cliente->atividade : ($prefill['atividade'] ?? '')) }}">
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
-                <select name="tipo" id="select-tipo" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200">
-                    <option value="1" {{ $tipoInicial === '1' ? 'selected' : '' }}>Pessoa Jurídica (CNPJ)</option>
-                    <option value="0" {{ $tipoInicial === '0' ? 'selected' : '' }}>Pessoa Física (CPF)</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" id="label-cpfcnpj">{{ $isPJ ? 'CNPJ' : 'CPF' }}</label>
-                <input name="cpfcnpj" id="input-cpfcnpj" type="text"
-                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                       placeholder="{{ $isPJ ? '00.000.000/0000-00' : '000.000.000-00' }}"
-                       maxlength="{{ $isPJ ? 18 : 14 }}"
-                       required
-                       value="{{ old('cpfcnpj', $isEditing ? $cliente->cpfcnpj : ($prefill['cpfcnpj'] ?? '')) }}">
-                <p id="aviso-cpfcnpj-duplicado" class="hidden mt-1 text-xs text-amber-600 dark:text-amber-400">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                    Já existe um cliente cadastrado com este documento: <a href="#" id="link-cliente-duplicado" class="underline font-medium"></a>
-                </p>
-            </div>
-        </div>
-
-        <div id="regime-tributario-wrapper" class="{{ $isPJ ? '' : 'hidden' }}">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Regime Tributário</label>
-            <select name="regime_tributario" id="select-regime" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
-                    {{ $isPJ ? 'required' : '' }}>
-                <option value="">— Selecione —</option>
-                @php $regimeAtual = mb_strtolower(old('regime_tributario', $isEditing ? $cliente->regime_tributario : ($prefill['regime_tributario'] ?? ''))); @endphp
-                @foreach(['Simples Nacional' => 'SIMPLES NACIONAL', 'Lucro Presumido' => 'LUCRO PRESUMIDO', 'Lucro Real' => 'LUCRO REAL', 'MEI' => 'MEI', 'Associação' => 'ASSOCIACAO'] as $value => $label)
-                    <option value="{{ $value }}"
-                        {{ $regimeAtual === mb_strtolower($value) ? 'selected' : '' }}>
-                        {{ $label }}
-                    </option>
-                @endforeach
-            </select>
         </div>
 
         <div>
@@ -209,31 +215,26 @@
                       placeholder="Observações sobre o cliente...">{{ old('descricao', $isEditing ? $cliente->descricao : ($prefill['descricao'] ?? '')) }}</textarea>
         </div>
 
-        {{-- CRM Fields --}}
+        {{-- CRM Fields — faturamento e honorário só para Diretor e TI --}}
+        @if(auth()->user()?->canVerInfoComercialCliente())
         <div class="border-t border-gray-100 dark:border-slate-700 pt-4">
             <p class="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">Informações Comerciais</p>
-            @php $canVerFat = auth()->user()?->canVerFaturamento(); $canVerHon = auth()->user()?->canVerHonorario(); @endphp
-            @if ($canVerFat || $canVerHon)
             <div class="grid grid-cols-2 gap-4">
-                @if ($canVerFat)
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Faturamento (R$)</label>
                     <input name="faturamento" type="number" step="0.01" min="0"
                            class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                            value="{{ old('faturamento', $isEditing ? $cliente->faturamento : ($prefill['faturamento'] ?? '')) }}">
                 </div>
-                @endif
-                @if ($canVerHon)
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Honorário (R$)</label>
                     <input name="honorario" type="number" step="0.01" min="0"
                            class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                            value="{{ old('honorario', $isEditing ? $cliente->honorario : ($prefill['honorario'] ?? '')) }}">
                 </div>
-                @endif
             </div>
-            @endif
         </div>
+        @endif
 
         <div>
             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
@@ -605,5 +606,97 @@
 
     // Initialize on load
     updateField();
+})();
+</script>
+
+<script>
+(function () {
+    const inputCpfCnpj = document.getElementById('input-cpfcnpj');
+    const selectTipo = document.getElementById('select-tipo');
+    const status = document.getElementById('status-busca-cnpj');
+    if (!inputCpfCnpj || !status) { return; }
+
+    function setStatus(msg, tone) {
+        if (!msg) { status.classList.add('hidden'); return; }
+        status.textContent = msg;
+        status.className = 'mt-1 text-xs ' + ({
+            ok: 'text-green-600 dark:text-green-400',
+            erro: 'text-red-600 dark:text-red-400',
+            carregando: 'text-gray-500 dark:text-slate-400',
+        }[tone] || 'text-gray-500 dark:text-slate-400');
+        status.classList.remove('hidden');
+    }
+
+    const form = inputCpfCnpj.closest('form');
+
+    // Guarda o que a consulta preencheu. Numa nova consulta, sobrescreve os
+    // campos que ainda estão como a consulta anterior deixou (ou vazios),
+    // mas preserva o que o usuário digitou à mão.
+    const autoPreenchido = {};
+
+    function aplicar(name, valor) {
+        if (!form) { return; }
+        const el = form.querySelector(`[name="${name}"]`);
+        if (!el) { return; }
+
+        const intocado = el.value === '' || el.value === autoPreenchido[name];
+        if (!intocado) { return; }
+
+        el.value = valor || '';
+        autoPreenchido[name] = el.value;
+    }
+
+    let timer = null;
+    let ultimoConsultado = inputCpfCnpj.value.replace(/\D/g, '');
+
+    function consultar(cnpj) {
+        setStatus('Consultando Receita Federal...', 'carregando');
+
+        fetch(`{{ url('clientes/consultar-cnpj') }}/${cnpj}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        })
+            .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)))
+            .then(function (d) {
+                aplicar('nome', d.razao_social || d.nome_fantasia);
+                aplicar('atividade', d.cnae_descricao);
+                aplicar('cidade', d.cidade);
+                aplicar('estado', d.estado);
+                aplicar('dataabertura', d.data_abertura);
+
+                document.getElementById('input-cnae-principal').value = d.cnae_principal || '';
+                document.getElementById('input-cnae-secundarios').value = JSON.stringify(d.cnae_secundarios || []);
+
+                const selectRegime = document.getElementById('select-regime');
+                if (selectRegime && (!selectRegime.value || selectRegime.value === autoPreenchido['regime_tributario'])) {
+                    selectRegime.value = d.regime_sugerido || '';
+                    autoPreenchido['regime_tributario'] = selectRegime.value;
+                }
+
+                const ativa = (d.situacao || '').toUpperCase() === 'ATIVA';
+                setStatus(
+                    (ativa ? '✓ ' : '⚠ ') + [d.razao_social, d.situacao].filter(Boolean).join(' — '),
+                    ativa ? 'ok' : 'erro'
+                );
+            })
+            .catch(function (e) {
+                ultimoConsultado = '';
+                setStatus(e?.error || 'CNPJ não encontrado ou consulta indisponível.', 'erro');
+            });
+    }
+
+    inputCpfCnpj.addEventListener('input', function () {
+        clearTimeout(timer);
+
+        if (selectTipo && selectTipo.value !== '1') { return; }
+
+        const cnpj = this.value.replace(/\D/g, '');
+        if (cnpj.length !== 14) { return; }
+        if (cnpj === ultimoConsultado) { return; }
+
+        timer = setTimeout(function () {
+            ultimoConsultado = cnpj;
+            consultar(cnpj);
+        }, 600);
+    });
 })();
 </script>

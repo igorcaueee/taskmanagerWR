@@ -141,6 +141,7 @@ Route::get('/clientes', [ClienteController::class, 'showClientes'])->name('clien
 Route::get('/clientes/form', [ClienteController::class, 'formClienteCreate'])->name('clientes.form.create')->middleware('auth');
 Route::get('/clientes/busca', [ClienteController::class, 'busca'])->name('clientes.busca')->middleware('auth');
 Route::get('/clientes/verificar-documento', [ClienteController::class, 'verificarDocumento'])->name('clientes.verificar-documento')->middleware('auth');
+Route::get('/clientes/consultar-cnpj/{cnpj}', [ClienteController::class, 'consultarCnpj'])->name('clientes.consultar-cnpj')->where('cnpj', '[0-9./-]+')->middleware('auth');
 Route::get('/clientes/{id}/detalhe', [ClienteController::class, 'showCliente'])->name('clientes.show')->middleware('auth');
 Route::get('/clientes/import/form', [ClienteController::class, 'formImportClientes'])->name('clientes.import.form')->middleware('auth');
 Route::get('/clientes/import/template', [ClienteController::class, 'templateClientes'])->name('clientes.import.template')->middleware('auth');
@@ -152,6 +153,9 @@ Route::post('/clientes/{id}/encerrar', [ClienteController::class, 'encerrarClien
 Route::post('/clientes/{id}/reativar', [ClienteController::class, 'reativarCliente'])->name('clientes.reativar')->middleware('auth');
 Route::get('/clientes/{id}/form', [ClienteController::class, 'formClienteEdit'])->name('clientes.form.edit')->middleware('auth');
 Route::put('/clientes/{id}', [ClienteController::class, 'updateCliente'])->name('clientes.update')->middleware('auth');
+Route::get('/clientes/{id}/checklist-obrigacoes', [ClienteController::class, 'formChecklistObrigacoes'])->name('clientes.checklist.form')->middleware('auth');
+Route::post('/clientes/{id}/checklist-obrigacoes', [ClienteController::class, 'salvarChecklistObrigacoes'])->name('clientes.checklist.save')->middleware('auth');
+Route::post('/clientes/{id}/atualizar-cnae', [ClienteController::class, 'atualizarCnaeCliente'])->name('clientes.cnae.atualizar')->middleware('auth');
 Route::delete('/clientes/{id}', [ClienteController::class, 'deleteCliente'])->name('clientes.delete')->middleware('auth');
 Route::post('/clientes/{id}/logo', [ClienteController::class, 'uploadLogo'])->name('clientes.logo.upload')->middleware('auth');
 Route::delete('/clientes/{id}/logo', [ClienteController::class, 'removeLogo'])->name('clientes.logo.remove')->middleware('auth');

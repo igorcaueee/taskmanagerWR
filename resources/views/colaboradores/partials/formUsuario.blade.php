@@ -55,7 +55,7 @@
 
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-            <input name="nome" type="text"
+            <input name="nome" type="text" minlength="2" maxlength="255"
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    value="{{ old('nome', $isEditing ? $colab->nome : '') }}"
                    required>
@@ -73,7 +73,8 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Senha @if($isEditing)<span class="text-gray-400 dark:text-slate-500 font-normal">(deixe em branco para manter)</span>@endif
             </label>
-            <input name="senha" type="password"
+            <input name="senha" type="password" minlength="8"
+                   placeholder="Mínimo 8 caracteres"
                    class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                    {{ $isEditing ? '' : 'required' }}>
         </div>
@@ -97,6 +98,8 @@
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 telefone-mask bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        placeholder="(99) 99999-9999"
                        maxlength="15"
+                       pattern="\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}"
+                       title="Formato: (00) 00000-0000"
                        value="{{ old('telefone', $isEditing ? $colab->telefone : '') }}">
             </div>
 
@@ -117,14 +120,14 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Nascimento</label>
-                <input name="data_nascimento" type="date"
+                <input name="data_nascimento" type="date" min="1900-01-01" max="{{ now()->subDay()->toDateString() }}"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('data_nascimento', $isEditing && $colab->data_nascimento ? $colab->data_nascimento->format('Y-m-d') : '') }}">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de Registro</label>
-                <input name="data_registro" type="date"
+                <input name="data_registro" type="date" max="{{ now()->toDateString() }}"
                        class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                        value="{{ old('data_registro', $isEditing ? ($colab->data_registro ? $colab->data_registro->format('Y-m-d') : '') : now()->toDateString()) }}">
             </div>

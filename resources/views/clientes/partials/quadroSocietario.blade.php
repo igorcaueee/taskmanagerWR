@@ -97,11 +97,14 @@
                         <div>
                             <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telefone</label>
                             <input type="text" name="telefone" value="{{ $socio->telefone }}"
-                                   class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm w-32 bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200">
+                                   inputmode="tel" maxlength="20"
+                                   pattern="\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}"
+                                   title="Formato: (00) 00000-0000"
+                                   class="socio-telefone border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm w-32 bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-200">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">E-mail</label>
-                            <input type="email" name="gmail" value="{{ $socio->gmail }}"
+                            <input type="email" name="gmail" value="{{ $socio->gmail }}" maxlength="255"
                                    class="border border-gray-300 rounded px-2 py-1 text-sm w-44">
                         </div>
                         <div>
@@ -147,13 +150,15 @@
         </div>
         <div>
             <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Telefone</label>
-            <input type="text" name="telefone"
-                   class="border border-gray-300 rounded px-2 py-1.5 text-sm w-32"
+            <input type="text" name="telefone" inputmode="tel" maxlength="20"
+                   pattern="\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}"
+                   title="Formato: (00) 00000-0000"
+                   class="socio-telefone border border-gray-300 rounded px-2 py-1.5 text-sm w-32"
                    placeholder="(00) 00000-0000">
         </div>
         <div>
             <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">E-mail</label>
-            <input type="email" name="gmail"
+            <input type="email" name="gmail" maxlength="255"
                    class="border border-gray-300 rounded px-2 py-1.5 text-sm w-44"
                    placeholder="email@exemplo.com">
         </div>
@@ -284,4 +289,18 @@ async function deletarSocio(id, nome) {
     });
     window.openModal('{{ route('clientes.quadro.modal', $cliente->id) }}', 'max-w-4xl');
 }
+
+// Máscara de telefone (00) 00000-0000
+document.querySelectorAll('.socio-telefone').forEach(function (el) {
+    el.addEventListener('input', function () {
+        let d = this.value.replace(/\D/g, '').slice(0, 11);
+        if (d.length > 6) {
+            this.value = `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(d.length - 4)}`;
+        } else if (d.length > 2) {
+            this.value = `(${d.slice(0, 2)}) ${d.slice(2)}`;
+        } else {
+            this.value = d;
+        }
+    });
+});
 </script>

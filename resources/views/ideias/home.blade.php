@@ -112,7 +112,7 @@
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <form method="POST" action="{{ route('ideias.destroy', $ideia->id) }}" class="inline"
-                                      onsubmit="return confirm('Tem certeza que deseja excluir esta ideia?')">
+                                      data-confirm="Tem certeza que deseja excluir esta ideia?" data-confirm-danger="1" data-confirm-ok="Excluir">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-xs text-red-500 hover:underline bg-transparent border-0 p-0">

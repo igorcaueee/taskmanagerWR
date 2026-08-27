@@ -162,6 +162,12 @@ class Usuario extends Authenticatable
         return ! in_array($this->cargo, ['ti', 'assistente', 'auxiliar', 'supervisor_geral']);
     }
 
+    // Faturamento e honorário no cadastro de cliente: apenas Diretor e TI
+    public function canVerInfoComercialCliente(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti']);
+    }
+
     // Assistente, Auxiliar e Supervisor Geral não podem criar/editar/excluir clientes
     public function canEditarClientes(): bool
     {

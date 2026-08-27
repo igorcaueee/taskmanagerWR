@@ -48,6 +48,104 @@ class CnpjPublicoService
     }
 
     /**
+     * Cadastro consolidado do CNPJ para pré-preencher o formulário de cliente
+     * (nome, atividade, endereço, situação cadastral e regime sugerido).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function buscarCadastro(string $cnpj): ?array
+    {
+        $cnpj = preg_replace('/\D/', '', $cnpj);
+
+        try {
+            $resposta = Http::timeout(10)->get(self::ENDPOINT . $cnpj);
+        } catch (\Throwable $e) {
+            Log::warning('[CnpjPublico] buscarCadastro: falha de conexão', ['cnpj' => $cnpj, 'erro' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if ($resposta->failed()) {
+            return null;
+        }
+
+        $dados = $resposta->json();
+
+        if (empty($dados['cnpj'])) {
+            return null;
+        }
+
+        $secundarios = collect($dados['cnaes_secundarios'] ?? [])
+            ->pluck('codigo')
+            ->filter()
+            ->map(fn ($c) => (string) $c)
+            ->values()
+            ->all();
+
+        $regimeSugerido = match (true) {
+            (bool) ($dados['opcao_pelo_mei'] ?? false) => 'MEI',
+            (bool) ($dados['opcao_pelo_simples'] ?? false) => 'Simples Nacional',
+            default => null,
+        };
+
+        return [
+            'razao_social' => $dados['razao_social'] ?? null,
+            'nome_fantasia' => $dados['nome_fantasia'] ?? null,
+            'situacao' => $dados['descricao_situacao_cadastral'] ?? null,
+            'data_abertura' => $dados['data_inicio_atividade'] ?? null,
+            'cidade' => $dados['municipio'] ?? null,
+            'estado' => $dados['uf'] ?? null,
+            'cnae_principal' => ! empty($dados['cnae_fiscal']) ? (string) $dados['cnae_fiscal'] : null,
+            'cnae_descricao' => $dados['cnae_fiscal_descricao'] ?? null,
+            'cnae_secundarios' => $secundarios,
+            'regime_sugerido' => $regimeSugerido,
+        ];
+    }
+
+    /**
+     * CNAE principal (código + descrição) e a lista de códigos dos CNAEs secundários.
+     *
+     * @return array{principal: ?string, principal_descricao: ?string, secundarios: array<int, string>}|null
+     */
+    public function buscarCnaes(string $cnpj): ?array
+    {
+        $cnpj = preg_replace('/\D/', '', $cnpj);
+
+        try {
+            $resposta = Http::timeout(10)->get(self::ENDPOINT . $cnpj);
+        } catch (\Throwable $e) {
+            Log::warning('[CnpjPublico] buscarCnaes: falha de conexão', ['cnpj' => $cnpj, 'erro' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if ($resposta->failed()) {
+            Log::info('[CnpjPublico] buscarCnaes: resposta não OK', ['cnpj' => $cnpj, 'status' => $resposta->status()]);
+
+            return null;
+        }
+
+        $dados = $resposta->json();
+
+        if (empty($dados['cnae_fiscal'])) {
+            return null;
+        }
+
+        $secundarios = collect($dados['cnaes_secundarios'] ?? [])
+            ->pluck('codigo')
+            ->filter()
+            ->map(fn ($c) => (string) $c)
+            ->values()
+            ->all();
+
+        return [
+            'principal' => (string) $dados['cnae_fiscal'],
+            'principal_descricao' => $dados['cnae_fiscal_descricao'] ?? null,
+            'secundarios' => $secundarios,
+        ];
+    }
+
+    /**
      * Dados cadastrais completos (razão social, endereço, código IBGE do
      * município) usados para pré-preencher o tomador na emissão de NFS-e.
      *

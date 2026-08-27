@@ -19,6 +19,8 @@ class Cliente extends Authenticatable
         'pasta_arquivos',
         'segmentacao_id',
         'atividade',
+        'cnae_principal',
+        'cnae_secundarios',
         'descricao',
         'cpfcnpj',
         'tipo',
@@ -58,6 +60,7 @@ class Cliente extends Authenticatable
         'acesso_extrato' => 'boolean',
         'senha_portal_plain' => 'encrypted',
         'importar_notas_fiscais' => 'boolean',
+        'cnae_secundarios' => 'array',
     ];
 
     /**

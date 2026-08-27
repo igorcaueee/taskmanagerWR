@@ -44,6 +44,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Título Padrão</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data Vencimento Padrão</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Regimes</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tarefas</th>
                         <th class="px-6 py-3"></th>
                     </tr>
@@ -62,6 +63,18 @@
                                 @else
                                     <span class="text-gray-400 dark:text-slate-500">—</span>
                                 @endif
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                @forelse($tipo->regras as $regra)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 mr-1 mb-1">
+                                        {{ $regra->regime_tributario ?? 'Qualquer regime' }}
+                                        @if($regra->cnae_prefixos)
+                                            <span class="ml-1 opacity-70">· CNAE {{ implode(', ', $regra->cnae_prefixos) }}</span>
+                                        @endif
+                                    </span>
+                                @empty
+                                    <span class="text-gray-400 dark:text-slate-500">—</span>
+                                @endforelse
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">

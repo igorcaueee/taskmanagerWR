@@ -12,6 +12,7 @@ use App\Models\Tarefa;
 use App\Models\TarefaUpload;
 use App\Models\TipoTarefa;
 use App\Models\Usuario;
+use App\Services\TarefaRecorrenciaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,10 @@ use Illuminate\View\View;
 
 class TarefaController extends Controller
 {
+    public function __construct(private readonly TarefaRecorrenciaService $tarefaRecorrenciaService)
+    {
+    }
+
     public function showTarefas(Request $request): View
     {
         $usuario = Auth::user();
@@ -341,10 +346,8 @@ class TarefaController extends Controller
             if (! $tipo || ! $tipo->data_vencimento) {
                 return $referencia;
             }
-            $base = Carbon::parse($referencia);
-            $dia = min($tipo->data_vencimento->day, $base->daysInMonth);
 
-            return $base->copy()->day($dia)->toDateString();
+            return $this->tarefaRecorrenciaService->aplicarDiaNoMes($tipo->data_vencimento->day, $referencia);
         };
 
         $duplicatas = [];
@@ -429,7 +432,7 @@ class TarefaController extends Controller
                 }
 
                 if ($frequencia !== 'nenhuma') {
-                    $this->gerarOcorrenciasParaUmAno($tarefa, Carbon::parse($dataFimParaTipo));
+                    $this->tarefaRecorrenciaService->gerarOcorrenciasParaUmAno($tarefa, Carbon::parse($dataFimParaTipo));
                 }
 
                 // Notifica o colaborador quando recebe uma tarefa não-recorrente de outro usuário
@@ -980,56 +983,6 @@ class TarefaController extends Controller
         ]);
     }
 
-    private function gerarOcorrenciasParaUmAno(Tarefa $tarefa, Carbon $dataFim): void
-    {
-        $etapaInicial = Etapa::orderBy('ordem')
-            ->get()
-            ->first(fn ($e) => strtolower(trim($e->nome)) === 'a fazer')
-            ?? Etapa::orderBy('ordem')->first();
-
-        $originalId = $tarefa->tarefa_original_id ?? $tarefa->id;
-        $dataAtual = Carbon::parse($tarefa->data_vencimento);
-
-        while (true) {
-            $proximaData = match ($tarefa->frequencia) {
-                'semanal' => $dataAtual->copy()->addWeek(),
-                'mensal' => $dataAtual->copy()->addMonth(),
-                'trimestral' => $dataAtual->copy()->addMonths(3),
-                'semestral' => $dataAtual->copy()->addMonths(6),
-                'anual' => $dataAtual->copy()->addYear(),
-                default => null,
-            };
-
-            if (is_null($proximaData) || $proximaData->gt($dataFim)) {
-                break;
-            }
-
-            $novaOcorrencia = Tarefa::create([
-                'titulo' => $tarefa->titulo,
-                'descricao' => $tarefa->descricao,
-                'tipo_tarefa_id' => $tarefa->tipo_tarefa_id,
-                'cliente_id' => $tarefa->cliente_id,
-                'departamento_id' => $tarefa->departamento_id,
-                'etapa_id' => $etapaInicial->id,
-                'responsavel_id' => $tarefa->responsavel_id,
-                'supervisor_id' => $tarefa->supervisor_id,
-                'criado_por' => $tarefa->criado_por,
-                'data_vencimento' => $proximaData->toDateString(),
-                'prioridade' => $tarefa->prioridade,
-                'frequencia' => $tarefa->frequencia,
-                'recorrente' => true,
-                'tarefa_original_id' => $originalId,
-                'data_fim_recorrencia' => $dataFim->toDateString(),
-                'requer_envio_arquivo' => $tarefa->requer_envio_arquivo,
-                'ciclo_id' => Ciclo::findOrCreateForDate($proximaData)->id,
-            ]);
-
-            $novaOcorrencia->clientes()->sync($tarefa->clientes->pluck('id'));
-
-            $dataAtual = $proximaData;
-        }
-    }
-
     public function renovarRecorrencia(int $id): JsonResponse
     {
         $tarefa = Tarefa::findOrFail($id);
@@ -1046,7 +999,7 @@ class TarefaController extends Controller
 
         $novaDataFim = Carbon::parse($ultimaTarefa->data_vencimento)->addYear();
 
-        $this->gerarOcorrenciasParaUmAno($ultimaTarefa, $novaDataFim);
+        $this->tarefaRecorrenciaService->gerarOcorrenciasParaUmAno($ultimaTarefa, $novaDataFim);
 
         return response()->json(['success' => true, 'message' => 'Recorrência renovada por mais 1 ano.']);
     }

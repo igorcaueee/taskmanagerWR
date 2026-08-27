@@ -387,7 +387,7 @@
             if (xhr.status >= 200 && xhr.status < 300) {
                 window.location.reload();
             } else {
-                alert('Erro ao enviar arquivos.');
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro ao enviar arquivos.' });
                 progress.classList.add('hidden');
             }
         });
@@ -412,7 +412,7 @@
             window.location.reload();
         } else {
             const data = await res.json();
-            alert(data.error || 'Erro ao criar pasta.');
+            Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Erro ao criar pasta.' });
         }
     });
 
@@ -440,7 +440,7 @@
             window.location.reload();
         } else {
             const data = await res.json();
-            alert(data.error || 'Erro ao renomear.');
+            Swal.fire({ icon: 'error', title: 'Erro', text: data.error || 'Erro ao renomear.' });
         }
     });
 
@@ -531,7 +531,7 @@
 
     async function enviarEmail() {
         const usuarioId = document.getElementById('shareEmailUsuario').value;
-        if (!usuarioId) { alert('Selecione um destinatário.'); return; }
+        if (!usuarioId) { Swal.fire({ icon: 'warning', title: 'Selecione um destinatário' }); return; }
 
         const btn = document.getElementById('shareEmailBtn');
         btn.disabled = true;
@@ -561,7 +561,7 @@
     async function enviarWhatsapp() {
         const sel = document.getElementById('shareWhatsappUsuario');
         const usuarioId = sel.value;
-        if (!usuarioId) { alert('Selecione um destinatário.'); return; }
+        if (!usuarioId) { Swal.fire({ icon: 'warning', title: 'Selecione um destinatário' }); return; }
 
         const telefone = sel.options[sel.selectedIndex].dataset.telefone;
         if (!telefone) {
