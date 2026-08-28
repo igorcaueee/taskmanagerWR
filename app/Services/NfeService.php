@@ -396,6 +396,7 @@ class NfeService
                 // carregam o cancelamento, só o evento separado carrega).
                 'situacao'           => $existente?->situacao === 'cancelada' ? 'cancelada' : ($doc['situacao'] ?? null),
                 'tp_nf'              => $doc['tpNf'] ?? $existente?->tp_nf,
+                'emitente_crt'       => $doc['emitenteCrt'] ?? $existente?->emitente_crt,
                 'xml_content'        => $doc['xmlContent'] ?? null,
             ]
         );
@@ -601,6 +602,7 @@ XML;
         $emitenteNome     = $get('xNome');
         $valor            = $get('vNF') ?: $get('vCT');
         $tpNfStr          = $get('tpNF');
+        $crtStr           = $get('CRT');
 
         if (!$dataEmissao && !$emitenteNome && !$valor) {
             Log::warning('[NF-e] normalizarDocumento: campos vazios após parse', [
@@ -625,6 +627,7 @@ XML;
             // string vazia) pra não gravar lixo em `situacao`.
             'situacao'         => $get('cSitDFe') ?: null,
             'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
+            'emitenteCrt'      => $crtStr !== '' ? (int) $crtStr : null,
             'xmlContent'   => $xml,
         ];
     }

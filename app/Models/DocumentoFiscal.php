@@ -22,6 +22,7 @@ class DocumentoFiscal extends Model
         'valor',
         'situacao',
         'tp_nf',
+        'emitente_crt',
         'papel_cte',
         'data_saida_entrada',
         'xml_content',
@@ -30,7 +31,15 @@ class DocumentoFiscal extends Model
     protected $casts = [
         'data_emissao' => 'date',
         'data_saida_entrada' => 'date',
+        'emitente_crt' => 'integer',
     ];
+
+    /**
+     * CRTs da tag <emit><CRT> que caracterizam um emitente optante pelo Simples
+     * Nacional: 1 = Simples Nacional; 2 = Simples Nacional, excesso de sublimite
+     * de receita bruta. MEI (4) fica de fora — é Simei, tratado à parte.
+     */
+    public const CRT_SIMPLES_NACIONAL = [1, 2];
 
     public function cliente(): BelongsTo
     {
@@ -146,6 +155,364 @@ class DocumentoFiscal extends Model
         $dataEfetiva = 'CASE WHEN emitente_doc = ? THEN data_emissao ELSE COALESCE(data_saida_entrada, data_emissao) END';
 
         return [$dataEfetiva, $clienteCnpj];
+    }
+
+    /**
+     * Ranking de fornecedores (emitentes de NF-e de entrada) optantes pelo Simples
+     * Nacional num mês, para o dashboard "Top Fornecedores (SN)" da tela de NF-e.
+     *
+     * Só olha `documentos_fiscais` (GROUP BY em SQL), sem reabrir xml_content —
+     * por isso depende da coluna emitente_crt já preenchida (sincronização nova
+     * ou `fiscal:backfill-emitente-crt`).
+     *
+     * Considera fornecedor = terceiro que emitiu a nota (emitente_doc != CNPJ do
+     * cliente), modelo NF-e, não cancelada, dentro do mês pela mesma "data efetiva"
+     * usada no resto da tela (ver dataEfetivaSql / doPeriodo).
+     *
+     * @return array{periodo: string, totalGeral: float, fornecedores: array<int, array{cnpj: string, nome: string, total: float, qtd: int}>}
+     */
+    public static function rankingFornecedoresSimples(int $clienteId, string $dataInicio, string $dataFim, int $limite = 10): array
+    {
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+
+        $linhas = static::where('cliente_id', $clienteId)
+            ->where('tipo', 'nfe')
+            ->whereIn('emitente_crt', self::CRT_SIMPLES_NACIONAL)
+            ->where(fn ($q) => $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada'))
+            ->when($clienteCnpj !== '', fn ($q) => $q->where(fn ($sub) => $sub->whereNull('emitente_doc')->orWhereRaw("REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '') != ?", [$clienteCnpj])))
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim])
+            ->selectRaw('emitente_doc, MAX(emitente_nome) as nome, SUM(valor) as total, COUNT(*) as qtd')
+            ->groupBy('emitente_doc')
+            ->orderByDesc('total')
+            ->limit($limite)
+            ->get();
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'totalGeral' => (float) $linhas->sum('total'),
+            'fornecedores' => $linhas->map(fn ($l) => [
+                'cnpj' => (string) $l->emitente_doc,
+                'nome' => $l->nome ?: 'Emitente não identificado',
+                'total' => (float) $l->total,
+                'qtd' => (int) $l->qtd,
+            ])->all(),
+        ];
+    }
+
+    /** Rótulo "dd/mm/aaaa a dd/mm/aaaa" (ou só a data, quando início == fim) pros dashboards. */
+    private static function rotuloPeriodo(string $dataInicio, string $dataFim): string
+    {
+        $fmt = fn (string $d) => date('d/m/Y', strtotime($d));
+
+        return $dataInicio === $dataFim ? $fmt($dataInicio) : $fmt($dataInicio).' a '.$fmt($dataFim);
+    }
+
+    /**
+     * Ranking de produtos mais vendidos (por valor) num mês, para o dashboard
+     * "Top Produtos" da aba Dashboards. Precisa abrir o xml_content de cada
+     * NF-e de saída do período e somar os itens (<det><prod>) — não dá pra
+     * fazer só em SQL porque item não tem coluna própria.
+     *
+     * "Vendido" = NF-e em que o cliente é o emitente e não é devolução
+     * (tp_nf != 0). Agrupa por código do produto (cProd) quando existir,
+     * senão pela descrição normalizada.
+     *
+     * @return array{periodo: string, totalGeral: float, qtdNotas: int, produtos: array<int, array{codigo: ?string, descricao: string, ncm: ?string, cest: ?string, unidade: ?string, cfops: array<int, string>, valor: float, quantidade: float, notas: int}>}
+     */
+    public static function rankingProdutosVendidos(int $clienteId, string $dataInicio, string $dataFim, int $limite = 10): array
+    {
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+
+        $query = static::where('cliente_id', $clienteId)
+            ->where('tipo', 'nfe')
+            ->where(fn ($q) => $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada'))
+            ->where(fn ($q) => $q->whereNull('tp_nf')->orWhere('tp_nf', '!=', 0))
+            ->whereNotNull('xml_content')
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim]);
+
+        if ($clienteCnpj !== '') {
+            $query->whereRaw("REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '') = ?", [$clienteCnpj]);
+        }
+
+        $agg = [];
+        $qtdNotas = 0;
+
+        foreach ($query->select('id', 'xml_content')->cursor() as $doc) {
+            $itens = self::extrairItensProduto($doc->xml_content);
+
+            if ($itens === []) {
+                continue;
+            }
+
+            $qtdNotas++;
+
+            foreach ($itens as $item) {
+                $chave = $item['codigo'] !== null && $item['codigo'] !== ''
+                    ? 'c:'.$item['codigo']
+                    : 'd:'.mb_strtoupper(trim($item['descricao']));
+
+                if (! isset($agg[$chave])) {
+                    $agg[$chave] = [
+                        'codigo' => $item['codigo'] ?: null,
+                        'descricao' => $item['descricao'] ?: '(sem descrição)',
+                        'ncm' => $item['ncm'] ?: null,
+                        'cest' => $item['cest'] ?: null,
+                        'unidade' => $item['unidade'] ?: null,
+                        'cfops' => [],
+                        'valor' => 0.0,
+                        'quantidade' => 0.0,
+                        'notas' => 0,
+                    ];
+                }
+
+                $agg[$chave]['valor'] += $item['valor'];
+                $agg[$chave]['quantidade'] += $item['quantidade'];
+                $agg[$chave]['notas']++;
+
+                if ($item['cfop'] && ! in_array($item['cfop'], $agg[$chave]['cfops'], true)) {
+                    $agg[$chave]['cfops'][] = $item['cfop'];
+                }
+
+                if (! $agg[$chave]['ncm'] && $item['ncm']) {
+                    $agg[$chave]['ncm'] = $item['ncm'];
+                }
+            }
+        }
+
+        usort($agg, fn ($a, $b) => $b['valor'] <=> $a['valor']);
+
+        foreach ($agg as &$linha) {
+            sort($linha['cfops']);
+        }
+        unset($linha);
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'totalGeral' => array_sum(array_column($agg, 'valor')),
+            'qtdNotas' => $qtdNotas,
+            'produtos' => array_slice(array_values($agg), 0, $limite),
+        ];
+    }
+
+    /**
+     * Resumo de operações interestaduais (compras e vendas) por UF, para o
+     * dashboard "Compras e Vendas Interestaduais" (mapa) da aba Dashboards.
+     *
+     * Para cada NF-e do período abre o xml_content e descobre:
+     *  - papel: se o cliente é o emitente → venda; senão → compra;
+     *  - UF da contraparte: enderDest/UF (venda) ou enderEmit/UF (compra);
+     *  - se é interestadual: ide/idDest = 2, ou (fallback) UF da contraparte
+     *    diferente da UF do cliente. idDest = 3 (exterior) é ignorado.
+     *
+     * O valor de cada nota vem da coluna `valor` (vNF), não do XML.
+     *
+     * @return array{periodo: string, clienteUf: ?string, totalCompras: float, totalVendas: float, ufs: array<int, array{uf: string, compras: float, vendas: float, total: float}>}
+     */
+    public static function resumoInterestadual(int $clienteId, string $dataInicio, string $dataFim): array
+    {
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+
+        $clienteUf = self::descobrirUfCliente($clienteId, $clienteCnpj);
+
+        $query = static::where('cliente_id', $clienteId)
+            ->where('tipo', 'nfe')
+            ->where(fn ($q) => $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada'))
+            ->whereNotNull('xml_content')
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim]);
+
+        $ufs = [];
+        $totalCompras = 0.0;
+        $totalVendas = 0.0;
+
+        foreach ($query->select('id', 'valor', 'emitente_doc', 'xml_content')->cursor() as $doc) {
+            $info = self::extrairOperacaoInterestadual($doc->xml_content, $clienteCnpj, $clienteUf);
+
+            if ($info === null || ! $info['interestadual'] || $info['uf'] === null) {
+                continue;
+            }
+
+            $valor = (float) $doc->valor;
+            $uf = $info['uf'];
+
+            if (! isset($ufs[$uf])) {
+                $ufs[$uf] = ['uf' => $uf, 'compras' => 0.0, 'vendas' => 0.0, 'total' => 0.0];
+            }
+
+            if ($info['papel'] === 'venda') {
+                $ufs[$uf]['vendas'] += $valor;
+                $totalVendas += $valor;
+            } else {
+                $ufs[$uf]['compras'] += $valor;
+                $totalCompras += $valor;
+            }
+
+            $ufs[$uf]['total'] += $valor;
+        }
+
+        usort($ufs, fn ($a, $b) => $b['total'] <=> $a['total']);
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'clienteUf' => $clienteUf,
+            'totalCompras' => round($totalCompras, 2),
+            'totalVendas' => round($totalVendas, 2),
+            'ufs' => array_values($ufs),
+        ];
+    }
+
+    /** UF do cliente: a mais frequente em enderEmit/UF das notas que ele mesmo emitiu; fallback pra clientes.estado. */
+    private static function descobrirUfCliente(int $clienteId, string $clienteCnpj): ?string
+    {
+        if ($clienteCnpj !== '') {
+            $amostra = static::where('cliente_id', $clienteId)
+                ->where('tipo', 'nfe')
+                ->whereNotNull('xml_content')
+                ->whereRaw("REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '') = ?", [$clienteCnpj])
+                ->orderByDesc('id')
+                ->limit(20)
+                ->pluck('xml_content');
+
+            $contagem = [];
+
+            foreach ($amostra as $xml) {
+                libxml_use_internal_errors(true);
+
+                try {
+                    $obj = new \SimpleXMLElement($xml);
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                $uf = trim((string) ($obj->xpath("//*[local-name()='emit']/*[local-name()='enderEmit']/*[local-name()='UF']")[0] ?? ''));
+
+                if ($uf !== '') {
+                    $contagem[$uf] = ($contagem[$uf] ?? 0) + 1;
+                }
+            }
+
+            if ($contagem !== []) {
+                arsort($contagem);
+
+                return array_key_first($contagem);
+            }
+        }
+
+        $estado = Cliente::find($clienteId)?->estado;
+
+        return $estado ? strtoupper(substr(trim($estado), 0, 2)) : null;
+    }
+
+    /**
+     * A partir do XML de uma NF-e, identifica papel (compra/venda pro cliente),
+     * UF da contraparte e se a operação é interestadual.
+     *
+     * @return array{papel: string, uf: ?string, interestadual: bool}|null
+     */
+    private static function extrairOperacaoInterestadual(?string $xml, string $clienteCnpj, ?string $clienteUf): ?array
+    {
+        if (empty($xml)) {
+            return null;
+        }
+
+        libxml_use_internal_errors(true);
+
+        try {
+            $obj = new \SimpleXMLElement($xml);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $obj->xpath("//*[local-name()='infNFe']")) {
+            return null;
+        }
+
+        $x = fn (string $path) => trim((string) ($obj->xpath($path)[0] ?? ''));
+
+        $emitDoc = preg_replace('/\D/', '', $x("//*[local-name()='emit']/*[local-name()='CNPJ']")
+            ?: $x("//*[local-name()='emit']/*[local-name()='CPF']"));
+
+        $ehVenda = $clienteCnpj !== '' && $emitDoc === $clienteCnpj;
+
+        $ufContraparte = $ehVenda
+            ? $x("//*[local-name()='dest']/*[local-name()='enderDest']/*[local-name()='UF']")
+            : $x("//*[local-name()='emit']/*[local-name()='enderEmit']/*[local-name()='UF']");
+
+        $ufContraparte = $ufContraparte !== '' ? strtoupper($ufContraparte) : null;
+
+        $idDest = $x("//*[local-name()='ide']/*[local-name()='idDest']");
+
+        // idDest: 1 = interna, 2 = interestadual, 3 = exterior. Sem a tag, cai no
+        // fallback comparando a UF da contraparte com a do cliente.
+        if ($idDest === '3' || $ufContraparte === 'EX') {
+            return ['papel' => $ehVenda ? 'venda' : 'compra', 'uf' => null, 'interestadual' => false];
+        }
+
+        $interestadual = $idDest === '2'
+            ? true
+            : ($idDest === '1'
+                ? false
+                : ($clienteUf !== null && $ufContraparte !== null && $ufContraparte !== $clienteUf));
+
+        return [
+            'papel' => $ehVenda ? 'venda' : 'compra',
+            'uf' => $ufContraparte,
+            'interestadual' => $interestadual,
+        ];
+    }
+
+    /**
+     * Extrai os itens de produto de um XML de NF-e (só os campos que o dashboard
+     * "Top Produtos" usa). Retorna [] pra resumo (resNFe) ou XML inválido.
+     *
+     * @return array<int, array{codigo: ?string, descricao: string, ncm: ?string, cest: ?string, unidade: ?string, cfop: ?string, valor: float, quantidade: float}>
+     */
+    private static function extrairItensProduto(?string $xml): array
+    {
+        if (empty($xml)) {
+            return [];
+        }
+
+        libxml_use_internal_errors(true);
+
+        try {
+            $obj = new \SimpleXMLElement($xml);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $dets = $obj->xpath("//*[local-name()='infNFe']/*[local-name()='det']");
+
+        if (! $dets) {
+            return [];
+        }
+
+        $itens = [];
+
+        foreach ($dets as $det) {
+            $prod = $det->xpath("*[local-name()='prod']")[0] ?? null;
+
+            if ($prod === null) {
+                continue;
+            }
+
+            $t = fn (string $tag) => trim((string) ($prod->xpath("*[local-name()='{$tag}']")[0] ?? ''));
+
+            $vProd = (float) str_replace(',', '.', $t('vProd'));
+            $vDesc = (float) str_replace(',', '.', $t('vDesc'));
+
+            $itens[] = [
+                'codigo' => $t('cProd') ?: null,
+                'descricao' => (string) mb_convert_encoding($t('xProd'), 'UTF-8', 'UTF-8'),
+                'ncm' => $t('NCM') ?: null,
+                'cest' => $t('CEST') ?: null,
+                'unidade' => $t('uCom') ?: null,
+                'cfop' => $t('CFOP') ?: null,
+                'valor' => round($vProd - $vDesc, 2),
+                'quantidade' => (float) str_replace(',', '.', $t('qCom')),
+            ];
+        }
+
+        return $itens;
     }
 
     /**

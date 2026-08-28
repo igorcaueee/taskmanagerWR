@@ -487,6 +487,11 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::get('/danfe', [NfeController::class, 'danfe'])->name('danfe');
     Route::post('/relatorio', [NfeController::class, 'exportarRelatorio'])->name('relatorio');
 
+    // Aba Dashboards — relatórios montados sobre os XMLs já sincronizados
+    Route::post('/dashboards/fornecedores-simples', [NfeController::class, 'dashboardFornecedoresSimples'])->name('dashboards.fornecedores-simples');
+    Route::post('/dashboards/produtos-vendidos', [NfeController::class, 'dashboardProdutosVendidos'])->name('dashboards.produtos-vendidos');
+    Route::post('/dashboards/interestadual', [NfeController::class, 'dashboardInterestadual'])->name('dashboards.interestadual');
+
     // NF-e / NFC-e — webservice de contabilistas (SEFAZ-RS)
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');

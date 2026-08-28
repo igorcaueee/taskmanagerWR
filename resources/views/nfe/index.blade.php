@@ -196,6 +196,20 @@
     {{-- ─── Painel de resultados ────────────────────────────── --}}
     <div>
 
+            {{-- Abas: Documentos (busca/listagem de XMLs) x Dashboards (relatórios sobre os XMLs já sincronizados) --}}
+            <div class="flex flex-wrap gap-2 border-b border-gray-200 dark:border-slate-700 mb-6">
+                <button type="button" data-aba="documentos"
+                        class="btn-aba-nfe appearance-none bg-transparent cursor-pointer px-4 py-2 text-sm font-medium border-0 border-b-2 -mb-px border-brand text-brand">
+                    <i class="fa-solid fa-file-invoice"></i> Documentos
+                </button>
+                <button type="button" data-aba="dashboards"
+                        class="btn-aba-nfe appearance-none bg-transparent cursor-pointer px-4 py-2 text-sm font-medium border-0 border-b-2 -mb-px border-transparent text-gray-500 dark:text-slate-400 hover:text-brand">
+                    <i class="fa-solid fa-chart-simple"></i> Dashboards
+                </button>
+            </div>
+
+        <div id="abaDocumentos">
+
             {{-- Estado inicial --}}
             <div id="estadoInicial" class="h-64 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
                 <i class="fa-solid fa-truck-ramp-box text-5xl mb-3 opacity-30"></i>
@@ -336,6 +350,153 @@
                     </div>
                 </div>
             </div>
+
+        </div>
+        {{-- /#abaDocumentos --}}
+
+        <div id="abaDashboards" class="hidden space-y-4">
+
+            <div id="dashAviso" class="h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-6 text-center">
+                <i class="fa-solid fa-chart-simple text-4xl mb-2 opacity-30"></i>
+                <p class="text-sm">Busque as notas na aba <strong>Documentos</strong> — os dashboards são gerados automaticamente para o mesmo período.</p>
+            </div>
+
+            <div id="dashCards" class="hidden space-y-4">
+
+            {{-- Top Fornecedores (Simples Nacional) --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-ranking-star text-brand mr-1.5"></i> Top 10 Fornecedores (Simples Nacional)
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Fornecedores enquadrados no Simples Nacional (CRT 1 ou 2 no XML das NF-e de entrada), pelos 10 maiores valores comprados no período.
+                        </p>
+                    </div>
+                    <div id="dashFornSimplesResumo" class="hidden text-right shrink-0 text-xs leading-tight">
+                        <p class="font-semibold text-gray-700 dark:text-slate-200" id="dashFornSimplesMesLabel"></p>
+                        <p class="text-gray-500 dark:text-slate-400 mt-1">Total <span id="dashFornSimplesTotal" class="font-bold text-[#0084aa]"></span></p>
+                    </div>
+                </div>
+
+                <div id="dashFornSimplesLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Montando o ranking...</p>
+                </div>
+
+                <div id="dashFornSimplesVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Nenhum fornecedor do Simples Nacional no período.</p>
+                    <p class="text-xs mt-1">Se as notas são antigas, rode a sincronização ou o comando <code>fiscal:backfill-emitente-crt</code>.</p>
+                </div>
+
+                <div id="dashFornSimplesResultado" class="hidden">
+                    <ul id="dashFornSimplesLista" class="m-0 p-0 divide-y divide-gray-100 dark:divide-slate-700/50" style="list-style:none;margin:0;padding:0"></ul>
+                </div>
+            </div>
+
+            {{-- Top Produtos vendidos --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-box-open text-brand mr-1.5"></i> Top 10 Produtos (mais vendidos)
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Os 10 produtos com maior valor vendido no período, somados dos itens das NF-e de saída. Agrupa por código do produto (ou descrição), com NCM, CEST, unidade e CFOPs.
+                        </p>
+                    </div>
+                    <div id="dashProdVendidosResumo" class="hidden text-right shrink-0 text-xs leading-tight">
+                        <p class="font-semibold text-gray-700 dark:text-slate-200" id="dashProdVendidosMesLabel"></p>
+                        <p class="text-gray-500 dark:text-slate-400 mt-1" id="dashProdVendidosNotas"></p>
+                        <p class="text-gray-500 dark:text-slate-400 mt-1">Total <span id="dashProdVendidosTotal" class="font-bold text-[#0084aa]"></span></p>
+                    </div>
+                </div>
+
+                <div id="dashProdVendidosLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Lendo os itens das notas...</p>
+                </div>
+
+                <div id="dashProdVendidosVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Nenhuma NF-e de saída com itens no período.</p>
+                </div>
+
+                <div id="dashProdVendidosResultado" class="hidden">
+                    <ul id="dashProdVendidosLista" class="m-0 p-0 divide-y divide-gray-100 dark:divide-slate-700/50" style="list-style:none;margin:0;padding:0"></ul>
+                </div>
+            </div>
+
+            {{-- Compras e Vendas Interestaduais (mapa) --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-map-location-dot text-brand mr-1.5"></i> Compras e Vendas Interestaduais
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Total das operações com outras UFs no período — entradas de fornecedores de fora e saídas para destinatários de fora do estado do cliente.
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-2 shrink-0">
+                        <div class="inline-flex rounded-lg border border-gray-200 dark:border-slate-600 overflow-hidden text-xs">
+                            <button type="button" data-metrica="total" class="btn-interest-metrica px-3 py-1.5 font-semibold bg-brand text-white">Total</button>
+                            <button type="button" data-metrica="compras" class="btn-interest-metrica px-3 py-1.5 font-semibold bg-white dark:bg-slate-700 text-gray-500 dark:text-slate-300 border-l border-gray-200 dark:border-slate-600">Compras</button>
+                            <button type="button" data-metrica="vendas" class="btn-interest-metrica px-3 py-1.5 font-semibold bg-white dark:bg-slate-700 text-gray-500 dark:text-slate-300 border-l border-gray-200 dark:border-slate-600">Vendas</button>
+                        </div>
+                        <div id="dashInterestResumo" class="hidden text-right text-xs leading-tight">
+                            <p class="font-semibold text-gray-700 dark:text-slate-200"><span id="dashInterestMesLabel"></span> &middot; UF <span id="dashInterestUf"></span></p>
+                            <p class="text-gray-500 dark:text-slate-400 mt-1">
+                                Compras <span id="dashInterestTotalCompras" class="font-bold text-[#0084aa]"></span>
+                                &nbsp;·&nbsp; Vendas <span id="dashInterestTotalVendas" class="font-bold text-[#0084aa]"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashInterestLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Analisando as notas...</p>
+                </div>
+
+                <div id="dashInterestVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Nenhuma operação interestadual no período.</p>
+                </div>
+
+                <div id="dashInterestResultado" class="hidden">
+                    <div class="p-5 grid gap-5 md:grid-cols-[1fr_280px] items-start">
+                        <div class="w-full max-w-[240px] mx-auto">
+                            @include('nfe._mapa-brasil')
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2">Total por UF</p>
+                                <ul id="dashInterestLista" class="m-0 p-0 space-y-1.5 text-sm" style="list-style:none;margin:0;padding:0"></ul>
+                            </div>
+                            <div class="pt-3 border-t border-gray-100 dark:border-slate-700">
+                                <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Total geral consolidado</p>
+                                <p id="dashInterestTotalGeral" class="text-lg font-bold text-gray-900 dark:text-white mt-1 tabular-nums"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </div>
+        {{-- /#abaDashboards --}}
 
     </div>
 
@@ -1075,6 +1236,7 @@
 
             if (docsAtuais.length === 0) {
                 estadoVazio.classList.remove('hidden');
+                gerarDashboards();
                 return;
             }
 
@@ -1088,6 +1250,7 @@
             estadoResultados.classList.remove('hidden');
             atualizarBotaoExportarRelatorio();
             renderizarPaginaAtual();
+            gerarDashboards();
 
         } catch (e) {
             esconderTodosEstados();
@@ -1498,6 +1661,304 @@
     const hoje = new Date();
     dataInicio.value = formatDate(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
     dataFim.value    = formatDate(hoje);
+
+    // ─── Abas Documentos / Dashboards ───────────────────────────────────────────
+    const abaDocumentos = document.getElementById('abaDocumentos');
+    const abaDashboards = document.getElementById('abaDashboards');
+
+    document.querySelectorAll('.btn-aba-nfe').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const alvo = this.dataset.aba;
+
+            document.querySelectorAll('.btn-aba-nfe').forEach(b => {
+                const ativo = b === this;
+                b.classList.toggle('border-brand', ativo);
+                b.classList.toggle('text-brand', ativo);
+                b.classList.toggle('border-transparent', !ativo);
+                b.classList.toggle('text-gray-500', !ativo);
+                b.classList.toggle('dark:text-slate-400', !ativo);
+                b.classList.toggle('hover:text-brand', !ativo);
+            });
+
+            abaDocumentos.classList.toggle('hidden', alvo !== 'documentos');
+            abaDashboards.classList.toggle('hidden', alvo !== 'dashboards');
+        });
+    });
+
+    // ─── Dashboards (gerados automaticamente a partir da busca de notas) ─────────
+    const dashAviso = document.getElementById('dashAviso');
+    const dashCards = document.getElementById('dashCards');
+
+    const dashFornSimplesEstados = ['dashFornSimplesLoading', 'dashFornSimplesVazio', 'dashFornSimplesResultado']
+        .map(id => document.getElementById(id));
+    const dashProdVendidosEstados = ['dashProdVendidosLoading', 'dashProdVendidosVazio', 'dashProdVendidosResultado']
+        .map(id => document.getElementById(id));
+    const dashInterestEstados = ['dashInterestLoading', 'dashInterestVazio', 'dashInterestResultado']
+        .map(id => document.getElementById(id));
+
+    const dashMostrar = (estados, id) => estados.forEach(el => el.classList.toggle('hidden', el.id !== id));
+    const dashFornSimplesMostrar = id => dashMostrar(dashFornSimplesEstados, id);
+    const dashProdVendidosMostrar = id => dashMostrar(dashProdVendidosEstados, id);
+    const dashInterestMostrar = id => dashMostrar(dashInterestEstados, id);
+
+    function formatarCnpj(doc) {
+        const s = String(doc || '').replace(/\D/g, '');
+        if (s.length === 14) return s.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+        if (s.length === 11) return s.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+        return doc || '—';
+    }
+
+    function formatarQtd(val) {
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(val || 0);
+    }
+
+    function esc(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+
+    function renderFornSimples(dados) {
+        const fornecedores = dados.fornecedores || [];
+        const resumo = document.getElementById('dashFornSimplesResumo');
+        if (fornecedores.length === 0) {
+            resumo.classList.add('hidden');
+            dashFornSimplesMostrar('dashFornSimplesVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+
+        document.getElementById('dashFornSimplesMesLabel').textContent = dados.periodo || '';
+        document.getElementById('dashFornSimplesTotal').textContent = formatarMoeda(dados.totalGeral || 0);
+
+        const maior = Math.max(...fornecedores.map(f => f.total));
+        const lista = document.getElementById('dashFornSimplesLista');
+        lista.innerHTML = '';
+
+        fornecedores.forEach((f, i) => {
+            const pct = maior > 0 ? Math.max((f.total / maior) * 100, 3) : 0;
+            const pos = i + 1;
+            const medalha = pos <= 3 ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400';
+            const li = document.createElement('li');
+            li.style.listStyle = 'none';
+            li.className = 'px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors';
+            li.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${medalha}">${pos}</span>
+                    <span class="min-w-0 flex-1 text-sm font-medium text-gray-800 dark:text-slate-100 truncate" title="${esc(f.nome)}">${esc(f.nome)}</span>
+                    <span class="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap tabular-nums">${formatarMoeda(f.total)}</span>
+                </div>
+                <div class="mt-2.5 ml-9 h-2 rounded-full bg-gray-100 dark:bg-slate-700/70">
+                    <div class="h-full rounded-full bg-brand" style="width: ${pct}%"></div>
+                </div>
+                <div class="mt-2 ml-9 text-xs text-gray-400 dark:text-slate-500">
+                    <span class="tabular-nums">${formatarCnpj(f.cnpj)}</span>
+                    <span class="mx-2 text-gray-300 dark:text-slate-600">&bull;</span>
+                    <span>${f.qtd} ${f.qtd === 1 ? 'nota' : 'notas'}</span>
+                </div>`;
+            lista.appendChild(li);
+        });
+
+        dashFornSimplesMostrar('dashFornSimplesResultado');
+    }
+
+    function renderProdVendidos(dados) {
+        const produtos = dados.produtos || [];
+        const resumo = document.getElementById('dashProdVendidosResumo');
+        if (produtos.length === 0) {
+            resumo.classList.add('hidden');
+            dashProdVendidosMostrar('dashProdVendidosVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+
+        document.getElementById('dashProdVendidosMesLabel').textContent = dados.periodo || '';
+        document.getElementById('dashProdVendidosNotas').textContent =
+            `${dados.qtdNotas} nota${dados.qtdNotas === 1 ? '' : 's'} de saída`;
+        document.getElementById('dashProdVendidosTotal').textContent = formatarMoeda(dados.totalGeral || 0);
+
+        const maior = Math.max(...produtos.map(p => p.valor));
+        const lista = document.getElementById('dashProdVendidosLista');
+        lista.innerHTML = '';
+
+        produtos.forEach((p, i) => {
+            const pct = maior > 0 ? Math.max((p.valor / maior) * 100, 2) : 0;
+            const pos = i + 1;
+            const medalha = pos <= 3 ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400';
+
+            const fiscal = [];
+            if (p.ncm) fiscal.push(`NCM ${esc(p.ncm)}`);
+            if (p.cfops && p.cfops.length) fiscal.push(`CFOP ${p.cfops.map(esc).join(', ')}`);
+            if (p.cest) fiscal.push(`CEST ${esc(p.cest)}`);
+
+            const li = document.createElement('li');
+            li.style.listStyle = 'none';
+            li.className = 'px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors';
+            li.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${medalha}">${pos}</span>
+                    <span class="min-w-0 flex-1 text-sm font-medium text-gray-800 dark:text-slate-100 truncate" title="${esc(p.descricao)}">${esc(p.descricao)}</span>
+                    <span class="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap tabular-nums">${formatarMoeda(p.valor)}</span>
+                </div>
+                <div class="mt-2.5 ml-9 h-2 rounded-full bg-gray-100 dark:bg-slate-700/70">
+                    <div class="h-full rounded-full bg-brand" style="width: ${pct}%"></div>
+                </div>
+                <div class="mt-2 ml-9 text-xs text-gray-400 dark:text-slate-500">
+                    ${[
+                        `<span class="tabular-nums">${formatarQtd(p.quantidade)} ${esc(p.unidade || 'un')}</span>`,
+                        `<span>${p.notas} ${p.notas === 1 ? 'nota' : 'notas'}</span>`,
+                        ...fiscal.map(t => `<span>${t}</span>`),
+                        ...(p.codigo ? [`<span>cód. ${esc(p.codigo)}</span>`] : []),
+                    ].join('<span class="mx-2 text-gray-300 dark:text-slate-600">&bull;</span>')}
+                </div>`;
+            lista.appendChild(li);
+        });
+
+        dashProdVendidosMostrar('dashProdVendidosResultado');
+    }
+
+    // ── Mapa interestadual (SVG do Brasil por UF em resources/views/nfe/_mapa-brasil) ──
+    let interestDados = null;
+    let interestMetrica = 'total';
+
+    function renderInterest(dados) {
+        interestDados = dados;
+
+        const temAlgo = (dados.ufs || []).length > 0;
+        const resumo = document.getElementById('dashInterestResumo');
+        if (!temAlgo) {
+            resumo.classList.add('hidden');
+            dashInterestMostrar('dashInterestVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+
+        document.getElementById('dashInterestMesLabel').textContent = dados.periodo || '';
+        document.getElementById('dashInterestUf').textContent = dados.clienteUf || '—';
+        document.getElementById('dashInterestTotalCompras').textContent = formatarMoeda(dados.totalCompras || 0);
+        document.getElementById('dashInterestTotalVendas').textContent = formatarMoeda(dados.totalVendas || 0);
+
+        pintarInterest();
+        dashInterestMostrar('dashInterestResultado');
+    }
+
+    function pintarInterest() {
+        if (!interestDados) return;
+
+        const porUf = {};
+        (interestDados.ufs || []).forEach(u => { porUf[u.uf] = u; });
+
+        const valorDe = u => interestMetrica === 'compras' ? u.compras : interestMetrica === 'vendas' ? u.vendas : u.total;
+        const valores = (interestDados.ufs || []).map(valorDe).filter(v => v > 0);
+        const maior = valores.length ? Math.max(...valores) : 0;
+        const totalMetrica = (interestDados.ufs || []).reduce((s, u) => s + valorDe(u), 0);
+
+        // Mapa (colore cada <path data-uf> do SVG do Brasil)
+        document.querySelectorAll('#mapaBrasilSvg path[data-uf]').forEach(path => {
+            const uf = path.dataset.uf;
+            const u = porUf[uf];
+            const v = u ? valorDe(u) : 0;
+            const ehCliente = uf === interestDados.clienteUf;
+            const intensidade = maior > 0 && v > 0 ? 0.18 + 0.82 * (v / maior) : 0;
+
+            if (ehCliente) {
+                path.style.fill = 'var(--color-brand, #0084AA)';
+                path.style.fillOpacity = '0.35';
+                path.style.stroke = 'var(--color-brand, #0084AA)';
+                path.style.strokeWidth = '1.6';
+            } else {
+                path.style.fill = v > 0 ? `rgba(0,132,170,${intensidade.toFixed(3)})` : 'rgba(148,163,184,0.20)';
+                path.style.fillOpacity = '1';
+                path.style.stroke = '';
+                path.style.strokeWidth = '';
+            }
+
+            path.style.cursor = u ? 'pointer' : 'default';
+            const titulo = path.querySelector('title');
+            if (titulo) {
+                const nome = titulo.dataset.nome || (titulo.dataset.nome = titulo.textContent);
+                titulo.textContent = u
+                    ? `${nome} — ${formatarMoeda(v)}`
+                    : (ehCliente ? `${nome} — UF do cliente` : `${nome} — sem operação interestadual`);
+            }
+        });
+
+        // Lista lateral
+        const lista = document.getElementById('dashInterestLista');
+        lista.innerHTML = '';
+        (interestDados.ufs || [])
+            .map(u => ({ uf: u.uf, v: valorDe(u) }))
+            .filter(x => x.v > 0)
+            .sort((a, b) => b.v - a.v)
+            .forEach(x => {
+                const li = document.createElement('li');
+                li.style.listStyle = 'none';
+                li.className = 'flex items-center justify-between gap-3';
+                li.innerHTML = `
+                    <span class="flex items-center gap-2 text-gray-700 dark:text-slate-300">
+                        <span class="inline-block w-2.5 h-2.5 rounded-sm" style="background: rgba(0,132,170,${(0.18 + 0.82 * (maior > 0 ? x.v / maior : 0)).toFixed(3)})"></span>
+                        ${x.uf}
+                    </span>
+                    <span class="font-semibold text-gray-900 dark:text-white tabular-nums">${formatarMoeda(x.v)}</span>`;
+                lista.appendChild(li);
+            });
+
+        document.getElementById('dashInterestTotalGeral').textContent = formatarMoeda(totalMetrica);
+    }
+
+    document.querySelectorAll('.btn-interest-metrica').forEach(btn => {
+        btn.addEventListener('click', function () {
+            interestMetrica = this.dataset.metrica;
+            document.querySelectorAll('.btn-interest-metrica').forEach(b => {
+                const ativo = b === this;
+                b.classList.toggle('bg-brand', ativo);
+                b.classList.toggle('text-white', ativo);
+                b.classList.toggle('bg-white', !ativo);
+                b.classList.toggle('dark:bg-slate-700', !ativo);
+                b.classList.toggle('text-gray-500', !ativo);
+                b.classList.toggle('dark:text-slate-300', !ativo);
+            });
+            pintarInterest();
+        });
+    });
+
+    async function carregarDash(rota, render, mostrar, prefixo, clienteId) {
+        mostrar(`${prefixo}Loading`);
+        try {
+            const resp = await fetch(rota, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                body: JSON.stringify({ cliente_id: clienteId, data_inicio: dataInicio.value, data_fim: dataFim.value }),
+            });
+            const dados = await resp.json();
+            if (!resp.ok || !dados.success) throw new Error(dados.error || 'Falha ao gerar o dashboard.');
+            render(dados);
+        } catch (e) {
+            mostrar(`${prefixo}Vazio`);
+            console.error('[dashboards]', e);
+        }
+    }
+
+    // Roda os dois dashboards para a empresa + período atuais da busca de notas.
+    let dashboardsLiberados = false;
+
+    async function gerarDashboards() {
+        const clienteId = selectCliente.value;
+        if (!clienteId || !dataInicio.value || !dataFim.value) return;
+
+        dashboardsLiberados = true;
+        dashAviso.classList.add('hidden');
+        dashCards.classList.remove('hidden');
+
+        await Promise.all([
+            carregarDash('{{ route('nfe.dashboards.fornecedores-simples') }}', renderFornSimples, dashFornSimplesMostrar, 'dashFornSimples', clienteId),
+            carregarDash('{{ route('nfe.dashboards.produtos-vendidos') }}', renderProdVendidos, dashProdVendidosMostrar, 'dashProdVendidos', clienteId),
+            carregarDash('{{ route('nfe.dashboards.interestadual') }}', renderInterest, dashInterestMostrar, 'dashInterest', clienteId),
+        ]);
+    }
+
+    // Se o período mudar depois de já ter buscado, regenera os dashboards.
+    [dataInicio, dataFim].forEach(el => el.addEventListener('change', () => {
+        if (dashboardsLiberados) gerarDashboards();
+    }));
 
 })();
 </script>

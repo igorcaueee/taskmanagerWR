@@ -115,6 +115,7 @@ class NfeXmlParser
         }
 
         $tpNfStr = $get('tpNF');
+        $crtStr = $get('CRT');
         $emitenteNome = trim(mb_convert_encoding($get('xNome'), 'UTF-8', 'UTF-8'));
 
         return [
@@ -128,6 +129,7 @@ class NfeXmlParser
             'valor'            => $get('vNF') ?: $get('vCT'),
             'situacao'         => $get('cSitDFe') ?: $get('cSitCTe') ?: null,
             'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
+            'emitenteCrt'      => $crtStr !== '' ? (int) $crtStr : null,
             'xmlContent'       => $xml,
         ];
     }

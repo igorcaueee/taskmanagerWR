@@ -584,6 +584,112 @@ class NfeController extends Controller
         }
     }
 
+    /**
+     * Dashboard "Top Fornecedores (Simples Nacional)" da aba Dashboards: ranking
+     * dos fornecedores optantes pelo Simples Nacional (CRT 1/2 no XML da NF-e de
+     * entrada) num mês, por valor total comprado. Só lê `documentos_fiscais`
+     * (GROUP BY em SQL) — ver DocumentoFiscal::rankingFornecedoresSimples.
+     */
+    public function dashboardFornecedoresSimples(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        try {
+            $resultado = DocumentoFiscal::rankingFornecedoresSimples(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(
+                ['success' => true] + $resultado,
+                200,
+                [],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] dashboardFornecedoresSimples: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Dashboard "Top Produtos" da aba Dashboards: ranking dos produtos mais
+     * vendidos (por valor) num mês, lendo os itens (<det><prod>) das NF-e de
+     * saída — ver DocumentoFiscal::rankingProdutosVendidos.
+     */
+    public function dashboardProdutosVendidos(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+
+        try {
+            $resultado = DocumentoFiscal::rankingProdutosVendidos(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(
+                ['success' => true] + $resultado,
+                200,
+                [],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] dashboardProdutosVendidos: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Dashboard "Compras e Vendas Interestaduais" da aba Dashboards: total por
+     * UF das operações interestaduais (entradas e saídas) no período — ver
+     * DocumentoFiscal::resumoInterestadual.
+     */
+    public function dashboardInterestadual(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+
+        try {
+            $resultado = DocumentoFiscal::resumoInterestadual(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(
+                ['success' => true] + $resultado,
+                200,
+                [],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] dashboardInterestadual: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
     // Limite de chaves por requisição de zip — bem acima do que qualquer cliente tem de
     // notas num período, só como proteção contra payloads absurdos (ver CofreFiscalController::MAX_ZIP,
     // que tem um limite próprio menor por filtrar sem seleção manual do usuário).
