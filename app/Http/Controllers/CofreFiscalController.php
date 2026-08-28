@@ -84,7 +84,7 @@ class CofreFiscalController extends Controller
             ->when($request->filled('busca'), fn (Builder $q) => $q->where('clientes.nome', 'like', '%'.$request->string('busca').'%'))
             ->groupBy('documentos_fiscais.cliente_id', 'clientes.nome', 'clientes.cpfcnpj')
             ->orderBy('clientes.nome')
-            ->paginate(50)
+            ->paginate(25)
             ->withQueryString();
 
         $pastas = $pastasPaginadas->getCollection()->map(fn ($row) => [
