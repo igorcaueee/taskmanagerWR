@@ -235,7 +235,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
-        $data['importar_notas_fiscais'] = isset($data['importar_notas_fiscais']);
+        $data['importar_notas_fiscais'] = $request->boolean('importar_notas_fiscais');
         $data += $this->cnaeDoRequest($request);
 
         Cliente::create($data);
@@ -271,7 +271,7 @@ class ClienteController extends Controller
         }
 
         $data['fator_r'] = isset($data['fator_r']);
-        $data['importar_notas_fiscais'] = isset($data['importar_notas_fiscais']);
+        $data['importar_notas_fiscais'] = $request->boolean('importar_notas_fiscais');
         $data += $this->cnaeDoRequest($request);
 
         $regimeAnterior = $cliente->regime_tributario;

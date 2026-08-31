@@ -245,11 +245,22 @@
         </div>
 
         <div>
-            <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                <input name="importar_notas_fiscais" type="checkbox" class="rounded border-gray-300"
-                       {{ old('importar_notas_fiscais', $isEditing ? $cliente->importar_notas_fiscais : ($prefill['importar_notas_fiscais'] ?? false)) ? 'checked' : '' }}>
-                Importar notas (NF-e/NFC-e/CT-e via SEFAZ-RS)
-            </label>
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Importar notas (NF-e/NFC-e/CT-e via SEFAZ-RS)</span>
+            @php
+                $importarNotasFiscaisAtual = old('importar_notas_fiscais', $isEditing ? $cliente->importar_notas_fiscais : ($prefill['importar_notas_fiscais'] ?? false));
+            @endphp
+            <div class="flex items-center gap-4">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input name="importar_notas_fiscais" type="radio" value="1" class="border-gray-300"
+                           {{ $importarNotasFiscaisAtual ? 'checked' : '' }}>
+                    Sim
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input name="importar_notas_fiscais" type="radio" value="0" class="border-gray-300"
+                           {{ ! $importarNotasFiscaisAtual ? 'checked' : '' }}>
+                    Não
+                </label>
+            </div>
         </div>
 
         @if(isset($produtos) && $produtos->isNotEmpty())

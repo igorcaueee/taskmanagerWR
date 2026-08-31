@@ -209,6 +209,18 @@
                             </dd>
                         </div>
                         <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Importa Notas pelo Sefaz</dt>
+                            <dd class="mt-0.5">
+                                @if($cliente->importar_notas_fiscais)
+                                    <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                                        <i class="fa-solid fa-check"></i> Sim
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">Não</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
                             <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Acesso a Extratos</dt>
                             <dd class="mt-0.5">
                                 @if($cliente->acesso_extrato === true)
