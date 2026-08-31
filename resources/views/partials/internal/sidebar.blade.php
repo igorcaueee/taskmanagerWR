@@ -9,7 +9,9 @@
         <a href="{{ route('notas-emitidas.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-hashtag"></i> Contador de Notas</a>
         <a href="{{ route('simples-nacional.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-invoice-dollar"></i> Utilitários Fiscal</a>
         <a href="{{ route('cofre-fiscal.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-box-archive"></i> Cofre de Notas Fiscais</a>
-        <a href="{{ route('certificados.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-id-card"></i> Certificados Digitais</a>
+        @if (auth()->user()?->canAcessarCertificados())
+            <a href="{{ route('certificados.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-id-card"></i> Certificados Digitais</a>
+        @endif
         <a href="{{ route('ideias.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-lightbulb"></i> Ideias &amp; Correções</a>
         @if (auth()->user()?->canGerenciarBlog())
             <a href="{{ route('blog.admin.index') }}" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-newspaper"></i> Blog</a>

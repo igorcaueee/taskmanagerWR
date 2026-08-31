@@ -228,6 +228,15 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
+    // Certificados digitais dos clientes: Diretor, TI e a recepcionista Silvia
+    public function canAcessarCertificados(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti'])
+            || in_array(mb_strtolower((string) $this->email), ['silvia@assessoriawr.com', 'contato@wrcontabilidade.com.br'])
+            || str_contains(mb_strtolower((string) $this->nome), 'silvia')
+            || str_contains(mb_strtolower((string) $this->nome), 'sílvia');
+    }
+
     // Diretor e TI acessam o E-mail Marketing
     public function canEmailMarketing(): bool
     {

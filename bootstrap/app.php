@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureCertificadosAccess;
 use App\Http\Middleware\EnsureColaboradoresAccess;
 use App\Http\Middleware\EnsureColaboradoresEdit;
 use App\Http\Middleware\EnsureDiretor;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'colaboradores' => EnsureColaboradoresAccess::class,
             'colaboradores.edit' => EnsureColaboradoresEdit::class,
             'admin' => EnsureAdmin::class,
+            'certificados-access' => EnsureCertificadosAccess::class,
             'reinf-access' => EnsureReinfAccess::class,
             'ti-access' => EnsureTiAccess::class,
             'portal.auth' => PortalAuth::class,

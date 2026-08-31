@@ -103,10 +103,34 @@
                     <option value="vencido" @selected(request('vencimento_status') === 'vencido')>Vencidos</option>
                     <option value="vence30" @selected(request('vencimento_status') === 'vence30')>Vencem em 30 dias</option>
                 </select>
-                @if(request()->hasAny(['busca', 'modelo', 'situacao', 'vencimento_status']))
+
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">Emissão:</span>
+                    <input type="date" name="data_ini" value="{{ request('data_ini') }}" onchange="this.form.submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <span class="text-xs text-gray-400">até</span>
+                    <input type="date" name="data_fim" value="{{ request('data_fim') }}" onchange="this.form.submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">Vencimento:</span>
+                    <input type="date" name="venc_ini" value="{{ request('venc_ini') }}" onchange="this.form.submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <span class="text-xs text-gray-400">até</span>
+                    <input type="date" name="venc_fim" value="{{ request('venc_fim') }}" onchange="this.form.submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                </div>
+
+                @if(request()->hasAny(['busca', 'modelo', 'situacao', 'vencimento_status', 'data_ini', 'data_fim', 'venc_ini', 'venc_fim']))
                     <a href="{{ route('certificados.index', ['aba' => 'emissoes']) }}" class="text-sm text-gray-500 dark:text-slate-400 hover:text-brand self-center no-underline">Limpar</a>
                 @endif
             </form>
+
+            <div class="px-4 py-2 border-b border-gray-100 dark:border-slate-700 text-xs text-gray-500 dark:text-slate-400">
+                {{ $resumo['total'] }} emissão(ões){{ request()->hasAny(['busca', 'modelo', 'situacao', 'vencimento_status', 'data_ini', 'data_fim', 'venc_ini', 'venc_fim']) ? ' no filtro' : '' }}
+                · Total: R$ {{ number_format((float) $resumo['valor'], 2, ',', '.') }}
+            </div>
 
             <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
                 <thead class="bg-gray-50 dark:bg-slate-900">
@@ -199,6 +223,17 @@
                     <option value="vence30" @selected(request('filtro_vencimento') === 'vence30')>Vencem em 30 dias</option>
                     <option value="sem" @selected(request('filtro_vencimento') === 'sem')>Sem vencimento cadastrado</option>
                 </select>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">Vence entre:</span>
+                    <input type="date" name="venc_cli_ini" value="{{ request('venc_cli_ini') }}" onchange="this.form.submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                    <span class="text-xs text-gray-400">até</span>
+                    <input type="date" name="venc_cli_fim" value="{{ request('venc_cli_fim') }}" onchange="this.form.submit()"
+                           class="border border-gray-300 dark:border-slate-600 rounded px-2 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
+                </div>
+                @if(request()->hasAny(['busca_cliente', 'filtro_vencimento', 'venc_cli_ini', 'venc_cli_fim']))
+                    <a href="{{ route('certificados.index', ['aba' => 'vencimentos']) }}" class="text-sm text-gray-500 dark:text-slate-400 hover:text-brand self-center no-underline">Limpar</a>
+                @endif
             </form>
 
             <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">

@@ -43,6 +43,23 @@ class CertificadoEmissaoController extends Controller
             $query->whereNotNull('vencimento')
                 ->whereBetween('vencimento', [now()->toDateString(), now()->addDays(30)->toDateString()]);
         }
+        if ($request->filled('data_ini')) {
+            $query->whereDate('data_emissao', '>=', $request->date('data_ini'));
+        }
+        if ($request->filled('data_fim')) {
+            $query->whereDate('data_emissao', '<=', $request->date('data_fim'));
+        }
+        if ($request->filled('venc_ini')) {
+            $query->whereDate('vencimento', '>=', $request->date('venc_ini'));
+        }
+        if ($request->filled('venc_fim')) {
+            $query->whereDate('vencimento', '<=', $request->date('venc_fim'));
+        }
+
+        $resumo = [
+            'total' => (clone $query)->count(),
+            'valor' => (clone $query)->sum('valor'),
+        ];
 
         $emissoes = $query->paginate(30)->withQueryString();
 
@@ -61,6 +78,12 @@ class CertificadoEmissaoController extends Controller
         } elseif ($filtroVenc === 'sem') {
             $clientesQuery->whereNull('vencimento_certificado');
         }
+        if ($request->filled('venc_cli_ini')) {
+            $clientesQuery->whereDate('vencimento_certificado', '>=', $request->date('venc_cli_ini'));
+        }
+        if ($request->filled('venc_cli_fim')) {
+            $clientesQuery->whereDate('vencimento_certificado', '<=', $request->date('venc_cli_fim'));
+        }
         $clientes = $clientesQuery->paginate(25, ['id', 'nome', 'cpfcnpj', 'tipo', 'status', 'vencimento_certificado'], 'pagina_clientes')
             ->withQueryString();
 
@@ -72,6 +95,7 @@ class CertificadoEmissaoController extends Controller
         return view('certificados.index', [
             'aba'         => $aba,
             'emissoes'    => $emissoes,
+            'resumo'      => $resumo,
             'clientes'    => $clientes,
             'modelos'     => self::MODELOS,
             'formas'      => self::FORMAS,

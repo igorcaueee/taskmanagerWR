@@ -373,7 +373,7 @@ Route::patch('/ideias/{id}/status', [IdeiaController::class, 'updateStatus'])->n
 Route::delete('/ideias/{id}', [IdeiaController::class, 'destroy'])->name('ideias.destroy')->middleware('auth');
 
 // Certificados digitais dos clientes (gestão + emissões)
-Route::middleware('auth')->prefix('certificados')->name('certificados.')->group(function () {
+Route::middleware(['auth', 'certificados-access'])->prefix('certificados')->name('certificados.')->group(function () {
     Route::get('/', [CertificadoEmissaoController::class, 'index'])->name('index');
     Route::get('/form', [CertificadoEmissaoController::class, 'form'])->name('form');
     Route::get('/{emissao}/form', [CertificadoEmissaoController::class, 'formEdit'])->name('form.edit');
