@@ -30,6 +30,12 @@
                 <p class="mt-1 text-xs text-gray-400 dark:text-slate-500 truncate">{{ now()->format('d/m/Y') }}</p>
             </div>
 
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">XMLs baixados no mês</p>
+                <p class="mt-1 text-3xl font-bold text-brand">{{ $totalXmlsBaixadosMes }}</p>
+                <p class="mt-1 text-xs text-gray-400 dark:text-slate-500 truncate">{{ ucfirst(now()->translatedFormat('F Y')) }}</p>
+            </div>
+
             {{-- Aniversariantes do dia --}}
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">

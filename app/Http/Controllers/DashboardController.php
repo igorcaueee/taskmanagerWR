@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ciclo;
 use App\Models\Cliente;
+use App\Models\DocumentoFiscal;
 use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,11 @@ class DashboardController extends Controller
             ->whereDate('data_conclusao', now()->toDateString())
             ->count();
 
+        $totalXmlsBaixadosMes = DocumentoFiscal::query()
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+
         $aniversariantesHoje = Usuario::query()
             ->whereNotNull('data_nascimento')
             ->whereMonth('data_nascimento', now()->month)
@@ -64,6 +70,7 @@ class DashboardController extends Controller
             'totalTarefasCiclo',
             'tarefasUsuarioCiclo',
             'tarefasConcluidasHoje',
+            'totalXmlsBaixadosMes',
             'aniversariantesHoje',
             'aniversariantesEmpresaHoje',
         ));
