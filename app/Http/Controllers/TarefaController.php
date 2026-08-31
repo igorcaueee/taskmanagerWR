@@ -87,6 +87,14 @@ class TarefaController extends Controller
 
     public function showTarefasList(Request $request): View
     {
+        // O kanban "Todos" pode renderizar milhares de cards de uma vez (um @include
+        // por tarefa), o que estoura os 128M padrão do PHP. Amplia o limite para esta tela.
+        $memLimit = ini_get('memory_limit');
+        if ($memLimit !== false && stripos($memLimit, 'G') === false
+            && (int) $memLimit > 0 && (int) $memLimit < 512) {
+            @ini_set('memory_limit', '512M');
+        }
+
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor_geral']);
         $isSupervisor = $usuario->cargo === 'supervisor';
@@ -195,7 +203,7 @@ class TarefaController extends Controller
             : ($isSupervisor
                 ? Usuario::whereNotIn('cargo', ['diretor', 'ti'])->orderBy('nome')->get()
                 : collect());
-        $clientes = Cliente::orderBy('nome')->get();
+        $clientes = Cliente::orderBy('nome')->get(['id', 'nome']);
         $tiposTarefa = TipoTarefa::orderBy('nome')->get();
 
         $usuariosTransferencia = $podeVerTodas
