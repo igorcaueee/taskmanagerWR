@@ -40,6 +40,9 @@
         @if(session('error'))
         Swal.fire({ icon: 'error', title: 'Erro', text: '{{ session('error') }}', confirmButtonColor: '#dc2626' });
         @endif
+        @if(session('abrir_transferencia'))
+        window.openModal('{{ route('colaboradores.transferir-tarefas.form', session('abrir_transferencia')) }}');
+        @endif
         </script>
         @endpush
         @endif
@@ -121,6 +124,14 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-right">
+                                @if(auth()->user()?->canTransferirTarefasColaborador())
+                                <button type="button"
+                                        class="text-gray-500 hover:text-brand mr-3 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"
+                                        title="Transferir tarefas / desligar"
+                                        data-modal-url="{{ route('colaboradores.transferir-tarefas.form', $colab->id) }}">
+                                    <i class="fa-solid fa-people-arrows"></i>
+                                </button>
+                                @endif
                                 @if(auth()->user()?->canEditarColaboradores())
                                 <button type="button"
                                         class="text-brand hover:text-brand/80 focus:outline-none focus:ring-0 border-0 bg-transparent p-0"

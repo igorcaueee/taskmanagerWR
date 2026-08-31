@@ -150,6 +150,12 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
+    // Diretor, TI e Supervisor Geral podem transferir em massa as tarefas de um colaborador
+    public function canTransferirTarefasColaborador(): bool
+    {
+        return in_array($this->cargo, ['diretor', 'ti', 'supervisor_geral']);
+    }
+
     // Apenas Diretor vê o campo honorário (dados financeiros sensíveis)
     public function canVerHonorario(): bool
     {

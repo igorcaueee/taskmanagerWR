@@ -3,10 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Departamento;
+use App\Models\Notificacao;
+use App\Models\RelTarefa;
+use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -167,6 +173,19 @@ class UsuarioController extends Controller
             return Redirect::back()->with('error', $validator->errors()->first())->withInput();
         }
 
+        // Ao desligar alguém, força a transferência das tarefas em aberto antes de desativar.
+        $desativando = $usuario->status && ! (isset($data['status']) ? (bool) $data['status'] : false);
+        if ($desativando) {
+            $abertas = $this->tarefasAbertasQuery($id, 'responsavel_id')->count()
+                + $this->tarefasAbertasQuery($id, 'supervisor_id')->count();
+
+            if ($abertas > 0 && Auth::user()?->canTransferirTarefasColaborador()) {
+                return Redirect::back()
+                    ->with('error', "{$usuario->nome} possui {$abertas} tarefa(s) em aberto. Transfira as tarefas para outro colaborador antes de desativar.")
+                    ->with('abrir_transferencia', $id);
+            }
+        }
+
         $update = [
             'nome' => $data['nome'],
             'email' => $data['email'],
@@ -196,6 +215,119 @@ class UsuarioController extends Controller
         $usuario->update($update);
 
         return Redirect::back()->with('success', 'Colaborador atualizado com sucesso.');
+    }
+
+    /**
+     * Query das tarefas em aberto (ativas e não concluídas) em que o colaborador atua
+     * numa determinada função (responsavel_id ou supervisor_id).
+     */
+    private function tarefasAbertasQuery(int $usuarioId, string $coluna)
+    {
+        return Tarefa::where($coluna, $usuarioId)
+            ->where('ativo', true)
+            ->whereNull('data_conclusao');
+    }
+
+    /**
+     * Modal para transferir em massa as tarefas de um colaborador para outro
+     * (usado ao desligar alguém da empresa).
+     */
+    public function formTransferirTarefas(Request $request, int $id): View
+    {
+        abort_unless($request->user()?->canTransferirTarefasColaborador(), 403);
+
+        $colab = Usuario::findOrFail($id);
+
+        $comoResponsavel = $this->tarefasAbertasQuery($id, 'responsavel_id')->count();
+        $comoSupervisor = $this->tarefasAbertasQuery($id, 'supervisor_id')->count();
+
+        $destinos = Usuario::where('status', true)
+            ->where('id', '!=', $id)
+            ->orderBy('nome')
+            ->get();
+
+        return view('colaboradores.partials.transferirTarefas', compact('colab', 'comoResponsavel', 'comoSupervisor', 'destinos'));
+    }
+
+    /**
+     * Executa a transferência em massa das tarefas do colaborador para outro,
+     * registrando o histórico e, opcionalmente, desativando o colaborador.
+     */
+    public function transferirTarefas(Request $request, int $id): RedirectResponse
+    {
+        abort_unless($request->user()?->canTransferirTarefasColaborador(), 403);
+
+        $colab = Usuario::findOrFail($id);
+
+        $data = $request->validate([
+            'novo_responsavel_id' => ['required', 'integer', 'exists:usuarios,id'],
+            'incluir_supervisao' => ['nullable', 'boolean'],
+            'desativar_colaborador' => ['nullable', 'boolean'],
+        ], [
+            'novo_responsavel_id.required' => 'Selecione o colaborador que vai receber as tarefas.',
+            'novo_responsavel_id.exists' => 'Colaborador de destino inválido.',
+        ]);
+
+        if ((int) $data['novo_responsavel_id'] === $id) {
+            return Redirect::back()->with('error', 'O colaborador de destino deve ser diferente do que está sendo desligado.');
+        }
+
+        $novo = Usuario::findOrFail((int) $data['novo_responsavel_id']);
+        $autor = $request->user();
+        $incluirSupervisao = $request->boolean('incluir_supervisao');
+
+        $resultado = DB::transaction(function () use ($colab, $novo, $autor, $incluirSupervisao) {
+            $tarefas = $this->tarefasAbertasQuery($colab->id, 'responsavel_id')->get();
+
+            foreach ($tarefas as $tarefa) {
+                $tarefa->update([
+                    'responsavel_id' => $novo->id,
+                    'departamento_id' => $novo->departamento_id ?? $tarefa->departamento_id,
+                ]);
+
+                RelTarefa::create([
+                    'tarefa_id' => $tarefa->id,
+                    'responsavel_anterior_id' => $colab->id,
+                    'responsavel_novo_id' => $novo->id,
+                    'alterado_por' => $autor->id,
+                    'observacao' => "Transferência em massa ao desligar {$colab->nome} → {$novo->nome}",
+                ]);
+            }
+
+            $supervisao = 0;
+            if ($incluirSupervisao) {
+                $supervisao = $this->tarefasAbertasQuery($colab->id, 'supervisor_id')
+                    ->update(['supervisor_id' => $novo->id]);
+            }
+
+            return ['responsavel' => $tarefas->count(), 'supervisao' => $supervisao];
+        });
+
+        if ($resultado['responsavel'] > 0 && (int) $novo->id !== (int) $autor->id) {
+            try {
+                Notificacao::create([
+                    'usuario_id' => $novo->id,
+                    'tipo' => 'tarefa_atribuida',
+                    'mensagem' => "{$autor->nome} transferiu {$resultado['responsavel']} tarefa(s) de {$colab->nome} para você.",
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Falha ao criar notificação: '.$e->getMessage());
+            }
+        }
+
+        if ($request->boolean('desativar_colaborador') && $colab->status) {
+            $colab->update(['status' => false]);
+        }
+
+        $partes = ["{$resultado['responsavel']} tarefa(s) transferida(s) para {$novo->nome}"];
+        if ($incluirSupervisao) {
+            $partes[] = "{$resultado['supervisao']} com supervisão reatribuída";
+        }
+        if ($request->boolean('desativar_colaborador')) {
+            $partes[] = "{$colab->nome} foi desativado";
+        }
+
+        return Redirect::route('colaboradores')->with('success', implode('. ', $partes).'.');
     }
 
     /**

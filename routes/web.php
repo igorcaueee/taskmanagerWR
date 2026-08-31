@@ -288,6 +288,8 @@ Route::get('/colaboradores/{id}/form', [UsuarioController::class, 'formColabEdit
 Route::post('/colaboradores/save', [UsuarioController::class, 'saveColab'])->name('colaboradores.save')->middleware(['auth', 'colaboradores.edit']);
 Route::put('/colaboradores/{id}', [UsuarioController::class, 'updateColab'])->name('colaboradores.update')->middleware(['auth', 'colaboradores.edit']);
 Route::delete('/colaboradores/{id}', [UsuarioController::class, 'deleteColab'])->name('colaboradores.delete')->middleware(['auth', 'colaboradores.edit']);
+Route::get('/colaboradores/{id}/transferir-tarefas', [UsuarioController::class, 'formTransferirTarefas'])->name('colaboradores.transferir-tarefas.form')->middleware(['auth', 'colaboradores']);
+Route::post('/colaboradores/{id}/transferir-tarefas', [UsuarioController::class, 'transferirTarefas'])->name('colaboradores.transferir-tarefas')->middleware(['auth', 'colaboradores']);
 // Arquivos routes
 Route::get('/arquivos', [FileExplorerController::class, 'index'])->name('arquivos')->middleware('auth');
 Route::get('/arquivos/download', [FileExplorerController::class, 'download'])->name('arquivos.download')->middleware('auth');
