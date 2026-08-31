@@ -9,6 +9,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteConhecimentoController;
 use App\Http\Controllers\InstrucaoLiriController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\CertificadoEmissaoController;
 use App\Http\Controllers\CofreFiscalController;
 use App\Http\Controllers\ConsultaCndController;
 use App\Http\Controllers\DashboardController;
@@ -370,6 +371,17 @@ Route::get('/ideias/{id}/form', [IdeiaController::class, 'formEdit'])->name('ide
 Route::post('/ideias/save', [IdeiaController::class, 'store'])->name('ideias.store')->middleware('auth');
 Route::patch('/ideias/{id}/status', [IdeiaController::class, 'updateStatus'])->name('ideias.update-status')->middleware('auth');
 Route::delete('/ideias/{id}', [IdeiaController::class, 'destroy'])->name('ideias.destroy')->middleware('auth');
+
+// Certificados digitais dos clientes (gestão + emissões)
+Route::middleware('auth')->prefix('certificados')->name('certificados.')->group(function () {
+    Route::get('/', [CertificadoEmissaoController::class, 'index'])->name('index');
+    Route::get('/form', [CertificadoEmissaoController::class, 'form'])->name('form');
+    Route::get('/{emissao}/form', [CertificadoEmissaoController::class, 'formEdit'])->name('form.edit');
+    Route::post('/', [CertificadoEmissaoController::class, 'store'])->name('store');
+    Route::put('/{emissao}', [CertificadoEmissaoController::class, 'update'])->name('update');
+    Route::delete('/{emissao}', [CertificadoEmissaoController::class, 'destroy'])->name('destroy');
+    Route::patch('/cliente/{cliente}/vencimento', [CertificadoEmissaoController::class, 'updateVencimentoCliente'])->name('cliente.vencimento');
+});
 
 // NFS-e Portal Nacional
 Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
