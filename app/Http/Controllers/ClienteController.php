@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -597,7 +598,41 @@ class ClienteController extends Controller
             return Redirect::route('clientes')->with('error', 'Arquivo vazio.');
         }
 
-        $header = array_map(fn ($v) => mb_strtolower(trim((string) $v)), $rows[0]);
+        // Normaliza o cabeçalho (remove acentos, espaços, "/" etc.) para aceitar tanto o
+        // modelo de importação (snake_case) quanto o arquivo gerado pela exportação de clientes.
+        $normalizeHeader = function ($value): string {
+            $value = Str::ascii(mb_strtolower(trim((string) $value)));
+
+            return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
+        };
+
+        $headerAliases = [
+            'nome' => 'nome',
+            'cpfcnpj' => 'cpfcnpj',
+            'cpf' => 'cpfcnpj',
+            'cnpj' => 'cpfcnpj',
+            'tipo' => 'tipo',
+            'regimetributario' => 'regime_tributario',
+            'regime' => 'regime_tributario',
+            'cidade' => 'cidade',
+            'estado' => 'estado',
+            'uf' => 'estado',
+            'status' => 'status',
+            'clientedesde' => 'cliente_desde',
+            'dataabertura' => 'dataabertura',
+            'faturamento' => 'faturamento',
+            'servico' => 'servico',
+            'honorario' => 'honorario',
+            'fatorr' => 'fator_r',
+            'atividade' => 'atividade',
+            'area' => 'area',
+        ];
+
+        $header = array_map(function ($v) use ($normalizeHeader, $headerAliases) {
+            $normalized = $normalizeHeader($v);
+
+            return $headerAliases[$normalized] ?? $normalized;
+        }, $rows[0]);
         $colIndex = array_flip($header);
 
         $get = fn ($row, $col) => isset($colIndex[$col]) ? trim((string) ($row[$colIndex[$col]] ?? '')) : '';
