@@ -14,4 +14,4 @@ Schedule::command('certificados:verificar')->dailyAt('08:00');
 Schedule::command('fiscal:sincronizar-notas-rs')->dailyAt('18:30')->withoutOverlapping()->runInBackground();
 // Roda depois da sincronização normal (que pode ir até 07:00) pra não disputar o
 // certificado compartilhado da contabilidade e gerar bloqueio por "consumo indevido".
-Schedule::command('fiscal:reconsultar-cte-rs')->dailyAt('07:15')->withoutOverlapping()->runInBackground();
+Schedule::command('fiscal:reconsultar-notas-rs')->dailyAt('07:15')->withoutOverlapping()->runInBackground();

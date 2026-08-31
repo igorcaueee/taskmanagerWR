@@ -63,9 +63,14 @@ class NfeIntegracaoRsService
      * repetindo a chamada com 'proximoNsu' até 'concluido' vir true, e só
      * então passa para o outro modelo.
      *
+     * $modoBackfill: mesmo propósito do CteIntegracaoRsService::sincronizarChunk
+     * — usado pela reconsulta de janela (fiscal:reconsultar-notas-rs), impede
+     * que o checkpoint (ultimo_nsu_nfe_rs/ultimo_nsu_nfce_rs) regrida quando a
+     * reconsulta começa num NSU anterior ao já processado.
+     *
      * Retorna ['concluido' => bool, 'proximoNsu' => int, 'aviso' => ?string].
      */
-    public function sincronizarChunk(CertificadoContabilidade $certificado, Cliente $cliente, string $mod, ?int $nsuInicio = null): array
+    public function sincronizarChunk(CertificadoContabilidade $certificado, Cliente $cliente, string $mod, ?int $nsuInicio = null, bool $modoBackfill = false): array
     {
         $campoNsu = self::CAMPO_NSU[$mod] ?? throw new \InvalidArgumentException("Modelo inválido: {$mod}");
 
@@ -109,7 +114,7 @@ class NfeIntegracaoRsService
                 if ($resp['cStat'] === '678') {
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
-                        $cliente->update([$campoNsu => $nsuAtual]);
+                        $this->atualizarCheckpoint($cliente, $campoNsu, $nsuAtual, $modoBackfill);
                     }
 
                     $aviso = 'A Sefaz-RS rejeitou a sincronização de ' . ($mod === self::MOD_NFCE ? 'NFC-e' : 'NF-e')
@@ -122,7 +127,7 @@ class NfeIntegracaoRsService
                 if (empty($resp['docs'])) {
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
-                        $cliente->update([$campoNsu => $nsuAtual]);
+                        $this->atualizarCheckpoint($cliente, $campoNsu, $nsuAtual, $modoBackfill);
                     }
                     $concluido = true;
                     break;
@@ -149,7 +154,7 @@ class NfeIntegracaoRsService
 
                 if (!empty($resp['ultNSU'])) {
                     $nsuAtual = (int) $resp['ultNSU'];
-                    $cliente->update([$campoNsu => $nsuAtual]);
+                    $this->atualizarCheckpoint($cliente, $campoNsu, $nsuAtual, $modoBackfill);
                 }
 
                 if (!$loteCheio) {
@@ -168,6 +173,20 @@ class NfeIntegracaoRsService
         Log::debug('[NF-e RS] sincronizarChunk: concluído', ['mod' => $mod, 'concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso]);
 
         return ['concluido' => $concluido, 'proximoNsu' => $nsuAtual, 'aviso' => $aviso];
+    }
+
+    /**
+     * Grava o novo NSU no checkpoint do cliente/modelo — em modo backfill, só
+     * grava se o novo valor for maior que o atual (mesma lógica de
+     * CteIntegracaoRsService::atualizarCheckpoint).
+     */
+    private function atualizarCheckpoint(Cliente $cliente, string $campoNsu, int $novoNsu, bool $modoBackfill): void
+    {
+        if ($modoBackfill && $novoNsu <= (int) $cliente->{$campoNsu}) {
+            return;
+        }
+
+        $cliente->update([$campoNsu => $novoNsu]);
     }
 
     /**
