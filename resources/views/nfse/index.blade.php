@@ -755,6 +755,7 @@
                                 class="btn-danfse p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-transparent border-0 transition-colors"
                                 title="${isTecnos ? 'Visualizar DANFSE — Tecnos Teutônia' : 'Visualizar DANFSE (PDF)'}"
                                 data-chave="${chave}"
+                                data-nsu="${nsu}"
                                 data-is-tecnos="${isTecnos ? '1' : '0'}"
                                 data-cnpj="${nota.cnpjPrestador ?? ''}"
                                 data-im="${nota.imPrestador ?? ''}"
@@ -778,7 +779,7 @@
                 if (btn.dataset.isTecnos === '1') {
                     abrirDanfseTecnos(btn.dataset.cnpj, btn.dataset.im, btn.dataset.numero, btn);
                 } else {
-                    abrirDanfse(btn.dataset.chave, btn);
+                    abrirDanfse(btn.dataset.nsu, btn.dataset.chave, btn);
                 }
             });
         });
@@ -838,8 +839,8 @@
         }
     }
 
-    // ─── DANFSE (PDF) — GET /danfse/{chaveAcesso} ────────────────────────────
-    async function abrirDanfse(chaveAcesso, btn) {
+    // ─── DANFSE (PDF) — gerado localmente conforme NT 008/2026 ───────────────
+    async function abrirDanfse(nsu, chaveAcesso, btn) {
         const clienteId = selectCliente.value;
         const iconOrig  = btn.innerHTML;
 
@@ -847,23 +848,29 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-lg"></i>';
 
         try {
-            const resp = await fetch(
-                `/nfse/danfse?cliente_id=${clienteId}&chave_acesso=${encodeURIComponent(chaveAcesso)}`,
-                { headers: { 'Accept': 'application/pdf,application/json' } }
-            );
+            const nota = notasAtuais.find(n => n.nsu == nsu);
+            const body = nota?.xmlContent
+                ? { xml: nota.xmlContent }
+                : { cliente_id: clienteId, nsu: nsu };
+
+            const resp = await fetch('/nfse/danfse', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                    'Accept': 'application/pdf,application/json',
+                },
+                body: JSON.stringify(body),
+            });
 
             if (!resp.ok) {
                 const data = await resp.json().catch(() => ({}));
-                const msg  = data.error ?? 'Falha ao gerar DANFSE.';
-                const is502 = msg.includes('502');
                 Swal.fire({
                     icon: 'warning',
-                    title: is502 ? 'DANFSE indisponível' : 'Erro',
-                    html: is502
-                        ? 'O servidor do governo não conseguiu gerar o DANFSE para esta nota.<br><br>'
-                          + '<small class="text-gray-500">Possíveis causas: NFS-e emitida por sistema municipal próprio (o DANFSE não fica no Portal Nacional), '
-                          + 'ou a API do governo está instável. Tente baixar o XML e usar o visualizador da prefeitura.</small>'
-                        : msg,
+                    title: 'Erro ao gerar DANFSe',
+                    html: (data.error ?? 'Falha ao gerar o DANFSe.')
+                        + '<br><br><small class="text-gray-500">O DANFSe é montado a partir do XML da NFS-e. '
+                        + 'Se o XML não estiver carregado, faça a busca novamente antes de gerar.</small>',
                 });
                 return;
             }

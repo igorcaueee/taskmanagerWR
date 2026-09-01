@@ -1,0 +1,7 @@
+# Ignora tudo em storage/fonts (cache do dompdf, fontes bundle),
+# exceto as fontes do DANFSe versionadas manualmente.
+*
+!.gitignore
+!danfse/
+danfse/*
+!danfse/*.ttf

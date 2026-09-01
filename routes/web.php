@@ -395,7 +395,7 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/xml/download', [NfseController::class, 'downloadXml'])->name('xml.download');
     Route::post('/xml/zip', [NfseController::class, 'downloadZip'])->name('xml.zip');
     Route::post('/xml/zip-xmls', [NfseController::class, 'downloadZipXmls'])->name('xml.zip-xmls');
-    Route::get('/danfse', [NfseController::class, 'danfse'])->name('danfse');
+    Route::match(['get', 'post'], '/danfse', [NfseController::class, 'danfse'])->name('danfse');
     Route::get('/danfse-tecnos', [NfseController::class, 'danfseTecnos'])->name('danfse-tecnos');
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');

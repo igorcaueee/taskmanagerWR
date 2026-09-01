@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\NfseExport;
 use App\Models\Cliente;
 use App\Models\ClienteCertificadoNfse;
+use App\Services\Nfse\DanfseGeradorService;
 use App\Services\NfseService;
 use App\Services\NfseXmlParser;
 use Illuminate\Http\Request;
@@ -419,28 +420,53 @@ class NfseController extends Controller
     // ─── DANFSE (PDF) ────────────────────────────────────────────────────────
 
     /**
-     * Gera e retorna o DANFSE em PDF via API oficial do governo.
-     * Endpoint da API: GET /danfse/{chaveAcesso}
+     * Gera o DANFSe v2.0 (PDF) localmente a partir do XML da NFS-e, seguindo a
+     * Nota Técnica SE/CGNFS-e nº 008/2026.
+     *
+     * A API oficial de geração (GET https://adn.nfse.gov.br/danfse/{chave}) foi
+     * sobrestada em 1º de julho de 2026 — a montagem do documento passou a ser
+     * responsabilidade dos sistemas emissores.
+     *
+     * Aceita o XML direto do frontend (`xml`) ou o par `cliente_id` + `nsu`
+     * (baixa o XML server-side pelo certificado do cliente).
      */
-    public function danfse(Request $request)
+    public function danfse(Request $request, DanfseGeradorService $gerador)
     {
         $validated = $request->validate([
-            'cliente_id'   => 'required|exists:clientes,id',
-            'chave_acesso' => 'required|string',
+            'xml'        => 'nullable|string',
+            'cliente_id' => 'nullable|exists:clientes,id',
+            'nsu'        => 'nullable|integer',
         ]);
 
-        $cert = ClienteCertificadoNfse::where('cliente_id', $validated['cliente_id'])->firstOrFail();
-
         try {
-            $pdf      = $this->nfse->gerarDanfse($cert, $validated['chave_acesso']);
-            $filename = 'danfse_' . substr($validated['chave_acesso'], -20) . '.pdf';
+            $xml = $validated['xml'] ?? null;
+
+            if (! $xml) {
+                if (empty($validated['cliente_id']) || empty($validated['nsu'])) {
+                    return response()->json(['error' => 'Informe o XML da NFS-e ou o par cliente_id + nsu.'], 422);
+                }
+                $cert = ClienteCertificadoNfse::where('cliente_id', $validated['cliente_id'])->firstOrFail();
+                $xml  = $this->nfse->baixarXmlPorNsu($cert, (int) $validated['nsu']);
+            }
+
+            // ?formato=html — pré-visualização rápida do layout no navegador (debug).
+            if ($request->query('formato') === 'html') {
+                return response($gerador->html($xml));
+            }
+
+            $pdf      = $gerador->gerar($xml);
+            $filename = $gerador->nomeArquivo($xml);
 
             return response($pdf, 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => "inline; filename=\"{$filename}\"",
             ]);
-        } catch (\RuntimeException $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            Log::error('[NFS-e] Falha ao gerar DANFSe local', ['msg' => $e->getMessage()]);
+
+            return response()->json(['error' => 'Não foi possível gerar o DANFSe: ' . $e->getMessage()], 500);
         }
     }
 }
