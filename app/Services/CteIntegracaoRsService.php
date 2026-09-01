@@ -156,8 +156,6 @@ class CteIntegracaoRsService
                     break;
                 }
 
-                $loteCheio = count($resp['docs']) >= 50; // maxOccurs do lote — pode haver mais
-
                 foreach ($resp['docs'] as $doc) {
                     if ($doc['tipo'] === 'evento') {
                         $this->processarEvento($doc['xmlContent'] ?? '');
@@ -167,12 +165,19 @@ class CteIntegracaoRsService
                     $this->persistir($cliente->id, $doc);
                 }
 
+                // A Sefaz-RS NÃO garante 50 docs por lote até o fim do feed — a entrega de NSU
+                // não é sequencial. Um lote curto no meio do feed não significa fim: antes o
+                // código parava aí (count < 50) e deixava pra trás tudo que vinha depois,
+                // furando também a reconsulta de janela. Só é seguro parar quando o ultNSURet
+                // deixa de avançar (nada depois do NSU já consultado).
+                $nsuAnterior = $nsuAtual;
+
                 if (!empty($resp['ultNSU'])) {
                     $nsuAtual = (int) $resp['ultNSU'];
                     $this->atualizarCheckpoint($cliente, $nsuAtual, $modoBackfill);
                 }
 
-                if (!$loteCheio) {
+                if ($nsuAtual <= $nsuAnterior) {
                     $concluido = true;
                     break;
                 }
