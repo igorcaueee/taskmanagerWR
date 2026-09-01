@@ -822,10 +822,25 @@ class SimplesNacionalController extends Controller
     public function previaImportacaoDominio(Request $request): JsonResponse
     {
         $request->validate([
-            'arquivo' => 'required|file|mimes:txt|max:5120',
+            'arquivo' => 'required|file|max:5120',
         ]);
 
-        $conteudo = file_get_contents($request->file('arquivo')->getRealPath());
+        $arquivo = $request->file('arquivo');
+
+        // Não usamos "mimes:txt": o relatório do Domínio é TAB-delimitado e o
+        // finfo do PHP costuma detectá-lo como text/csv, application/csv ou
+        // application/octet-stream (varia por servidor/versão), o que fazia a
+        // validação derrubar arquivos válidos (ex: export "DJW"). Basta a
+        // extensão .txt informada pelo cliente.
+        if (strtolower((string) $arquivo->getClientOriginalExtension()) !== 'txt') {
+            return response()->json(['error' => 'Envie o relatório exportado do Domínio em formato .txt.'], 422);
+        }
+
+        $conteudo = file_get_contents($arquivo->getRealPath());
+
+        if ($conteudo === false || trim($conteudo) === '') {
+            return response()->json(['error' => 'Falha ao ler o arquivo (vazio ou ilegível).'], 422);
+        }
         $resultado = $this->dominioParser->parse($conteudo);
 
         if (! $resultado['periodo_apuracao']) {
@@ -841,7 +856,7 @@ class SimplesNacionalController extends Controller
             ->get(['id', 'nome', 'cpfcnpj'])
             ->keyBy(fn (Cliente $c) => preg_replace('/\D/', '', (string) $c->cpfcnpj));
 
-        $estabelecimentos = collect($resultado['estabelecimentos'])->map(function (array $e) use ($catalogo, $clientesPorCnpj) {
+        $estabelecimentos = collect($resultado['estabelecimentos'])->map(function (array $e) use ($catalogo, $clientesPorCnpj, $resultado) {
             $cliente = $clientesPorCnpj->get($e['cnpj']);
 
             $atividades = collect($e['atividades'])->map(function (array $a) use ($catalogo) {
