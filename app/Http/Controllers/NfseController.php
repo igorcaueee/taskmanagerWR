@@ -17,6 +17,11 @@ class NfseController extends Controller
 {
     public function __construct(private NfseService $nfse) {}
 
+    // Teto de segurança contra payloads absurdos — empresas grandes (RM, etc.)
+    // passam fácil de algumas centenas de NFS-e num período. Alinhado ao
+    // NfeController::MAX_ZIP.
+    const MAX_ZIP = 20000;
+
     // ─── Tela principal ──────────────────────────────────────────────────────
 
     public function index()
@@ -226,11 +231,14 @@ class NfseController extends Controller
     public function downloadZipXmls(Request $request)
     {
         $request->validate([
-            'items'       => 'required|array|min:1|max:200',
+            'items'       => 'required|array|min:1|max:' . self::MAX_ZIP,
             'items.*.nsu' => 'required|integer|min:1',
             'items.*.xml' => 'required|string|min:1',
             'nome'        => 'nullable|string',
         ]);
+
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
 
         $nomeEmpresa   = trim((string) $request->input('nome', ''));
         $nomeArquivo   = ($nomeEmpresa !== '' ? $nomeEmpresa : 'NFS-e') . '.zip';
@@ -242,7 +250,7 @@ class NfseController extends Controller
 
         $zip = new ZipArchive();
 
-        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
         }
 
@@ -250,7 +258,14 @@ class NfseController extends Controller
             $zip->addFromString("nfse_nsu{$item['nsu']}.xml", $item['xml']);
         }
 
-        $zip->close();
+        // close() só escreve o arquivo de fato aqui — se estourar memory_limit
+        // ou falhar, o .zip fica truncado/corrompido. Checa o retorno para não
+        // entregar um arquivo quebrado.
+        if (!$zip->close()) {
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Falha ao finalizar o arquivo ZIP.'], 500);
+        }
 
         return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',
@@ -265,9 +280,12 @@ class NfseController extends Controller
     {
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
-            'nsus'       => 'required|array|min:1|max:100',
+            'nsus'       => 'required|array|min:1|max:' . self::MAX_ZIP,
             'nsus.*'     => 'required|integer|min:1',
         ]);
+
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(600);
 
         $cert        = ClienteCertificadoNfse::where('cliente_id', $validated['cliente_id'])->firstOrFail();
         $nomeArquivo = ($cert->cliente->nome ?? 'NFS-e') . '.zip';
@@ -279,7 +297,7 @@ class NfseController extends Controller
 
         $zip = new ZipArchive();
 
-        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return response()->json(['error' => 'Não foi possível criar o arquivo ZIP.'], 500);
         }
 
@@ -292,7 +310,11 @@ class NfseController extends Controller
             }
         }
 
-        $zip->close();
+        if (!$zip->close()) {
+            @unlink($zipPath);
+
+            return response()->json(['error' => 'Falha ao finalizar o arquivo ZIP.'], 500);
+        }
 
         return response()->download($zipPath, $nomeArquivo, [
             'Content-Type' => 'application/zip',

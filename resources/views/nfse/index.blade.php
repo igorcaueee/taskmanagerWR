@@ -980,7 +980,7 @@
 
             if (!resp.ok) {
                 const data = await resp.json().catch(() => ({}));
-                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao gerar ZIP.' });
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? data.message ?? 'Falha ao gerar ZIP.' });
                 return;
             }
 
