@@ -477,6 +477,8 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::post('/dctfweb/recibo', [SimplesNacionalController::class, 'consultarReciboDctfWeb'])->name('dctfweb.recibo');
     Route::post('/dctfweb/completa', [SimplesNacionalController::class, 'consultarDeclaracaoCompletaDctfWeb'])->name('dctfweb.completa');
     Route::post('/dctfweb/xml', [SimplesNacionalController::class, 'consultarXmlDctfWeb'])->name('dctfweb.xml');
+    // Download dos PDFs gerados (DAS, guias, recibos) — reutilizado por toda emissão, precisa valer pra qualquer usuário autenticado
+    Route::get('/configuracao/download-teste/{arquivo}', [SimplesNacionalController::class, 'downloadTeste'])->name('configuracao.download-teste');
 });
 
 // Simples Nacional — Configuração da API (certificado do escritório e chaves SERPRO) — apenas TI
@@ -486,7 +488,6 @@ Route::middleware(['auth', 'ti-access'])->prefix('simples-nacional')->name('simp
     Route::post('/configuracao/testar', [SimplesNacionalController::class, 'testarConexao'])->name('configuracao.testar');
     Route::post('/configuracao/testar-consulta-demo', [SimplesNacionalController::class, 'testarConsultaDemo'])->name('configuracao.testar-consulta-demo');
     Route::post('/configuracao/testar-consulta-recibo', [SimplesNacionalController::class, 'testarConsultaRecibo'])->name('configuracao.testar-consulta-recibo');
-    Route::get('/configuracao/download-teste/{arquivo}', [SimplesNacionalController::class, 'downloadTeste'])->name('configuracao.download-teste');
 });
 
 // NF-e / CT-e — Distribuição DFe (Ambiente Nacional)
