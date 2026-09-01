@@ -29,6 +29,19 @@ class NfeController extends Controller
     // grande (milhares de docs) de uma vez estoura o memory_limit do PHP.
     private const DOCUMENTOS_POR_PAGINA = 500;
 
+    // Quantas posições de NSU voltar a partir do checkpoint atual na reconsulta
+    // manual (botão "Reconsultar 50k NSU") — mesmo padrão/valor do comando
+    // `fiscal:reconsultar-notas-rs` (ver ReconsultarNotasFiscaisRs::JANELA_NSU_PADRAO).
+    private const JANELA_NSU_BACKFILL = 50000;
+
+    // Coluna de checkpoint por fase — usada pra calcular o NSU de início da
+    // reconsulta manual (ver sincronizarRsChunk).
+    private const CAMPO_NSU_RS = [
+        'nfe' => 'ultimo_nsu_nfe_rs',
+        'nfce' => 'ultimo_nsu_nfce_rs',
+        'cte' => 'ultimo_nsu_cte_rs',
+    ];
+
     public function __construct(
         private NfeService $nfe,
         private NfeIntegracaoRsService $nfeRs,
@@ -496,6 +509,13 @@ class NfeController extends Controller
      * chamada fica curta o suficiente para não esbarrar no timeout de
      * proxy/CDN, e evita rajada de requisições no mesmo certificado (que
      * compartilha "consumo indevido" entre todos os clientes).
+     *
+     * 'modo_backfill': usado pelo botão "Reconsultar 50k NSU" — em vez de
+     * avançar a partir do checkpoint salvo, volta JANELA_NSU_BACKFILL posições
+     * pra recapturar documentos que a Sefaz-RS entregou fora de ordem (mesma
+     * lógica do comando `fiscal:reconsultar-notas-rs`, mas pra um cliente só e
+     * disparado manualmente da tela). O checkpoint nunca regride nesse modo
+     * (ver *IntegracaoRsService::atualizarCheckpoint).
      */
     public function sincronizarRsChunk(Request $request): JsonResponse
     {
@@ -503,6 +523,7 @@ class NfeController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'fase' => 'required|in:nfe,nfce,cte',
             'nsu_inicio' => 'sometimes|integer|min:0',
+            'modo_backfill' => 'sometimes|boolean',
         ]);
 
         $cert = CertificadoContabilidade::first();
@@ -512,13 +533,30 @@ class NfeController extends Controller
         }
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $modoBackfill = (bool) ($validated['modo_backfill'] ?? false);
         $nsuInicio = array_key_exists('nsu_inicio', $validated) ? (int) $validated['nsu_inicio'] : null;
+
+        if ($modoBackfill && $nsuInicio === null) {
+            $checkpointAtual = (int) $cliente->{self::CAMPO_NSU_RS[$validated['fase']]};
+
+            if ($checkpointAtual <= 0) {
+                return response()->json([
+                    'success' => true,
+                    'fase' => $validated['fase'],
+                    'concluido' => true,
+                    'proximo_nsu' => null,
+                    'aviso' => null,
+                ]);
+            }
+
+            $nsuInicio = max(1, $checkpointAtual - self::JANELA_NSU_BACKFILL);
+        }
 
         try {
             $resultado = match ($validated['fase']) {
-                'nfe' => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFE, $nsuInicio),
-                'nfce' => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFCE, $nsuInicio),
-                'cte' => $this->cteRs->sincronizarChunk($cert, $cliente, $nsuInicio),
+                'nfe' => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFE, $nsuInicio, modoBackfill: $modoBackfill),
+                'nfce' => $this->nfeRs->sincronizarChunk($cert, $cliente, NfeIntegracaoRsService::MOD_NFCE, $nsuInicio, modoBackfill: $modoBackfill),
+                'cte' => $this->cteRs->sincronizarChunk($cert, $cliente, $nsuInicio, modoBackfill: $modoBackfill),
             };
 
             return response()->json([
