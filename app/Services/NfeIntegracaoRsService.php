@@ -124,13 +124,26 @@ class NfeIntegracaoRsService
                     break;
                 }
 
+                // Lote sem documentos: pode ser o fim do feed OU um "buraco" na sequência de
+                // NSU (a SVRS avisa que a entrega não é sequencial). Se o ultNSURet ainda
+                // avançou, há mais coisa depois do buraco — continua paginando; só conclui
+                // quando o ultNSURet trava (nada além do NSU já consultado). Antes o código
+                // parava no primeiro buraco e nunca alcançava as notas seguintes.
                 if (empty($resp['docs'])) {
+                    $nsuAnterior = $nsuAtual;
+
                     if (!empty($resp['ultNSU'])) {
                         $nsuAtual = (int) $resp['ultNSU'];
                         $this->atualizarCheckpoint($cliente, $campoNsu, $nsuAtual, $modoBackfill);
                     }
-                    $concluido = true;
-                    break;
+
+                    if ($nsuAtual <= $nsuAnterior) {
+                        $concluido = true;
+                        break;
+                    }
+
+                    $lotes++;
+                    continue;
                 }
 
                 foreach ($resp['docs'] as $doc) {
