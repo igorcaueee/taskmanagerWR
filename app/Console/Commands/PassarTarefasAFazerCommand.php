@@ -12,7 +12,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('ciclos:passar-afazer')]
-#[Description('Passa todas as tarefas "A Fazer" e "Andamento" de ciclos passados para o ciclo atual.')]
+#[Description('Passa todas as tarefas "A Fazer", "Andamento" e "Impedimento" de ciclos passados para o ciclo atual.')]
 class PassarTarefasAFazerCommand extends Command
 {
     public function handle(): int
@@ -20,11 +20,11 @@ class PassarTarefasAFazerCommand extends Command
         $cicloAtual = Ciclo::current();
         $hoje = Carbon::today();
 
-        $etapasPendentesIds = Etapa::whereIn('nome', ['A Fazer', 'Andamento'])->pluck('id');
+        $etapasPendentesIds = Etapa::whereIn('nome', ['A Fazer', 'Andamento', 'Impedimento'])->pluck('id');
         $etapaTransferido = Etapa::where('nome', 'Transferido para o próximo ciclo')->first();
 
         if ($etapasPendentesIds->isEmpty()) {
-            $this->error('Etapas "A Fazer" / "Andamento" não encontradas.');
+            $this->error('Etapas "A Fazer" / "Andamento" / "Impedimento" não encontradas.');
 
             return self::FAILURE;
         }
@@ -35,7 +35,7 @@ class PassarTarefasAFazerCommand extends Command
             ->get();
 
         if ($tarefas->isEmpty()) {
-            $this->info('Nenhuma tarefa "A Fazer" ou "Andamento" de ciclos passados encontrada.');
+            $this->info('Nenhuma tarefa "A Fazer", "Andamento" ou "Impedimento" de ciclos passados encontrada.');
 
             return self::SUCCESS;
         }
