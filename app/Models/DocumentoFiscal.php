@@ -146,13 +146,20 @@ class DocumentoFiscal extends Model
      * Monta a expressão SQL usada para decidir em que período uma nota entra (ver
      * comentário em doPeriodo) e o CNPJ (só dígitos) do cliente, usado como bind dela.
      *
+     * CT-e sempre entra pela data de EMISSÃO (dhEmi) — é o que a Sefaz usa no extrato
+     * de CT-e e o que o Cofre Fiscal já lista. CT-e não tem dhSaiEnt, e a coluna
+     * data_saida_entrada nunca é preenchida pra ele; a regra emitente-vs-terceiro
+     * só faz sentido pra NF-e/NFC-e (mercadoria circulando).
+     *
      * @return array{0: string, 1: string}
      */
     private static function dataEfetivaSql(int $clienteId): array
     {
         $clienteCnpj = preg_replace('/\D/', '', Cliente::find($clienteId)?->cpfcnpj ?? '');
 
-        $dataEfetiva = 'CASE WHEN emitente_doc = ? THEN data_emissao ELSE COALESCE(data_saida_entrada, data_emissao) END';
+        $dataEfetiva = "CASE WHEN tipo = 'cte' THEN data_emissao "
+            .'WHEN emitente_doc = ? THEN data_emissao '
+            .'ELSE COALESCE(data_saida_entrada, data_emissao) END';
 
         return [$dataEfetiva, $clienteCnpj];
     }

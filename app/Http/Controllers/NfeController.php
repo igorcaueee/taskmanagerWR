@@ -290,6 +290,12 @@ class NfeController extends Controller
     /**
      * Lê os documentos já sincronizados (tabela `documentos_fiscais`) para o
      * período informado — não consulta a Sefaz (ver sincronizarChunk).
+     *
+     * Traz documentos de qualquer origem (nacional e RS juntos) e de todos os
+     * modelos (NF-e/NFC-e/CT-e) — a tela filtra por tipo/direção no client-side
+     * e o relatório Excel lê a mesma base (ver exportarRelatorio). O toggle
+     * "modo RS" controla só com qual webservice sincronizar, não o que a lista
+     * exibe.
      */
     public function buscar(Request $request): JsonResponse
     {
@@ -304,10 +310,10 @@ class NfeController extends Controller
         try {
             $resultado = DocumentoFiscal::doPeriodo(
                 $validated['cliente_id'],
-                ['nfe', 'cte'],
+                ['nfe', 'nfce', 'cte'],
                 $validated['data_inicio'],
                 $validated['data_fim'],
-                ['nacional'],
+                null,
                 $validated['cursor_data'] ?? null,
                 isset($validated['cursor_id']) ? (int) $validated['cursor_id'] : null,
                 self::DOCUMENTOS_POR_PAGINA
@@ -378,8 +384,11 @@ class NfeController extends Controller
                 ? $this->linhasRelatorio($cliente->id, 'nfce', $validated['data_inicio'], $validated['data_fim'], $direcao, $clienteCnpj)
                 : null;
 
+            // CT-e sai sempre completo (toda origem, sem filtro de direção): a direção do
+            // CT-e é derivada por heurística (não tem tpNF) e o pedido do usuário é "todas
+            // as CT-e que existem pra ele". O filtro de direção continua valendo pra NF-e.
             $linhasCte = $tipo === 'cte'
-                ? $this->linhasRelatorioCte($cliente->id, $validated['data_inicio'], $validated['data_fim'], $direcao, $clienteCnpj)
+                ? $this->linhasRelatorioCte($cliente->id, $validated['data_inicio'], $validated['data_fim'], null, $clienteCnpj)
                 : null;
 
             $sufixo = match ($tipo) {
@@ -570,53 +579,6 @@ class NfeController extends Controller
             Log::error('[NF-e RS] sincronizarRsChunk: Throwable inesperado', [
                 'fase' => $validated['fase'], 'msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString(),
             ]);
-
-            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Lê os documentos já sincronizados (tabela `documentos_fiscais`) para o
-     * período informado — não consulta a Sefaz (ver sincronizarRsChunk).
-     */
-    public function buscarRs(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'cliente_id' => 'required|exists:clientes,id',
-            'data_inicio' => 'required|date_format:Y-m-d',
-            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'cursor_data' => 'sometimes|date_format:Y-m-d',
-            'cursor_id' => 'sometimes|integer|min:1',
-        ]);
-
-        try {
-            $resultado = DocumentoFiscal::doPeriodo(
-                $validated['cliente_id'],
-                ['nfe', 'nfce', 'cte'],
-                $validated['data_inicio'],
-                $validated['data_fim'],
-                ['rs'],
-                $validated['cursor_data'] ?? null,
-                isset($validated['cursor_id']) ? (int) $validated['cursor_id'] : null,
-                self::DOCUMENTOS_POR_PAGINA
-            );
-
-            Log::debug('[NF-e RS] buscar: página carregada', ['cursor' => $validated['cursor_id'] ?? null, 'concluido' => $resultado['concluido'], 'total' => $resultado['total']]);
-
-            return new JsonResponse(
-                [
-                    'success' => true,
-                    'total' => $resultado['total'],
-                    'documentos' => $resultado['documentos'],
-                    'proximo_cursor' => $resultado['proximoCursor'],
-                    'concluido' => $resultado['concluido'],
-                ],
-                200,
-                [],
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
-        } catch (\Throwable $e) {
-            Log::error('[NF-e RS] buscar: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
 
             return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
         }

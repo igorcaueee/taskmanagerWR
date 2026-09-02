@@ -510,7 +510,6 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     // NF-e / NFC-e — webservice de contabilistas (SEFAZ-RS)
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');
     Route::post('/rs/certificado', [NfeController::class, 'salvarCertificadoContabilidade'])->name('rs.certificado.salvar');
-    Route::post('/rs/buscar', [NfeController::class, 'buscarRs'])->name('rs.buscar');
     Route::post('/rs/sincronizar-chunk', [NfeController::class, 'sincronizarRsChunk'])->name('rs.sincronizar-chunk');
     Route::get('/rs/sincronizacao/tela', [NfeController::class, 'telaSincronizacaoRs'])->name('rs.sincronizacao.tela');
     Route::post('/rs/cte/buscar-por-chave', [NfeController::class, 'buscarCtePorChave'])->name('rs.cte.buscar-por-chave');

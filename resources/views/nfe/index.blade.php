@@ -1194,7 +1194,10 @@
                 }
             }
 
-            const url = checkModoRs.checked ? '/nfe/rs/buscar' : '/nfe/buscar';
+            // A lista sempre traz tudo que já está no cofre (nacional + RS, todos os
+            // modelos) — o toggle "modo RS" só decide com qual webservice sincronizar
+            // acima, não o que a tabela exibe. Mesma base que o relatório Excel lê.
+            const url = '/nfe/buscar';
 
             // A lista é paginada no backend por cursor/keyset (cada documento carrega
             // o XML inteiro; trazer um período com milhares de docs de uma vez
