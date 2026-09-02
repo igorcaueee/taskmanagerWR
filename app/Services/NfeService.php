@@ -588,6 +588,22 @@ XML;
         $obj = new \SimpleXMLElement($xml);
         $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
 
+        // O emitente pode ser CPF (produtor rural): nesse caso <emit> não tem <CNPJ>, e um
+        // xpath global "//CNPJ" acaba pegando o <dest> (o nosso cliente), invertendo a
+        // direção entrada/saída (ver DocumentoFiscal::direcao). Os dados do emitente são
+        // lidos escopados ao nó dele — <emit> no XML completo, <resNFe>/<resCTe> no resumo.
+        $emitNode = $obj->xpath("//*[local-name()='emit']")[0]
+            ?? $obj->xpath("//*[local-name()='resNFe']")[0]
+            ?? $obj->xpath("//*[local-name()='resCTe']")[0]
+            ?? null;
+        $getEmit = function (string $tag) use ($emitNode, $get) {
+            if ($emitNode === null) {
+                return $get($tag);
+            }
+
+            return trim((string) ($emitNode->xpath(".//*[local-name()='{$tag}']")[0] ?? ''));
+        };
+
         $chave  = $get('chNFe') ?: $get('chCTe');
         $numero = $get('nNF') ?: $get('nCT');
 
@@ -599,10 +615,10 @@ XML;
 
         $dataEmissao      = $get('dhEmi');
         $dataSaidaEntrada = $get('dhSaiEnt') ?: $get('dSaiEnt');
-        $emitenteNome     = $get('xNome');
+        $emitenteNome     = $getEmit('xNome');
         $valor            = $get('vNF') ?: $get('vCT');
         $tpNfStr          = $get('tpNF');
-        $crtStr           = $get('CRT');
+        $crtStr           = $getEmit('CRT');
 
         if (!$dataEmissao && !$emitenteNome && !$valor) {
             Log::warning('[NF-e] normalizarDocumento: campos vazios após parse', [
@@ -620,7 +636,7 @@ XML;
             'dataEmissao'      => $dataEmissao,
             'dataSaidaEntrada' => $dataSaidaEntrada,
             'emitenteNome'     => $this->utf8Safe($emitenteNome),
-            'emitenteDoc'      => $get('CNPJ') ?: $get('CPF'),
+            'emitenteDoc'      => $getEmit('CNPJ') ?: $getEmit('CPF'),
             'valor'            => $valor,
             // cSitDFe só existe em resumos (resNFe/resCTe) — uma consulta direta por chave
             // (consChNFe) traz o documento completo, sem essa tag; normaliza pra null (não

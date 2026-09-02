@@ -82,6 +82,22 @@ class NfeXmlParser
 
         $get = fn (string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
 
+        // O emitente pode ser CPF (produtor rural): nesse caso <emit> não tem <CNPJ>, e um
+        // xpath global "//CNPJ" acaba pegando o <dest> (o nosso cliente), invertendo a
+        // direção entrada/saída (ver DocumentoFiscal::direcao). Os dados do emitente são
+        // lidos escopados ao nó dele — <emit> no XML completo, <resNFe>/<resCTe> no resumo.
+        $emitNode = $obj->xpath("//*[local-name()='emit']")[0]
+            ?? $obj->xpath("//*[local-name()='resNFe']")[0]
+            ?? $obj->xpath("//*[local-name()='resCTe']")[0]
+            ?? null;
+        $getEmit = function (string $tag) use ($emitNode, $get) {
+            if ($emitNode === null) {
+                return $get($tag);
+            }
+
+            return trim((string) ($emitNode->xpath(".//*[local-name()='{$tag}']")[0] ?? ''));
+        };
+
         $isCte = count($obj->xpath("//*[local-name()='infCte']")) > 0;
         $isNfe = count($obj->xpath("//*[local-name()='infNFe']")) > 0;
 
@@ -115,8 +131,8 @@ class NfeXmlParser
         }
 
         $tpNfStr = $get('tpNF');
-        $crtStr = $get('CRT');
-        $emitenteNome = trim(mb_convert_encoding($get('xNome'), 'UTF-8', 'UTF-8'));
+        $crtStr = $getEmit('CRT');
+        $emitenteNome = trim(mb_convert_encoding($getEmit('xNome'), 'UTF-8', 'UTF-8'));
 
         return [
             'tipo'             => $tipoDoc,
@@ -125,7 +141,7 @@ class NfeXmlParser
             'dataEmissao'      => $get('dhEmi'),
             'dataSaidaEntrada' => $get('dhSaiEnt') ?: $get('dSaiEnt'),
             'emitenteNome'     => $emitenteNome !== '' ? $emitenteNome : null,
-            'emitenteDoc'      => $get('CNPJ') ?: $get('CPF'),
+            'emitenteDoc'      => $getEmit('CNPJ') ?: $getEmit('CPF'),
             'valor'            => $get('vNF') ?: $get('vCT'),
             'situacao'         => $get('cSitDFe') ?: $get('cSitCTe') ?: null,
             'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
