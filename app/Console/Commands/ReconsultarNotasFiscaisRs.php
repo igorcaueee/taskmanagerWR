@@ -21,23 +21,22 @@ use Illuminate\Support\Facades\Log;
  * mesmo padrão de webservice — e o mesmo risco — vale pra NFeIntegracao).
  *
  * Complementa `fiscal:sincronizar-notas-rs`: aquele avança os checkpoints pra
- * frente todo dia; este volta um pouco atrás (--janela, padrão 50000) e
+ * frente todo dia; este volta um pouco atrás (--janela, padrão 50000000) e
  * reconsulta até o NSU atual de novo em cada fase, sem nunca regredir o
  * checkpoint salvo (ver *IntegracaoRsService::atualizarCheckpoint). Documentos
  * já salvos são apenas re-verificados (updateOrCreate por chave de acesso é
  * idempotente); só os que faltavam entram como novidade.
  */
-#[Signature('fiscal:reconsultar-notas-rs {--cliente= : ID ou CNPJ do cliente (opcional — se omitido, reconsulta TODOS os clientes elegíveis)} {--janela= : Quantas posições de NSU voltar a partir do checkpoint (padrão 50000)} {--fase= : nfe, nfce ou cte (opcional — se omitido, reconsulta as três)}')]
+#[Signature('fiscal:reconsultar-notas-rs {--cliente= : ID ou CNPJ do cliente (opcional — se omitido, reconsulta TODOS os clientes elegíveis)} {--janela= : Quantas posições de NSU voltar a partir do checkpoint (padrão 50000000)} {--fase= : nfe, nfce ou cte (opcional — se omitido, reconsulta as três)}')]
 #[Description('Reconsulta uma janela de NSU anterior ao checkpoint de cada cliente (NF-e, NFC-e e CT-e) pra recapturar documentos que chegaram fora de ordem na Sefaz-RS.')]
 class ReconsultarNotasFiscaisRs extends Command
 {
     // Quantas posições de NSU voltar a partir do checkpoint atual, por padrão
     // (sobrescrito por --janela). NSU não tem relação fixa com tempo, mas
-    // numa janela dessa magnitude cobre folgadamente alguns dias de emissão
-    // mesmo pra clientes de alto volume — reconsultar de mais só custa tempo
-    // de execução (documentos repetidos são no-op), nunca risco de dado
-    // incorreto.
-    private const JANELA_NSU_PADRAO = 50000;
+    // numa janela dessa magnitude cobre praticamente todo o histórico do
+    // cliente — reconsultar de mais só custa tempo de execução (documentos
+    // repetidos são no-op), nunca risco de dado incorreto.
+    private const JANELA_NSU_PADRAO = 50000000;
 
     private const PAUSA_ENTRE_CLIENTES_SEGUNDOS = 2;
 

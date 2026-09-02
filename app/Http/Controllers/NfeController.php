@@ -30,9 +30,9 @@ class NfeController extends Controller
     private const DOCUMENTOS_POR_PAGINA = 500;
 
     // Quantas posições de NSU voltar a partir do checkpoint atual na reconsulta
-    // manual (botão "Reconsultar 50k NSU") — mesmo padrão/valor do comando
+    // manual (botão "Reconsultar 50M NSU") — mesmo padrão/valor do comando
     // `fiscal:reconsultar-notas-rs` (ver ReconsultarNotasFiscaisRs::JANELA_NSU_PADRAO).
-    private const JANELA_NSU_BACKFILL = 50000;
+    private const JANELA_NSU_BACKFILL = 50000000;
 
     // Coluna de checkpoint por fase — usada pra calcular o NSU de início da
     // reconsulta manual (ver sincronizarRsChunk).
@@ -510,7 +510,7 @@ class NfeController extends Controller
      * proxy/CDN, e evita rajada de requisições no mesmo certificado (que
      * compartilha "consumo indevido" entre todos os clientes).
      *
-     * 'modo_backfill': usado pelo botão "Reconsultar 50k NSU" — em vez de
+     * 'modo_backfill': usado pelo botão "Reconsultar 50M NSU" — em vez de
      * avançar a partir do checkpoint salvo, volta JANELA_NSU_BACKFILL posições
      * pra recapturar documentos que a Sefaz-RS entregou fora de ordem (mesma
      * lógica do comando `fiscal:reconsultar-notas-rs`, mas pra um cliente só e

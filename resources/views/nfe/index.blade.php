@@ -311,7 +311,7 @@
                         <button type="button" id="btnReconsultarNsu"
                                 class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors">
                             <i class="fa-solid fa-clock-rotate-left"></i>
-                            <span id="btnReconsultarNsuLabel">Reconsultar 50k NSU</span>
+                            <span id="btnReconsultarNsuLabel">Reconsultar 50M NSU</span>
                         </button>
                         @endif
                     </div>
@@ -1273,7 +1273,7 @@
     }
 
     @if(auth()->user()?->canConfigurarCertificadoContabilidade())
-    // ─── Reconsulta manual de NSU (volta 50k posições a partir do checkpoint) ──
+    // ─── Reconsulta manual de NSU (volta 50M posições a partir do checkpoint) ──
     // Mesma lógica do comando `fiscal:reconsultar-notas-rs`, só que disparada
     // pra um único cliente (o selecionado na tela) em vez de todos de uma vez.
     const btnReconsultarNsu      = document.getElementById('btnReconsultarNsu');
@@ -1289,8 +1289,8 @@
 
         const confirmacao = await Swal.fire({
             icon: 'question',
-            title: 'Reconsultar 50k NSU?',
-            text: 'Volta 50 mil posições de NSU a partir do checkpoint atual e reconsulta NF-e, NFC-e e CT-e via certificado da contabilidade — útil quando alguma nota, NFC-e ou CT-e ficou pra trás e não aparece na busca normal. Pode levar alguns minutos.',
+            title: 'Reconsultar 50M NSU?',
+            text: 'Volta 50 milhões de posições de NSU a partir do checkpoint atual e reconsulta NF-e, NFC-e e CT-e via certificado da contabilidade — útil quando alguma nota, NFC-e ou CT-e ficou pra trás e não aparece na busca normal. Pode levar alguns minutos.',
             showCancelButton: true,
             confirmButtonText: 'Reconsultar',
             cancelButtonText: 'Cancelar',
