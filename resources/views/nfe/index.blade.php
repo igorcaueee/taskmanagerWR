@@ -1118,7 +1118,7 @@
                 throw new Error(`${labelProgresso}: excedeu o limite de páginas de segurança.`);
             }
 
-            document.getElementById('loadingTempo').textContent = `${labelProgresso}... (parte ${chunks})`;
+            document.getElementById('loadingTempo').textContent = `Buscando... (parte ${chunks})`;
 
             const body = { ...bodyBase };
             if (nsuAtual !== undefined) {
