@@ -21,7 +21,7 @@ use Illuminate\View\View;
 
 class UsuarioController extends Controller
 {
-    private const CARGOS = ['diretor', 'ti', 'supervisor', 'supervisor_geral', 'analista', 'assistente', 'auxiliar'];
+    private const CARGOS = ['diretor', 'ti', 'supervisor', 'supervisor_geral', 'analista', 'assistente', 'auxiliar', 'resp_certificados'];
 
     /**
      * Regras compartilhadas entre criar e editar colaborador (a regra de senha

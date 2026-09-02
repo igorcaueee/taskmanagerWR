@@ -162,10 +162,10 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // TI, Assistente, Auxiliar e Supervisor Geral não veem faturamento
+    // TI, Assistente, Auxiliar, Supervisor Geral e Resp. Certificados não veem faturamento
     public function canVerFaturamento(): bool
     {
-        return ! in_array($this->cargo, ['ti', 'assistente', 'auxiliar', 'supervisor_geral']);
+        return ! in_array($this->cargo, ['ti', 'assistente', 'auxiliar', 'supervisor_geral', 'resp_certificados']);
     }
 
     // Faturamento e honorário no cadastro de cliente: apenas Diretor e TI
@@ -174,10 +174,16 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
-    // Assistente, Auxiliar e Supervisor Geral não podem criar/editar/excluir clientes
+    // Assistente, Auxiliar, Supervisor Geral e Resp. Certificados não podem criar/editar/excluir clientes
     public function canEditarClientes(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral', 'resp_certificados']);
+    }
+
+    // Resp. Certificados tem o mesmo controle do Assistente
+    public function isRespCertificados(): bool
+    {
+        return $this->cargo === 'resp_certificados';
     }
 
     // Apenas Diretor gerencia produtos
@@ -198,10 +204,10 @@ class Usuario extends Authenticatable
         return $this->cargo === 'diretor';
     }
 
-    // Assistente e Auxiliar só editam tarefas onde são responsáveis
+    // Assistente, Auxiliar e Resp. Certificados só editam tarefas onde são responsáveis
     public function canEditarQualquerTarefa(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'resp_certificados']);
     }
 
     // Apenas Diretor, TI, Supervisor Geral ou o criador da tarefa podem inativar
@@ -228,19 +234,25 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
-    // Apenas Diretor e TI configuram o certificado da contabilidade (NF-e/NFC-e/CT-e via SEFAZ-RS)
+    // Diretor, TI e Resp. Certificados configuram o certificado da contabilidade (NF-e/NFC-e/CT-e via SEFAZ-RS)
     public function canConfigurarCertificadoContabilidade(): bool
     {
-        return in_array($this->cargo, ['diretor', 'ti']);
+        return in_array($this->cargo, ['diretor', 'ti', 'resp_certificados']);
     }
 
-    // Certificados digitais dos clientes: Diretor, TI e a recepcionista Silvia
+    // Certificados digitais dos clientes: Diretor, TI, Resp. Certificados e a recepcionista Silvia
     public function canAcessarCertificados(): bool
     {
-        return in_array($this->cargo, ['diretor', 'ti'])
+        return in_array($this->cargo, ['diretor', 'ti', 'resp_certificados'])
             || in_array(mb_strtolower((string) $this->email), ['silvia@assessoriawr.com', 'contato@wrcontabilidade.com.br'])
             || str_contains(mb_strtolower((string) $this->nome), 'silvia')
             || str_contains(mb_strtolower((string) $this->nome), 'sílvia');
+    }
+
+    // Atualizar/anexar o certificado digital do cliente pela tela do cliente
+    public function canGerenciarCertificadoCliente(): bool
+    {
+        return $this->canEditarClientes() || $this->canAcessarCertificados();
     }
 
     // Diretor e TI acessam o E-mail Marketing
@@ -261,22 +273,22 @@ class Usuario extends Authenticatable
         return in_array($this->cargo, ['diretor', 'ti']);
     }
 
-    // Assistente e Auxiliar não veem o menu de Relatórios
+    // Assistente, Auxiliar e Resp. Certificados não veem o menu de Relatórios
     public function canVerRelatorios(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'resp_certificados']);
     }
 
-    // Assistente, Auxiliar e Supervisor Geral não veem Produtos e Possibilidades no menu Cadastros
+    // Assistente, Auxiliar, Supervisor Geral e Resp. Certificados não veem Produtos e Possibilidades no menu Cadastros
     public function canVerProdutosPossibilidades(): bool
     {
-        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral']);
+        return ! in_array($this->cargo, ['assistente', 'auxiliar', 'supervisor_geral', 'resp_certificados']);
     }
 
-    // Diretor e TI acessam o EFD-Reinf (feature ainda em desenvolvimento)
+    // Diretor, TI e Resp. Certificados acessam o EFD-Reinf (feature ainda em desenvolvimento)
     public function canAcessarReinf(): bool
     {
-        return in_array($this->cargo, ['diretor', 'ti']);
+        return in_array($this->cargo, ['diretor', 'ti', 'resp_certificados']);
     }
 
     // Diretor e TI gerenciam restrições de acesso por rede e liberações externas

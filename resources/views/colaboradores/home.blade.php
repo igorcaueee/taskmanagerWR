@@ -11,6 +11,7 @@
         'analista'   => 'Analista',
         'assistente' => 'Assistente',
         'auxiliar'   => 'Auxiliar',
+        'resp_certificados' => 'Resp. Certificados',
     ];
 @endphp
 
@@ -70,6 +71,7 @@
                         <option value="analista"   @selected(request('cargo') === 'analista')>Analista</option>
                         <option value="assistente" @selected(request('cargo') === 'assistente')>Assistente</option>
                         <option value="auxiliar"   @selected(request('cargo') === 'auxiliar')>Auxiliar</option>
+                        <option value="resp_certificados" @selected(request('cargo') === 'resp_certificados')>Resp. Certificados</option>
                     </select>
                 </div>
                 <div>

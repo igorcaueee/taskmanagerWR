@@ -174,7 +174,7 @@
                                         <i class="fa-solid fa-download text-xs"></i>
                                     </a>
                                 @endif
-                                @if(auth()->user()?->canEditarClientes())
+                                @if(auth()->user()?->canGerenciarCertificadoCliente())
                                     <button type="button" onclick="abrirModalCertificado()"
                                             title="{{ $cliente->certificadoNfse ? 'Atualizar certificado digital' : 'Anexar certificado digital' }}"
                                             class="text-gray-400 hover:text-[#0084aa] dark:hover:text-[#0084aa] transition-colors bg-transparent border-0 p-0">

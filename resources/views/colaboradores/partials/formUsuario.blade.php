@@ -82,7 +82,7 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cargo</label>
             <select name="cargo" class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200" required>
-                @foreach(['diretor' => 'Diretor', 'ti' => 'TI', 'supervisor' => 'Supervisor', 'supervisor_geral' => 'Supervisor Geral', 'analista' => 'Analista', 'assistente' => 'Assistente', 'auxiliar' => 'Auxiliar'] as $value => $label)
+                @foreach(['diretor' => 'Diretor', 'ti' => 'TI', 'supervisor' => 'Supervisor', 'supervisor_geral' => 'Supervisor Geral', 'analista' => 'Analista', 'assistente' => 'Assistente', 'auxiliar' => 'Auxiliar', 'resp_certificados' => 'Resp. Certificados'] as $value => $label)
                     <option value="{{ $value }}"
                         {{ old('cargo', $isEditing ? $colab->cargo : '') === $value ? 'selected' : '' }}>
                         {{ $label }}
