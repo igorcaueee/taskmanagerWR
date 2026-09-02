@@ -30,8 +30,9 @@ class NfeController extends Controller
     private const DOCUMENTOS_POR_PAGINA = 500;
 
     // Quantas posições de NSU voltar a partir do checkpoint atual na reconsulta
-    // manual (botão "Reconsultar 50M NSU") — mesmo padrão/valor do comando
-    // `fiscal:reconsultar-notas-rs` (ver ReconsultarNotasFiscaisRs::JANELA_NSU_PADRAO).
+    // manual (botão "Reconsultar NSU"), quando o usuário não escolhe outro
+    // valor no modal — mesmo padrão/valor do comando `fiscal:reconsultar-notas-rs`
+    // (ver ReconsultarNotasFiscaisRs::JANELA_NSU_PADRAO).
     private const JANELA_NSU_BACKFILL = 50000000;
 
     // Coluna de checkpoint por fase — usada pra calcular o NSU de início da
@@ -519,12 +520,13 @@ class NfeController extends Controller
      * proxy/CDN, e evita rajada de requisições no mesmo certificado (que
      * compartilha "consumo indevido" entre todos os clientes).
      *
-     * 'modo_backfill': usado pelo botão "Reconsultar 50M NSU" — em vez de
-     * avançar a partir do checkpoint salvo, volta JANELA_NSU_BACKFILL posições
-     * pra recapturar documentos que a Sefaz-RS entregou fora de ordem (mesma
-     * lógica do comando `fiscal:reconsultar-notas-rs`, mas pra um cliente só e
-     * disparado manualmente da tela). O checkpoint nunca regride nesse modo
-     * (ver *IntegracaoRsService::atualizarCheckpoint).
+     * 'modo_backfill': usado pelo botão "Reconsultar NSU" — em vez de avançar a
+     * partir do checkpoint salvo, volta 'janela_nsu' posições (padrão
+     * JANELA_NSU_BACKFILL, ajustável no modal do botão) pra recapturar
+     * documentos que a Sefaz-RS entregou fora de ordem (mesma lógica do
+     * comando `fiscal:reconsultar-notas-rs`, mas pra um cliente só e disparado
+     * manualmente da tela). O checkpoint nunca regride nesse modo (ver
+     * *IntegracaoRsService::atualizarCheckpoint).
      */
     public function sincronizarRsChunk(Request $request): JsonResponse
     {
@@ -533,6 +535,7 @@ class NfeController extends Controller
             'fase' => 'required|in:nfe,nfce,cte',
             'nsu_inicio' => 'sometimes|integer|min:0',
             'modo_backfill' => 'sometimes|boolean',
+            'janela_nsu' => 'sometimes|integer|min:1|max:500000000',
         ]);
 
         $cert = CertificadoContabilidade::first();
@@ -558,7 +561,8 @@ class NfeController extends Controller
                 ]);
             }
 
-            $nsuInicio = max(1, $checkpointAtual - self::JANELA_NSU_BACKFILL);
+            $janelaNsu = array_key_exists('janela_nsu', $validated) ? (int) $validated['janela_nsu'] : self::JANELA_NSU_BACKFILL;
+            $nsuInicio = max(1, $checkpointAtual - $janelaNsu);
         }
 
         try {

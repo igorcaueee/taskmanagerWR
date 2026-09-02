@@ -311,7 +311,7 @@
                         <button type="button" id="btnReconsultarNsu"
                                 class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors">
                             <i class="fa-solid fa-clock-rotate-left"></i>
-                            <span id="btnReconsultarNsuLabel">Reconsultar 50M NSU</span>
+                            <span id="btnReconsultarNsuLabel">Reconsultar NSU</span>
                         </button>
                         @endif
                     </div>
@@ -1276,11 +1276,14 @@
     }
 
     @if(auth()->user()?->canConfigurarCertificadoContabilidade())
-    // ─── Reconsulta manual de NSU (volta 50M posições a partir do checkpoint) ──
+    // ─── Reconsulta manual de NSU (volta N posições a partir do checkpoint) ────
     // Mesma lógica do comando `fiscal:reconsultar-notas-rs`, só que disparada
     // pra um único cliente (o selecionado na tela) em vez de todos de uma vez.
+    // A janela padrão (50M) vem do backend (JANELA_NSU_BACKFILL) — o modal só
+    // manda 'janela_nsu' quando o usuário digita um valor diferente.
     const btnReconsultarNsu      = document.getElementById('btnReconsultarNsu');
     const btnReconsultarNsuLabel = document.getElementById('btnReconsultarNsuLabel');
+    const JANELA_NSU_PADRAO      = 50_000_000;
 
     btnReconsultarNsu.addEventListener('click', async () => {
         const clienteId = selectCliente.value;
@@ -1290,16 +1293,28 @@
             return;
         }
 
-        const confirmacao = await Swal.fire({
+        const { value: janela } = await Swal.fire({
             icon: 'question',
-            title: 'Reconsultar 50M NSU?',
-            text: 'Volta 50 milhões de posições de NSU a partir do checkpoint atual e reconsulta NF-e, NFC-e e CT-e via certificado da contabilidade — útil quando alguma nota, NFC-e ou CT-e ficou pra trás e não aparece na busca normal. Pode levar alguns minutos.',
+            title: 'Reconsultar NSU',
+            html: 'Volta quantas posições de NSU a partir do checkpoint atual e reconsulta NF-e, NFC-e e CT-e via certificado da contabilidade — útil quando algum documento ficou pra trás e não aparece na busca normal. Pode levar alguns minutos.',
+            input: 'number',
+            inputLabel: 'Janela de NSU a retroagir',
+            inputValue: JANELA_NSU_PADRAO,
+            inputAttributes: { min: 1, step: 1 },
             showCancelButton: true,
             confirmButtonText: 'Reconsultar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#0084aa',
+            inputValidator: (value) => {
+                const numero = parseInt(value, 10);
+                if (!value || isNaN(numero) || numero <= 0) {
+                    return 'Informe um número de NSU maior que zero.';
+                }
+            },
         });
-        if (!confirmacao.isConfirmed) return;
+        if (!janela) return;
+
+        const janelaNsu = parseInt(janela, 10);
 
         btnReconsultarNsu.disabled = true;
         const labelOrig = btnReconsultarNsuLabel.textContent;
@@ -1316,7 +1331,7 @@
             for (const [fase, label] of fases) {
                 const aviso = await sincronizarFaseAteConcluir(
                     '/nfe/rs/sincronizar-chunk',
-                    { cliente_id: clienteId, fase, modo_backfill: true },
+                    { cliente_id: clienteId, fase, modo_backfill: true, janela_nsu: janelaNsu },
                     label
                 );
                 if (aviso) avisos.push(aviso);
@@ -1327,7 +1342,7 @@
                 title: 'Reconsulta concluída',
                 text: avisos.length > 0
                     ? avisos.join(' ')
-                    : 'NF-e, NFC-e e CT-e reconsultadas com sucesso. Clique em "Buscar" pra atualizar a lista.',
+                    : `NF-e, NFC-e e CT-e reconsultadas ${janelaNsu.toLocaleString('pt-BR')} NSU pra trás. Clique em "Buscar" pra atualizar a lista.`,
             });
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'Erro na reconsulta', text: e.message });
