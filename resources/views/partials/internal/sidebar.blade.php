@@ -88,6 +88,7 @@
                 <a href="https://wr-payroll-flow.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-coins"></i> WR Custos</a>
                 <a href="https://conferencia-fiscal.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-file-invoice"></i> Conferência Fiscal</a>
                 <a href="https://time-trace-pro.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-clock"></i> TimeTrace AI</a>
+                <a href="https://nexus-finance-base.base44.app" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 no-underline"><i class="fa-solid fa-cube"></i> Nexus</a>
             </div>
         </div>
         @if (auth()->user()?->canVerRelatorios())
