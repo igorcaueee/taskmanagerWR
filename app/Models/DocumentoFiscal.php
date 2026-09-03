@@ -367,6 +367,339 @@ class DocumentoFiscal extends Model
         ];
     }
 
+    /** Máximo de notas listadas no detalhamento da auditoria DIFAL/FCP (contadores continuam somando tudo). */
+    private const AUDITORIA_DIFAL_MAX_NOTAS = 800;
+
+    /**
+     * Auditoria DIFAL / FCP (Fase 1) do dashboard "Auditoria DIFAL / FCP" da aba
+     * Dashboards. Varre as NF-e de SAÍDA do cliente no período (ele é o emitente)
+     * e, para cada uma, decide se a operação exige partilha de DIFAL a consumidor
+     * final não contribuinte (LC 190/2022) e confere o que a própria nota destacou
+     * no grupo <ICMSUFDest>.
+     *
+     * Fase 1 = coerência interna do XML. Fase 2 (ativa) = recalcula o valor
+     * esperado usando a tabela de alíquota interna por UF (com vigência) e o teto
+     * de FCP por UF em config/fiscal_aliquotas.php, e estima o DIFAL não recolhido
+     * das notas que não destacaram. Status por nota:
+     *  - ok           → exige DIFAL e o grupo <ICMSUFDest> está presente e coerente;
+     *  - faltou       → exige DIFAL e nenhum item tem <ICMSUFDest> (não destacou);
+     *  - inconsistente → tem <ICMSUFDest> mas com partilha/base/FCP/alíquota/valor
+     *                    incoerente, ou CFOP interno (5xxx) numa operação interestadual;
+     *  - nao_aplica   → operação interna, exterior, ou destinatário contribuinte.
+     *
+     * @return array{periodo: string, contadores: array<string, int>, totalDifalDestacado: float, totalFcpDestacado: float, totalDifalEstimadoFaltante: float, totalNotas: int, notasListadas: int, notas: array<int, array<string, mixed>>}
+     */
+    public static function auditoriaDifalFcp(int $clienteId, string $dataInicio, string $dataFim): array
+    {
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+        $clienteUf = self::descobrirUfCliente($clienteId, $clienteCnpj);
+
+        $query = static::where('cliente_id', $clienteId)
+            ->where('tipo', 'nfe')
+            ->where(fn ($q) => $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada'))
+            ->whereNotNull('xml_content')
+            ->when($clienteCnpj !== '', fn ($q) => $q->whereRaw("REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '') = ?", [$clienteCnpj]))
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim]);
+
+        $contadores = ['ok' => 0, 'faltou' => 0, 'inconsistente' => 0, 'nao_aplica' => 0];
+        $totalDifal = 0.0;
+        $totalFcp = 0.0;
+        $totalEstimado = 0.0;
+        $totalNotas = 0;
+        $notas = [];
+
+        foreach ($query->select('id', 'chave_acesso', 'numero', 'valor', 'data_emissao', 'xml_content')->cursor() as $doc) {
+            $aud = self::auditarNotaDifalFcp($doc->xml_content, $clienteUf, $doc->data_emissao?->format('Y-m-d'));
+
+            if ($aud === null) {
+                continue;
+            }
+
+            $totalNotas++;
+            $contadores[$aud['status']]++;
+            $totalDifal += $aud['difal'];
+            $totalFcp += $aud['fcp'];
+            $totalEstimado += $aud['difalEstimado'] ?? 0.0;
+
+            if ($aud['status'] !== 'nao_aplica' && count($notas) < self::AUDITORIA_DIFAL_MAX_NOTAS) {
+                $notas[] = [
+                    'chave' => (string) $doc->chave_acesso,
+                    'numero' => (string) $doc->numero,
+                    'data' => $doc->data_emissao?->format('Y-m-d'),
+                    'destinatario' => $aud['destinatario'],
+                    'uf' => $aud['uf'],
+                    'valor' => (float) $doc->valor,
+                    'status' => $aud['status'],
+                    'motivos' => $aud['motivos'],
+                    'difal' => round($aud['difal'], 2),
+                    'fcp' => round($aud['fcp'], 2),
+                    'difalEstimado' => round($aud['difalEstimado'] ?? 0.0, 2),
+                ];
+            }
+        }
+
+        // Prioriza o que precisa de olho humano: faltou → inconsistente → ok.
+        $ordem = ['faltou' => 0, 'inconsistente' => 1, 'ok' => 2];
+        usort($notas, fn ($a, $b) => [$ordem[$a['status']], $b['valor']] <=> [$ordem[$b['status']], $a['valor']]);
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'contadores' => $contadores,
+            'totalDifalDestacado' => round($totalDifal, 2),
+            'totalFcpDestacado' => round($totalFcp, 2),
+            'totalDifalEstimadoFaltante' => round($totalEstimado, 2),
+            'totalNotas' => $totalNotas,
+            'notasListadas' => count($notas),
+            'notas' => $notas,
+        ];
+    }
+
+    /**
+     * Audita uma NF-e (XML) para DIFAL/FCP a consumidor final não contribuinte.
+     * Retorna null se não for NF-e válida (resumo/proc sem infNFe).
+     *
+     * @return array{status: string, uf: ?string, destinatario: string, motivos: array<int, string>, difal: float, fcp: float, difalEstimado: float}|null
+     */
+    private static function auditarNotaDifalFcp(?string $xml, ?string $clienteUf, ?string $dataFallback = null): ?array
+    {
+        if (empty($xml)) {
+            return null;
+        }
+
+        libxml_use_internal_errors(true);
+
+        try {
+            $obj = new \SimpleXMLElement($xml);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $obj->xpath("//*[local-name()='infNFe']")) {
+            return null;
+        }
+
+        $x = fn (string $path) => trim((string) ($obj->xpath($path)[0] ?? ''));
+        $num = fn (string $s) => (float) str_replace(',', '.', $s);
+
+        $ufDest = strtoupper($x("//*[local-name()='dest']/*[local-name()='enderDest']/*[local-name()='UF']"));
+        $destNome = (string) mb_convert_encoding($x("//*[local-name()='dest']/*[local-name()='xNome']"), 'UTF-8', 'UTF-8');
+        $idDest = $x("//*[local-name()='ide']/*[local-name()='idDest']");
+        $indFinal = $x("//*[local-name()='ide']/*[local-name()='indFinal']");
+        $indIEDest = $x("//*[local-name()='dest']/*[local-name()='indIEDest']");
+        $ufEmit = strtoupper($x("//*[local-name()='emit']/*[local-name()='enderEmit']/*[local-name()='UF']")) ?: ($clienteUf ?: '');
+        $dataEmissao = substr($x("//*[local-name()='ide']/*[local-name()='dhEmi']")
+            ?: $x("//*[local-name()='ide']/*[local-name()='dEmi']"), 0, 10) ?: $dataFallback;
+
+        $base = ['uf' => $ufDest ?: null, 'destinatario' => $destNome ?: 'Destinatário não identificado', 'difal' => 0.0, 'fcp' => 0.0, 'difalEstimado' => 0.0];
+        $resultado = fn (array $extra) => array_merge($base, $extra);
+
+        $interestadual = $idDest === '2'
+            ? true
+            : ($idDest === '1' ? false : ($clienteUf !== null && $ufDest !== '' && $ufDest !== $clienteUf));
+
+        // Consumidor final não contribuinte: indIEDest 9 (não contribuinte) ou 2 (isento de IE).
+        $consumidorFinalNaoContrib = $indFinal === '1' && in_array($indIEDest, ['2', '9'], true);
+
+        if ($idDest === '3' || $ufDest === 'EX' || ! $interestadual || ! $consumidorFinalNaoContrib) {
+            return $resultado(['status' => 'nao_aplica', 'motivos' => []]);
+        }
+
+        // Fase 2: tabela externa de alíquota interna por UF (com vigência) e teto de FCP.
+        $cfg = config('fiscal_aliquotas');
+        $tolValor = (float) ($cfg['tolerancia_valor'] ?? 0.05);
+        $tolPp = (float) ($cfg['tolerancia_aliquota_pp'] ?? 0.5);
+        $aliqInterna = self::aliquotaInternaUf($ufDest, $dataEmissao, $cfg);
+        $fcpTeto = $cfg['fcp_max'][$ufDest] ?? null;
+        $aliqInterFallback = self::aliquotaInterestadual($ufEmit, $ufDest, $cfg);
+
+        // Soma o que a nota destacou de DIFAL/FCP e olha a partilha item a item.
+        $grupos = $obj->xpath("//*[local-name()='det']/*[local-name()='imposto']/*[local-name()='ICMSUFDest']");
+        $cfops = array_map(fn ($n) => (string) $n, $obj->xpath("//*[local-name()='det']/*[local-name()='prod']/*[local-name()='CFOP']") ?: []);
+
+        $motivos = [];
+        $vICMSUFDest = 0.0;
+        $vFCPUFDest = 0.0;
+        $partilhaForaDe100 = false;
+        $baseZeroComAliquota = false;
+        $fcpZeroComAliquota = false;
+        $aliquotasInternasDestacadas = [];
+        $valorDivergente = 0.0;
+        $fcpValorDivergente = 0.0;
+        $fcpAcimaTeto = null;
+
+        foreach ($grupos as $g) {
+            $gx = fn (string $tag) => trim((string) ($g->xpath("*[local-name()='{$tag}']")[0] ?? ''));
+
+            $pUFDest = $num($gx('pICMSUFDest'));
+            $pInter = $num($gx('pICMSInter'));
+            $vBCUFDest = $num($gx('vBCUFDest'));
+            $vICMSItem = $num($gx('vICMSUFDest'));
+            $pFCP = $num($gx('pFCPUFDest'));
+            $vBCFCP = $num($gx('vBCFCPUFDest')) ?: $vBCUFDest;
+            $vFCPItem = $num($gx('vFCPUFDest'));
+
+            $vICMSUFDest += $vICMSItem;
+            $vFCPUFDest += $vFCPItem;
+
+            $pInterPart = $gx('pICMSInterPart');
+            if ($pInterPart !== '' && abs($num($pInterPart) - 100) > 0.01) {
+                $partilhaForaDe100 = true;
+            }
+
+            if ($pUFDest > 0 && $vBCUFDest > 0 && $vICMSItem <= 0 && $pUFDest > $pInter) {
+                $baseZeroComAliquota = true;
+            }
+
+            if ($pFCP > 0 && $vFCPItem <= 0) {
+                $fcpZeroComAliquota = true;
+            }
+
+            if ($pUFDest > 0) {
+                $aliquotasInternasDestacadas[(string) $pUFDest] = $pUFDest;
+            }
+
+            // Fase 2 — recálculo do valor destacado no item.
+            if ($vBCUFDest > 0 && $pUFDest > $pInter) {
+                $esperado = round($vBCUFDest * ($pUFDest - $pInter) / 100, 2);
+                $valorDivergente += abs($esperado - $vICMSItem);
+            }
+            if ($pFCP > 0 && $vBCFCP > 0) {
+                $esperadoFcp = round($vBCFCP * $pFCP / 100, 2);
+                $fcpValorDivergente += abs($esperadoFcp - $vFCPItem);
+            }
+            if ($fcpTeto !== null && $pFCP > $fcpTeto + 0.001) {
+                $fcpAcimaTeto = max($fcpAcimaTeto ?? 0, $pFCP);
+            }
+        }
+
+        $temCfopInterestadual = false;
+        $temCfopInterno = false;
+        foreach ($cfops as $cfop) {
+            $inicio = substr(preg_replace('/\D/', '', $cfop), 0, 1);
+            if ($inicio === '6') {
+                $temCfopInterestadual = true;
+            } elseif ($inicio === '5') {
+                $temCfopInterno = true;
+            }
+        }
+
+        if (count($grupos) === 0) {
+            if ($temCfopInterno && ! $temCfopInterestadual) {
+                $motivos[] = 'Operação interestadual a consumidor final não contribuinte com CFOP interno (5xxx).';
+            }
+            $motivos[] = 'Nenhum item destacou o grupo ICMSUFDest (DIFAL não partilhado).';
+
+            // Estimativa grosseira do DIFAL não recolhido: valor da nota x (alíquota interna do
+            // destino - interestadual). Só orienta a triagem; o valor exato depende da base "por
+            // dentro" e de alíquotas específicas por produto.
+            $estimado = 0.0;
+            if ($aliqInterna !== null && $aliqInterna > $aliqInterFallback) {
+                $valorNota = $num($x("//*[local-name()='total']/*[local-name()='ICMSTot']/*[local-name()='vNF']"));
+                $estimado = round($valorNota * ($aliqInterna - $aliqInterFallback) / 100, 2);
+                $motivos[] = sprintf(
+                    'DIFAL estimado não recolhido: R$ %s (%s%% interna %s − %s%% interestadual, sobre R$ %s).',
+                    number_format($estimado, 2, ',', '.'),
+                    rtrim(rtrim(number_format($aliqInterna, 2, ',', '.'), '0'), ','),
+                    $ufDest,
+                    rtrim(rtrim(number_format($aliqInterFallback, 2, ',', '.'), '0'), ','),
+                    number_format($valorNota, 2, ',', '.')
+                );
+            }
+
+            return $resultado(['status' => 'faltou', 'motivos' => $motivos, 'difalEstimado' => $estimado]);
+        }
+
+        if ($partilhaForaDe100) {
+            $motivos[] = 'pICMSInterPart diferente de 100% (partilha antiga; desde 2019 a partilha é 100% para o destino).';
+        }
+        if ($baseZeroComAliquota) {
+            $motivos[] = 'Item com alíquota interna do destino informada mas vICMSUFDest zerado.';
+        }
+        if ($fcpZeroComAliquota) {
+            $motivos[] = 'Item com pFCPUFDest informado mas vFCPUFDest zerado.';
+        }
+        if ($temCfopInterno && ! $temCfopInterestadual) {
+            $motivos[] = 'CFOP interno (5xxx) numa operação interestadual.';
+        }
+        if ($valorDivergente > $tolValor) {
+            $motivos[] = sprintf('Valor de ICMS DIFAL destacado não bate com o recálculo (diferença de R$ %s).', number_format($valorDivergente, 2, ',', '.'));
+        }
+        if ($fcpValorDivergente > $tolValor) {
+            $motivos[] = sprintf('Valor de FCP destacado não bate com o recálculo (diferença de R$ %s).', number_format($fcpValorDivergente, 2, ',', '.'));
+        }
+        if ($fcpAcimaTeto !== null) {
+            $motivos[] = sprintf('FCP destacado (%s%%) acima do teto de %s%% da UF %s.', rtrim(rtrim(number_format($fcpAcimaTeto, 2, ',', '.'), '0'), ','), rtrim(rtrim(number_format((float) $fcpTeto, 2, ',', '.'), '0'), ','), $ufDest);
+        }
+        if ($aliqInterna !== null && $aliquotasInternasDestacadas !== []) {
+            $foraDaTabela = array_filter($aliquotasInternasDestacadas, fn ($p) => abs($p - $aliqInterna) > $tolPp);
+            if ($foraDaTabela !== []) {
+                $lista = implode('%, ', array_map(fn ($p) => rtrim(rtrim(number_format($p, 2, ',', '.'), '0'), ','), $foraDaTabela));
+                $motivos[] = sprintf(
+                    'Alíquota interna destacada (%s%%) diverge da alíquota geral de %s%% da UF %s — confira se o produto tem alíquota específica.',
+                    $lista,
+                    rtrim(rtrim(number_format($aliqInterna, 2, ',', '.'), '0'), ','),
+                    $ufDest
+                );
+            }
+        }
+
+        return $resultado([
+            'status' => $motivos === [] ? 'ok' : 'inconsistente',
+            'motivos' => $motivos,
+            'difal' => round($vICMSUFDest, 2),
+            'fcp' => round($vFCPUFDest, 2),
+        ]);
+    }
+
+    /** Alíquota interna geral de ICMS da UF vigente na data (Y-m-d), da tabela config/fiscal_aliquotas.php. Null se desconhecida. */
+    private static function aliquotaInternaUf(?string $uf, ?string $data, ?array $cfg = null): ?float
+    {
+        if ($uf === null || $uf === '') {
+            return null;
+        }
+
+        $cfg ??= config('fiscal_aliquotas');
+        $faixas = $cfg['internas'][strtoupper($uf)] ?? null;
+
+        if (! $faixas) {
+            return null;
+        }
+
+        $data = $data ?: date('Y-m-d');
+        $aliquota = null;
+
+        foreach ($faixas as $faixa) {
+            if (($faixa['desde'] ?? '0000-00-00') <= $data) {
+                $aliquota = (float) $faixa['aliquota'];
+            }
+        }
+
+        return $aliquota ?? (float) ($faixas[0]['aliquota'] ?? 0) ?: null;
+    }
+
+    /**
+     * Alíquota interestadual de ICMS presumida origem → destino (regra do Senado
+     * Res. 22/89 e 13/12): 7% do Sul/Sudeste (exceto ES) para Norte/Nordeste/
+     * Centro-Oeste + ES; 12% nos demais casos. Importados (4%) não dá para inferir
+     * sem olhar a origem da mercadoria — fica de fora. Usado só como fallback
+     * quando a nota não informa pICMSInter.
+     */
+    private static function aliquotaInterestadual(?string $ufOrigem, ?string $ufDestino, ?array $cfg = null): float
+    {
+        $cfg ??= config('fiscal_aliquotas');
+        $padrao = (float) ($cfg['interestadual_padrao'] ?? 12.0);
+
+        $sulSudeste = ['SP', 'RJ', 'MG', 'PR', 'SC', 'RS'];
+        $norteNordesteCO = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'MA', 'PB', 'PA', 'PE', 'PI', 'RN', 'RO', 'RR', 'SE', 'TO', 'DF', 'GO', 'MT', 'MS', 'ES'];
+
+        if (in_array(strtoupper((string) $ufOrigem), $sulSudeste, true)
+            && in_array(strtoupper((string) $ufDestino), $norteNordesteCO, true)) {
+            return 7.0;
+        }
+
+        return $padrao;
+    }
+
     /** UF do cliente: a mais frequente em enderEmit/UF das notas que ele mesmo emitiu; fallback pra clientes.estado. */
     private static function descobrirUfCliente(int $clienteId, string $clienteCnpj): ?string
     {

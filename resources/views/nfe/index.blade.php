@@ -501,6 +501,75 @@
                 </div>
             </div>
 
+            {{-- Auditoria DIFAL / FCP --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-scale-balanced text-brand mr-1.5"></i> Auditoria DIFAL / FCP
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Confere as NF-e de saída a consumidor final não contribuinte de outra UF (LC 190/2022): aponta as que
+                            <strong>não destacaram</strong> o grupo ICMSUFDest e as com partilha/base/FCP incoerente. Recalcula o valor
+                            esperado com a tabela de alíquota interna por UF (<code>config/fiscal_aliquotas.php</code>) — produtos com
+                            alíquota específica podem aparecer como "conferir".
+                        </p>
+                    </div>
+                    <div id="dashDifalResumo" class="hidden text-right shrink-0 text-xs leading-tight">
+                        <p class="font-semibold text-gray-700 dark:text-slate-200"><span id="dashDifalMesLabel"></span></p>
+                        <p class="text-gray-500 dark:text-slate-400 mt-1">
+                            DIFAL destacado <span id="dashDifalTotalDifal" class="font-bold text-[#0084aa]"></span>
+                            &nbsp;·&nbsp; FCP <span id="dashDifalTotalFcp" class="font-bold text-[#0084aa]"></span>
+                        </p>
+                        <p id="dashDifalEstimadoLinha" class="hidden text-red-600 dark:text-red-400 mt-1">
+                            DIFAL estimado não recolhido <span id="dashDifalTotalEstimado" class="font-bold"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div id="dashDifalLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Auditando as notas...</p>
+                </div>
+
+                <div id="dashDifalVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Nenhuma NF-e de saída no período.</p>
+                </div>
+
+                <div id="dashDifalResultado" class="hidden">
+                    <div class="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2">
+                            <p class="text-lg font-bold text-gray-900 dark:text-white tabular-nums" id="dashDifalCountOk">0</p>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">OK</p>
+                        </div>
+                        <div class="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 px-3 py-2">
+                            <p class="text-lg font-bold text-red-700 dark:text-red-300 tabular-nums" id="dashDifalCountFaltou">0</p>
+                            <p class="text-xs text-red-600 dark:text-red-400">Faltou destacar</p>
+                        </div>
+                        <div class="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+                            <p class="text-lg font-bold text-amber-700 dark:text-amber-300 tabular-nums" id="dashDifalCountInconsistente">0</p>
+                            <p class="text-xs text-amber-600 dark:text-amber-400">Inconsistente</p>
+                        </div>
+                        <div class="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2">
+                            <p class="text-lg font-bold text-gray-900 dark:text-white tabular-nums" id="dashDifalCountNaoAplica">0</p>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">Não se aplica</p>
+                        </div>
+                    </div>
+                    <div id="dashDifalListaWrapper" class="border-t border-gray-100 dark:border-slate-700">
+                        <ul id="dashDifalLista" class="m-0 p-0 divide-y divide-gray-100 dark:divide-slate-700/50" style="list-style:none;margin:0;padding:0"></ul>
+                        <p id="dashDifalTruncado" class="hidden px-5 py-2 text-xs text-gray-400 dark:text-slate-500"></p>
+                    </div>
+                    <div id="dashDifalSemPendencia" class="hidden px-5 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
+                        <i class="fa-solid fa-circle-check text-emerald-500 text-xl mb-1"></i>
+                        <p>Todas as NF-e que exigem DIFAL destacaram o grupo ICMSUFDest de forma coerente.</p>
+                    </div>
+                </div>
+            </div>
+
             </div>
         </div>
         {{-- /#abaDashboards --}}
@@ -1157,6 +1226,7 @@
         document.getElementById('loadingTempo').textContent = 'Iniciando...';
         btnBuscar.disabled = true;
         document.getElementById('btnBuscarLabel').textContent = 'Buscando...';
+        marcarDashboardsCarregando();
 
         try {
             const avisos = [];
@@ -1783,11 +1853,14 @@
         .map(id => document.getElementById(id));
     const dashInterestEstados = ['dashInterestLoading', 'dashInterestVazio', 'dashInterestResultado']
         .map(id => document.getElementById(id));
+    const dashDifalEstados = ['dashDifalLoading', 'dashDifalVazio', 'dashDifalResultado']
+        .map(id => document.getElementById(id));
 
     const dashMostrar = (estados, id) => estados.forEach(el => el.classList.toggle('hidden', el.id !== id));
     const dashFornSimplesMostrar = id => dashMostrar(dashFornSimplesEstados, id);
     const dashProdVendidosMostrar = id => dashMostrar(dashProdVendidosEstados, id);
     const dashInterestMostrar = id => dashMostrar(dashInterestEstados, id);
+    const dashDifalMostrar = id => dashMostrar(dashDifalEstados, id);
 
     function formatarCnpj(doc) {
         const s = String(doc || '').replace(/\D/g, '');
@@ -1928,6 +2001,96 @@
         dashInterestMostrar('dashInterestResultado');
     }
 
+    const DIFAL_STATUS = {
+        faltou:        { rotulo: 'Faltou destacar', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+        inconsistente: { rotulo: 'Inconsistente',   cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+        ok:            { rotulo: 'OK',               cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+    };
+
+    function renderDifal(dados) {
+        const c = dados.contadores || {};
+        const resumo = document.getElementById('dashDifalResumo');
+
+        if (!dados.totalNotas) {
+            resumo.classList.add('hidden');
+            dashDifalMostrar('dashDifalVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+
+        document.getElementById('dashDifalMesLabel').textContent = dados.periodo || '';
+        document.getElementById('dashDifalTotalDifal').textContent = formatarMoeda(dados.totalDifalDestacado || 0);
+        document.getElementById('dashDifalTotalFcp').textContent = formatarMoeda(dados.totalFcpDestacado || 0);
+
+        const estimadoLinha = document.getElementById('dashDifalEstimadoLinha');
+        if ((dados.totalDifalEstimadoFaltante || 0) > 0) {
+            document.getElementById('dashDifalTotalEstimado').textContent = formatarMoeda(dados.totalDifalEstimadoFaltante);
+            estimadoLinha.classList.remove('hidden');
+        } else {
+            estimadoLinha.classList.add('hidden');
+        }
+
+        document.getElementById('dashDifalCountOk').textContent = c.ok || 0;
+        document.getElementById('dashDifalCountFaltou').textContent = c.faltou || 0;
+        document.getElementById('dashDifalCountInconsistente').textContent = c.inconsistente || 0;
+        document.getElementById('dashDifalCountNaoAplica').textContent = c.nao_aplica || 0;
+
+        const lista = document.getElementById('dashDifalLista');
+        const wrapper = document.getElementById('dashDifalListaWrapper');
+        const semPendencia = document.getElementById('dashDifalSemPendencia');
+        const notas = dados.notas || [];
+        lista.innerHTML = '';
+
+        if (notas.length === 0) {
+            wrapper.classList.add('hidden');
+            semPendencia.classList.remove('hidden');
+        } else {
+            wrapper.classList.remove('hidden');
+            semPendencia.classList.add('hidden');
+
+            notas.forEach(n => {
+                const st = DIFAL_STATUS[n.status] || DIFAL_STATUS.ok;
+                const li = document.createElement('li');
+                li.className = 'px-5 py-3 flex items-start justify-between gap-4';
+                const motivos = (n.motivos || []).map(m => `<li>${escaparHtml(m)}</li>`).join('');
+                li.innerHTML = `
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded ${st.cls}">${st.rotulo}</span>
+                            <span class="text-sm font-medium text-gray-800 dark:text-slate-200">NF-e ${escaparHtml(n.numero || '—')}</span>
+                            <span class="text-xs text-gray-400 dark:text-slate-500">${n.data ? n.data.split('-').reverse().join('/') : ''}</span>
+                            <span class="text-xs text-gray-500 dark:text-slate-400">${escaparHtml(n.uf || '—')}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate">${escaparHtml(n.destinatario || '')}</p>
+                        ${motivos ? `<ul class="text-xs text-gray-500 dark:text-slate-400 mt-1 list-disc pl-4 space-y-0.5">${motivos}</ul>` : ''}
+                    </div>
+                    <div class="text-right shrink-0 text-xs leading-tight tabular-nums">
+                        <p class="text-gray-700 dark:text-slate-300">${formatarMoeda(n.valor || 0)}</p>
+                        ${n.difalEstimado ? `<p class="text-red-600 dark:text-red-400 mt-0.5">estimado ${formatarMoeda(n.difalEstimado)}</p>` : `<p class="text-gray-400 dark:text-slate-500 mt-0.5">DIFAL ${formatarMoeda(n.difal || 0)}</p>`}
+                        ${n.fcp ? `<p class="text-gray-400 dark:text-slate-500">FCP ${formatarMoeda(n.fcp)}</p>` : ''}
+                    </div>`;
+                lista.appendChild(li);
+            });
+
+            const truncado = document.getElementById('dashDifalTruncado');
+            const pendentes = (c.faltou || 0) + (c.inconsistente || 0) + (c.ok || 0);
+            if (dados.notasListadas < pendentes) {
+                truncado.textContent = `Mostrando ${dados.notasListadas} de ${pendentes} notas — refine o período para ver o restante.`;
+                truncado.classList.remove('hidden');
+            } else {
+                truncado.classList.add('hidden');
+            }
+        }
+
+        dashDifalMostrar('dashDifalResultado');
+    }
+
+    function escaparHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
     function pintarInterest() {
         if (!interestDados) return;
 
@@ -2028,6 +2191,19 @@
     // Roda os dois dashboards para a empresa + período atuais da busca de notas.
     let dashboardsLiberados = false;
 
+    // Coloca todos os cards de dashboard em "carregando" — usado assim que uma nova
+    // busca começa, pra aba Dashboards dar o mesmo retorno visual que a de Documentos
+    // (sem ficar com os números da busca anterior enquanto a Sefaz responde).
+    function marcarDashboardsCarregando() {
+        if (!dashboardsLiberados) return;
+        dashAviso.classList.add('hidden');
+        dashCards.classList.remove('hidden');
+        dashFornSimplesMostrar('dashFornSimplesLoading');
+        dashProdVendidosMostrar('dashProdVendidosLoading');
+        dashInterestMostrar('dashInterestLoading');
+        dashDifalMostrar('dashDifalLoading');
+    }
+
     async function gerarDashboards() {
         const clienteId = selectCliente.value;
         if (!clienteId || !dataInicio.value || !dataFim.value) return;
@@ -2040,6 +2216,7 @@
             carregarDash('{{ route('nfe.dashboards.fornecedores-simples') }}', renderFornSimples, dashFornSimplesMostrar, 'dashFornSimples', clienteId),
             carregarDash('{{ route('nfe.dashboards.produtos-vendidos') }}', renderProdVendidos, dashProdVendidosMostrar, 'dashProdVendidos', clienteId),
             carregarDash('{{ route('nfe.dashboards.interestadual') }}', renderInterest, dashInterestMostrar, 'dashInterest', clienteId),
+            carregarDash('{{ route('nfe.dashboards.auditoria-difal') }}', renderDifal, dashDifalMostrar, 'dashDifal', clienteId),
         ]);
     }
 

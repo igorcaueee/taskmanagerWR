@@ -506,6 +506,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/dashboards/fornecedores-simples', [NfeController::class, 'dashboardFornecedoresSimples'])->name('dashboards.fornecedores-simples');
     Route::post('/dashboards/produtos-vendidos', [NfeController::class, 'dashboardProdutosVendidos'])->name('dashboards.produtos-vendidos');
     Route::post('/dashboards/interestadual', [NfeController::class, 'dashboardInterestadual'])->name('dashboards.interestadual');
+    Route::post('/dashboards/auditoria-difal', [NfeController::class, 'auditoriaDifalFcp'])->name('dashboards.auditoria-difal');
 
     // NF-e / NFC-e — webservice de contabilistas (SEFAZ-RS)
     Route::get('/rs/certificado', [NfeController::class, 'getCertificadoContabilidade'])->name('rs.certificado');

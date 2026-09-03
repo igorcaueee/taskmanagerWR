@@ -694,6 +694,43 @@ class NfeController extends Controller
         }
     }
 
+    /**
+     * Dashboard "Auditoria DIFAL / FCP" da aba Dashboards: varre as NF-e de
+     * saída do período e classifica cada uma quanto à partilha de DIFAL a
+     * consumidor final não contribuinte (LC 190/2022) — ver
+     * DocumentoFiscal::auditoriaDifalFcp.
+     */
+    public function auditoriaDifalFcp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+
+        try {
+            $resultado = DocumentoFiscal::auditoriaDifalFcp(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(
+                ['success' => true] + $resultado,
+                200,
+                [],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] auditoriaDifalFcp: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
     // Limite de chaves por requisição de zip — bem acima do que qualquer cliente tem de
     // notas num período, só como proteção contra payloads absurdos (ver CofreFiscalController::MAX_ZIP,
     // que tem um limite próprio menor por filtrar sem seleção manual do usuário).
