@@ -854,6 +854,7 @@ class NfeController extends Controller
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$validated['chave_acesso'].'.pdf"',
         ]);
     }
 

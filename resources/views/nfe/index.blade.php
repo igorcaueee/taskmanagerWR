@@ -1489,6 +1489,12 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                     ${doc.chaveAcesso ? `
                     <button type="button"
+                            class="btn-copiar-chave p-1.5 text-gray-400 dark:text-slate-500 hover:text-[#0084aa] dark:hover:text-[#0084aa] bg-transparent border-0 transition-colors"
+                            title="Copiar chave de acesso"
+                            data-chave="${doc.chaveAcesso}">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                    <button type="button"
                             class="btn-ver-pdf p-1.5 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 bg-transparent border-0 transition-colors"
                             title="Ver PDF (DANFE/DACTE)"
                             data-chave="${doc.chaveAcesso}">
@@ -1512,6 +1518,10 @@
 
         tabelaDocs.querySelectorAll('.btn-ver-pdf').forEach(btn => {
             btn.addEventListener('click', () => abrirPdf(btn.dataset.chave, btn));
+        });
+
+        tabelaDocs.querySelectorAll('.btn-copiar-chave').forEach(btn => {
+            btn.addEventListener('click', () => copiarChave(btn.dataset.chave, btn));
         });
 
         tabelaDocs.querySelectorAll('.check-doc').forEach(cb => {
@@ -1603,35 +1613,67 @@
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement('a');
         a.href     = url;
-        a.download = `${doc.tipo}_nsu${nsu}.xml`;
+        a.download = `${doc.chaveAcesso || doc.tipo + '_nsu' + nsu}.xml`;
         a.click();
         URL.revokeObjectURL(url);
     }
 
+    // ─── Copiar chave de acesso (44 dígitos) ────────────────────────────────
+    async function copiarChave(chave, btn) {
+        if (!chave) return;
+
+        try {
+            await navigator.clipboard.writeText(chave);
+        } catch {
+            const ta = document.createElement('textarea');
+            ta.value = chave;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+
+        const iconOrig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-emerald-500"></i>';
+        setTimeout(() => { btn.innerHTML = iconOrig; }, 1500);
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Chave copiada',
+            text: chave,
+            showConfirmButton: false,
+            timer: 2000,
+        });
+    }
+
     // ─── PDF (DANFE/DANFE-NFC-e/DACTE) — GET /nfe/danfe?chave_acesso= ─────────
+    // Abre a nova aba de forma síncrona (no clique) pra não cair no bloqueador de
+    // pop-up e navega direto no endpoint — assim o Content-Disposition do servidor
+    // (filename = <chave>.pdf) vale no "salvar" do visualizador. Depois faz um fetch
+    // só pra detectar 422 (XML ainda em formato resumido) e avisar o usuário.
     async function abrirPdf(chaveAcesso, btn) {
         const iconOrig = btn.innerHTML;
+        const url = `/nfe/danfe?chave_acesso=${encodeURIComponent(chaveAcesso)}`;
+
+        const aba = window.open(url, '_blank');
 
         btn.disabled  = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
         try {
-            const resp = await fetch(`/nfe/danfe?chave_acesso=${encodeURIComponent(chaveAcesso)}`, {
-                headers: { 'Accept': 'application/pdf,application/json' },
-            });
+            const resp = await fetch(url, { headers: { 'Accept': 'application/pdf,application/json' } });
 
             if (!resp.ok) {
                 const data = await resp.json().catch(() => ({}));
+                aba?.close();
                 Swal.fire({ icon: 'warning', title: 'PDF indisponível', text: data.error ?? 'Falha ao gerar o PDF.' });
-                return;
             }
-
-            const blob = await resp.blob();
-            const url  = URL.createObjectURL(blob);
-
-            window.open(url, '_blank');
-            setTimeout(() => URL.revokeObjectURL(url), 60_000);
         } catch {
+            aba?.close();
             Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
         } finally {
             btn.disabled  = false;
