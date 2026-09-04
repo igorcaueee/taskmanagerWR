@@ -134,6 +134,15 @@ class NfeXmlParser
         $crtStr = $getEmit('CRT');
         $emitenteNome = trim(mb_convert_encoding($getEmit('xNome'), 'UTF-8', 'UTF-8'));
 
+        // Mesmo raciocínio do $emitNode acima, mas pro lado do destinatário — usado pra
+        // validar que o XML pertence ao cliente selecionado no upload do Cofre Fiscal
+        // (o cliente pode ser tanto o emitente, numa saída, quanto o destinatário, numa
+        // entrada).
+        $destNode = $obj->xpath("//*[local-name()='dest']")[0] ?? null;
+        $destinatarioDoc = $destNode !== null
+            ? (trim((string) ($destNode->xpath(".//*[local-name()='CNPJ']")[0] ?? '')) ?: trim((string) ($destNode->xpath(".//*[local-name()='CPF']")[0] ?? '')))
+            : '';
+
         return [
             'tipo'             => $tipoDoc,
             'chaveAcesso'      => $chave,
@@ -142,6 +151,7 @@ class NfeXmlParser
             'dataSaidaEntrada' => $get('dhSaiEnt') ?: $get('dSaiEnt'),
             'emitenteNome'     => $emitenteNome !== '' ? $emitenteNome : null,
             'emitenteDoc'      => $getEmit('CNPJ') ?: $getEmit('CPF'),
+            'destinatarioDoc'  => $destinatarioDoc ?: null,
             'valor'            => $get('vNF') ?: $get('vCT'),
             'situacao'         => $get('cSitDFe') ?: $get('cSitCTe') ?: null,
             'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,

@@ -398,10 +398,14 @@
                     return;
                 }
 
+                const detalheCnpj = data.ignorados_cnpj_divergente > 0
+                    ? `<br><small>${data.ignorados_cnpj_divergente} ignorado(s) por CNPJ diferente do cliente selecionado</small>`
+                    : '';
+
                 await Swal.fire({
                     icon: 'success',
                     title: 'Importação concluída',
-                    html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>`,
+                    html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>${detalheCnpj}`,
                     confirmButtonColor: '#0084aa',
                 });
 

@@ -447,10 +447,12 @@ class CofreFiscalController extends Controller
         // $existente->cliente_id vem como int do Eloquent — sem o cast, a comparação abaixo
         // com !== (estrita) nunca bate, mesmo sendo o mesmo cliente.
         $clienteId = (int) $validated['cliente_id'];
+        $cnpjCliente = preg_replace('/[.\-\/\s]/', '', Cliente::find($clienteId)?->cpfcnpj ?? '');
         $importados = 0;
         $atualizados = 0;
         $ignoradosInvalidos = 0;
         $ignoradosOutroCliente = 0;
+        $ignoradosCnpjDivergente = 0;
         $processados = 0;
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
@@ -479,6 +481,26 @@ class CofreFiscalController extends Controller
                     'amostra' => $conteudo !== false ? substr($conteudo, 0, 300) : null,
                 ]);
                 continue;
+            }
+
+            // O cliente selecionado precisa ser o emitente (nota de saída) ou o
+            // destinatário (nota de entrada) do XML — senão é nota de outra empresa
+            // (upload no cliente errado, ou zip com XMLs de vários clientes misturados).
+            if ($cnpjCliente !== '') {
+                $emitenteDoc = preg_replace('/\D/', '', $meta['emitenteDoc'] ?? '');
+                $destinatarioDoc = preg_replace('/\D/', '', $meta['destinatarioDoc'] ?? '');
+
+                if ($emitenteDoc !== $cnpjCliente && $destinatarioDoc !== $cnpjCliente) {
+                    $ignoradosCnpjDivergente++;
+                    Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (CNPJ não pertence ao cliente selecionado)', [
+                        'chave_acesso' => $meta['chaveAcesso'],
+                        'cliente_id_selecionado' => $clienteId,
+                        'cnpj_cliente' => $cnpjCliente,
+                        'emitente_doc' => $emitenteDoc,
+                        'destinatario_doc' => $destinatarioDoc,
+                    ]);
+                    continue;
+                }
             }
 
             $existente = DocumentoFiscal::where('chave_acesso', $meta['chaveAcesso'])->first();
@@ -517,7 +539,11 @@ class CofreFiscalController extends Controller
         $zip->close();
 
         if ($importados === 0 && $atualizados === 0) {
-            if ($ignoradosOutroCliente > 0 && $ignoradosInvalidos === 0) {
+            if ($ignoradosCnpjDivergente > 0 && $ignoradosOutroCliente === 0 && $ignoradosInvalidos === 0) {
+                return response()->json(['error' => "Todos os {$ignoradosCnpjDivergente} XML(s) reconhecidos têm CNPJ de emitente/destinatário diferente do cliente selecionado — nada foi importado. Confira se selecionou a empresa certa."], 422);
+            }
+
+            if ($ignoradosOutroCliente > 0 && $ignoradosInvalidos === 0 && $ignoradosCnpjDivergente === 0) {
                 return response()->json(['error' => "Todos os {$ignoradosOutroCliente} XML(s) reconhecidos já pertencem a OUTRO cliente no Cofre — nada foi importado pra não corromper a pasta dele. Confira se selecionou a empresa certa."], 422);
             }
 
@@ -527,8 +553,9 @@ class CofreFiscalController extends Controller
         return response()->json([
             'importados' => $importados,
             'atualizados' => $atualizados,
-            'ignorados' => $ignoradosInvalidos + $ignoradosOutroCliente,
+            'ignorados' => $ignoradosInvalidos + $ignoradosOutroCliente + $ignoradosCnpjDivergente,
             'ignorados_outro_cliente' => $ignoradosOutroCliente,
+            'ignorados_cnpj_divergente' => $ignoradosCnpjDivergente,
         ]);
     }
 
