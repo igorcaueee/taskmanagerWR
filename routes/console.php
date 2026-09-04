@@ -15,3 +15,5 @@ Schedule::command('fiscal:sincronizar-notas-rs')->dailyAt('18:30')->withoutOverl
 // Roda depois da sincronização normal (que pode ir até 07:00) pra não disputar o
 // certificado compartilhado da contabilidade e gerar bloqueio por "consumo indevido".
 Schedule::command('fiscal:reconsultar-notas-rs')->dailyAt('07:15')->withoutOverlapping()->runInBackground();
+// Depois da reconsulta (07:15), pra já auditar com o dia sincronizado.
+Schedule::command('fiscal:alertas-nfe')->dailyAt('07:45')->withoutOverlapping()->runInBackground();
