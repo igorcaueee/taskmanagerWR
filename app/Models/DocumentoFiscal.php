@@ -700,6 +700,199 @@ class DocumentoFiscal extends Model
         return $padrao;
     }
 
+    /** Máximo de números faltantes listados por série na análise de quebra de numeração. */
+    private const QUEBRA_NUM_MAX_POR_SERIE = 300;
+
+    /**
+     * Análise de quebra de numeração das NF-e / NFC-e EMITIDAS pelo cliente no
+     * período (dashboard "Quebra de Numeração"). Para cada série, ordena os
+     * números emitidos e aponta os buracos internos (entre o menor e o maior
+     * número presentes) — número que ficou sem nota é indício de nota não
+     * declarada, inutilização não registrada, ou emissão em outra série/ambiente.
+     *
+     * Série e número saem da própria chave de acesso (posições 23-25 e 26-34),
+     * sem reabrir o XML. Notas canceladas/denegadas CONTAM como presentes — elas
+     * consumiram o número. Buracos nas pontas não são apontados (não dá para
+     * saber, só com o período, se existe nota antes da primeira / depois da última).
+     *
+     * @return array{periodo: string, totalEmitidas: int, totalFaltando: int, series: array<int, array{serie: string, tipo: string, menor: int, maior: int, emitidas: int, faltando: array<int, int>, qtdFaltando: int, duplicados: array<int, int>}>}
+     */
+    public static function quebrasNumeracaoNfe(int $clienteId, string $dataInicio, string $dataFim): array
+    {
+        [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+
+        $query = static::where('cliente_id', $clienteId)
+            ->whereIn('tipo', ['nfe', 'nfce'])
+            ->whereNotNull('chave_acesso')
+            ->when($clienteCnpj !== '', fn ($q) => $q->whereRaw("REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '') = ?", [$clienteCnpj]))
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim]);
+
+        // agrupador: [ "tipo|serie" => [ numero => contagem ] ]
+        $mapa = [];
+        $totalEmitidas = 0;
+
+        foreach ($query->select('tipo', 'chave_acesso')->cursor() as $doc) {
+            $chave = preg_replace('/\D/', '', (string) $doc->chave_acesso);
+
+            if (strlen($chave) !== 44) {
+                continue;
+            }
+
+            $serie = ltrim(substr($chave, 22, 3), '0') ?: '0';
+            $numero = (int) substr($chave, 25, 9);
+
+            if ($numero <= 0) {
+                continue;
+            }
+
+            $key = $doc->tipo.'|'.$serie;
+            $mapa[$key][$numero] = ($mapa[$key][$numero] ?? 0) + 1;
+            $totalEmitidas++;
+        }
+
+        $series = [];
+        $totalFaltando = 0;
+
+        foreach ($mapa as $key => $numeros) {
+            [$tipo, $serie] = explode('|', $key, 2);
+            ksort($numeros);
+
+            $menor = (int) array_key_first($numeros);
+            $maior = (int) array_key_last($numeros);
+
+            // menor e maior estão sempre presentes, então todo faltante é interno:
+            // total de inteiros no intervalo menos os números realmente emitidos.
+            // Conta por aritmética (não por loop) — a faixa pode ter milhões de
+            // números (série reaproveitada entre pontos de emissão, número legado).
+            $qtdFaltando = ($maior - $menor + 1) - count($numeros);
+
+            $faltando = [];
+            if ($qtdFaltando > 0) {
+                for ($n = $menor + 1; $n < $maior && count($faltando) < self::QUEBRA_NUM_MAX_POR_SERIE; $n++) {
+                    if (! isset($numeros[$n])) {
+                        $faltando[] = $n;
+                    }
+                }
+            }
+
+            $duplicados = array_keys(array_filter($numeros, fn ($c) => $c > 1));
+            $totalFaltando += $qtdFaltando;
+
+            $series[] = [
+                'serie' => $serie,
+                'tipo' => $tipo,
+                'menor' => $menor,
+                'maior' => $maior,
+                'emitidas' => count($numeros),
+                'faltando' => $faltando,
+                'qtdFaltando' => $qtdFaltando,
+                'duplicados' => array_values($duplicados),
+            ];
+        }
+
+        // Séries com mais buracos primeiro.
+        usort($series, fn ($a, $b) => $b['qtdFaltando'] <=> $a['qtdFaltando'] ?: strcmp($a['tipo'].$a['serie'], $b['tipo'].$b['serie']));
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'totalEmitidas' => $totalEmitidas,
+            'totalFaltando' => $totalFaltando,
+            'series' => $series,
+        ];
+    }
+
+    /**
+     * Limites de receita bruta (12 meses) por regime, para o monitor do Simples/MEI.
+     * Chave em MAIÚSCULA — o lookup normaliza clientes.regime_tributario com
+     * strtoupper/trim (a coluna chega com casing variado no banco).
+     *
+     * `tolerancia` = teto de estouro efetivo (limite + 20% de LC 123/2006):
+     * entre `limite` e `tolerancia` a exclusão vale só no ano seguinte; acima de
+     * `tolerancia`, exclusão retroativa.
+     */
+    private const LIMITES_RECEITA = [
+        'MEI' => ['limite' => 81000.0, 'tolerancia' => 97200.0, 'sublimite' => null],
+        'SIMPLES NACIONAL' => ['limite' => 4800000.0, 'tolerancia' => 5760000.0, 'sublimite' => 3600000.0],
+    ];
+
+    /**
+     * Monitor de limite do Simples Nacional / MEI (dashboard "Limite do Simples").
+     * Soma a receita bruta de SAÍDA (NF-e/NFC-e emitidas pelo cliente, tp_nf != 0,
+     * não canceladas) dos 12 meses que terminam no mês de `dataFim`, compara com
+     * o limite do regime e projeta o fechamento do ano-calendário.
+     *
+     * Não substitui o PGDAS — é uma estimativa a partir dos XMLs sincronizados
+     * (pode faltar nota não baixada; NFS-e não entra aqui). Serve de alerta
+     * antecipado de desenquadramento.
+     *
+     * @return array{periodo: string, regime: ?string, mesReferencia: string, limite: ?float, sublimite: ?float, tolerancia: ?float, rbt12: float, rba: float, percentual: ?float, status: string, projecaoAno: float, meses: array<int, array{mes: string, valor: float}>}
+     */
+    public static function monitorLimiteSimples(int $clienteId, string $dataInicio, string $dataFim): array
+    {
+        $cliente = Cliente::find($clienteId);
+        $clienteCnpj = preg_replace('/\D/', '', $cliente?->cpfcnpj ?? '');
+        $regime = $cliente?->regime_tributario;
+
+        $fim = (new \DateTimeImmutable($dataFim))->modify('last day of this month');
+        $inicio12 = $fim->modify('first day of this month')->modify('-11 months');
+
+        $base = static::where('cliente_id', $clienteId)
+            ->whereIn('tipo', ['nfe', 'nfce'])
+            ->where(fn ($q) => $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada'))
+            ->where(fn ($q) => $q->whereNull('tp_nf')->orWhere('tp_nf', '!=', '0'))
+            ->when($clienteCnpj !== '', fn ($q) => $q->whereRaw("REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '') = ?", [$clienteCnpj]));
+
+        $linhas = (clone $base)
+            ->whereBetween('data_emissao', [$inicio12->format('Y-m-d'), $fim->format('Y-m-d')])
+            ->selectRaw("DATE_FORMAT(data_emissao, '%Y-%m') as mes, SUM(valor) as total")
+            ->groupBy('mes')
+            ->pluck('total', 'mes');
+
+        $meses = [];
+        $rbt12 = 0.0;
+
+        for ($m = $inicio12; $m <= $fim; $m = $m->modify('+1 month')) {
+            $chave = $m->format('Y-m');
+            $valor = (float) ($linhas[$chave] ?? 0);
+            $meses[] = ['mes' => $chave, 'valor' => round($valor, 2)];
+            $rbt12 += $valor;
+        }
+
+        $rba = (float) (clone $base)
+            ->whereBetween('data_emissao', [$fim->format('Y').'-01-01', $fim->format('Y-m-d')])
+            ->sum('valor');
+
+        $conf = self::LIMITES_RECEITA[strtoupper(trim((string) $regime))] ?? null;
+        $limite = $conf['limite'] ?? null;
+        $percentual = $limite ? round($rbt12 / $limite * 100, 1) : null;
+
+        $mesesDecorridos = (int) $fim->format('n');
+        $projecaoAno = $mesesDecorridos > 0 ? round($rba / $mesesDecorridos * 12, 2) : 0.0;
+
+        $status = 'sem_limite';
+        if ($limite !== null) {
+            $teto = $conf['tolerancia'] ?? $limite;
+            $status = $rbt12 >= $teto ? 'estouro'
+                : ($rbt12 >= $limite ? 'tolerancia'
+                    : ($percentual >= 80 ? 'atencao' : 'ok'));
+        }
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'regime' => $regime,
+            'mesReferencia' => $fim->format('Y-m'),
+            'limite' => $limite,
+            'sublimite' => $conf['sublimite'] ?? null,
+            'tolerancia' => $conf['tolerancia'] ?? null,
+            'rbt12' => round($rbt12, 2),
+            'rba' => round($rba, 2),
+            'percentual' => $percentual,
+            'status' => $status,
+            'projecaoAno' => $projecaoAno,
+            'meses' => $meses,
+        ];
+    }
+
     /** UF do cliente: a mais frequente em enderEmit/UF das notas que ele mesmo emitiu; fallback pra clientes.estado. */
     private static function descobrirUfCliente(int $clienteId, string $clienteCnpj): ?string
     {

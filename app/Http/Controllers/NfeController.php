@@ -731,6 +731,62 @@ class NfeController extends Controller
         }
     }
 
+    /**
+     * Dashboard "Quebra de Numeração": aponta buracos na sequência de números
+     * das NF-e/NFC-e emitidas pelo cliente no período — ver
+     * DocumentoFiscal::quebrasNumeracaoNfe.
+     */
+    public function quebrasNumeracao(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        try {
+            $resultado = DocumentoFiscal::quebrasNumeracaoNfe(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(['success' => true] + $resultado, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] quebrasNumeracao: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Dashboard "Limite do Simples": receita bruta de saída dos últimos 12 meses
+     * (a partir dos XMLs) x limite do regime, com projeção do ano — ver
+     * DocumentoFiscal::monitorLimiteSimples.
+     */
+    public function monitorLimiteSimples(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        try {
+            $resultado = DocumentoFiscal::monitorLimiteSimples(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(['success' => true] + $resultado, 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] monitorLimiteSimples: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
     // Limite de chaves por requisição de zip — bem acima do que qualquer cliente tem de
     // notas num período, só como proteção contra payloads absurdos (ver CofreFiscalController::MAX_ZIP,
     // que tem um limite próprio menor por filtrar sem seleção manual do usuário).

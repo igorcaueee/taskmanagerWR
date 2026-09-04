@@ -570,6 +570,109 @@
                 </div>
             </div>
 
+            {{-- Quebra de Numeração --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-list-ol text-brand mr-1.5"></i> Quebra de Numeração
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Buracos na sequência de números das NF-e / NFC-e <strong>emitidas</strong> pelo cliente no período, por série.
+                            Número sem nota pode ser inutilização não registrada, nota não declarada ou emissão em outra série/ambiente.
+                        </p>
+                    </div>
+                    <div id="dashQuebraResumo" class="hidden text-right shrink-0 text-xs leading-tight">
+                        <p class="font-semibold text-gray-700 dark:text-slate-200"><span id="dashQuebraMesLabel"></span></p>
+                        <p class="text-gray-500 dark:text-slate-400 mt-1"><span id="dashQuebraEmitidas"></span> emitidas &middot; <span id="dashQuebraFaltando" class="font-bold text-red-600 dark:text-red-400"></span> faltando</p>
+                    </div>
+                </div>
+
+                <div id="dashQuebraLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Conferindo a numeração...</p>
+                </div>
+
+                <div id="dashQuebraVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Nenhuma NF-e / NFC-e emitida pelo cliente no período.</p>
+                </div>
+
+                <div id="dashQuebraResultado" class="hidden">
+                    <div id="dashQuebraOk" class="hidden px-5 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
+                        <i class="fa-solid fa-circle-check text-emerald-500 text-xl mb-1"></i>
+                        <p>Numeração sequencial sem buracos em todas as séries do período.</p>
+                    </div>
+                    <ul id="dashQuebraLista" class="m-0 p-0 divide-y divide-gray-100 dark:divide-slate-700/50" style="list-style:none;margin:0;padding:0"></ul>
+                </div>
+            </div>
+
+            {{-- Limite do Simples --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-gauge-high text-brand mr-1.5"></i> Limite do Simples / MEI
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Receita bruta de saída dos últimos 12 meses (a partir dos XMLs sincronizados) contra o limite do regime, com
+                            projeção do ano. Estimativa — não substitui o PGDAS e não inclui NFS-e.
+                        </p>
+                    </div>
+                    <div id="dashLimiteResumo" class="hidden text-right shrink-0 text-xs leading-tight">
+                        <p class="font-semibold text-gray-700 dark:text-slate-200">RBT12 até <span id="dashLimiteMesRef"></span></p>
+                        <p class="text-gray-500 dark:text-slate-400 mt-1"><span id="dashLimiteRegime"></span></p>
+                    </div>
+                </div>
+
+                <div id="dashLimiteLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Somando a receita...</p>
+                </div>
+
+                <div id="dashLimiteVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Sem notas de saída nos últimos 12 meses.</p>
+                </div>
+
+                <div id="dashLimiteResultado" class="hidden p-5 space-y-4">
+                    <div>
+                        <div class="flex items-end justify-between mb-1">
+                            <span id="dashLimiteValor" class="text-2xl font-bold text-gray-900 dark:text-white tabular-nums"></span>
+                            <span id="dashLimitePct" class="text-sm font-semibold"></span>
+                        </div>
+                        <div class="h-3 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden">
+                            <div id="dashLimiteBarra" class="h-full rounded-full transition-all" style="width:0%"></div>
+                        </div>
+                        <p id="dashLimiteLegenda" class="text-xs text-gray-500 dark:text-slate-400 mt-1"></p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                        <div class="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2">
+                            <p class="text-gray-500 dark:text-slate-400">Receita no ano (RBA)</p>
+                            <p id="dashLimiteRba" class="text-sm font-bold text-gray-900 dark:text-white tabular-nums mt-0.5"></p>
+                        </div>
+                        <div class="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2">
+                            <p class="text-gray-500 dark:text-slate-400">Projeção do ano</p>
+                            <p id="dashLimiteProjecao" class="text-sm font-bold text-gray-900 dark:text-white tabular-nums mt-0.5"></p>
+                        </div>
+                        <div class="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2">
+                            <p class="text-gray-500 dark:text-slate-400">Limite do regime</p>
+                            <p id="dashLimiteLimite" class="text-sm font-bold text-gray-900 dark:text-white tabular-nums mt-0.5"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2">Receita mês a mês (12 meses)</p>
+                        <div id="dashLimiteMeses" class="flex items-end gap-1 h-24"></div>
+                    </div>
+                </div>
+            </div>
+
             </div>
         </div>
         {{-- /#abaDashboards --}}
@@ -1897,12 +2000,18 @@
         .map(id => document.getElementById(id));
     const dashDifalEstados = ['dashDifalLoading', 'dashDifalVazio', 'dashDifalResultado']
         .map(id => document.getElementById(id));
+    const dashQuebraEstados = ['dashQuebraLoading', 'dashQuebraVazio', 'dashQuebraResultado']
+        .map(id => document.getElementById(id));
+    const dashLimiteEstados = ['dashLimiteLoading', 'dashLimiteVazio', 'dashLimiteResultado']
+        .map(id => document.getElementById(id));
 
     const dashMostrar = (estados, id) => estados.forEach(el => el.classList.toggle('hidden', el.id !== id));
     const dashFornSimplesMostrar = id => dashMostrar(dashFornSimplesEstados, id);
     const dashProdVendidosMostrar = id => dashMostrar(dashProdVendidosEstados, id);
     const dashInterestMostrar = id => dashMostrar(dashInterestEstados, id);
     const dashDifalMostrar = id => dashMostrar(dashDifalEstados, id);
+    const dashQuebraMostrar = id => dashMostrar(dashQuebraEstados, id);
+    const dashLimiteMostrar = id => dashMostrar(dashLimiteEstados, id);
 
     function formatarCnpj(doc) {
         const s = String(doc || '').replace(/\D/g, '');
@@ -2133,6 +2242,141 @@
         return d.innerHTML;
     }
 
+    // Comprime uma lista de inteiros em faixas: [3,4,5,9] -> "3 a 5, 9"
+    function comprimirFaixas(nums) {
+        if (!nums.length) return '';
+        const out = [];
+        let ini = nums[0], ant = nums[0];
+        for (let i = 1; i < nums.length; i++) {
+            if (nums[i] === ant + 1) { ant = nums[i]; continue; }
+            out.push(ini === ant ? `${ini}` : `${ini} a ${ant}`);
+            ini = ant = nums[i];
+        }
+        out.push(ini === ant ? `${ini}` : `${ini} a ${ant}`);
+        return out.join(', ');
+    }
+
+    const TIPO_DOC_LABEL = { nfe: 'NF-e', nfce: 'NFC-e', cte: 'CT-e' };
+
+    function renderQuebra(dados) {
+        const resumo = document.getElementById('dashQuebraResumo');
+
+        if (!dados.totalEmitidas) {
+            resumo.classList.add('hidden');
+            dashQuebraMostrar('dashQuebraVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+        document.getElementById('dashQuebraMesLabel').textContent = dados.periodo || '';
+        document.getElementById('dashQuebraEmitidas').textContent = dados.totalEmitidas;
+        document.getElementById('dashQuebraFaltando').textContent = dados.totalFaltando;
+
+        const lista = document.getElementById('dashQuebraLista');
+        const ok = document.getElementById('dashQuebraOk');
+        lista.innerHTML = '';
+
+        const comBuraco = (dados.series || []).filter(s => s.qtdFaltando > 0 || (s.duplicados || []).length > 0);
+
+        if (comBuraco.length === 0) {
+            ok.classList.remove('hidden');
+        } else {
+            ok.classList.add('hidden');
+            comBuraco.forEach(s => {
+                const faixas = comprimirFaixas(s.faltando || []);
+                const truncou = s.qtdFaltando > (s.faltando || []).length;
+                const li = document.createElement('li');
+                li.className = 'px-5 py-3';
+                li.innerHTML = `
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <span class="text-sm font-medium text-gray-800 dark:text-slate-200">
+                            ${TIPO_DOC_LABEL[s.tipo] || s.tipo} &middot; série ${escaparHtml(s.serie)}
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-slate-400">nº ${s.menor}–${s.maior} &middot; ${s.emitidas} emitidas</span>
+                    </div>
+                    ${s.qtdFaltando > 0 ? `
+                    <p class="text-xs text-red-600 dark:text-red-400 mt-1">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>${s.qtdFaltando} número(s) sem nota: <span class="font-mono">${escaparHtml(faixas)}${truncou ? ' …' : ''}</span>
+                    </p>` : ''}
+                    ${(s.duplicados || []).length ? `
+                    <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        <i class="fa-solid fa-clone mr-1"></i>Número(s) repetido(s): <span class="font-mono">${escaparHtml(comprimirFaixas(s.duplicados))}</span>
+                    </p>` : ''}`;
+                lista.appendChild(li);
+            });
+        }
+
+        dashQuebraMostrar('dashQuebraResultado');
+    }
+
+    const LIMITE_STATUS = {
+        ok:         { cls: 'bg-emerald-500', txt: 'text-emerald-600 dark:text-emerald-400' },
+        atencao:    { cls: 'bg-amber-500',   txt: 'text-amber-600 dark:text-amber-400' },
+        tolerancia: { cls: 'bg-orange-500',  txt: 'text-orange-600 dark:text-orange-400' },
+        estouro:    { cls: 'bg-red-600',     txt: 'text-red-600 dark:text-red-400' },
+        sem_limite: { cls: 'bg-[#0084aa]',   txt: 'text-gray-500 dark:text-slate-400' },
+    };
+
+    function renderLimite(dados) {
+        const resumo = document.getElementById('dashLimiteResumo');
+
+        if (!(dados.meses || []).some(m => m.valor > 0)) {
+            resumo.classList.add('hidden');
+            dashLimiteMostrar('dashLimiteVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+
+        const st = LIMITE_STATUS[dados.status] || LIMITE_STATUS.sem_limite;
+        const mesRefFmt = dados.mesReferencia ? dados.mesReferencia.split('-').reverse().join('/') : '';
+
+        document.getElementById('dashLimiteMesRef').textContent = mesRefFmt;
+        document.getElementById('dashLimiteRegime').textContent = dados.regime || 'Regime não informado';
+        document.getElementById('dashLimiteValor').textContent = formatarMoeda(dados.rbt12 || 0);
+        document.getElementById('dashLimiteRba').textContent = formatarMoeda(dados.rba || 0);
+        document.getElementById('dashLimiteProjecao').textContent = formatarMoeda(dados.projecaoAno || 0);
+        document.getElementById('dashLimiteLimite').textContent = dados.limite ? formatarMoeda(dados.limite) : '—';
+
+        const pctEl = document.getElementById('dashLimitePct');
+        const barra = document.getElementById('dashLimiteBarra');
+        const legenda = document.getElementById('dashLimiteLegenda');
+
+        if (dados.percentual != null) {
+            pctEl.textContent = `${dados.percentual.toLocaleString('pt-BR')}% do limite`;
+            pctEl.className = `text-sm font-semibold ${st.txt}`;
+            barra.style.width = `${Math.min(100, dados.percentual)}%`;
+            barra.className = `h-full rounded-full transition-all ${st.cls}`;
+            const msgs = {
+                ok: 'Dentro do limite.',
+                atencao: 'Acima de 80% do limite — acompanhar de perto.',
+                tolerancia: 'Ultrapassou o limite (dentro da tolerância) — exclusão no ano seguinte.',
+                estouro: 'Limite estourado — risco de exclusão retroativa do regime.',
+            };
+            legenda.textContent = msgs[dados.status] || '';
+            legenda.className = `text-xs mt-1 ${st.txt}`;
+        } else {
+            pctEl.textContent = '';
+            barra.style.width = '0%';
+            legenda.textContent = 'Cliente não é Simples Nacional / MEI — sem limite de receita aplicável. Valores mostrados apenas como acompanhamento de faturamento.';
+            legenda.className = 'text-xs text-gray-500 dark:text-slate-400 mt-1';
+        }
+
+        const wrap = document.getElementById('dashLimiteMeses');
+        wrap.innerHTML = '';
+        const maxMes = Math.max(...dados.meses.map(m => m.valor), 1);
+        dados.meses.forEach(m => {
+            const alt = Math.max(2, Math.round(m.valor / maxMes * 100));
+            const col = document.createElement('div');
+            col.className = 'flex-1 flex flex-col items-center gap-1 min-w-0';
+            col.title = `${m.mes.split('-').reverse().join('/')}: ${formatarMoeda(m.valor)}`;
+            col.innerHTML = `
+                <div class="w-full bg-[#0084aa]/70 dark:bg-[#0084aa] rounded-t" style="height:${alt}%"></div>
+                <span class="text-[10px] text-gray-400 dark:text-slate-500 truncate w-full text-center">${m.mes.slice(5)}/${m.mes.slice(2, 4)}</span>`;
+            wrap.appendChild(col);
+        });
+
+        dashLimiteMostrar('dashLimiteResultado');
+    }
+
     function pintarInterest() {
         if (!interestDados) return;
 
@@ -2244,6 +2488,8 @@
         dashProdVendidosMostrar('dashProdVendidosLoading');
         dashInterestMostrar('dashInterestLoading');
         dashDifalMostrar('dashDifalLoading');
+        dashQuebraMostrar('dashQuebraLoading');
+        dashLimiteMostrar('dashLimiteLoading');
     }
 
     async function gerarDashboards() {
@@ -2259,6 +2505,8 @@
             carregarDash('{{ route('nfe.dashboards.produtos-vendidos') }}', renderProdVendidos, dashProdVendidosMostrar, 'dashProdVendidos', clienteId),
             carregarDash('{{ route('nfe.dashboards.interestadual') }}', renderInterest, dashInterestMostrar, 'dashInterest', clienteId),
             carregarDash('{{ route('nfe.dashboards.auditoria-difal') }}', renderDifal, dashDifalMostrar, 'dashDifal', clienteId),
+            carregarDash('{{ route('nfe.dashboards.quebra-numeracao') }}', renderQuebra, dashQuebraMostrar, 'dashQuebra', clienteId),
+            carregarDash('{{ route('nfe.dashboards.limite-simples') }}', renderLimite, dashLimiteMostrar, 'dashLimite', clienteId),
         ]);
     }
 
