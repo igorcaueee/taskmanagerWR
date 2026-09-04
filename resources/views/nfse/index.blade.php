@@ -210,6 +210,11 @@
                             <i class="fa-solid fa-file-excel"></i>
                             <span id="btnExportarExcelLabel">Exportar Excel</span>
                         </button>
+                        <button type="button" id="btnVerificarPlanilha"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                            <i class="fa-solid fa-file-circle-check"></i>
+                            Verificar manual com planilha
+                        </button>
                     </div>
                 </div>
 
@@ -1066,6 +1071,196 @@
             Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
         } finally {
             resetarBotaoExcel(labelOriginal);
+        }
+    });
+
+    // ─── Verificar manual com planilha ──────────────────────────────────────
+    const btnVerificarPlanilha = document.getElementById('btnVerificarPlanilha');
+
+    function formatarMoeda(valor) {
+        return (Number(valor) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatarDataBr(iso) {
+        if (!iso) return '-';
+        const [ano, mes, dia] = iso.split('-');
+        return dia ? `${dia}/${mes}/${ano}` : iso;
+    }
+
+    const LABEL_DIVERGENCIA = {
+        ausente_sistema: 'Só na planilha (não encontrada no sistema)',
+        ausente_planilha: 'Só no sistema (não encontrada na planilha)',
+        situacao_divergente: 'Situação divergente',
+        data_divergente: 'Achada, mas com data diferente',
+    };
+    const LABEL_LADO = { emitida: 'Emitida', recebida: 'Recebida' };
+
+    async function conciliarUmaPlanilha(arquivo, tipo, notasParaComparar, cnpjCliente) {
+        const dadosForm = new FormData();
+        dadosForm.append('arquivo', arquivo);
+        dadosForm.append('tipo', tipo);
+        dadosForm.append('cnpj_cliente', cnpjCliente);
+        dadosForm.append('notas', JSON.stringify(notasParaComparar));
+
+        const resp = await fetch('/nfse/conciliar-planilha', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF },
+            body: dadosForm,
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            throw new Error(data.error ?? `Falha ao comparar a planilha de notas ${tipo === 'emitida' ? 'emitidas' : 'recebidas'}.`);
+        }
+        return data;
+    }
+
+    btnVerificarPlanilha.addEventListener('click', async function () {
+        if (!notasAtuais.length) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Busque as NFS-e do período antes de comparar com a planilha.' });
+            return;
+        }
+
+        if (!cnpjClienteAtual) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Não foi possível identificar o CNPJ da empresa selecionada.' });
+            return;
+        }
+
+        const { value: arquivos } = await Swal.fire({
+            title: 'Verificar manual com planilha',
+            html: `
+                <div class="text-left text-sm flex flex-col gap-3">
+                    <p class="text-xs text-gray-500">
+                        A comparação usa as <b>${notasAtuais.length}</b> nota(s) já buscadas na tela, casando
+                        por CNPJ/CPF da contraparte, data de emissão e valor. Envie uma ou as duas planilhas
+                        (o sistema traz notas emitidas e recebidas juntas).
+                    </p>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Planilha de notas EMITIDAS (.xlsx)</label>
+                        <input type="file" id="swalPlanilhaEmitida" accept=".xlsx,.xls" class="swal2-file" style="width:100%;margin:0;display:block;">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Planilha de notas RECEBIDAS/tomadas (.xlsx)</label>
+                        <input type="file" id="swalPlanilhaRecebida" accept=".xlsx,.xls" class="swal2-file" style="width:100%;margin:0;display:block;">
+                    </div>
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Comparar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0084aa',
+            preConfirm: () => {
+                const emitida  = document.getElementById('swalPlanilhaEmitida').files[0] ?? null;
+                const recebida = document.getElementById('swalPlanilhaRecebida').files[0] ?? null;
+                if (!emitida && !recebida) {
+                    Swal.showValidationMessage('Selecione pelo menos uma planilha.');
+                    return false;
+                }
+                return { emitida, recebida };
+            },
+        });
+
+        if (!arquivos) {
+            return;
+        }
+
+        Swal.fire({
+            title: 'Comparando notas...',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+        });
+
+        const notasParaComparar = notasAtuais.map(n => ({
+            dataEmissao:   n.dataEmissao,
+            tomadorDoc:    n.tomadorDoc,
+            tomadorNome:   n.tomadorNome,
+            cnpjPrestador: n.cnpjPrestador,
+            prestadorNome: n.prestadorNome,
+            valorServico:  n.valorServico,
+            status:        n.status,
+        }));
+
+        try {
+            const resultados = [];
+            if (arquivos.emitida) {
+                resultados.push(await conciliarUmaPlanilha(arquivos.emitida, 'emitida', notasParaComparar, cnpjClienteAtual));
+            }
+            if (arquivos.recebida) {
+                resultados.push(await conciliarUmaPlanilha(arquivos.recebida, 'recebida', notasParaComparar, cnpjClienteAtual));
+            }
+
+            const conciliadas   = resultados.reduce((acc, r) => acc + (r.conciliadas ?? 0), 0);
+            const divergencias  = resultados.flatMap(r => r.divergencias ?? []);
+
+            const blocosTotais = resultados.map(r => {
+                const tp = r.totais?.planilha ?? {};
+                const ts = r.totais?.sistema ?? {};
+                return `
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-2">
+                            <p class="font-semibold text-gray-600 dark:text-slate-300 mb-1">Planilha (${LABEL_LADO[r.tipo]})</p>
+                            <p>Ativas: <b>${tp.ativas ?? 0}</b> — ${formatarMoeda(tp.valorAtivas)}</p>
+                            <p>Canceladas: <b>${tp.canceladas ?? 0}</b> — ${formatarMoeda(tp.valorCanceladas)}</p>
+                        </div>
+                        <div class="border border-gray-200 dark:border-slate-600 rounded-lg p-2">
+                            <p class="font-semibold text-gray-600 dark:text-slate-300 mb-1">Sistema (${LABEL_LADO[r.tipo]})</p>
+                            <p>Ativas: <b>${ts.ativas ?? 0}</b> — ${formatarMoeda(ts.valorAtivas)}</p>
+                            <p>Canceladas: <b>${ts.canceladas ?? 0}</b> — ${formatarMoeda(ts.valorCanceladas)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const linhasDivergencias = divergencias.length
+                ? divergencias.map(d => `
+                    <tr class="border-b border-gray-100 dark:border-slate-700">
+                        <td class="px-3 py-2 text-xs" style="white-space:nowrap;">${LABEL_LADO[d.lado] ?? '-'}</td>
+                        <td class="px-3 py-2 text-xs" style="white-space:nowrap;">${LABEL_DIVERGENCIA[d.tipo] ?? d.tipo}</td>
+                        <td class="px-3 py-2 text-xs" style="white-space:nowrap;">${formatarDataBr(d.data)}</td>
+                        <td class="px-3 py-2 text-xs">${d.nome ?? '-'}</td>
+                        <td class="px-3 py-2 text-xs text-right" style="white-space:nowrap;">${d.valor != null ? formatarMoeda(d.valor) : '-'}</td>
+                        <td class="px-3 py-2 text-xs" style="white-space:nowrap;">${d.statusPlanilha ?? '-'}</td>
+                        <td class="px-3 py-2 text-xs" style="white-space:nowrap;">${d.statusSistema ?? '-'}</td>
+                    </tr>
+                `).join('')
+                : `<tr><td colspan="7" class="px-3 py-4 text-center text-xs text-gray-400">Nenhuma divergência encontrada — planilha e sistema batem.</td></tr>`;
+
+            Swal.fire({
+                title: 'Resultado da conciliação',
+                width: 800,
+                html: `
+                    <div class="text-left text-sm flex flex-col gap-3">
+                        ${blocosTotais}
+                        <p class="text-xs text-gray-600 dark:text-slate-300">
+                            <b>${conciliadas}</b> nota(s) conciliada(s) sem divergência.
+                            ${divergencias.length ? `<span class="text-amber-600 dark:text-amber-400 font-semibold">${divergencias.length} divergência(s) encontrada(s).</span>` : ''}
+                        </p>
+                        <div class="max-h-[28rem] overflow-auto border border-gray-200 dark:border-slate-600 rounded-lg">
+                            <table class="text-xs" style="width:100%; min-width:900px; border-collapse:collapse;">
+                                <thead class="sticky top-0 bg-gray-50 dark:bg-slate-700">
+                                    <tr class="text-left text-gray-500 dark:text-slate-400">
+                                        <th class="px-3 py-2" style="white-space:nowrap;">Lado</th>
+                                        <th class="px-3 py-2" style="white-space:nowrap;">Divergência</th>
+                                        <th class="px-3 py-2" style="white-space:nowrap;">Data</th>
+                                        <th class="px-3 py-2" style="min-width:260px;">Contraparte</th>
+                                        <th class="px-3 py-2 text-right" style="white-space:nowrap;">Valor</th>
+                                        <th class="px-3 py-2" style="white-space:nowrap;">Planilha</th>
+                                        <th class="px-3 py-2" style="white-space:nowrap;">Sistema</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${linhasDivergencias}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `,
+                width: '95vw',
+                customClass: { popup: 'swal-wide-conciliacao' },
+                confirmButtonText: 'Fechar',
+                confirmButtonColor: '#0084aa',
+            });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Erro', text: e.message ?? 'Erro de comunicação com o servidor.' });
         }
     });
 

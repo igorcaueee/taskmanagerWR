@@ -11,6 +11,8 @@ use App\Services\NfseXmlParser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use ZipArchive;
 
 class NfseController extends Controller
@@ -490,5 +492,294 @@ class NfseController extends Controller
 
             return response()->json(['error' => 'Não foi possível gerar o DANFSe: ' . $e->getMessage()], 500);
         }
+    }
+
+    // ─── Conciliação manual com planilha externa ──────────────────────────────
+
+    /**
+     * Compara uma planilha externa (ex.: relatório de outro sistema/contador)
+     * com as NFS-e já buscadas no período pelo usuário (recebidas do front-end,
+     * já que NFS-e não é persistida em banco). O casamento é feito por
+     * CNPJ/CPF da contraparte + data de emissão + valor do serviço.
+     *
+     * O sistema traz tanto notas EMITIDAS pelo cliente (ele é o prestador) quanto
+     * RECEBIDAS (ele é o tomador de serviço de terceiros) — cada planilha do
+     * usuário cobre só um lado, então o parâmetro `tipo` seleciona qual metade
+     * das notas do sistema entra na comparação e qual layout de coluna ler:
+     *
+     * tipo=emitida (planilha de notas prestadas pelo cliente, sem cabeçalho):
+     *   A = data de emissão | B = "CNPJ/CPF - Nome do tomador" | C = competência
+     *   (ignorado) | D = município/UF (ignorado) | E = valor do serviço |
+     *   F = situação ("NFS-e emitida" / "NFS-e cancelada").
+     *
+     * tipo=recebida (planilha de notas tomadas pelo cliente — sem coluna de
+     * situação nem município, já que quem cancela é o prestador terceiro):
+     *   A = data de emissão | B = "CNPJ/CPF - Nome do prestador" | C = competência
+     *   (ignorado) | D = valor do serviço.
+     */
+    public function conciliarPlanilha(Request $request): JsonResponse
+    {
+        $request->validate([
+            'arquivo'     => ['required', 'file', 'mimes:xlsx,xls', 'max:5120'],
+            'notas'       => ['required', 'string'],
+            'cnpj_cliente' => ['required', 'string'],
+            'tipo'        => ['required', 'in:emitida,recebida'],
+        ]);
+
+        $tipo         = $request->input('tipo');
+        $cnpjCliente  = preg_replace('/\D/', '', $request->input('cnpj_cliente'));
+        $notasSistema = json_decode($request->input('notas'), true);
+        if (!is_array($notasSistema)) {
+            return response()->json(['error' => 'Lista de notas do sistema inválida.'], 422);
+        }
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('arquivo')->getRealPath());
+            $sheet       = $spreadsheet->getActiveSheet();
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Não foi possível ler o arquivo: ' . $e->getMessage()], 422);
+        }
+
+        $rows = [];
+        foreach ($sheet->getRowIterator() as $row) {
+            $rowData = [];
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+            foreach ($cellIterator as $cell) {
+                $value = $cell->getValue();
+                if (Date::isDateTime($cell) && is_numeric($value)) {
+                    $value = Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
+                }
+                $rowData[] = $value;
+            }
+            $rows[] = $rowData;
+        }
+
+        // Planilha de "emitida" tem situação na coluna F (idx 5) e valor na E (idx 4);
+        // "recebida" não tem situação/município — valor cai na coluna D (idx 3).
+        $idxValor     = $tipo === 'emitida' ? 4 : 3;
+        $temSituacao  = $tipo === 'emitida';
+
+        $planilha = [];
+        foreach ($rows as $row) {
+            $dataRaw     = $row[0] ?? null;
+            $situacaoRaw = $temSituacao ? trim((string) ($row[5] ?? '')) : '';
+
+            // Ignora rodapé de totais e linhas em branco.
+            if (!$dataRaw || ($temSituacao && $situacaoRaw === '')) {
+                continue;
+            }
+
+            $docNome = (string) ($row[1] ?? '');
+            $partes  = explode(' - ', $docNome, 2);
+            $doc     = preg_replace('/\D/', '', $partes[0] ?? '');
+            $nome    = trim($partes[1] ?? $docNome);
+
+            $data = preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $dataRaw)
+                ? substr((string) $dataRaw, 0, 10)
+                : null;
+
+            if (!$data || $doc === '') {
+                continue;
+            }
+
+            $valorRaw = $row[$idxValor] ?? 0;
+            $valor    = is_numeric($valorRaw)
+                ? (float) $valorRaw
+                : (float) str_replace(['.', ','], ['', '.'], (string) $valorRaw);
+
+            if ($valor <= 0) {
+                continue;
+            }
+
+            $planilha[] = [
+                'data'      => $data,
+                'doc'       => $doc,
+                'nome'      => $nome,
+                'valor'     => $valor,
+                'cancelada' => $temSituacao && str_contains(mb_strtolower($situacaoRaw), 'cancelad'),
+            ];
+        }
+
+        if (empty($planilha)) {
+            return response()->json(['error' => 'Nenhuma linha válida encontrada na planilha.'], 422);
+        }
+
+        // Filtra as notas do sistema pro lado certo (emitida: prestador === cliente;
+        // recebida: prestador !== cliente) e casa o doc da planilha com o campo
+        // correspondente (tomador na emitida, prestador na recebida).
+        $poolSistema = [];
+        foreach (array_values($notasSistema) as $n) {
+            $cnpjPrestador = preg_replace('/\D/', '', (string) ($n['cnpjPrestador'] ?? ''));
+            $ehEmitida     = $cnpjPrestador !== '' && $cnpjPrestador === $cnpjCliente;
+            $ehRecebida    = $cnpjPrestador !== '' && $cnpjPrestador !== $cnpjCliente;
+
+            if (($tipo === 'emitida' && !$ehEmitida) || ($tipo === 'recebida' && !$ehRecebida)) {
+                continue;
+            }
+
+            $docContraparte = $tipo === 'emitida'
+                ? preg_replace('/\D/', '', (string) ($n['tomadorDoc'] ?? ''))
+                : $cnpjPrestador;
+
+            $poolSistema[] = [
+                'nota'      => $n,
+                'doc'       => $docContraparte,
+                'data'      => substr((string) ($n['dataEmissao'] ?? ''), 0, 10),
+                'valor'     => round((float) ($n['valorServico'] ?? 0), 2),
+                'cancelada' => ($n['status'] ?? '') === 'CANCELADA',
+                'usada'     => false,
+            ];
+        }
+
+        $conciliadas   = 0;
+        $divergencias  = [];
+
+        foreach ($planilha as $item) {
+            $valorItem = round($item['valor'], 2);
+            // Casa primeiro por CNPJ/CPF + valor (chave forte). A data do sistema é
+            // dhProc (processamento no ADN), que pode não bater com a "data de
+            // emissão" da planilha do contador por causa de fuso/lote de
+            // processamento — por isso NÃO entra como critério bloqueante, só
+            // como desempate (prioriza o candidato com data mais próxima) e como
+            // divergência informativa quando não bate.
+            $match          = null;
+            $melhorDistancia = null;
+
+            foreach ($poolSistema as $i => $candidato) {
+                if ($candidato['usada']) {
+                    continue;
+                }
+                if ($candidato['doc'] !== $item['doc'] || abs($candidato['valor'] - $valorItem) >= 0.01) {
+                    continue;
+                }
+
+                $distancia = $candidato['data'] && $item['data']
+                    ? abs(strtotime($candidato['data']) - strtotime($item['data']))
+                    : PHP_INT_MAX;
+
+                if ($match === null || $distancia < $melhorDistancia) {
+                    $match           = $i;
+                    $melhorDistancia = $distancia;
+                }
+            }
+
+            if ($match === null) {
+                $divergencias[] = [
+                    'tipo'           => 'ausente_sistema',
+                    'lado'           => $tipo,
+                    'data'           => $item['data'],
+                    'doc'            => $item['doc'],
+                    'nome'           => $item['nome'],
+                    'valor'          => $item['valor'],
+                    'statusPlanilha' => $item['cancelada'] ? 'CANCELADA' : 'EMITIDA',
+                    'statusSistema'  => null,
+                ];
+                continue;
+            }
+
+            $poolSistema[$match]['usada'] = true;
+
+            // A planilha de "recebida" não tem coluna de situação — não há como
+            // saber se está cancelada, então só compara se o item existe (não
+            // aponta divergência de status pra esse lado).
+            if ($temSituacao && $poolSistema[$match]['cancelada'] !== $item['cancelada']) {
+                $divergencias[] = [
+                    'tipo'           => 'situacao_divergente',
+                    'lado'           => $tipo,
+                    'data'           => $item['data'],
+                    'doc'            => $item['doc'],
+                    'nome'           => $item['nome'],
+                    'valor'          => $item['valor'],
+                    'statusPlanilha' => $item['cancelada'] ? 'CANCELADA' : 'EMITIDA',
+                    'statusSistema'  => $poolSistema[$match]['cancelada'] ? 'CANCELADA' : 'EMITIDA',
+                ];
+                continue;
+            }
+
+            // Achou o par certo por doc+valor, mas a data diverge de verdade
+            // (mais de 1 dia) — sinaliza pra revisão sem tratar como ausente.
+            if ($melhorDistancia !== PHP_INT_MAX && $melhorDistancia > 86400) {
+                $divergencias[] = [
+                    'tipo'           => 'data_divergente',
+                    'lado'           => $tipo,
+                    'data'           => $item['data'],
+                    'doc'            => $item['doc'],
+                    'nome'           => $item['nome'],
+                    'valor'          => $item['valor'],
+                    'statusPlanilha' => $item['data'] ? date('d/m/Y', strtotime($item['data'])) : null,
+                    'statusSistema'  => $poolSistema[$match]['data'] ? date('d/m/Y', strtotime($poolSistema[$match]['data'])) : null,
+                ];
+            }
+
+            $conciliadas++;
+        }
+
+        // Notas ativas no sistema que sobraram sem casar com nenhuma linha da planilha.
+        foreach ($poolSistema as $candidato) {
+            if ($candidato['usada'] || $candidato['cancelada']) {
+                continue;
+            }
+            $n = $candidato['nota'];
+            $divergencias[] = [
+                'tipo'           => 'ausente_planilha',
+                'lado'           => $tipo,
+                'data'           => $candidato['data'],
+                'doc'            => $candidato['doc'],
+                'nome'           => $tipo === 'emitida' ? ($n['tomadorNome'] ?? null) : ($n['prestadorNome'] ?? null),
+                'valor'          => $n['valorServico'] ?? null,
+                'statusPlanilha' => null,
+                'statusSistema'  => 'EMITIDA',
+            ];
+        }
+
+        $somaAtivasPlanilha = 0;
+        $qtdAtivasPlanilha  = 0;
+        $somaCanceladasPlanilha = 0;
+        $qtdCanceladasPlanilha  = 0;
+        foreach ($planilha as $item) {
+            if ($item['cancelada']) {
+                $qtdCanceladasPlanilha++;
+                $somaCanceladasPlanilha += $item['valor'];
+            } else {
+                $qtdAtivasPlanilha++;
+                $somaAtivasPlanilha += $item['valor'];
+            }
+        }
+
+        $somaAtivasSistema = 0;
+        $qtdAtivasSistema  = 0;
+        $somaCanceladasSistema = 0;
+        $qtdCanceladasSistema  = 0;
+        foreach ($poolSistema as $candidato) {
+            if ($candidato['cancelada']) {
+                $qtdCanceladasSistema++;
+                $somaCanceladasSistema += $candidato['nota']['valorServico'] ?? 0;
+            } else {
+                $qtdAtivasSistema++;
+                $somaAtivasSistema += $candidato['nota']['valorServico'] ?? 0;
+            }
+        }
+
+        return response()->json([
+            'success'      => true,
+            'tipo'         => $tipo,
+            'conciliadas'  => $conciliadas,
+            'divergencias' => $divergencias,
+            'totais'       => [
+                'planilha' => [
+                    'ativas'           => $qtdAtivasPlanilha,
+                    'valorAtivas'      => round($somaAtivasPlanilha, 2),
+                    'canceladas'       => $qtdCanceladasPlanilha,
+                    'valorCanceladas'  => round($somaCanceladasPlanilha, 2),
+                ],
+                'sistema' => [
+                    'ativas'           => $qtdAtivasSistema,
+                    'valorAtivas'      => round($somaAtivasSistema, 2),
+                    'canceladas'       => $qtdCanceladasSistema,
+                    'valorCanceladas'  => round($somaCanceladasSistema, 2),
+                ],
+            ],
+        ]);
     }
 }

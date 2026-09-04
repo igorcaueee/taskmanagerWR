@@ -400,6 +400,7 @@ Route::middleware('auth')->prefix('nfse')->name('nfse.')->group(function () {
     Route::get('/certificado/{clienteId}/download', [NfseController::class, 'downloadCertificado'])->name('certificado.download');
     Route::post('/exportar-excel', [NfseController::class, 'exportarExcel'])->name('exportar-excel');
     Route::post('/exportar-excel-nsus', [NfseController::class, 'exportarExcelNsus'])->name('exportar-excel-nsus');
+    Route::post('/conciliar-planilha', [NfseController::class, 'conciliarPlanilha'])->name('conciliar-planilha');
 
     // Emissão de NFS-e
     Route::get('/consultar-cnpj/{cnpj}', [NfseEmissaoController::class, 'consultarCnpjTomador'])->name('consultar-cnpj')->where('cnpj', '[0-9./-]+');

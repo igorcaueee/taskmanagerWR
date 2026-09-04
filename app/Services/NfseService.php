@@ -775,15 +775,18 @@ XML;
             // "Data e Hora da emissão da NFS-e" e que deve valer para o filtro/exibição.
             $dhEmi = $get('dhProc') ?: ($get('dhEmi') ?: $get('DataEmissao'));
 
-            // Tomador: nome
-            $tomadorNome = $get('xNome');
-
-            // Tomador: documento (CNPJ ou CPF dentro do bloco tomador)
+            // Tomador: nome e documento (CNPJ ou CPF) — o schema nacional usa a tag
+            // <toma> (não <tomador>/<Tomador>, que nunca aparecem no XML real e
+            // faziam essa extração retornar sempre vazio). Mantém os nomes antigos
+            // como fallback para variantes municipais mais velhas (ABRASF).
+            $tomadorNome = trim((string) ($obj->xpath(
+                "//*[local-name()='toma' or local-name()='tomador' or local-name()='Tomador' or local-name()='TomadorServico']/*[local-name()='xNome']"
+            )[0] ?? ''));
             $tomadorCnpj = trim((string) ($obj->xpath(
-                "//*[local-name()='tomador' or local-name()='Tomador']//*[local-name()='CNPJ']"
+                "//*[local-name()='toma' or local-name()='tomador' or local-name()='Tomador' or local-name()='TomadorServico']//*[local-name()='CNPJ']"
             )[0] ?? ''));
             $tomadorCpf = trim((string) ($obj->xpath(
-                "//*[local-name()='tomador' or local-name()='Tomador']//*[local-name()='CPF']"
+                "//*[local-name()='toma' or local-name()='tomador' or local-name()='Tomador' or local-name()='TomadorServico']//*[local-name()='CPF']"
             )[0] ?? ''));
 
             // Valor: tenta campos em ordem de prioridade
