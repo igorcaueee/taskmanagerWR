@@ -56,6 +56,16 @@ class CteIntegracaoRsService
     // para o motivo (evitar timeout de proxy/CDN numa sincronização longa).
     const MAX_LOTES_POR_CHUNK = 12;
 
+    // Retentativas da requisição SOAP em falha de rede transitória — ver
+    // NfeIntegracaoRsService::TENTATIVAS_REDE (mesma infra SVRS, mesmos picos).
+    const TENTATIVAS_REDE = 3;
+
+    const PAUSA_ENTRE_TENTATIVAS_SEGUNDOS = 5;
+
+    // cURL errnos transitórios: 28 timeout, 7 couldn't connect, 35 SSL connect,
+    // 52 empty reply, 55 send failure, 56 recv failure.
+    const CURL_ERROS_TRANSITORIOS = [7, 28, 35, 52, 55, 56];
+
     /**
      * Sincroniza uma fatia (chunk) dos CT-e novos de um cliente (CNPJ), a
      * partir do NSU indicado (ou do último salvo, se omitido), para a tabela
@@ -369,9 +379,7 @@ XML;
         // Mesma exigência do webservice de NF-e RS: sem espaço/quebra de linha entre tags.
         $envelope = trim(preg_replace('/>\s+</', '><', $envelope));
 
-        $ch = curl_init();
-
-        curl_setopt_array($ch, [
+        $opcoes = [
             CURLOPT_URL            => $endpoint,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $envelope,
@@ -386,21 +394,46 @@ XML;
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/soap+xml; charset=utf-8; action="' . self::SOAP_ACTION . '"',
             ],
-        ]);
+        ];
 
-        $resposta  = curl_exec($ch);
-        $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        $curlErrNo = curl_errno($ch);
-        unset($ch);
+        $tentativa = 0;
 
-        Log::info('[CT-e RS] requisicaoSoap: resposta recebida', [
-            'httpCode'   => $httpCode,
-            'curlErrNo'  => $curlErrNo,
-            'curlError'  => $curlError ?: null,
-            'bodyLen'    => is_string($resposta) ? strlen($resposta) : 'false',
-            'bodySample' => is_string($resposta) ? substr($resposta, 0, 1500) : null,
-        ]);
+        do {
+            $tentativa++;
+
+            $ch = curl_init();
+            curl_setopt_array($ch, $opcoes);
+            $resposta  = curl_exec($ch);
+            $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            $curlErrNo = curl_errno($ch);
+            curl_close($ch);
+
+            Log::info('[CT-e RS] requisicaoSoap: resposta recebida', [
+                'tentativa'  => $tentativa,
+                'httpCode'   => $httpCode,
+                'curlErrNo'  => $curlErrNo,
+                'curlError'  => $curlError ?: null,
+                'bodyLen'    => is_string($resposta) ? strlen($resposta) : 'false',
+                'bodySample' => is_string($resposta) ? substr($resposta, 0, 1500) : null,
+            ]);
+
+            $transitorio = ($resposta === false && in_array($curlErrNo, self::CURL_ERROS_TRANSITORIOS, true))
+                || (is_int($httpCode) && $httpCode >= 500);
+
+            if ($transitorio && $tentativa < self::TENTATIVAS_REDE) {
+                Log::warning('[CT-e RS] requisicaoSoap: falha transitória, retentando', [
+                    'tentativa' => $tentativa,
+                    'curlErrNo' => $curlErrNo,
+                    'httpCode'  => $httpCode,
+                ]);
+                sleep(self::PAUSA_ENTRE_TENTATIVAS_SEGUNDOS);
+
+                continue;
+            }
+
+            break;
+        } while (true);
 
         if ($resposta === false) {
             throw new \RuntimeException("Falha na conexão (cURL #{$curlErrNo}): {$curlError}");

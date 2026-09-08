@@ -75,7 +75,7 @@
             <canvas id="chartPorHora"></canvas>
         </div>
         <p class="text-xs text-gray-400 mt-2">
-            Barras dentro da faixa vermelha (07:00–18:30, dias úteis) indicam rotina invadindo o horário comercial — considere adiar o início ou reduzir a janela da reconsulta.
+            Barras dentro da faixa vermelha (08:00–17:30, dias úteis) indicam rotina invadindo o horário comercial — considere adiar o início ou reduzir a janela da reconsulta.
         </p>
     </div>
 

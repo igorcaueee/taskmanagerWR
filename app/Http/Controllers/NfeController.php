@@ -79,8 +79,8 @@ class NfeController extends Controller
         // normal (fiscal:sincronizar-notas-rs) começa 18:30 e se auto-corta
         // às 07:00; o de reconsulta (fiscal:reconsultar-notas-rs) começa 07:15
         // e não tem corte — é ele que costuma vazar pro horário comercial.
-        $expedienteInicio = 7;   // 07:00
-        $expedienteFim = 18.5;   // 18:30
+        $expedienteInicio = 8;    // 08:00
+        $expedienteFim = 17.5;    // 17:30
 
         $registros = SincronizacaoFiscalRs::query()
             ->where('executado_em', '>=', $desde)

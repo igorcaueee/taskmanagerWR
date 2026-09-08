@@ -52,6 +52,18 @@ class NfeIntegracaoRsService
     // para o motivo (evitar timeout de proxy/CDN numa sincronização longa).
     const MAX_LOTES_POR_CHUNK = 12;
 
+    // Retentativas da requisição SOAP em falha de rede transitória (a SEFAZ-RS
+    // tem picos de lentidão/indisponibilidade de poucos minutos, principalmente
+    // no início da noite — ver requisicaoSoap). Não retenta erro de regra de
+    // negócio (cStat) nem certificado (HTTP 496), só rede.
+    const TENTATIVAS_REDE = 3;
+
+    const PAUSA_ENTRE_TENTATIVAS_SEGUNDOS = 5;
+
+    // cURL errnos transitórios: 28 timeout, 7 couldn't connect, 35 SSL connect,
+    // 52 empty reply, 55 send failure, 56 recv failure.
+    const CURL_ERROS_TRANSITORIOS = [7, 28, 35, 52, 55, 56];
+
     /**
      * Sincroniza uma fatia (chunk) de um único modelo (NF-e ou NFC-e) de um
      * cliente (CNPJ), a partir do NSU indicado (ou do último salvo daquele
@@ -479,9 +491,7 @@ XML;
         // mas precisa ser compactado antes de ir para a rede.
         $envelope = trim(preg_replace('/>\s+</', '><', $envelope));
 
-        $ch = curl_init();
-
-        curl_setopt_array($ch, [
+        $opcoes = [
             CURLOPT_URL            => $endpoint,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $envelope,
@@ -500,21 +510,48 @@ XML;
                 'Content-Type: text/xml; charset=utf-8',
                 'SOAPAction: "' . self::SOAP_ACTION . '"',
             ],
-        ]);
+        ];
 
-        $resposta  = curl_exec($ch);
-        $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        $curlErrNo = curl_errno($ch);
-        unset($ch);
+        $tentativa = 0;
 
-        Log::debug('[NF-e RS] requisicaoSoap: resposta recebida', [
-            'httpCode'   => $httpCode,
-            'curlErrNo'  => $curlErrNo,
-            'curlError'  => $curlError ?: null,
-            'bodyLen'    => is_string($resposta) ? strlen($resposta) : 'false',
-            'bodySample' => is_string($resposta) ? substr($resposta, 0, 1500) : null,
-        ]);
+        do {
+            $tentativa++;
+
+            $ch = curl_init();
+            curl_setopt_array($ch, $opcoes);
+            $resposta  = curl_exec($ch);
+            $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            $curlErrNo = curl_errno($ch);
+            curl_close($ch);
+
+            Log::debug('[NF-e RS] requisicaoSoap: resposta recebida', [
+                'tentativa'  => $tentativa,
+                'httpCode'   => $httpCode,
+                'curlErrNo'  => $curlErrNo,
+                'curlError'  => $curlError ?: null,
+                'bodyLen'    => is_string($resposta) ? strlen($resposta) : 'false',
+                'bodySample' => is_string($resposta) ? substr($resposta, 0, 1500) : null,
+            ]);
+
+            // Falha de rede transitória (ou HTTP 5xx do webservice) — a SEFAZ-RS
+            // costuma normalizar em poucos minutos; retenta antes de desistir.
+            $transitorio = ($resposta === false && in_array($curlErrNo, self::CURL_ERROS_TRANSITORIOS, true))
+                || (is_int($httpCode) && $httpCode >= 500);
+
+            if ($transitorio && $tentativa < self::TENTATIVAS_REDE) {
+                Log::warning('[NF-e RS] requisicaoSoap: falha transitória, retentando', [
+                    'tentativa' => $tentativa,
+                    'curlErrNo' => $curlErrNo,
+                    'httpCode'  => $httpCode,
+                ]);
+                sleep(self::PAUSA_ENTRE_TENTATIVAS_SEGUNDOS);
+
+                continue;
+            }
+
+            break;
+        } while (true);
 
         if ($resposta === false) {
             throw new \RuntimeException("Falha na conexão (cURL #{$curlErrNo}): {$curlError}");
