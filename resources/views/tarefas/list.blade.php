@@ -284,6 +284,10 @@
                     {{-- Column header --}}
                     <div class="flex items-center gap-2 px-3 py-2.5 rounded-t-xl"
                          style="background-color: {{ $etapa->cor ?? '#6b7280' }}1a; border-bottom: 2px solid {{ $etapa->cor ?? '#6b7280' }}">
+                        <input type="checkbox"
+                               class="kanban-select-all hidden w-4 h-4 rounded border-gray-300 text-brand accent-[#0084aa] cursor-pointer flex-shrink-0"
+                               data-etapa-id="{{ $etapa->id }}"
+                               title="Selecionar todas as tarefas desta etapa">
                         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $etapa->cor ?? '#6b7280' }}"></span>
                         <span class="font-semibold text-sm text-gray-800 dark:text-slate-200">{{ $etapa->nome }}</span>
                         <span class="ml-auto text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-600 rounded-full px-2 py-0.5 kanban-count" data-etapa="{{ $etapa->id }}">
@@ -334,6 +338,9 @@
     }
     #kanban-board.select-mode .kanban-select-checkbox {
         display: block;
+    }
+    #kanban-board.select-mode .kanban-select-all {
+        display: inline-block;
     }
     .kanban-card-nova {
         animation: kanban-card-piscar 0.85s ease-in-out infinite;
@@ -1292,6 +1299,7 @@
         if (!ativo) {
             selecionadas.clear();
             document.querySelectorAll('.kanban-select-checkbox').forEach(cb => { cb.checked = false; });
+            document.querySelectorAll('.kanban-select-all').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
             atualizarContagemSelecao();
         }
     });
@@ -1300,11 +1308,37 @@
         document.getElementById('btn-toggle-selecao').click();
     });
 
+    function sincronizarSelecaoEtapa(etapaId) {
+        const coluna = document.querySelector(`.kanban-column[data-etapa-id="${etapaId}"]`);
+        const selectAll = document.querySelector(`.kanban-select-all[data-etapa-id="${etapaId}"]`);
+        if (!coluna || !selectAll) { return; }
+        const checkboxes = [...coluna.querySelectorAll('.kanban-select-checkbox')];
+        const marcadas = checkboxes.filter(cb => cb.checked).length;
+        selectAll.checked = checkboxes.length > 0 && marcadas === checkboxes.length;
+        selectAll.indeterminate = marcadas > 0 && marcadas < checkboxes.length;
+    }
+
     document.addEventListener('change', (e) => {
         const cb = e.target.closest('.kanban-select-checkbox');
-        if (!cb) { return; }
-        if (cb.checked) { selecionadas.add(cb.dataset.tarefaId); } else { selecionadas.delete(cb.dataset.tarefaId); }
-        atualizarContagemSelecao();
+        if (cb) {
+            if (cb.checked) { selecionadas.add(cb.dataset.tarefaId); } else { selecionadas.delete(cb.dataset.tarefaId); }
+            const coluna = cb.closest('.kanban-column');
+            if (coluna) { sincronizarSelecaoEtapa(coluna.dataset.etapaId); }
+            atualizarContagemSelecao();
+            return;
+        }
+
+        const selectAll = e.target.closest('.kanban-select-all');
+        if (selectAll) {
+            const coluna = document.querySelector(`.kanban-column[data-etapa-id="${selectAll.dataset.etapaId}"]`);
+            if (!coluna) { return; }
+            coluna.querySelectorAll('.kanban-select-checkbox').forEach(cb => {
+                cb.checked = selectAll.checked;
+                if (selectAll.checked) { selecionadas.add(cb.dataset.tarefaId); } else { selecionadas.delete(cb.dataset.tarefaId); }
+            });
+            selectAll.indeterminate = false;
+            atualizarContagemSelecao();
+        }
     });
 
     document.getElementById('btn-bulk-transferir').addEventListener('click', async () => {
