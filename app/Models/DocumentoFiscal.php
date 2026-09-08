@@ -19,6 +19,7 @@ class DocumentoFiscal extends Model
         'data_emissao',
         'emitente_nome',
         'emitente_doc',
+        'destinatario_doc',
         'valor',
         'situacao',
         'tp_nf',
@@ -44,6 +45,52 @@ class DocumentoFiscal extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    protected static function booted(): void
+    {
+        // Deriva o destinatario_doc a partir do xml_content sempre que o XML muda e
+        // a coluna ainda não está preenchida — assim todos os caminhos de gravação
+        // (distribuição nacional, RS, CT-e, upload manual no Cofre Fiscal) ganham o
+        // campo sem precisar tocar em cada parser. O parse do XML acontece uma única
+        // vez, na escrita, não a cada leitura da tela.
+        static::saving(function (DocumentoFiscal $doc) {
+            if (empty($doc->destinatario_doc) && $doc->isDirty('xml_content') && ! empty($doc->xml_content)) {
+                $doc->destinatario_doc = self::extrairDestinatarioDoc($doc->xml_content);
+            }
+        });
+    }
+
+    /**
+     * Extrai o CNPJ/CPF (só dígitos) do grupo <dest> do XML da NF-e/CT-e. Retorna
+     * null para resumos (resNFe/resCTe) e eventos, que não têm <dest>.
+     */
+    public static function extrairDestinatarioDoc(?string $xml): ?string
+    {
+        if ($xml === null || ! str_contains($xml, '<dest')) {
+            return null;
+        }
+
+        try {
+            libxml_use_internal_errors(true);
+            $obj = new \SimpleXMLElement($xml);
+            $dest = $obj->xpath("//*[local-name()='dest']")[0] ?? null;
+
+            if ($dest === null) {
+                return null;
+            }
+
+            $doc = trim((string) ($dest->xpath(".//*[local-name()='CNPJ']")[0] ?? ''))
+                ?: trim((string) ($dest->xpath(".//*[local-name()='CPF']")[0] ?? ''));
+
+            $doc = preg_replace('/\D/', '', $doc);
+
+            return $doc !== '' ? $doc : null;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[NF-e] extrairDestinatarioDoc: falha ao processar XML', ['msg' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /**
@@ -162,6 +209,40 @@ class DocumentoFiscal extends Model
             .'ELSE COALESCE(data_saida_entrada, data_emissao) END';
 
         return [$dataEfetiva, $clienteCnpj];
+    }
+
+    /**
+     * Impede que notas próprias de OUTRO estabelecimento do mesmo CNPJ raiz
+     * (matriz x filial) apareçam na consulta do estabelecimento selecionado.
+     *
+     * A distribuição de DF-e da Sefaz, quando consultada pela matriz, devolve
+     * também documentos emitidos pelas filiais (mesma raiz de 8 dígitos do
+     * CNPJ). Esses ficam gravados sob o cliente que rodou a busca. Aqui, na
+     * leitura, removemos qualquer nota emitida por um estabelecimento irmão
+     * (mesma raiz, sufixo diferente) — as compras (emitente terceiro) e as
+     * notas do próprio estabelecimento continuam aparecendo.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     */
+    public static function filtrarEstabelecimento($query, string $clienteCnpj): void
+    {
+        $clienteCnpj = preg_replace('/\D/', '', $clienteCnpj);
+
+        if (strlen($clienteCnpj) !== 14) {
+            return; // CPF (produtor rural) não tem matriz/filial
+        }
+
+        $emitenteDigitos = "REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '')";
+
+        $query->where(function ($q) use ($emitenteDigitos, $clienteCnpj) {
+            $q->whereNull('emitente_doc')
+                ->orWhereRaw("{$emitenteDigitos} = ?", [$clienteCnpj])
+                ->orWhereRaw("LEFT({$emitenteDigitos}, 8) <> ?", [substr($clienteCnpj, 0, 8)])
+                // Nota de outra raiz de CNPJ é compra de terceiro (mantém). Mesma raiz
+                // com sufixo diferente só fica se o destinatário for o próprio
+                // estabelecimento selecionado (ex.: matriz compra da própria filial).
+                ->orWhere('destinatario_doc', $clienteCnpj);
+        });
     }
 
     /**
@@ -1058,9 +1139,13 @@ class DocumentoFiscal extends Model
     {
         [$dataEfetiva, $clienteCnpj] = self::dataEfetivaSql($clienteId);
 
-        return static::where('cliente_id', $clienteId)
+        $query = static::where('cliente_id', $clienteId)
             ->where('tipo', $tipo)
-            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim])
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim]);
+
+        self::filtrarEstabelecimento($query, $clienteCnpj);
+
+        return $query
             ->orderByRaw($dataEfetiva, [$clienteCnpj])
             ->orderBy('id');
     }
@@ -1098,6 +1183,8 @@ class DocumentoFiscal extends Model
             ->whereIn('tipo', $tipos)
             ->when($origens, fn ($q) => $q->whereIn('origem', $origens))
             ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$clienteCnpj, $dataInicio, $dataFim]);
+
+        self::filtrarEstabelecimento($query, $clienteCnpj);
 
         $total = (clone $query)->count();
 

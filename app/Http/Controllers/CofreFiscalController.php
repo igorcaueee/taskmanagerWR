@@ -648,14 +648,17 @@ class CofreFiscalController extends Controller
         if ($request->filled('cliente_id')) {
             $query->where('cliente_id', $request->integer('cliente_id'));
 
-            if ($request->filled('direcao')) {
-                $cnpj = preg_replace('/[.\-\/\s]/', '', Cliente::find($request->integer('cliente_id'))?->cpfcnpj ?? '');
+            $cnpj = preg_replace('/[.\-\/\s]/', '', Cliente::find($request->integer('cliente_id'))?->cpfcnpj ?? '');
 
-                if ($cnpj !== '') {
-                    $request->input('direcao') === 'saida'
-                        ? $query->where('emitente_doc', $cnpj)
-                        : $query->where('emitente_doc', '!=', $cnpj);
-                }
+            // Não misturar matriz x filial (mesma raiz de CNPJ) — ver DocumentoFiscal::filtrarEstabelecimento.
+            if ($cnpj !== '') {
+                DocumentoFiscal::filtrarEstabelecimento($query, $cnpj);
+            }
+
+            if ($request->filled('direcao') && $cnpj !== '') {
+                $request->input('direcao') === 'saida'
+                    ? $query->where('emitente_doc', $cnpj)
+                    : $query->where('emitente_doc', '!=', $cnpj);
             }
         }
 
