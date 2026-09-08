@@ -69,9 +69,102 @@ class NfeController extends Controller
     {
         abort_if(! auth()->user()?->canConfigurarCertificadoContabilidade(), 403);
 
+        // Janela de análise das métricas (o histórico completo tem dezenas de
+        // milhares de linhas; as métricas só olham os últimos N dias).
+        $dias = (int) $request->integer('dias', 14);
+        $dias = max(1, min($dias, 90));
+        $desde = Carbon::today()->subDays($dias - 1);
+
+        // Faixa que NÃO pode ser invadida pelas rotinas (expediente). O cron
+        // normal (fiscal:sincronizar-notas-rs) começa 18:30 e se auto-corta
+        // às 07:00; o de reconsulta (fiscal:reconsultar-notas-rs) começa 07:15
+        // e não tem corte — é ele que costuma vazar pro horário comercial.
+        $expedienteInicio = 7;   // 07:00
+        $expedienteFim = 18.5;   // 18:30
+
+        $registros = SincronizacaoFiscalRs::query()
+            ->where('executado_em', '>=', $desde)
+            ->get(['fase', 'status', 'mensagem_erro', 'cliente_id', 'executado_em']);
+
+        $ehBackfill = fn ($fase) => str_ends_with((string) $fase, '_backfill');
+        $dentroExpediente = function (Carbon $dt) use ($expedienteInicio, $expedienteFim) {
+            if ($dt->isWeekend()) {
+                return false;
+            }
+            $h = $dt->hour + $dt->minute / 60;
+
+            return $h >= $expedienteInicio && $h < $expedienteFim;
+        };
+
+        // Cards de resumo
+        $resumo = [
+            'total' => $registros->count(),
+            'sucesso' => $registros->where('status', 'sucesso')->count(),
+            'erro' => $registros->where('status', 'erro')->count(),
+            'no_expediente' => $registros->filter(fn ($r) => $dentroExpediente($r->executado_em))->count(),
+            'clientes' => $registros->pluck('cliente_id')->unique()->count(),
+        ];
+
+        // Histograma por hora do dia (0–23), separando cron normal x reconsulta
+        $porHora = [];
+        for ($h = 0; $h < 24; $h++) {
+            $porHora[$h] = ['hora' => $h, 'normal' => 0, 'backfill' => 0];
+        }
+        foreach ($registros as $r) {
+            $porHora[$r->executado_em->hour][$ehBackfill($r->fase) ? 'backfill' : 'normal']++;
+        }
+        $porHora = array_values($porHora);
+
+        // Execuções agrupadas por dia + tipo de rotina (janela de execução,
+        // volume e o quanto invadiu o expediente)
+        $porDia = $registros
+            ->groupBy(fn ($r) => $r->executado_em->toDateString().'|'.($ehBackfill($r->fase) ? 'backfill' : 'normal'))
+            ->map(function ($grupo, $chave) use ($dentroExpediente) {
+                [$data, $tipo] = explode('|', $chave);
+                $inicio = $grupo->min('executado_em');
+                $fim = $grupo->max('executado_em');
+
+                return [
+                    'data' => Carbon::parse($data),
+                    'tipo' => $tipo,
+                    'inicio' => $inicio,
+                    'fim' => $fim,
+                    'duracao_min' => $inicio->diffInMinutes($fim),
+                    'total' => $grupo->count(),
+                    'erros' => $grupo->where('status', 'erro')->count(),
+                    'clientes' => $grupo->pluck('cliente_id')->unique()->count(),
+                    'no_expediente' => $grupo->filter(fn ($r) => $dentroExpediente($r->executado_em))->count(),
+                ];
+            })
+            ->sortByDesc(fn ($l) => $l['data']->toDateString().$l['tipo'])
+            ->values();
+
+        // Erros mais frequentes no período
+        $errosAgrupados = $registros->where('status', 'erro')
+            ->groupBy(fn ($r) => \Illuminate\Support\Str::limit((string) $r->mensagem_erro, 160))
+            ->map(fn ($g, $msg) => [
+                'mensagem' => $msg,
+                'total' => $g->count(),
+                'ultimo_em' => $g->max('executado_em'),
+            ])
+            ->sortByDesc('total')
+            ->take(10)
+            ->values();
+
+        // Clientes elegíveis que estão há mais tempo sem sincronizar (ou nunca)
+        $clientesPendentes = Cliente::where('status', 'ativo')
+            ->where('importar_notas_fiscais', true)
+            ->withMax('sincronizacoesFiscaisRs as ultima_sincronizacao', 'executado_em')
+            ->orderByRaw('ultima_sincronizacao is null desc, ultima_sincronizacao asc')
+            ->limit(10)
+            ->get(['id', 'nome']);
+
+        // Tabela detalhada (paginada) — mantém os filtros
         $sincronizacoes = SincronizacaoFiscalRs::with('cliente')
             ->when($request->filled('cliente_id'), fn ($q) => $q->where('cliente_id', $request->get('cliente_id')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->get('status')))
+            ->when($request->get('tipo') === 'normal', fn ($q) => $q->where('fase', 'not like', '%\_backfill'))
+            ->when($request->get('tipo') === 'backfill', fn ($q) => $q->where('fase', 'like', '%\_backfill'))
             ->orderByDesc('executado_em')
             ->paginate(30)
             ->withQueryString();
@@ -81,7 +174,10 @@ class NfeController extends Controller
             ->orderBy('nome')
             ->get(['id', 'nome']);
 
-        return view('nfe.sincronizacao-rs', compact('sincronizacoes', 'clientes'));
+        return view('nfe.sincronizacao-rs', compact(
+            'sincronizacoes', 'clientes', 'dias', 'desde', 'resumo', 'porHora',
+            'porDia', 'errosAgrupados', 'clientesPendentes', 'expedienteInicio', 'expedienteFim'
+        ));
     }
 
     /**
