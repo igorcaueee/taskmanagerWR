@@ -77,14 +77,17 @@ class NfseExport
             'V' => 'Valor Servico (vServ)',
             'W' => 'Valor Total Retencoes (R$) (vTotalRet)',
             'X' => 'Valor Liquido (R$) (vLiq)',
-            'Y' => 'Consulta Publica da NFS-e (infNFSe)',
+            'Y' => 'Codigo de Tributacao Nacional (cTribNac)',
+            'Z' => 'Descricao do Servico (xDescServ)',
+            'AA' => 'Codigo NBS (cNBS)',
+            'AB' => 'Consulta Publica da NFS-e (infNFSe)',
         ];
 
         foreach ($headers as $col => $label) {
             $sheet->setCellValue("{$col}1", $label);
         }
 
-        $sheet->getStyle('A1:Y1')->applyFromArray([
+        $sheet->getStyle('A1:AB1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F3864']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
@@ -124,14 +127,17 @@ class NfseExport
                 'V'  => $nota['vServ'],
                 'W'  => $nota['vTotalRet'],
                 'X'  => $nota['vLiq'],
-                'Y'  => $nota['chaveAcesso'],
+                'Y'  => $nota['cTribNac'] ?? '-',
+                'Z'  => $nota['xDescServ'] ?? '-',
+                'AA' => $nota['cNBS'] ?? '-',
+                'AB' => $nota['chaveAcesso'],
             ];
 
             foreach ($values as $col => $value) {
                 $sheet->setCellValue("{$col}{$row}", $value);
             }
 
-            $sheet->getStyle("A{$row}:Y{$row}")->applyFromArray([
+            $sheet->getStyle("A{$row}:AB{$row}")->applyFromArray([
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
             ]);
@@ -145,7 +151,7 @@ class NfseExport
 
         // Bordas na tabela completa
         if (count($notas)) {
-            $sheet->getStyle("A1:Y" . ($row - 1))->applyFromArray([
+            $sheet->getStyle("A1:AB" . ($row - 1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -163,7 +169,7 @@ class NfseExport
             'M' => 16, 'N' => 12, 'O' => 18, 'P' => 14,
             'Q' => 16, 'R' => 30, 'S' => 16, 'T' => 16,
             'U' => 16, 'V' => 16, 'W' => 20, 'X' => 16,
-            'Y' => 50,
+            'Y' => 20, 'Z' => 50, 'AA' => 16, 'AB' => 50,
         ];
         foreach ($widths as $col => $w) {
             $sheet->getColumnDimension($col)->setWidth($w);
