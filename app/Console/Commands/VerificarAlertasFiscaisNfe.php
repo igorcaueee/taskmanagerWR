@@ -25,10 +25,10 @@ class VerificarAlertasFiscaisNfe extends Command
     }
 
     /**
-     * Mesma lógica de "quem recebe a tarefa automática" usada em
-     * certificados:verificar — não existe (ainda) um campo de responsável
-     * fiscal por cliente, então cai numa usuária fixa como criadora/responsável
-     * padrão. Ajuste aqui se isso mudar.
+     * A Silvia é só a "usuária robô": entra como criadora (criado_por) das
+     * tarefas automáticas. O responsável de fato é o supervisor do departamento
+     * Fiscal, que redistribui os achados no quadro. Não existe (ainda) um campo
+     * de responsável fiscal por cliente.
      */
     public function handle(): int
     {
@@ -52,16 +52,30 @@ class VerificarAlertasFiscaisNfe extends Command
             return self::FAILURE;
         }
 
-        $departamentoId = Departamento::where('nome', 'Fiscal')->value('id')
-            ?? $silvia->departamento_id
-            ?? Departamento::where('nome', 'Recepção')->value('id')
-            ?? Departamento::orderBy('id')->value('id');
+        $departamentoId = Departamento::where('nome', 'Fiscal')->value('id');
 
         if (! $departamentoId) {
-            $this->error('Nenhum departamento cadastrado.');
+            $this->error('Departamento "Fiscal" não encontrado — cadastre-o antes de rodar as auditorias.');
 
             return self::FAILURE;
         }
+
+        // Responsável = supervisor do Fiscal; se não houver, primeiro usuário
+        // ativo do departamento; em último caso a própria Silvia (para a tarefa
+        // não ficar sem responsável e sumir do quadro).
+        $responsavel = Usuario::where('departamento_id', $departamentoId)
+            ->where('status', true)
+            ->whereIn('cargo', ['supervisor', 'supervisor_geral'])
+            ->orderBy('id')
+            ->first()
+            ?? Usuario::where('departamento_id', $departamentoId)
+                ->where('status', true)
+                ->orderBy('id')
+                ->first()
+            ?? $silvia;
+
+        $responsavelId = $responsavel->id;
+        $this->line("Responsável das tarefas: {$responsavel->nome} (departamento Fiscal).");
 
         $hoje = Carbon::today();
         $inicioMes = $hoje->copy()->startOfMonth()->toDateString();
@@ -98,8 +112,23 @@ class VerificarAlertasFiscaisNfe extends Command
                 ->first();
 
             if ($tarefaExistente) {
+                $mudancas = [];
+
                 if ($tarefaExistente->descricao !== $descricao) {
-                    $tarefaExistente->update(['descricao' => $descricao]);
+                    $mudancas['descricao'] = $descricao;
+                }
+
+                // Reaponta pro Fiscal as tarefas que caíram fora do departamento
+                // (ex.: na Silvia robô). Não mexe se já está com alguém do Fiscal
+                // — preserva a redistribuição feita à mão pelo supervisor.
+                $respAtual = $tarefaExistente->responsavel;
+                if (! $respAtual || (int) $respAtual->departamento_id !== (int) $departamentoId) {
+                    $mudancas['responsavel_id'] = $responsavelId;
+                    $mudancas['departamento_id'] = $departamentoId;
+                }
+
+                if ($mudancas !== []) {
+                    $tarefaExistente->update($mudancas);
                     $atualizadas++;
                 }
 
@@ -114,7 +143,7 @@ class VerificarAlertasFiscaisNfe extends Command
                 'cliente_id' => $cliente->id,
                 'departamento_id' => $departamentoId,
                 'etapa_id' => $etapa->id,
-                'responsavel_id' => $silvia->id,
+                'responsavel_id' => $responsavelId,
                 'criado_por' => $silvia->id,
                 'data_vencimento' => $hoje->copy()->addDays(3),
                 'prioridade' => 2,
