@@ -415,6 +415,7 @@ class PgdasdService
         $receitasAtividade = [];
 
         foreach ($linhasDaAtividade as $atividade) {
+            $isencoes = [];
             $reducoes = [];
             $qualificacoesTributarias = [];
 
@@ -469,17 +470,34 @@ class PgdasdService
                     continue;
                 }
 
-                if ($tributo->tipo_ajuste === 'isencao' || $tributo->tipo_ajuste === 'reducao') {
-                    // "isencao" = redução de 100% (a tela não pede percentual pra
-                    // esse caso, ver renderTributoCell no das.blade.php) — a API
-                    // rejeita percentualReducao=0 como inválido (confirmado em
+                if ($tributo->tipo_ajuste === 'isencao') {
+                    // ALTERADO 2026-09-10 a pedido do contador: "isenção" passa a ir
+                    // para o array "isencoes" de verdade (antes era convertida em
+                    // "redução de 100%", o que fazia a declaração emitida imprimir
+                    // "Redução de ICMS ... 100,00%" em vez de isenção — a
+                    // classificação formal ficava divergindo do que o operador
+                    // escolheu na tela). A rejeição MSG_ISN_008 documentada
+                    // anteriormente era com identificador=8 (tabela "Qualificação
+                    // Tributária"), que estava errado e já foi corrigido; aqui o
+                    // identificador é o da tabela "Identificador de isenção/redução"
+                    // (1=Normal, 2=Cesta básica), default 1. Revalidar na próxima
+                    // transmissão real; se a API recusar, reverter para o bloco
+                    // "reducao" abaixo com percentualReducao=100.
+                    $isencoes[] = [
+                        'codTributo' => $tributo->cod_tributo,
+                        'valor' => round((float) $tributo->valor, 2),
+                        'identificador' => $tributo->identificador_isencao ?? 1,
+                    ];
+                }
+
+                if ($tributo->tipo_ajuste === 'reducao') {
+                    // a API rejeita percentualReducao=0 como inválido (confirmado em
                     // produção 2026-08-03, MSG_ISN_008 "Campo 'reducao/
-                    // percentualReducao' inválido"), então mandamos 100 fixo
-                    // pra isenção em vez do 0 que vinha de percentual_reducao nulo.
+                    // percentualReducao' inválido").
                     $reducoes[] = [
                         'codTributo' => $tributo->cod_tributo,
                         'valor' => round((float) $tributo->valor, 2),
-                        'percentualReducao' => $tributo->tipo_ajuste === 'isencao' ? 100.0 : (float) ($tributo->percentual_reducao ?? 0),
+                        'percentualReducao' => (float) ($tributo->percentual_reducao ?? 0),
                         'identificador' => $tributo->identificador_isencao ?? 1,
                     ];
                 }
@@ -487,7 +505,7 @@ class PgdasdService
 
             $receitasAtividade[] = [
                 'valor' => round((float) $atividade->valor, 2),
-                'isencoes' => [],
+                'isencoes' => $isencoes,
                 'reducoes' => $reducoes,
                 'qualificacoesTributarias' => $qualificacoesTributarias,
             ];
