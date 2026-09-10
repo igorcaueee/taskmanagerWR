@@ -370,6 +370,53 @@
 
             <div id="dashCards" class="hidden space-y-4">
 
+            {{-- Notas por dia --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between flex-wrap gap-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            <i class="fa-solid fa-chart-column text-brand mr-1.5"></i> Notas por dia
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Quantidade de NF-e / NFC-e / CT-e (não canceladas) por dia do período buscado, pela mesma data
+                            usada na aba Documentos. Dias sem nota aparecem como barra vazia.
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-end gap-2 shrink-0">
+                        <div class="inline-flex rounded-lg border border-gray-200 dark:border-slate-600 overflow-hidden text-xs">
+                            <button type="button" data-metrica="total" class="btn-notasdia-metrica px-3 py-1.5 font-semibold bg-brand text-white">Total</button>
+                            <button type="button" data-metrica="entradas" class="btn-notasdia-metrica px-3 py-1.5 font-semibold bg-white dark:bg-slate-700 text-gray-500 dark:text-slate-300 border-l border-gray-200 dark:border-slate-600">Entradas</button>
+                            <button type="button" data-metrica="saidas" class="btn-notasdia-metrica px-3 py-1.5 font-semibold bg-white dark:bg-slate-700 text-gray-500 dark:text-slate-300 border-l border-gray-200 dark:border-slate-600">Saídas</button>
+                        </div>
+                        <div id="dashNotasDiaResumo" class="hidden text-right text-xs leading-tight">
+                            <p class="font-semibold text-gray-700 dark:text-slate-200" id="dashNotasDiaMesLabel"></p>
+                            <p class="text-gray-500 dark:text-slate-400 mt-1">
+                                <span id="dashNotasDiaTotal" class="font-bold text-[#0084aa]"></span> notas
+                                &nbsp;·&nbsp; média <span id="dashNotasDiaMedia" class="font-bold text-[#0084aa]"></span>/dia
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashNotasDiaLoading" class="hidden h-40 flex flex-col items-center justify-center text-[#0084aa]">
+                    <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Contando as notas...</p>
+                </div>
+
+                <div id="dashNotasDiaVazio" class="hidden h-40 flex flex-col items-center justify-center text-gray-400 dark:text-slate-600 px-6 text-center">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 opacity-40"></i>
+                    <p class="text-sm">Nenhuma nota no período.</p>
+                </div>
+
+                <div id="dashNotasDiaResultado" class="hidden p-5">
+                    <div id="dashNotasDiaGrafico" class="flex items-stretch gap-px h-40"></div>
+                    <p id="dashNotasDiaPico" class="hidden text-xs text-gray-500 dark:text-slate-400 mt-3"></p>
+                </div>
+            </div>
+
             {{-- Top Fornecedores (Simples Nacional) --}}
             <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between gap-4">
@@ -1992,6 +2039,8 @@
     const dashAviso = document.getElementById('dashAviso');
     const dashCards = document.getElementById('dashCards');
 
+    const dashNotasDiaEstados = ['dashNotasDiaLoading', 'dashNotasDiaVazio', 'dashNotasDiaResultado']
+        .map(id => document.getElementById(id));
     const dashFornSimplesEstados = ['dashFornSimplesLoading', 'dashFornSimplesVazio', 'dashFornSimplesResultado']
         .map(id => document.getElementById(id));
     const dashProdVendidosEstados = ['dashProdVendidosLoading', 'dashProdVendidosVazio', 'dashProdVendidosResultado']
@@ -2006,6 +2055,7 @@
         .map(id => document.getElementById(id));
 
     const dashMostrar = (estados, id) => estados.forEach(el => el.classList.toggle('hidden', el.id !== id));
+    const dashNotasDiaMostrar = id => dashMostrar(dashNotasDiaEstados, id);
     const dashFornSimplesMostrar = id => dashMostrar(dashFornSimplesEstados, id);
     const dashProdVendidosMostrar = id => dashMostrar(dashProdVendidosEstados, id);
     const dashInterestMostrar = id => dashMostrar(dashInterestEstados, id);
@@ -2377,6 +2427,77 @@
         dashLimiteMostrar('dashLimiteResultado');
     }
 
+    let notasDiaDados = null;
+    let notasDiaMetrica = 'total';
+
+    function renderNotasDia(dados) {
+        notasDiaDados = dados;
+        const resumo = document.getElementById('dashNotasDiaResumo');
+
+        if (!dados.totalNotas) {
+            resumo.classList.add('hidden');
+            dashNotasDiaMostrar('dashNotasDiaVazio');
+            return;
+        }
+        resumo.classList.remove('hidden');
+
+        document.getElementById('dashNotasDiaMesLabel').textContent = dados.periodo || '';
+        document.getElementById('dashNotasDiaTotal').textContent = (dados.totalNotas || 0).toLocaleString('pt-BR');
+        document.getElementById('dashNotasDiaMedia').textContent = (dados.mediaDia || 0).toLocaleString('pt-BR');
+
+        pintarNotasDia();
+        dashNotasDiaMostrar('dashNotasDiaResultado');
+    }
+
+    function pintarNotasDia() {
+        if (!notasDiaDados) return;
+
+        const dias = notasDiaDados.dias || [];
+        const valorDe = d => notasDiaMetrica === 'entradas' ? d.entradas : notasDiaMetrica === 'saidas' ? d.saidas : d.total;
+        const max = Math.max(1, ...dias.map(valorDe));
+        const step = Math.max(1, Math.ceil(dias.length / 16));
+
+        const graf = document.getElementById('dashNotasDiaGrafico');
+        graf.innerHTML = '';
+        dias.forEach((d, i) => {
+            const v = valorDe(d);
+            const alt = v > 0 ? Math.max(3, Math.round(v / max * 100)) : 0;
+            const [, m, dd] = d.dia.split('-');
+            const col = document.createElement('div');
+            col.className = 'flex-1 flex flex-col justify-end items-center gap-1 min-w-0';
+            col.title = `${dd}/${m}: ${d.total} nota(s) — ${d.entradas} entrada(s), ${d.saidas} saída(s)`;
+            col.innerHTML = `
+                <div class="w-full bg-[#0084aa]/70 dark:bg-[#0084aa] rounded-t" style="height:${alt}%"></div>
+                <span class="text-[10px] text-gray-400 dark:text-slate-500 w-full text-center leading-none">${(i % step === 0 || i === dias.length - 1) ? dd : ''}</span>`;
+            graf.appendChild(col);
+        });
+
+        const pico = document.getElementById('dashNotasDiaPico');
+        if (notasDiaDados.diaPico) {
+            const [a, m, dd] = notasDiaDados.diaPico.dia.split('-');
+            pico.textContent = `Pico em ${dd}/${m}/${a} com ${notasDiaDados.diaPico.total} nota(s).`;
+            pico.classList.remove('hidden');
+        } else {
+            pico.classList.add('hidden');
+        }
+    }
+
+    document.querySelectorAll('.btn-notasdia-metrica').forEach(btn => {
+        btn.addEventListener('click', function () {
+            notasDiaMetrica = this.dataset.metrica;
+            document.querySelectorAll('.btn-notasdia-metrica').forEach(b => {
+                const ativo = b === this;
+                b.classList.toggle('bg-brand', ativo);
+                b.classList.toggle('text-white', ativo);
+                b.classList.toggle('bg-white', !ativo);
+                b.classList.toggle('dark:bg-slate-700', !ativo);
+                b.classList.toggle('text-gray-500', !ativo);
+                b.classList.toggle('dark:text-slate-300', !ativo);
+            });
+            pintarNotasDia();
+        });
+    });
+
     function pintarInterest() {
         if (!interestDados) return;
 
@@ -2484,6 +2605,7 @@
         if (!dashboardsLiberados) return;
         dashAviso.classList.add('hidden');
         dashCards.classList.remove('hidden');
+        dashNotasDiaMostrar('dashNotasDiaLoading');
         dashFornSimplesMostrar('dashFornSimplesLoading');
         dashProdVendidosMostrar('dashProdVendidosLoading');
         dashInterestMostrar('dashInterestLoading');
@@ -2501,6 +2623,7 @@
         dashCards.classList.remove('hidden');
 
         await Promise.all([
+            carregarDash('{{ route('nfe.dashboards.notas-por-dia') }}', renderNotasDia, dashNotasDiaMostrar, 'dashNotasDia', clienteId),
             carregarDash('{{ route('nfe.dashboards.fornecedores-simples') }}', renderFornSimples, dashFornSimplesMostrar, 'dashFornSimples', clienteId),
             carregarDash('{{ route('nfe.dashboards.produtos-vendidos') }}', renderProdVendidos, dashProdVendidosMostrar, 'dashProdVendidos', clienteId),
             carregarDash('{{ route('nfe.dashboards.interestadual') }}', renderInterest, dashInterestMostrar, 'dashInterest', clienteId),

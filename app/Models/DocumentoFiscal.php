@@ -296,6 +296,87 @@ class DocumentoFiscal extends Model
     }
 
     /**
+     * Contagem de documentos por dia do período, para o dashboard "Notas por dia"
+     * da aba Dashboards — gráfico de barras com um ponto por dia do intervalo
+     * buscado (o mesmo filtro de período da aba Documentos).
+     *
+     * Só SQL (GROUP BY pela "data efetiva", igual ao resto da tela — ver
+     * dataEfetivaSql / doPeriodo), NF-e + NFC-e + CT-e, não canceladas. Cada dia
+     * vem separado em entradas x saídas (saída = documento emitido pelo próprio
+     * cliente). O intervalo é preenchido dia a dia, então dias sem nota aparecem
+     * como barra zero.
+     *
+     * @return array{periodo: string, totalNotas: int, totalEntradas: int, totalSaidas: int, mediaDia: float, diaPico: ?array{dia: string, total: int}, dias: array<int, array{dia: string, entradas: int, saidas: int, total: int}>}
+     */
+    public static function contagemNotasPorDia(int $clienteId, string $dataInicio, string $dataFim): array
+    {
+        [, $clienteCnpj] = self::dataEfetivaSql($clienteId);
+
+        // Mesma "data efetiva" do resto da tela (ver dataEfetivaSql), mas com o
+        // CNPJ (só dígitos, origem interna) embutido — evita ter que casar a ordem
+        // de binds do CASE entre select / where / group by / order by.
+        $cnpjSql = $clienteCnpj !== '' ? "'".$clienteCnpj."'" : "''";
+        $emitenteDigitos = "REPLACE(REPLACE(REPLACE(emitente_doc, '.', ''), '/', ''), '-', '')";
+        $dataEfetiva = "CASE WHEN tipo = 'cte' THEN data_emissao "
+            ."WHEN {$emitenteDigitos} = {$cnpjSql} THEN data_emissao "
+            .'ELSE COALESCE(data_saida_entrada, data_emissao) END';
+        $ehSaida = $clienteCnpj !== '' ? "({$emitenteDigitos} = {$cnpjSql})" : '(1 = 0)';
+
+        $linhas = static::where('cliente_id', $clienteId)
+            ->whereIn('tipo', ['nfe', 'nfce', 'cte'])
+            ->where(fn ($q) => $q->whereNull('situacao')->orWhere('situacao', '!=', 'cancelada'))
+            ->whereRaw("{$dataEfetiva} BETWEEN ? AND ?", [$dataInicio, $dataFim])
+            ->selectRaw(
+                "DATE({$dataEfetiva}) as dia, "
+                ."SUM(CASE WHEN {$ehSaida} THEN 1 ELSE 0 END) as saidas, "
+                ."SUM(CASE WHEN {$ehSaida} THEN 0 ELSE 1 END) as entradas, "
+                .'COUNT(*) as total'
+            )
+            ->groupByRaw("DATE({$dataEfetiva})")
+            ->orderByRaw("DATE({$dataEfetiva})")
+            ->get()
+            ->keyBy('dia');
+
+        $dias = [];
+        $totalNotas = $totalEntradas = $totalSaidas = 0;
+        $diaPico = null;
+
+        $cursor = new \DateTimeImmutable($dataInicio);
+        $fim = new \DateTimeImmutable($dataFim);
+
+        while ($cursor <= $fim && count($dias) < 400) {
+            $chave = $cursor->format('Y-m-d');
+            $linha = $linhas->get($chave);
+
+            $entradas = (int) ($linha->entradas ?? 0);
+            $saidas = (int) ($linha->saidas ?? 0);
+            $total = (int) ($linha->total ?? 0);
+
+            $dias[] = ['dia' => $chave, 'entradas' => $entradas, 'saidas' => $saidas, 'total' => $total];
+
+            $totalEntradas += $entradas;
+            $totalSaidas += $saidas;
+            $totalNotas += $total;
+
+            if ($diaPico === null || $total > $diaPico['total']) {
+                $diaPico = ['dia' => $chave, 'total' => $total];
+            }
+
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        return [
+            'periodo' => self::rotuloPeriodo($dataInicio, $dataFim),
+            'totalNotas' => $totalNotas,
+            'totalEntradas' => $totalEntradas,
+            'totalSaidas' => $totalSaidas,
+            'mediaDia' => count($dias) > 0 ? round($totalNotas / count($dias), 1) : 0.0,
+            'diaPico' => $diaPico && $diaPico['total'] > 0 ? $diaPico : null,
+            'dias' => $dias,
+        ];
+    }
+
+    /**
      * Ranking de produtos mais vendidos (por valor) num mês, para o dashboard
      * "Top Produtos" da aba Dashboards. Precisa abrir o xml_content de cada
      * NF-e de saída do período e somar os itens (<det><prod>) — não dá pra

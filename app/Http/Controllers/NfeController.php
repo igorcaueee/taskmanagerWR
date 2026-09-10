@@ -752,6 +752,39 @@ class NfeController extends Controller
     }
 
     /**
+     * Dashboard "Notas por dia" da aba Dashboards: contagem de documentos por dia
+     * do período buscado (gráfico de barras), separando entradas e saídas — ver
+     * DocumentoFiscal::contagemNotasPorDia.
+     */
+    public function dashboardNotasPorDia(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'data_inicio' => 'required|date_format:Y-m-d',
+            'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+        ]);
+
+        try {
+            $resultado = DocumentoFiscal::contagemNotasPorDia(
+                (int) $validated['cliente_id'],
+                $validated['data_inicio'],
+                $validated['data_fim'],
+            );
+
+            return new JsonResponse(
+                ['success' => true] + $resultado,
+                200,
+                [],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        } catch (\Throwable $e) {
+            Log::error('[NF-e] dashboardNotasPorDia: Throwable inesperado', ['msg' => $e->getMessage(), 'class' => get_class($e), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json(['error' => 'Erro inesperado: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Dashboard "Compras e Vendas Interestaduais" da aba Dashboards: total por
      * UF das operações interestaduais (entradas e saídas) no período — ver
      * DocumentoFiscal::resumoInterestadual.

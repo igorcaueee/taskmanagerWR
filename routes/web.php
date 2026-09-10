@@ -504,6 +504,7 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/relatorio', [NfeController::class, 'exportarRelatorio'])->name('relatorio');
 
     // Aba Dashboards — relatórios montados sobre os XMLs já sincronizados
+    Route::post('/dashboards/notas-por-dia', [NfeController::class, 'dashboardNotasPorDia'])->name('dashboards.notas-por-dia');
     Route::post('/dashboards/fornecedores-simples', [NfeController::class, 'dashboardFornecedoresSimples'])->name('dashboards.fornecedores-simples');
     Route::post('/dashboards/produtos-vendidos', [NfeController::class, 'dashboardProdutosVendidos'])->name('dashboards.produtos-vendidos');
     Route::post('/dashboards/interestadual', [NfeController::class, 'dashboardInterestadual'])->name('dashboards.interestadual');
