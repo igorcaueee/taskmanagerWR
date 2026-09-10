@@ -506,36 +506,33 @@ class NfeController extends Controller
         }
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function linhasRelatorio(int $clienteId, string $tipo, string $dataInicio, string $dataFim, ?string $direcao, string $clienteCnpj): array
+    /**
+     * Generator: emite as linhas do relatório uma a uma, sem acumular tudo em
+     * memória (o writer consome em streaming). Não converta para array.
+     *
+     * @return \Generator<array<string, mixed>>
+     */
+    private function linhasRelatorio(int $clienteId, string $tipo, string $dataInicio, string $dataFim, ?string $direcao, string $clienteCnpj): \Generator
     {
-        $linhas = [];
-
         foreach (DocumentoFiscal::queryPeriodo($clienteId, $tipo, $dataInicio, $dataFim)->cursor() as $documento) {
             if ($direcao !== null && $documento->direcao($clienteCnpj) !== $direcao) {
                 continue;
             }
 
-            array_push($linhas, ...NfeXmlParser::paraRelatorio($documento));
+            yield from NfeXmlParser::paraRelatorio($documento);
         }
-
-        return $linhas;
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function linhasRelatorioCte(int $clienteId, string $dataInicio, string $dataFim, ?string $direcao, string $clienteCnpj): array
+    /** @return \Generator<array<string, mixed>> */
+    private function linhasRelatorioCte(int $clienteId, string $dataInicio, string $dataFim, ?string $direcao, string $clienteCnpj): \Generator
     {
-        $linhas = [];
-
         foreach (DocumentoFiscal::queryPeriodo($clienteId, 'cte', $dataInicio, $dataFim)->cursor() as $documento) {
             if ($direcao !== null && $documento->direcao($clienteCnpj) !== $direcao) {
                 continue;
             }
 
-            array_push($linhas, ...NfeXmlParser::paraRelatorioCte($documento));
+            yield from NfeXmlParser::paraRelatorioCte($documento);
         }
-
-        return $linhas;
     }
 
     // ─── Certificado da contabilidade (webservice NFeIntegracao/RS) ───────────

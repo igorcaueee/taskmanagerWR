@@ -2,17 +2,19 @@
 
 namespace App\Exports;
 
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Gera o relatório fiscal de NF-e/NFC-e (Excel, uma aba por tipo, uma linha
  * por item/produto), no mesmo padrão de colunas usado hoje num sistema pago
  * pela contabilidade. Os dados de cada linha vêm de App\Services\NfeXmlParser.
+ *
+ * A escrita é feita em streaming (OpenSpout) direto pro output, linha a linha,
+ * sem montar a planilha inteira em memória — clientes com milhares de notas
+ * (NFC-e de varejo/food service) estouravam o memory_limit no PhpSpreadsheet.
  */
 class NfeRelatorioExport
 {
@@ -71,39 +73,44 @@ class NfeRelatorioExport
     /**
      * Passe `null` em `$linhasNf`/`$linhasNfc`/`$linhasCte` para gerar o relatório
      * apenas com as demais abas (ex.: exportação individual de NF-e ou de NFC-e).
+     * Cada fonte pode ser um array ou um iterável/Generator (lido uma única vez).
      *
-     * @param  ?array<int, array<string, mixed>>  $linhasNf
-     * @param  ?array<int, array<string, mixed>>  $linhasNfc
-     * @param  ?array<int, array<string, mixed>>  $linhasCte
+     * @param  iterable<array<string, mixed>>|null  $linhasNf
+     * @param  iterable<array<string, mixed>>|null  $linhasNfc
+     * @param  iterable<array<string, mixed>>|null  $linhasCte
      */
-    public function __construct(private ?array $linhasNf, private ?array $linhasNfc, private ?array $linhasCte = null) {}
+    public function __construct(private ?iterable $linhasNf, private ?iterable $linhasNfc, private ?iterable $linhasCte = null) {}
 
     public function download(string $filename): StreamedResponse
     {
-        $spreadsheet = new Spreadsheet;
-        $primeira = true;
+        $abas = array_filter([
+            ['NF', self::COLUNAS_NF, $this->linhasNf],
+            ['NFC', self::COLUNAS_NFC, $this->linhasNfc],
+            ['CTe', self::COLUNAS_CTE, $this->linhasCte],
+        ], fn (array $aba) => $aba[2] !== null);
 
-        if ($this->linhasNf !== null) {
-            $this->buildAba($spreadsheet, 'NF', self::COLUNAS_NF, $this->linhasNf, $primeira);
-            $primeira = false;
-        }
+        return response()->stream(function () use ($abas) {
+            $writer = new Writer;
+            $writer->openToFile('php://output');
 
-        if ($this->linhasNfc !== null) {
-            $this->buildAba($spreadsheet, 'NFC', self::COLUNAS_NFC, $this->linhasNfc, $primeira);
-            $primeira = false;
-        }
+            $primeira = true;
+            foreach ($abas as [$titulo, $colunas, $linhas]) {
+                $sheet = $primeira ? $writer->getCurrentSheet() : $writer->addNewSheetAndMakeItCurrent();
+                $sheet->setName($titulo);
+                $primeira = false;
 
-        if ($this->linhasCte !== null) {
-            $this->buildAba($spreadsheet, 'CTe', self::COLUNAS_CTE, $this->linhasCte, $primeira);
-            $primeira = false;
-        }
+                $writer->addRow(Row::fromValuesWithStyle($colunas, self::estiloCabecalho()));
 
-        $spreadsheet->setActiveSheetIndex(0);
+                foreach ($linhas as $linha) {
+                    $valores = [];
+                    foreach ($colunas as $nome) {
+                        $valores[] = $linha[$nome] ?? '';
+                    }
+                    $writer->addRow(Row::fromValues($valores));
+                }
+            }
 
-        $writer = new Xlsx($spreadsheet);
-
-        return response()->stream(function () use ($writer) {
-            $writer->save('php://output');
+            $writer->close();
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="'.addslashes($filename).'"',
@@ -111,35 +118,12 @@ class NfeRelatorioExport
         ]);
     }
 
-    /**
-     * @param  string[]  $colunas
-     * @param  array<int, array<string, mixed>>  $linhas
-     */
-    private function buildAba(Spreadsheet $spreadsheet, string $titulo, array $colunas, array $linhas, bool $primeira): void
+    private static function estiloCabecalho(): Style
     {
-        $sheet = $primeira ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
-        $sheet->setTitle($titulo);
-        $sheet->getDefaultColumnDimension()->setWidth(15);
-
-        foreach ($colunas as $i => $nome) {
-            $sheet->setCellValue(Coordinate::stringFromColumnIndex($i + 1).'1', $nome);
-        }
-
-        $ultimaCol = Coordinate::stringFromColumnIndex(count($colunas));
-        $sheet->getStyle("A1:{$ultimaCol}1")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F3864']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(32);
-        $sheet->freezePane('A2');
-
-        $row = 2;
-        foreach ($linhas as $linha) {
-            foreach ($colunas as $i => $nome) {
-                $sheet->setCellValue(Coordinate::stringFromColumnIndex($i + 1).$row, $linha[$nome] ?? '');
-            }
-            $row++;
-        }
+        return (new Style)
+            ->withFontBold(true)
+            ->withFontColor('FFFFFF')
+            ->withBackgroundColor('1F3864')
+            ->withShouldWrapText(true);
     }
 }

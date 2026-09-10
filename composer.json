@@ -17,6 +17,7 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "nfephp-org/sped-da": "^0.1.26",
+        "openspout/openspout": "^5.3",
         "phpoffice/phpspreadsheet": "^5.7",
         "phpoffice/phpword": "^1.4",
         "robrichards/xmlseclibs": "^3.1",

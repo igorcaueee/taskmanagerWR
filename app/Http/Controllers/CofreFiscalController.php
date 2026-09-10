@@ -612,28 +612,25 @@ class CofreFiscalController extends Controller
         }
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function linhasRelatorio(int $clienteId, string $tipo, string $dataInicio, string $dataFim): array
+    /**
+     * Generator: emite as linhas uma a uma (o writer consome em streaming), sem
+     * acumular tudo em memória. Não converta para array.
+     *
+     * @return \Generator<array<string, mixed>>
+     */
+    private function linhasRelatorio(int $clienteId, string $tipo, string $dataInicio, string $dataFim): \Generator
     {
-        $linhas = [];
-
         foreach (DocumentoFiscal::queryPeriodo($clienteId, $tipo, $dataInicio, $dataFim)->cursor() as $documento) {
-            array_push($linhas, ...NfeXmlParser::paraRelatorio($documento));
+            yield from NfeXmlParser::paraRelatorio($documento);
         }
-
-        return $linhas;
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function linhasRelatorioCte(int $clienteId, string $dataInicio, string $dataFim): array
+    /** @return \Generator<array<string, mixed>> */
+    private function linhasRelatorioCte(int $clienteId, string $dataInicio, string $dataFim): \Generator
     {
-        $linhas = [];
-
         foreach (DocumentoFiscal::queryPeriodo($clienteId, 'cte', $dataInicio, $dataFim)->cursor() as $documento) {
-            array_push($linhas, ...NfeXmlParser::paraRelatorioCte($documento));
+            yield from NfeXmlParser::paraRelatorioCte($documento);
         }
-
-        return $linhas;
     }
 
     /**
