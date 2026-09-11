@@ -20,6 +20,42 @@
             </div>
         </div>
 
+        {{-- Notas por dia --}}
+        <div class="bg-white dark:bg-slate-800 rounded shadow mb-6">
+            <div class="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                <h2 class="text-sm font-semibold text-gray-800 dark:text-slate-200"><i class="fa-solid fa-chart-column text-brand mr-1"></i> Notas por dia</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Lançamentos (não estornados) por dia, no mesmo período e filtro de baixo.</p>
+            </div>
+
+            @if(collect($porDia)->sum('total') === 0)
+                <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-slate-400">
+                    Nenhum lançamento no período.
+                </div>
+            @else
+                @php
+                    $maxDia = max(1, collect($porDia)->max('total'));
+                    $passoLabel = max(1, (int) ceil(count($porDia) / 16));
+                @endphp
+                <div class="px-4 py-4">
+                    <div class="flex items-stretch gap-px h-40">
+                        @foreach($porDia as $d)
+                            @php
+                                $alt = $d['total'] > 0 ? max(3, round($d['total'] / $maxDia * 100)) : 0;
+                                $data = \Illuminate\Support\Carbon::parse($d['dia']);
+                                $mostrarLabel = $loop->index % $passoLabel === 0 || $loop->last;
+                            @endphp
+                            <div class="flex-1 flex flex-col justify-end items-center gap-1 min-w-0" title="{{ $data->format('d/m/Y') }}: {{ $d['total'] }} nota(s)">
+                                <div class="w-full bg-brand/70 dark:bg-brand rounded-t" style="height: {{ $alt }}%"></div>
+                                <span class="text-[10px] text-gray-400 dark:text-slate-500 w-full text-center leading-none">
+                                    {{ $mostrarLabel ? $data->format('d') : '' }}
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+
         <div class="bg-white dark:bg-slate-800 rounded shadow">
             {{-- Filtros --}}
             <form method="GET" action="{{ route('notas-emitidas.index') }}" id="form-filtros-notas"
@@ -92,42 +128,6 @@
                     </li>
                 @endforelse
             </ul>
-        </div>
-
-        {{-- Notas por dia --}}
-        <div class="bg-white dark:bg-slate-800 rounded shadow mt-6">
-            <div class="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-                <h2 class="text-sm font-semibold text-gray-800 dark:text-slate-200"><i class="fa-solid fa-chart-column text-brand mr-1"></i> Notas por dia</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Lançamentos (não estornados) por dia, no mesmo período e filtro de cima.</p>
-            </div>
-
-            @if(collect($porDia)->sum('total') === 0)
-                <div class="px-4 py-8 text-center text-sm text-gray-500 dark:text-slate-400">
-                    Nenhum lançamento no período.
-                </div>
-            @else
-                @php
-                    $maxDia = max(1, collect($porDia)->max('total'));
-                    $passoLabel = max(1, (int) ceil(count($porDia) / 16));
-                @endphp
-                <div class="px-4 py-4">
-                    <div class="flex items-stretch gap-px h-40">
-                        @foreach($porDia as $d)
-                            @php
-                                $alt = $d['total'] > 0 ? max(3, round($d['total'] / $maxDia * 100)) : 0;
-                                $data = \Illuminate\Support\Carbon::parse($d['dia']);
-                                $mostrarLabel = $loop->index % $passoLabel === 0 || $loop->last;
-                            @endphp
-                            <div class="flex-1 flex flex-col justify-end items-center gap-1 min-w-0" title="{{ $data->format('d/m/Y') }}: {{ $d['total'] }} nota(s)">
-                                <div class="w-full bg-brand/70 dark:bg-brand rounded-t" style="height: {{ $alt }}%"></div>
-                                <span class="text-[10px] text-gray-400 dark:text-slate-500 w-full text-center leading-none">
-                                    {{ $mostrarLabel ? $data->format('d') : '' }}
-                                </span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 
