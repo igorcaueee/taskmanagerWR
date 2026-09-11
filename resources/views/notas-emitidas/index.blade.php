@@ -32,22 +32,18 @@
                     Nenhum lançamento no período.
                 </div>
             @else
-                @php
-                    $maxDia = max(1, collect($porDia)->max('total'));
-                    $passoLabel = max(1, (int) ceil(count($porDia) / 16));
-                @endphp
+                @php $maxDia = max(1, collect($porDia)->max('total')); @endphp
                 <div class="px-4 py-4">
                     <div class="flex items-stretch gap-px h-40">
                         @foreach($porDia as $d)
                             @php
                                 $alt = $d['total'] > 0 ? max(3, round($d['total'] / $maxDia * 100)) : 0;
                                 $data = \Illuminate\Support\Carbon::parse($d['dia']);
-                                $mostrarLabel = $loop->index % $passoLabel === 0 || $loop->last;
                             @endphp
                             <div class="flex-1 flex flex-col justify-end items-center gap-1 min-w-0" title="{{ $data->format('d/m/Y') }}: {{ $d['total'] }} nota(s)">
                                 <div class="w-full bg-brand/70 dark:bg-brand rounded-t" style="height: {{ $alt }}%"></div>
-                                <span class="text-[10px] text-gray-400 dark:text-slate-500 w-full text-center leading-none">
-                                    {{ $mostrarLabel ? $data->format('d') : '' }}
+                                <span class="text-[9px] text-gray-400 dark:text-slate-500 w-full text-center leading-none">
+                                    {{ $data->format('d') }}
                                 </span>
                             </div>
                         @endforeach
