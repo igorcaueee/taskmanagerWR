@@ -164,6 +164,12 @@
                     <span id="btnBuscarLabel">Buscar NF-e / NFC-e / CT-e</span>
                 </button>
 
+                <button type="button" id="btnPararBusca"
+                        class="hidden w-full mt-2 py-2 px-4 bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-stop"></i>
+                    Parar busca
+                </button>
+
                 {{-- Uma nota específica às vezes fica fora da sincronização sequencial por
                      NSU mesmo dentro do período (falha reconhecida pela própria Sefaz), ou é
                      antiga demais pra valer a pena resincronizar o histórico inteiro de um
@@ -759,6 +765,7 @@
     const dataInicio = document.getElementById('dataInicio');
     const dataFim    = document.getElementById('dataFim');
     const btnBuscar  = document.getElementById('btnBuscar');
+    const btnPararBusca = document.getElementById('btnPararBusca');
 
     // ─── Buscar CT-e por chave específica (SEFAZ-RS) ───────────────────────────
     const areaBuscarCtePorChave = document.getElementById('areaBuscarCtePorChave');
@@ -1280,8 +1287,25 @@
     // necessário mesmo para as maiores empresas). Mesmo padrão da tela de NFS-e.
     const NFE_MAX_CHUNKS_POR_FASE = 400;
 
+    // Flag checada no início de cada volta dos loops de sincronização/paginação,
+    // e o controller da requisição em voo — o botão "Parar busca" seta a flag e
+    // aborta a requisição atual, o que interrompe o loop mesmo que ele esteja
+    // no meio de um fetch (e não só entre uma chamada e outra).
+    let cancelarBusca = false;
+    let buscaAbortController = null;
+
+    btnPararBusca.addEventListener('click', function () {
+        cancelarBusca = true;
+        if (buscaAbortController) {
+            buscaAbortController.abort();
+        }
+        document.getElementById('loadingTempo').textContent = 'Parando...';
+        btnPararBusca.disabled = true;
+    });
+
     async function chamarChunk(url, body) {
         const controller = new AbortController();
+        buscaAbortController = controller;
         // Cada chunk processa poucos lotes — 90s é folga suficiente e fica
         // abaixo do timeout de proxy/CDN (Cloudflare derruba em ~100s com HTTP 524).
         const timeoutId = setTimeout(() => controller.abort(), 90_000);
@@ -1332,6 +1356,10 @@
         let aviso     = null;
 
         while (!concluido) {
+            if (cancelarBusca) {
+                throw new Error('BUSCA_CANCELADA');
+            }
+
             chunks++;
             if (chunks > NFE_MAX_CHUNKS_POR_FASE) {
                 throw new Error(`${labelProgresso}: excedeu o limite de páginas de segurança.`);
@@ -1376,6 +1404,10 @@
         document.getElementById('loadingTempo').textContent = 'Iniciando...';
         btnBuscar.disabled = true;
         document.getElementById('btnBuscarLabel').textContent = 'Buscando...';
+        cancelarBusca = false;
+        buscaAbortController = null;
+        btnPararBusca.disabled = false;
+        btnPararBusca.classList.remove('hidden');
         marcarDashboardsCarregando();
 
         try {
@@ -1433,6 +1465,10 @@
             let numChamada  = 1;
 
             do {
+                if (cancelarBusca) {
+                    throw new Error('BUSCA_CANCELADA');
+                }
+
                 document.getElementById('loadingTempo').textContent = numChamada > 1
                     ? `Carregando resultados... (parte ${numChamada})`
                     : 'Carregando resultados...';
@@ -1484,14 +1520,20 @@
 
         } catch (e) {
             esconderTodosEstados();
-            estadoErro.classList.remove('hidden');
-            const msg = e.name === 'AbortError'
-                ? 'Tempo limite excedido numa das etapas da sincronização. Tente novamente em instantes.'
-                : 'Erro de comunicação: ' + e.message;
-            document.getElementById('erroMsg').textContent = msg;
+            if (cancelarBusca) {
+                Swal.fire({ icon: 'info', title: 'Busca interrompida', text: 'A busca foi interrompida.', timer: 4000, timerProgressBar: true });
+            } else {
+                estadoErro.classList.remove('hidden');
+                const msg = e.name === 'AbortError'
+                    ? 'Tempo limite excedido numa das etapas da sincronização. Tente novamente em instantes.'
+                    : 'Erro de comunicação: ' + e.message;
+                document.getElementById('erroMsg').textContent = msg;
+            }
         } finally {
             btnBuscar.disabled = false;
             document.getElementById('btnBuscarLabel').textContent = 'Buscar NF-e / NFC-e / CT-e';
+            btnPararBusca.classList.add('hidden');
+            buscaAbortController = null;
         }
     }
 
