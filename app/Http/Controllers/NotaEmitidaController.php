@@ -40,11 +40,44 @@ class NotaEmitidaController extends Controller
             'emitentes' => $emitentes,
             'contagens' => $contagens,
             'totalGeral' => $contagens->sum(),
+            'porDia' => $this->contagemPorDia($emitentes->pluck('id'), $dataInicio, $dataFim),
             'periodo' => $request->input('periodo', 'hoje'),
             'dataInicio' => $request->input('data_inicio'),
             'dataFim' => $request->input('data_fim'),
             'busca' => $request->input('busca'),
         ]);
+    }
+
+    /**
+     * Dashboard "Notas por dia": quantidade de notas lançadas (não estornadas) por
+     * dia, dentro do mesmo período e do mesmo filtro de busca já aplicados à lista
+     * de emitentes acima — um ponto por dia do intervalo, com dias sem lançamento
+     * aparecendo zerados.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $emitenteIds
+     * @return array<int, array{dia: string, total: int}>
+     */
+    private function contagemPorDia($emitenteIds, Carbon $dataInicio, Carbon $dataFim): array
+    {
+        $porDia = NotaEmitida::query()
+            ->selectRaw('DATE(created_at) as dia, COUNT(*) as total')
+            ->whereIn('emitente_id', $emitenteIds)
+            ->whereBetween('created_at', [$dataInicio, $dataFim])
+            ->where('estornado', false)
+            ->groupBy('dia')
+            ->pluck('total', 'dia');
+
+        $dias = [];
+        $cursor = $dataInicio->copy()->startOfDay();
+        $fim = $dataFim->copy()->startOfDay();
+
+        while ($cursor <= $fim && count($dias) < 400) {
+            $chave = $cursor->format('Y-m-d');
+            $dias[] = ['dia' => $chave, 'total' => (int) ($porDia[$chave] ?? 0)];
+            $cursor->addDay();
+        }
+
+        return $dias;
     }
 
     public function store(Request $request): JsonResponse
