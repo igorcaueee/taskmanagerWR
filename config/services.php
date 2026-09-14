@@ -47,4 +47,8 @@ return [
         'secret' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
+    'nexus_fiscal' => [
+        'api_key' => env('NEXUS_FISCAL_API_KEY'),
+    ],
+
 ];
