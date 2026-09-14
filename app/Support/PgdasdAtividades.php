@@ -80,12 +80,14 @@ class PgdasdAtividades
      * lançada sem informar o Estado/Município de destino do ISS. Na doc
      * oficial da SERPRO (mesma página citada em PgdasdService::montarAtividade)
      * os campos ficam dentro de cada item de "receitasAtividade": "outraUf"
-     * (sigla, string) e "codigoOutroMunicipio". Enviamos o código IBGE de 7
-     * dígitos nesse campo (mesma tabela já usada no DANFSe, App\Support\
-     * MunicipiosIbge) por ser a única fonte de código de município disponível
-     * no sistema — NÃO confirmado se a API espera o código IBGE ou um código
-     * próprio da Receita Federal (ex.: tabela TOM); revalidar no próximo erro
-     * real e ajustar aqui se for rejeitado.
+     * (sigla, string) e "codigoOutroMunicipio". A tela guarda o código IBGE
+     * de 7 dígitos (App\Support\MunicipiosIbge, para o select de Município
+     * funcionar por nome), mas "codigoOutroMunicipio" NÃO aceita o IBGE —
+     * também confirmado em produção (2026-09-14): a API rejeitou com "o
+     * município é inconsistente com a UF informada" ao enviar o IBGE de
+     * Encantado/RS. É o "Código do Município" próprio do Simples Nacional; a
+     * tradução IBGE → esse código é feita em PgdasdService::montarAtividade
+     * via App\Support\MunicipiosSimplesNacional.
      */
     const ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO = [10, 13, 16, 19, 22, 25, 40];
 

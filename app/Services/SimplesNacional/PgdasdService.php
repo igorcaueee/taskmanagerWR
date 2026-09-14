@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\SimplesDasProcessamento;
 use App\Models\SimplesReceitaAtividade;
 use App\Models\SimplesReceitaMensal;
+use App\Support\MunicipiosSimplesNacional;
 use App\Support\PgdasdAtividades;
 use Illuminate\Support\Facades\Log;
 
@@ -517,13 +518,22 @@ class PgdasdService
 
                 // Campos confirmados na doc oficial da SERPRO (mesma página
                 // citada acima), dentro de cada "receitasAtividade": "outraUf"
-                // e "codigoOutroMunicipio". Enviamos aqui o código IBGE (7
-                // dígitos, App\Support\MunicipiosIbge) por ser a única tabela
-                // de município disponível no sistema — NÃO confirmado se a
-                // API espera o código IBGE ou um código próprio da Receita
-                // Federal; revalidar no próximo erro real.
+                // e "codigoOutroMunicipio". CONFIRMADO EM PRODUÇÃO (2026-09-14):
+                // "codigoOutroMunicipio" NÃO é o código IBGE — enviar o IBGE
+                // (ex.: 4306809 de Encantado/RS) foi rejeitado com "o município
+                // é inconsistente com a UF informada". É o "Código do
+                // Município" próprio do Simples Nacional (ex.: 8633 para
+                // Encantado/RS), por isso traduzimos aqui via
+                // MunicipiosSimplesNacional (tabela derivada do arquivo oficial
+                // da Receita Federal, ver resources/data/municipios_sn_codigos.php).
+                $codigoSn = MunicipiosSimplesNacional::codigo($atividade->codigo_municipio_ibge);
+
+                if ($codigoSn === null) {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: não foi possível traduzir o Município selecionado (código IBGE {$atividade->codigo_municipio_ibge}) para o código do Simples Nacional — esse município não está na tabela conhecida. Verifique o Município escolhido ou avise o suporte para atualizar a tabela.");
+                }
+
                 $receitaAtividade['outraUf'] = $atividade->uf;
-                $receitaAtividade['codigoOutroMunicipio'] = $atividade->codigo_municipio_ibge;
+                $receitaAtividade['codigoOutroMunicipio'] = $codigoSn;
             }
 
             $receitasAtividade[] = $receitaAtividade;
