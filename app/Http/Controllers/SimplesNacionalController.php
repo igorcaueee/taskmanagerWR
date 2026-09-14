@@ -26,6 +26,7 @@ use App\Services\SimplesNacional\PgdasdService;
 use App\Services\SimplesNacional\ProcuracoesService;
 use App\Services\SimplesNacional\SitfisService;
 use App\Support\MitCodigosReceita;
+use App\Support\MunicipiosIbge;
 use App\Support\PgdasdAtividades;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,6 +108,7 @@ class SimplesNacionalController extends Controller
             'atividadesFatorR' => PgdasdAtividades::ATIVIDADES_FATOR_R,
             'atividadesIssTratamentoProprio' => PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO,
             'atividadesIssComRetencao' => PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO,
+            'atividadesDevidoOutroMunicipio' => PgdasdAtividades::ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO,
             'processamentos' => $processamentos,
             'periodo' => $periodo,
         ]);
@@ -717,6 +719,23 @@ class SimplesNacionalController extends Controller
     }
 
     /**
+     * Municípios do IBGE de uma UF, para o select de "Outro Município" nas
+     * atividades cujo ISS é devido a Município diferente do estabelecimento.
+     */
+    public function listarMunicipios(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'uf' => 'required|string|size:2',
+        ]);
+
+        $municipios = collect(MunicipiosIbge::listar($validated['uf']))
+            ->sortBy('nome')
+            ->values();
+
+        return response()->json(['municipios' => $municipios]);
+    }
+
+    /**
      * Receitas por atividade já lançadas para o período — réplica da etapa
      * "Atividades"/"Receitas" do e-CAC (um cliente pode ter mais de uma
      * atividade cadastrada no Simples Nacional ao mesmo tempo).
@@ -735,6 +754,8 @@ class SimplesNacionalController extends Controller
             ->map(fn (SimplesReceitaAtividade $a) => [
                 'id_atividade' => $a->id_atividade,
                 'valor' => $a->valor,
+                'uf' => $a->uf,
+                'codigo_municipio_ibge' => $a->codigo_municipio_ibge,
                 'tributos' => $a->tributos->map(fn ($t) => [
                     'cod_tributo' => $t->cod_tributo,
                     'tipo_ajuste' => $t->tipo_ajuste,
@@ -760,6 +781,8 @@ class SimplesNacionalController extends Controller
             'atividades' => 'required|array|min:1',
             'atividades.*.id_atividade' => 'required|integer|min:1|max:43',
             'atividades.*.valor' => 'required|numeric|min:0',
+            'atividades.*.uf' => 'nullable|string|size:2',
+            'atividades.*.codigo_municipio_ibge' => 'nullable|digits:7',
             'atividades.*.tributos' => 'array',
             'atividades.*.tributos.*.cod_tributo' => 'required|integer',
             'atividades.*.tributos.*.tipo_ajuste' => 'required|in:normal,isencao,reducao,imunidade,lancamento_oficio,substituicao_tributaria,tributacao_monofasica,antecipacao_encerramento,retencao_iss,exigibilidade_suspensa',
@@ -780,6 +803,8 @@ class SimplesNacionalController extends Controller
                     'periodo_apuracao' => $validated['periodo_apuracao'],
                     'id_atividade' => $atividade['id_atividade'],
                     'valor' => $atividade['valor'],
+                    'uf' => $atividade['uf'] ?? null,
+                    'codigo_municipio_ibge' => $atividade['codigo_municipio_ibge'] ?? null,
                 ]);
 
                 foreach ($atividade['tributos'] ?? [] as $tributo) {

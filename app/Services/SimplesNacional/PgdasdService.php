@@ -503,12 +503,30 @@ class PgdasdService
                 }
             }
 
-            $receitasAtividade[] = [
+            $receitaAtividade = [
                 'valor' => round((float) $atividade->valor, 2),
                 'isencoes' => $isencoes,
                 'reducoes' => $reducoes,
                 'qualificacoesTributarias' => $qualificacoesTributarias,
             ];
+
+            if (in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO, true)) {
+                if (! $atividade->uf || ! $atividade->codigo_municipio_ibge) {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: informe o Estado e o Município para onde o ISS é devido (a API rejeita com \"Campo UF inválido\" sem essa informação).");
+                }
+
+                // Campos confirmados na doc oficial da SERPRO (mesma página
+                // citada acima), dentro de cada "receitasAtividade": "outraUf"
+                // e "codigoOutroMunicipio". Enviamos aqui o código IBGE (7
+                // dígitos, App\Support\MunicipiosIbge) por ser a única tabela
+                // de município disponível no sistema — NÃO confirmado se a
+                // API espera o código IBGE ou um código próprio da Receita
+                // Federal; revalidar no próximo erro real.
+                $receitaAtividade['outraUf'] = $atividade->uf;
+                $receitaAtividade['codigoOutroMunicipio'] = $atividade->codigo_municipio_ibge;
+            }
+
+            $receitasAtividade[] = $receitaAtividade;
         }
 
         return [

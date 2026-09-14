@@ -19,6 +19,8 @@ class SimplesReceitaAtividade extends Model
         'periodo_apuracao',
         'id_atividade',
         'valor',
+        'uf',
+        'codigo_municipio_ibge',
     ];
 
     protected $casts = [

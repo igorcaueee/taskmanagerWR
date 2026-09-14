@@ -444,6 +444,7 @@ Route::middleware('auth')->prefix('simples-nacional')->name('simples-nacional.')
     Route::post('/receita-mensal', [SimplesNacionalController::class, 'salvarReceitaMensal'])->name('receita-mensal.salvar');
     Route::get('/receitas-atividades', [SimplesNacionalController::class, 'getReceitasAtividades'])->name('receitas-atividades.get');
     Route::post('/receitas-atividades', [SimplesNacionalController::class, 'salvarReceitasAtividades'])->name('receitas-atividades.salvar');
+    Route::get('/municipios', [SimplesNacionalController::class, 'listarMunicipios'])->name('municipios.listar');
     Route::post('/importar-dominio/previa', [SimplesNacionalController::class, 'previaImportacaoDominio'])->name('importar-dominio.previa');
     Route::post('/importar-dominio/confirmar', [SimplesNacionalController::class, 'confirmarImportacaoDominio'])->name('importar-dominio.confirmar');
     Route::post('/transmitir', [SimplesNacionalController::class, 'transmitir'])->name('transmitir');

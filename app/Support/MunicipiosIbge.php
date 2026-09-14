@@ -51,4 +51,24 @@ class MunicipiosIbge
 
         return $uf ? "{$nome} / {$uf}" : $nome;
     }
+
+    /**
+     * @return array<int, array{codigo: string, nome: string, uf: string}>
+     */
+    public static function listar(?string $uf = null): array
+    {
+        $lista = [];
+
+        foreach (self::map() as $codigo => $raw) {
+            [$nome, $municipioUf] = array_pad(explode('|', $raw), 2, '');
+
+            if ($uf !== null && strcasecmp($municipioUf, $uf) !== 0) {
+                continue;
+            }
+
+            $lista[] = ['codigo' => $codigo, 'nome' => $nome, 'uf' => $municipioUf];
+        }
+
+        return $lista;
+    }
 }

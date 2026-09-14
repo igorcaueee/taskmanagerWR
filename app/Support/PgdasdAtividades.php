@@ -72,6 +72,23 @@ class PgdasdAtividades
      */
     const ATIVIDADES_ISS_COM_RETENCAO = [12, 15, 18, 21, 24, 27];
 
+    /**
+     * Atividades cuja descrição diz "devido a outro(s) Município(s))" — ISS
+     * devido a um Município diferente do domicílio do estabelecimento.
+     * Confirmado em produção (2026-09-14): a API rejeitou o TRANSDECLARACAO11
+     * com "Campo UF inválido na atividade 16" quando a atividade 16 foi
+     * lançada sem informar o Estado/Município de destino do ISS. Na doc
+     * oficial da SERPRO (mesma página citada em PgdasdService::montarAtividade)
+     * os campos ficam dentro de cada item de "receitasAtividade": "outraUf"
+     * (sigla, string) e "codigoOutroMunicipio". Enviamos o código IBGE de 7
+     * dígitos nesse campo (mesma tabela já usada no DANFSe, App\Support\
+     * MunicipiosIbge) por ser a única fonte de código de município disponível
+     * no sistema — NÃO confirmado se a API espera o código IBGE ou um código
+     * próprio da Receita Federal (ex.: tabela TOM); revalidar no próximo erro
+     * real e ajustar aqui se for rejeitado.
+     */
+    const ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO = [10, 13, 16, 19, 22, 25, 40];
+
     const NOMES_TRIBUTOS = [
         self::TRIBUTO_IRPJ => 'IRPJ',
         self::TRIBUTO_CSLL => 'CSLL',

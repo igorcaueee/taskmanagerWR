@@ -304,7 +304,9 @@
         window.PGDASD_ATIVIDADES_FATOR_R = @json($atividadesFatorR);
         window.PGDASD_ATIVIDADES_ISS_TRATAMENTO_PROPRIO = @json($atividadesIssTratamentoProprio);
         window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO = @json($atividadesIssComRetencao);
+        window.PGDASD_ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO = @json($atividadesDevidoOutroMunicipio);
         window.PGDASD_TRIBUTO_ISS = 1010;
+        window.PGDASD_UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
     </script>
     @include('simples-nacional._shared')
     <script>
@@ -780,6 +782,56 @@
             tr.appendChild(renderTributoCell(codTributo, tributosExistentesMap[codTributo], idAtividade, dadosExistentes?.valor));
         });
 
+        if (window.PGDASD_ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO.includes(parseInt(idAtividade, 10))) {
+            const tdUf = document.createElement('td');
+            tdUf.className = 'align-top py-2 pr-2';
+            tdUf.innerHTML = `<select class="select-uf-atividade w-16 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1 py-1 text-sm">
+                <option value="">UF</option>
+                ${window.PGDASD_UFS.map(uf => `<option value="${uf}">${uf}</option>`).join('')}
+            </select>`;
+            tr.appendChild(tdUf);
+
+            const tdMunicipio = document.createElement('td');
+            tdMunicipio.className = 'align-top py-2 pr-2';
+            tdMunicipio.innerHTML = `<select class="select-municipio-atividade w-40 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1 py-1 text-sm" disabled>
+                <option value="">Selecione a UF</option>
+            </select>`;
+            tr.appendChild(tdMunicipio);
+
+            const selectUf = tdUf.querySelector('.select-uf-atividade');
+            const selectMunicipio = tdMunicipio.querySelector('.select-municipio-atividade');
+
+            const ufExistente = dadosExistentes?.uf ?? '';
+            const codigoMunicipioExistente = dadosExistentes?.codigo_municipio_ibge ?? '';
+
+            async function carregarMunicipiosDaUf(uf, codigoSelecionado) {
+                if (!uf) {
+                    selectMunicipio.innerHTML = '<option value="">Selecione a UF</option>';
+                    selectMunicipio.disabled = true;
+                    return;
+                }
+
+                selectMunicipio.disabled = true;
+                selectMunicipio.innerHTML = '<option value="">Carregando...</option>';
+
+                const url = new URL('{{ route('simples-nacional.municipios.listar') }}');
+                url.searchParams.set('uf', uf);
+                const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                const data = await resp.json();
+
+                selectMunicipio.innerHTML = '<option value="">Selecione o Município</option>' +
+                    (data.municipios ?? []).map(m => `<option value="${m.codigo}" ${String(m.codigo) === String(codigoSelecionado) ? 'selected' : ''}>${escapeHtml(m.nome)}</option>`).join('');
+                selectMunicipio.disabled = false;
+            }
+
+            if (ufExistente) {
+                selectUf.value = ufExistente;
+                carregarMunicipiosDaUf(ufExistente, codigoMunicipioExistente);
+            }
+
+            selectUf.addEventListener('change', () => carregarMunicipiosDaUf(selectUf.value, ''));
+        }
+
         const tdRemover = document.createElement('td');
         tdRemover.className = 'align-top py-2 pl-1';
         tdRemover.innerHTML = `<button type="button" class="btn-remove-linha-atividade text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-transparent border-0 text-sm leading-none" title="Remover esta linha">&times;</button>`;
@@ -822,6 +874,10 @@
                         <tr>
                             <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">Receita (R$)</th>
                             ${atividade.tributos.map(codTributo => `<th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">${escapeHtml(String(window.PGDASD_TRIBUTOS[codTributo] ?? codTributo))}</th>`).join('')}
+                            ${window.PGDASD_ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO.includes(parseInt(idAtividade, 10)) ? `
+                                <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">UF</th>
+                                <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">Município (ISS devido)</th>
+                            ` : ''}
                             <th></th>
                         </tr>
                     </thead>
@@ -923,7 +979,16 @@
                     });
                 });
 
-                atividades.push({ id_atividade: idAtividade, valor, tributos });
+                const selectUf = linha.querySelector('.select-uf-atividade');
+                const selectMunicipio = linha.querySelector('.select-municipio-atividade');
+
+                atividades.push({
+                    id_atividade: idAtividade,
+                    valor,
+                    tributos,
+                    uf: selectUf?.value || null,
+                    codigo_municipio_ibge: selectMunicipio?.value || null,
+                });
             });
         });
 
