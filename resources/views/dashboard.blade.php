@@ -6,6 +6,27 @@
     <div class="max-w-7xl mx-auto py-6 px-4">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-6">Painel</h1>
 
+        <div id="avisoQuestionarioPainel" class="hidden relative bg-[#0084aa]/5 dark:bg-[#0084aa]/10 border border-[#0084aa]/30 dark:border-[#0084aa]/40 rounded-xl px-5 py-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <button type="button" id="btnFecharAvisoQuestionarioPainel" aria-label="Fechar aviso"
+                class="absolute top-3 right-3 bg-transparent border-0 appearance-none p-1 leading-none text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="shrink-0 w-10 h-10 rounded-full bg-[#0084aa]/10 dark:bg-[#0084aa]/20 flex items-center justify-center text-[#0084aa]">
+                <i class="fa-solid fa-shield-halved text-lg"></i>
+            </div>
+            <div class="flex-1 pr-6">
+                <p class="text-sm font-semibold text-gray-800 dark:text-slate-200">Sua opinião é importante — responda um questionário rápido</p>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    A pesquisa é <strong>100% segura e sigilosa</strong>: as respostas não são identificadas e ninguém vai saber quem respondeu.
+                </p>
+            </div>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-HN7P3PADKUYgg4sfSRCy2QuA1MRuotb_zFyzxPjhQipbsA/viewform?usp=header"
+                target="_blank" rel="noopener noreferrer"
+                class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-[#00708c] transition-colors">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Responder questionário
+            </a>
+        </div>
+
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Usuários ativos</p>
@@ -107,6 +128,26 @@
 @endsection
 
 @push('scripts')
+    <script>
+        (function () {
+            const CHAVE_AVISO = 'painel_aviso_questionario_fechado';
+            const aviso = document.getElementById('avisoQuestionarioPainel');
+            const btnFechar = document.getElementById('btnFecharAvisoQuestionarioPainel');
+
+            if (aviso && !localStorage.getItem(CHAVE_AVISO)) {
+                aviso.classList.remove('hidden');
+                aviso.classList.add('flex');
+            }
+
+            if (btnFechar) {
+                btnFechar.addEventListener('click', function () {
+                    localStorage.setItem(CHAVE_AVISO, '1');
+                    aviso.classList.add('hidden');
+                    aviso.classList.remove('flex');
+                });
+            }
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script>
         const ctx = document.getElementById('chartClientes').getContext('2d');

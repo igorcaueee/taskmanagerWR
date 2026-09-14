@@ -71,11 +71,13 @@
                     <div>
                         <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">De</label>
                         <input type="date" name="data_inicio" value="{{ $dataInicio }}"
+                               onchange="document.getElementById('form-filtros-notas').submit()"
                                class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Até</label>
                         <input type="date" name="data_fim" value="{{ $dataFim }}"
+                               onchange="document.getElementById('form-filtros-notas').submit()"
                                class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand">
                     </div>
                 </div>
