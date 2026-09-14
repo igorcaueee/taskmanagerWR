@@ -315,15 +315,41 @@ class PgdasdService
         // partir de "valorAtividade" por atividade (que são valores limpos,
         // sem o mesmo resíduo), e a diferença de ~1e-11 já é suficiente pra
         // reprovar.
+        // As atividades lançadas somam sempre o valor do regime ATIVO da
+        // apuração (validado em transmitirDeclaracaoDoCliente() contra
+        // $valorTributavel) — em regime "caixa" isso é receita_bruta_caixa,
+        // não receita_bruta_competencia. Os dois são conceitos diferentes e
+        // podem divergir (ex.: competência 245.993,12 x caixa 115.169,53), e
+        // não existe lançamento de atividade separado para o valor de
+        // competência quando o regime ativo é caixa — então o total de
+        // competência vem de $receita->receita_bruta_competencia e é
+        // rateado entre interno/externo na mesma proporção das atividades
+        // (única distribuição conhecida). Em regime "competencia" isso é um
+        // no-op: receita_bruta_competencia já bate com a soma das
+        // atividades, então o rateio reproduz os mesmos valores de antes.
+        $somaInterno = round((float) $atividadesInterno->sum('valor'), 2);
+        $somaExterno = round((float) $atividadesExterno->sum('valor'), 2);
+        $somaAtividadesTotal = round($somaInterno + $somaExterno, 2);
+
+        $receitaCompetenciaTotal = round((float) $receita->receita_bruta_competencia, 2);
+
+        if ($somaAtividadesTotal > 0) {
+            $receitaCompetenciaInterno = round($receitaCompetenciaTotal * ($somaInterno / $somaAtividadesTotal), 2);
+            $receitaCompetenciaExterno = round($receitaCompetenciaTotal - $receitaCompetenciaInterno, 2);
+        } else {
+            $receitaCompetenciaInterno = $receitaCompetenciaTotal;
+            $receitaCompetenciaExterno = 0.0;
+        }
+
         $declaracao = [
             'tipoDeclaracao' => $tipoDeclaracao, // 1 = Original, 2 = Retificadora
-            'receitaPaCompetenciaInterno' => round((float) $atividadesInterno->sum('valor'), 2),
-            'receitaPaCompetenciaExterno' => round((float) $atividadesExterno->sum('valor'), 2),
+            'receitaPaCompetenciaInterno' => $receitaCompetenciaInterno,
+            'receitaPaCompetenciaExterno' => $receitaCompetenciaExterno,
         ];
 
         if ($receita->regime_apuracao === 'caixa') {
-            $declaracao['receitaPaCaixaInterno'] = round((float) $atividadesInterno->sum('valor'), 2);
-            $declaracao['receitaPaCaixaExterno'] = round((float) $atividadesExterno->sum('valor'), 2);
+            $declaracao['receitaPaCaixaInterno'] = $somaInterno;
+            $declaracao['receitaPaCaixaExterno'] = $somaExterno;
         }
 
         if ($exigeFolhaSalario) {
