@@ -499,6 +499,11 @@ XML;
         libxml_use_internal_errors(true);
         $obj = new \SimpleXMLElement($xml);
         $get = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='{$tag}']")[0] ?? ''));
+        // resCTe (resumo) não tem grupo <emit> — só um <CNPJ>/<xNome> soltos, que já
+        // são os do emitente. Já o CT-e completo tem vários grupos com CNPJ/xNome
+        // (emit, rem, dest, exped, receb, toma4), então "emitente" precisa vir
+        // escopado a <emit> — senão pega o primeiro nó do documento (ex.: toma4).
+        $getEmit = fn(string $tag) => trim((string) ($obj->xpath("//*[local-name()='emit']/*[local-name()='{$tag}']")[0] ?? '')) ?: $get($tag);
 
         $numero = $get('nCT');
 
@@ -507,7 +512,7 @@ XML;
         }
 
         $dataEmissao  = $get('dhEmi');
-        $emitenteNome = $get('xNome');
+        $emitenteNome = $getEmit('xNome');
         $valor        = $get('vCT') ?: $get('vTPrest');
 
         if (!$dataEmissao && !$emitenteNome && !$valor) {
@@ -525,7 +530,7 @@ XML;
             'numero'       => $numero,
             'dataEmissao'  => $dataEmissao,
             'emitenteNome' => $this->utf8Safe($emitenteNome),
-            'emitenteDoc'  => $get('CNPJ') ?: $get('CPF'),
+            'emitenteDoc'  => $getEmit('CNPJ') ?: $getEmit('CPF'),
             'valor'        => $valor,
             // cSitCTe só existe em resumos de lote (distribuição por NSU) — uma consulta
             // direta por chave (solDFe) traz o CT-e completo, sem essa tag, então fica
