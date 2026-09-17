@@ -109,6 +109,7 @@ class SimplesNacionalController extends Controller
             'atividadesIssTratamentoProprio' => PgdasdAtividades::ATIVIDADES_ISS_TRATAMENTO_PROPRIO,
             'atividadesIssComRetencao' => PgdasdAtividades::ATIVIDADES_ISS_COM_RETENCAO,
             'atividadesDevidoOutroMunicipio' => PgdasdAtividades::ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO,
+            'atividadesOutraUfIcms' => PgdasdAtividades::ATIVIDADES_OUTRA_UF_ICMS,
             'processamentos' => $processamentos,
             'periodo' => $periodo,
         ]);

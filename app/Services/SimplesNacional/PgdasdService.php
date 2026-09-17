@@ -136,66 +136,143 @@ class PgdasdService
             throw new \RuntimeException("Cliente {$cliente->nome} não tem CNPJ cadastrado — obrigatório para transmitir.");
         }
 
-        $receita = SimplesReceitaMensal::where('cliente_id', $cliente->id)
-            ->where('periodo_apuracao', $periodoApuracao)
-            ->first();
+        // A declaração do PGDASD é única por empresa (raiz de CNPJ), não por
+        // estabelecimento isolado: quando a matriz tem filial(is) cadastrada(s)
+        // como outro Cliente (mesmo esquema usado em DocumentoFiscal::
+        // filtrarEstabelecimento), a Receita Federal exige que TODAS apareçam
+        // juntas no mesmo TRANSDECLARACAO11. CONFIRMADO EM PRODUÇÃO
+        // (2026-09-17, "V&C TRANSPORTADORA" e "AGROSHOP CARBONI"): enviar só a
+        // matriz é rejeitado com "Um ou mais nis existentes no Cadastro CNPJ
+        // não foram enviados no campo Estabelecimento: <cnpj da filial>".
+        $clientesDoGrupo = $this->buscarClientesDoGrupoEconomico($cliente);
+
+        // A transmissão (e o controle de "já processado"/"já transmitido")
+        // precisa ficar SEMPRE ancorada na matriz do grupo, nunca em quem
+        // clicou o botão — se ancorássemos em quem disparou a chamada, dois
+        // disparos separados (ex.: o job em lote processando matriz e filial
+        // como Clientes distintos, ou o usuário clicando "Transmitir" em cada
+        // um na tela) fariam DUAS transmissões reais da mesma declaração de
+        // grupo, a segunda sem saber que a primeira já teve sucesso (o
+        // registro de SimplesDasProcessamento/CONSDECLARACAO13 ficaria salvo
+        // sob outro cliente_id/CNPJ). Identificamos a matriz pelo sufixo de
+        // CNPJ "0001" (convenção padrão da Receita Federal); se nenhuma bater
+        // (ex.: grupo sem matriz "0001" cadastrada), caímos no próprio
+        // cliente que disparou, mantendo o comportamento anterior.
+        $matriz = $clientesDoGrupo->first(function (Cliente $c) {
+            $digitos = preg_replace('/\D/', '', $c->cpfcnpj ?? '');
+
+            return strlen($digitos) === 14 && substr($digitos, 8, 4) === '0001';
+        }) ?? $cliente;
+
+        $estabelecimentos = $clientesDoGrupo
+            ->map(fn (Cliente $estabelecimento) => [
+                'cliente' => $estabelecimento,
+                'receita' => SimplesReceitaMensal::where('cliente_id', $estabelecimento->id)
+                    ->where('periodo_apuracao', $periodoApuracao)
+                    ->first(),
+                'atividades' => SimplesReceitaAtividade::with('tributos')
+                    ->where('cliente_id', $estabelecimento->id)
+                    ->where('periodo_apuracao', $periodoApuracao)
+                    ->get(),
+            ]);
+
+        $dadosPrincipal = $estabelecimentos->firstWhere('cliente.id', $matriz->id);
+        $receita = $dadosPrincipal['receita'];
 
         if (!$receita) {
-            throw new \RuntimeException("Cliente {$cliente->nome} não tem receita bruta lançada para o período {$periodoApuracao}. Cadastre antes de transmitir.");
+            throw new \RuntimeException("Matriz {$matriz->nome} não tem receita bruta lançada para o período {$periodoApuracao}. Cadastre antes de transmitir.");
         }
 
         if ($receita->regime_apuracao === 'caixa' && $receita->receita_bruta_caixa === null) {
-            throw new \RuntimeException("Cliente {$cliente->nome}: regime de apuração é \"caixa\", mas a receita bruta (caixa) não foi preenchida — ambos os valores (competência e caixa) são exigidos pela Receita Federal, não só um deles.");
+            throw new \RuntimeException("Matriz {$matriz->nome}: regime de apuração é \"caixa\", mas a receita bruta (caixa) não foi preenchida — ambos os valores (competência e caixa) são exigidos pela Receita Federal, não só um deles.");
         }
 
-        $valorTributavel = $receita->regime_apuracao === 'caixa'
-            ? (float) $receita->receita_bruta_caixa
-            : (float) $receita->receita_bruta_competencia;
+        // Filiais só entram na validação (regime "caixa" exige os dois
+        // valores) se realmente tiverem receita lançada nesse período — uma
+        // filial sem nenhum movimento no mês é legítima e não deve travar a
+        // transmissão da matriz.
+        foreach ($estabelecimentos as $dados) {
+            if ($dados['cliente']->id === $matriz->id || !$dados['receita']) {
+                continue;
+            }
+
+            if ($dados['receita']->regime_apuracao === 'caixa' && $dados['receita']->receita_bruta_caixa === null) {
+                throw new \RuntimeException("Filial {$dados['cliente']->nome}: regime de apuração é \"caixa\", mas a receita bruta (caixa) não foi preenchida para o período {$periodoApuracao}.");
+            }
+        }
+
+        $valorTributavelPorEstabelecimento = fn (SimplesReceitaMensal $r) => $r->regime_apuracao === 'caixa'
+            ? (float) $r->receita_bruta_caixa
+            : (float) $r->receita_bruta_competencia;
+
+        $valorTributavel = $estabelecimentos->sum(fn ($dados) => $dados['receita'] ? $valorTributavelPorEstabelecimento($dados['receita']) : 0.0);
 
         if ($valorTributavel <= 0 && !$confirmarReceitaZerada) {
-            throw new \RuntimeException("Cliente {$cliente->nome}: receita bruta do período está zerada. Se for mesmo uma declaração sem movimento, confirme explicitamente antes de transmitir.");
+            throw new \RuntimeException("Matriz {$matriz->nome}: receita bruta do período está zerada. Se for mesmo uma declaração sem movimento, confirme explicitamente antes de transmitir.");
         }
 
-        $atividades = SimplesReceitaAtividade::with('tributos')
-            ->where('cliente_id', $cliente->id)
-            ->where('periodo_apuracao', $periodoApuracao)
-            ->get();
+        $atividadesTodas = $estabelecimentos->flatMap(fn ($dados) => $dados['atividades']);
 
         // Uma declaração "sem movimento" de verdade (receita zerada,
         // confirmada acima) não tem nenhuma atividade — diferente de uma
         // receita > 0 sem atividade lançada, que aí sim é um esquecimento.
-        if ($atividades->isEmpty() && !$confirmarReceitaZerada) {
-            throw new \RuntimeException("Cliente {$cliente->nome} não tem nenhuma atividade com receita lançada para o período {$periodoApuracao} — cadastre em \"Receitas por Atividade\" antes de transmitir.");
+        if ($atividadesTodas->isEmpty() && !$confirmarReceitaZerada) {
+            throw new \RuntimeException("Matriz {$matriz->nome} não tem nenhuma atividade com receita lançada para o período {$periodoApuracao} — cadastre em \"Receitas por Atividade\" antes de transmitir.");
         }
 
-        $somaAtividades = round((float) $atividades->sum('valor'), 2);
+        $somaAtividades = round((float) $atividadesTodas->sum('valor'), 2);
 
         if (abs($somaAtividades - round($valorTributavel, 2)) > 0.01) {
-            throw new \RuntimeException("Cliente {$cliente->nome}: a soma das receitas por atividade (R$ " . number_format($somaAtividades, 2, ',', '.') . ") não bate com a receita bruta do período em regime \"{$receita->regime_apuracao}\" (R$ " . number_format($valorTributavel, 2, ',', '.') . "). Ajuste os valores por atividade antes de transmitir.");
+            throw new \RuntimeException("Matriz {$matriz->nome}: a soma das receitas por atividade de todos os estabelecimentos (R$ " . number_format($somaAtividades, 2, ',', '.') . ") não bate com a soma das receitas brutas lançadas em regime \"{$receita->regime_apuracao}\" (R$ " . number_format($valorTributavel, 2, ',', '.') . "). Ajuste os valores por atividade — da matriz e das filiais — antes de transmitir.");
         }
 
-        $jaTransmitidaNaReceita = $this->declaracaoJaExisteNaReceita($cliente, $periodoApuracao);
+        $jaTransmitidaNaReceita = $this->declaracaoJaExisteNaReceita($matriz, $periodoApuracao);
 
         if ($jaTransmitidaNaReceita && !$confirmarRetificadora) {
-            throw new \RuntimeException("Cliente {$cliente->nome} já tem uma declaração ORIGINAL transmitida para o período {$periodoApuracao} (confirmado via CONSDECLARACAO13). Se você corrigiu os dados e quer substituir essa declaração, confirme explicitamente que esta transmissão é uma RETIFICADORA antes de continuar.");
+            throw new \RuntimeException("Matriz {$matriz->nome} já tem uma declaração ORIGINAL transmitida para o período {$periodoApuracao} (confirmado via CONSDECLARACAO13). Se você corrigiu os dados e quer substituir essa declaração, confirme explicitamente que esta transmissão é uma RETIFICADORA antes de continuar.");
         }
 
         $tipoDeclaracao = $jaTransmitidaNaReceita ? 2 : 1;
 
-        $exigeFolhaSalario = $atividades->contains(fn (SimplesReceitaAtividade $a) => in_array($a->id_atividade, PgdasdAtividades::ATIVIDADES_FATOR_R, true));
+        $exigeFolhaSalario = $atividadesTodas->contains(fn (SimplesReceitaAtividade $a) => in_array($a->id_atividade, PgdasdAtividades::ATIVIDADES_FATOR_R, true));
 
         if ($exigeFolhaSalario && $receita->folha_salario === null) {
-            throw new \RuntimeException("Cliente {$cliente->nome}: há atividade sujeita ao fator \"r\" (Anexo V) lançada para {$periodoApuracao}, que exige informar o valor da folha de salário do mês anterior — preencha antes de transmitir.");
+            throw new \RuntimeException("Matriz {$matriz->nome}: há atividade sujeita ao fator \"r\" (Anexo V) lançada para {$periodoApuracao}, que exige informar o valor da folha de salário do mês anterior — preencha antes de transmitir.");
         }
 
         $dadosApuracao = [
-            'cnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? ''),
-            'declaracao' => $this->montarDeclaracao($cliente, $receita, $atividades, $periodoApuracao, $exigeFolhaSalario, $tipoDeclaracao),
+            'cnpjCompleto' => preg_replace('/\D/', '', $matriz->cpfcnpj ?? ''),
+            'declaracao' => $this->montarDeclaracao($estabelecimentos, $receita, $periodoApuracao, $exigeFolhaSalario, $tipoDeclaracao),
             'indicadorTransmissao' => true,
             'indicadorComparacao' => false,
         ];
 
-        return $this->transmitirDeclaracao($cliente, $periodoApuracao, $dadosApuracao, $tipoDeclaracao);
+        return $this->transmitirDeclaracao($matriz, $periodoApuracao, $dadosApuracao, $tipoDeclaracao);
+    }
+
+    /**
+     * Busca todos os Clientes cadastrados (matriz + filiais) que compartilham
+     * a mesma raiz de CNPJ (8 primeiros dígitos) do cliente informado — no
+     * sistema, cada estabelecimento (matriz ou filial) é um registro Cliente
+     * separado, sem vínculo formal entre eles (não há coluna de "matriz_id"),
+     * então o agrupamento é feito comparando a raiz do CNPJ, igual ao usado
+     * em DocumentoFiscal::filtrarEstabelecimento(). CPF (produtor rural/
+     * autônomo) não tem matriz/filial, então retorna só o próprio cliente.
+     */
+    private function buscarClientesDoGrupoEconomico(Cliente $cliente): \Illuminate\Support\Collection
+    {
+        $digitos = preg_replace('/\D/', '', $cliente->cpfcnpj ?? '');
+
+        if (strlen($digitos) !== 14) {
+            return collect([$cliente]);
+        }
+
+        $raiz = substr($digitos, 0, 8);
+        $normalizadoSql = "REPLACE(REPLACE(REPLACE(cpfcnpj, '.', ''), '-', ''), '/', '')";
+
+        return Cliente::whereRaw("SUBSTRING({$normalizadoSql}, 1, 8) = ?", [$raiz])
+            ->orderBy('cpfcnpj')
+            ->get();
     }
 
     /**
@@ -288,20 +365,33 @@ class PgdasdService
      * acumulado nunca antes informado pra esse CNPJ) — revalidar se
      * aparecer um novo erro parecido.
      *
-     * @param  \Illuminate\Support\Collection<int, SimplesReceitaAtividade>  $atividades
+     * Suporta múltiplas EMPRESAS/estabelecimentos (matriz + filiais, cada
+     * uma um Cliente separado) na mesma declaração — obrigatório pela
+     * Receita Federal quando a matriz tem filial(is) cadastrada(s) no mesmo
+     * CNPJ raiz (ver buscarClientesDoGrupoEconomico() e comentário em
+     * transmitirDeclaracaoDoCliente()). $receitaPrincipal é sempre a da
+     * matriz/cliente que disparou a transmissão — regime de apuração e folha
+     * de salário são conceitos da empresa como um todo, não por filial.
+     *
+     * @param  \Illuminate\Support\Collection<int, array{cliente: Cliente, receita: ?SimplesReceitaMensal, atividades: \Illuminate\Support\Collection<int, SimplesReceitaAtividade>}>  $estabelecimentosDados
      */
-    private function montarDeclaracao(Cliente $cliente, SimplesReceitaMensal $receita, $atividades, string $periodoApuracao, bool $exigeFolhaSalario, int $tipoDeclaracao = 1): array
+    private function montarDeclaracao($estabelecimentosDados, SimplesReceitaMensal $receitaPrincipal, string $periodoApuracao, bool $exigeFolhaSalario, int $tipoDeclaracao = 1): array
     {
+        $atividadesTodas = $estabelecimentosDados->flatMap(fn ($dados) => $dados['atividades']);
+
         // A API valida que receitaPaCompetenciaInterno/Externo (e o par
         // "Caixa") sejam exatamente a soma das atividades classificadas como
         // mercado interno/externo (PgdasdAtividades::ehParaExterior) —
         // confirmado em produção (2026-08-04) com a BVD, que tem a atividade
         // 30 ("Prestação de serviços para o exterior") junto com atividades
-        // domésticas: jogar o total inteiro em "Interno" é rejeitado.
-        $atividadesExterno = $atividades->filter(
+        // domésticas: jogar o total inteiro em "Interno" é rejeitado. Esses
+        // totais são da DECLARAÇÃO inteira (soma de todos os estabelecimentos),
+        // não por estabelecimento — só o array "atividades" dentro de cada
+        // "estabelecimento" é por Cliente.
+        $atividadesExterno = $atividadesTodas->filter(
             fn (SimplesReceitaAtividade $atividade) => PgdasdAtividades::ehParaExterior((int) $atividade->id_atividade)
         );
-        $atividadesInterno = $atividades->reject(
+        $atividadesInterno = $atividadesTodas->reject(
             fn (SimplesReceitaAtividade $atividade) => PgdasdAtividades::ehParaExterior((int) $atividade->id_atividade)
         );
 
@@ -331,7 +421,14 @@ class PgdasdService
         $somaExterno = round((float) $atividadesExterno->sum('valor'), 2);
         $somaAtividadesTotal = round($somaInterno + $somaExterno, 2);
 
-        $receitaCompetenciaTotal = round((float) $receita->receita_bruta_competencia, 2);
+        // Soma a receita bruta de competência de TODOS os estabelecimentos
+        // (matriz + filiais) — cada um lança a sua própria (SimplesReceitaMensal
+        // é por cliente_id), mas a Receita Federal tributa a empresa inteira
+        // (raiz de CNPJ) como um todo nesse total.
+        $receitaCompetenciaTotal = round(
+            (float) $estabelecimentosDados->sum(fn ($dados) => $dados['receita']?->receita_bruta_competencia ?? 0),
+            2
+        );
 
         if ($somaAtividadesTotal > 0) {
             $receitaCompetenciaInterno = round($receitaCompetenciaTotal * ($somaInterno / $somaAtividadesTotal), 2);
@@ -347,7 +444,7 @@ class PgdasdService
             'receitaPaCompetenciaExterno' => $receitaCompetenciaExterno,
         ];
 
-        if ($receita->regime_apuracao === 'caixa') {
+        if ($receitaPrincipal->regime_apuracao === 'caixa') {
             $declaracao['receitaPaCaixaInterno'] = $somaInterno;
             $declaracao['receitaPaCaixaExterno'] = $somaExterno;
         }
@@ -356,44 +453,50 @@ class PgdasdService
             $periodoAnterior = \Carbon\Carbon::createFromFormat('Ym', $periodoApuracao)->subMonthNoOverflow()->format('Ym');
 
             $declaracao['folhasSalario'] = [
-                ['pa' => (int) $periodoAnterior, 'valor' => (float) $receita->folha_salario],
+                ['pa' => (int) $periodoAnterior, 'valor' => (float) $receitaPrincipal->folha_salario],
             ];
         }
 
-        $estabelecimento = ['CnpjCompleto' => preg_replace('/\D/', '', $cliente->cpfcnpj ?? '')];
+        // Um objeto "estabelecimento" por Cliente do grupo (matriz + cada
+        // filial) — cada um com o seu próprio CnpjCompleto e a sua própria
+        // lista de atividades (SimplesReceitaAtividade é lançada por
+        // cliente_id, cada estabelecimento tem a sua).
+        $declaracao['estabelecimentos'] = $estabelecimentosDados->map(function ($dados) {
+            $estabelecimento = ['CnpjCompleto' => preg_replace('/\D/', '', $dados['cliente']->cpfcnpj ?? '')];
 
-        // Documentação oficial da SERPRO (entregar_declaracao_mensal_entrada):
-        // "Se não houve atividade para o estabelecimento, não enviar esta
-        // lista" — ou seja, pra uma declaração sem movimento (sem nenhuma
-        // atividade lançada) a chave "atividades" tem que ficar OMITIDA, não
-        // enviada como array vazio. Confirmado em produção (2026-08-04,
-        // MACHADINHO): mandar "atividades": [] foi rejeitado com "O valor da
-        // atividade deve ser maior que zero" (a API tentou validar um item
-        // que não existia).
-        if ($atividades->isNotEmpty()) {
-            // Agrupa por id_atividade antes de montar o payload: o relatório do
-            // Domínio (e a tela manual, ver das.blade.php) permitem lançar a
-            // MESMA atividade em mais de uma linha no mesmo período — cada uma
-            // com sua própria receita e tratamento tributário por tributo (ex.:
-            // "revenda com substituição tributária" quebrada em "Tabela 1 -
-            // Substituição somente do ICMS" e "Tabela 4 - Substituição do PIS/
-            // PASEP, COFINS e do ICMS"). Enviar isso como DOIS objetos de
-            // "atividades" com o mesmo idAtividade fez a API rejeitar o
-            // TRANSDECLARACAO11 com "A soma dos valores das atividades está
-            // diferente do valor total de receita do Pa" (confirmado em
-            // produção 2026-08-07) — a API parece deduplicar/só considerar uma
-            // ocorrência por idAtividade na soma. O array "receitasAtividade"
-            // dentro de cada atividade já existe justamente pra isso: várias
-            // receitas/tratamentos sob o mesmo idAtividade, com "valorAtividade"
-            // sendo a soma de todas elas.
-            $estabelecimento['atividades'] = $atividades
-                ->groupBy('id_atividade')
-                ->map(fn ($linhasDaAtividade) => $this->montarAtividade($linhasDaAtividade))
-                ->values()
-                ->all();
-        }
+            // Documentação oficial da SERPRO (entregar_declaracao_mensal_entrada):
+            // "Se não houve atividade para o estabelecimento, não enviar esta
+            // lista" — ou seja, pra um estabelecimento sem nenhuma atividade
+            // lançada no período (ex.: filial sem movimento no mês) a chave
+            // "atividades" tem que ficar OMITIDA, não enviada como array
+            // vazio. Confirmado em produção (2026-08-04, MACHADINHO): mandar
+            // "atividades": [] foi rejeitado com "O valor da atividade deve
+            // ser maior que zero" (a API tentou validar um item que não existia).
+            if ($dados['atividades']->isNotEmpty()) {
+                // Agrupa por id_atividade antes de montar o payload: o relatório do
+                // Domínio (e a tela manual, ver das.blade.php) permitem lançar a
+                // MESMA atividade em mais de uma linha no mesmo período — cada uma
+                // com sua própria receita e tratamento tributário por tributo (ex.:
+                // "revenda com substituição tributária" quebrada em "Tabela 1 -
+                // Substituição somente do ICMS" e "Tabela 4 - Substituição do PIS/
+                // PASEP, COFINS e do ICMS"). Enviar isso como DOIS objetos de
+                // "atividades" com o mesmo idAtividade fez a API rejeitar o
+                // TRANSDECLARACAO11 com "A soma dos valores das atividades está
+                // diferente do valor total de receita do Pa" (confirmado em
+                // produção 2026-08-07) — a API parece deduplicar/só considerar uma
+                // ocorrência por idAtividade na soma. O array "receitasAtividade"
+                // dentro de cada atividade já existe justamente pra isso: várias
+                // receitas/tratamentos sob o mesmo idAtividade, com "valorAtividade"
+                // sendo a soma de todas elas.
+                $estabelecimento['atividades'] = $dados['atividades']
+                    ->groupBy('id_atividade')
+                    ->map(fn ($linhasDaAtividade) => $this->montarAtividade($linhasDaAtividade))
+                    ->values()
+                    ->all();
+            }
 
-        $declaracao['estabelecimentos'] = [$estabelecimento];
+            return $estabelecimento;
+        })->values()->all();
 
         return $declaracao;
     }
@@ -560,6 +663,17 @@ class PgdasdService
 
                 $receitaAtividade['outraUf'] = $atividade->uf;
                 $receitaAtividade['codigoOutroMunicipio'] = $codigoSn;
+            }
+
+            if (in_array($atividade->id_atividade, PgdasdAtividades::ATIVIDADES_OUTRA_UF_ICMS, true)) {
+                if (! $atividade->uf) {
+                    throw new \RuntimeException("Atividade {$atividade->id_atividade}: informe o Estado de destino do ICMS (a API rejeita com \"Campo UF inválido\" sem essa informação).");
+                }
+
+                // Diferente do bloco de ISS acima, aqui a API exige "outraUf"
+                // MAS rejeita se "codigoOutroMunicipio" vier preenchido
+                // (confirmado em produção 2026-09-17, ver constante).
+                $receitaAtividade['outraUf'] = $atividade->uf;
             }
 
             $receitasAtividade[] = $receitaAtividade;

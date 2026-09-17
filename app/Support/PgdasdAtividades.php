@@ -91,6 +91,17 @@ class PgdasdAtividades
      */
     const ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO = [10, 13, 16, 19, 22, 25, 40];
 
+    /**
+     * Atividades de transporte/comunicação intermunicipal e interestadual
+     * (categoria "exceto para o exterior") — o ICMS é devido à UF de destino.
+     * Confirmado em produção (2026-09-17): a API rejeitou o TRANSDECLARACAO11
+     * com "A atividade 34 deve ser enviada sem valor no campo
+     * codOutroMunicipio e com valor válido no campo outraUf" — diferente das
+     * atividades de ISS acima, aqui só a UF é exigida, sem
+     * codigoOutroMunicipio (ver PgdasdService::montarAtividade).
+     */
+    const ATIVIDADES_OUTRA_UF_ICMS = [34, 35, 36, 37];
+
     const NOMES_TRIBUTOS = [
         self::TRIBUTO_IRPJ => 'IRPJ',
         self::TRIBUTO_CSLL => 'CSLL',

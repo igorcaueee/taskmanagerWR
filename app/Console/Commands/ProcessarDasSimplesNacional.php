@@ -37,6 +37,28 @@ class ProcessarDasSimplesNacional extends Command
         $despachados = 0;
 
         foreach ($clientes as $cliente) {
+            // PgdasdService::transmitirDeclaracaoDoCliente() agora transmite a
+            // declaração do GRUPO inteiro (matriz + filiais, cada uma um
+            // Cliente separado com o mesmo CNPJ raiz — ver
+            // buscarClientesDoGrupoEconomico()) de uma vez só, ancorada na
+            // matriz. Despachar um job por filial aqui faria duas chamadas
+            // concorrentes tentando transmitir o MESMO grupo (a segunda
+            // correndo o risco de não ver ainda o sucesso da primeira e
+            // duplicar a declaração real na Receita Federal) — então só
+            // despachamos para a matriz (CNPJ terminado em "0001") ou para um
+            // CNPJ/CPF sem filial cadastrada; a filial é coberta
+            // automaticamente pelo job da própria matriz.
+            $digitos = preg_replace('/\D/', '', $cliente->cpfcnpj ?? '');
+            $ehFilial = strlen($digitos) === 14 && substr($digitos, 8, 4) !== '0001'
+                && Cliente::whereRaw(
+                    "SUBSTRING(REPLACE(REPLACE(REPLACE(cpfcnpj, '.', ''), '-', ''), '/', ''), 1, 8) = ? AND SUBSTRING(REPLACE(REPLACE(REPLACE(cpfcnpj, '.', ''), '-', ''), '/', ''), 9, 4) = '0001'",
+                    [substr($digitos, 0, 8)]
+                )->exists();
+
+            if ($ehFilial) {
+                continue;
+            }
+
             $jaProcessado = SimplesDasProcessamento::where('cliente_id', $cliente->id)
                 ->where('periodo_apuracao', $periodo)
                 ->whereIn('status', ['sucesso', 'ja_transmitido'])

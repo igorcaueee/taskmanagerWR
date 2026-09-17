@@ -305,6 +305,7 @@
         window.PGDASD_ATIVIDADES_ISS_TRATAMENTO_PROPRIO = @json($atividadesIssTratamentoProprio);
         window.PGDASD_ATIVIDADES_ISS_COM_RETENCAO = @json($atividadesIssComRetencao);
         window.PGDASD_ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO = @json($atividadesDevidoOutroMunicipio);
+        window.PGDASD_ATIVIDADES_OUTRA_UF_ICMS = @json($atividadesOutraUfIcms);
         window.PGDASD_TRIBUTO_ISS = 1010;
         window.PGDASD_UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
     </script>
@@ -830,6 +831,14 @@
             }
 
             selectUf.addEventListener('change', () => carregarMunicipiosDaUf(selectUf.value, ''));
+        } else if (window.PGDASD_ATIVIDADES_OUTRA_UF_ICMS.includes(parseInt(idAtividade, 10))) {
+            const tdUf = document.createElement('td');
+            tdUf.className = 'align-top py-2 pr-2';
+            tdUf.innerHTML = `<select class="select-uf-atividade w-16 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-1 py-1 text-sm">
+                <option value="">UF</option>
+                ${window.PGDASD_UFS.map(uf => `<option value="${uf}" ${uf === (dadosExistentes?.uf ?? '') ? 'selected' : ''}>${uf}</option>`).join('')}
+            </select>`;
+            tr.appendChild(tdUf);
         }
 
         const tdRemover = document.createElement('td');
@@ -877,6 +886,9 @@
                             ${window.PGDASD_ATIVIDADES_DEVIDO_OUTRO_MUNICIPIO.includes(parseInt(idAtividade, 10)) ? `
                                 <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">UF</th>
                                 <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">Município (ISS devido)</th>
+                            ` : ''}
+                            ${window.PGDASD_ATIVIDADES_OUTRA_UF_ICMS.includes(parseInt(idAtividade, 10)) ? `
+                                <th class="text-left text-gray-500 dark:text-slate-400 font-medium pb-1">UF (ICMS devido)</th>
                             ` : ''}
                             <th></th>
                         </tr>
