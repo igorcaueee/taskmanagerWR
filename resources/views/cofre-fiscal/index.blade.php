@@ -24,7 +24,7 @@
                 <i class="fa-solid fa-upload text-[#0084aa]"></i>
                 Enviar XMLs (.zip)
             </button>
-            @if(in_array($nivel, ['tipos', 'documentos'], true))
+            @if($nivel === 'tipos' || ($nivel === 'documentos' && request()->filled('ano') && request()->filled('mes')))
             <button type="button" id="btnExportarRelatorioCofre"
                     data-cliente-id="{{ request('cliente_id') }}"
                     data-ano="{{ request('ano') }}"
@@ -78,6 +78,21 @@
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Buscar cliente..."
+                           onchange="this.form.submit()"
+                           class="pl-8 pr-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0084aa] w-64">
+                </div>
+            </form>
+            @else
+            {{-- Já dentro de um cliente (Anos/Meses/Tipos): buscar por número ou valor pula
+                 direto para a lista de documentos, sem precisar navegar pelas pastas. --}}
+            <form method="GET" action="{{ route('cofre-fiscal.index') }}"
+                  class="flex flex-wrap gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                <input type="hidden" name="cliente_id" value="{{ request('cliente_id') }}">
+                <input type="hidden" name="ano" value="{{ request('ano') }}">
+                <input type="hidden" name="mes" value="{{ request('mes') }}">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                    <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Buscar por número ou valor..."
                            onchange="this.form.submit()"
                            class="pl-8 pr-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#0084aa] w-64">
                 </div>
@@ -194,7 +209,7 @@
                 <div>
                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Buscar</label>
                     <input type="text" name="busca" value="{{ request('busca') }}"
-                           placeholder="Chave, número ou emitente..."
+                           placeholder="Chave, número, valor ou emitente..."
                            onchange="document.getElementById('form-filtros-cofre').submit()"
                            class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-[#0084aa] w-56">
                 </div>

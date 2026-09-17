@@ -60,6 +60,12 @@ class CofreFiscalController extends Controller
             return $this->nivelDocumentos($request, $clienteId, $ano, $mes, $tipo, $breadcrumbs);
         }
 
+        // Busca dentro do cliente (por número ou valor) pula a navegação por pasta
+        // e mostra os documentos batendo com o filtro em qualquer Ano/Mês/Tipo.
+        if ($clienteId && $request->filled('busca')) {
+            return $this->nivelDocumentos($request, $clienteId, $ano, $mes, $tipo, $breadcrumbs);
+        }
+
         if ($clienteId && $ano && $mes) {
             return $this->nivelTipos($clienteId, $ano, $mes, $breadcrumbs);
         }
@@ -189,7 +195,7 @@ class CofreFiscalController extends Controller
         ]);
     }
 
-    private function nivelDocumentos(Request $request, int $clienteId, int $ano, int $mes, string $tipo, array $breadcrumbs): View
+    private function nivelDocumentos(Request $request, int $clienteId, ?int $ano, ?int $mes, ?string $tipo, array $breadcrumbs): View
     {
         $documentos = $this->filtrar($request)
             ->select([
@@ -202,12 +208,20 @@ class CofreFiscalController extends Controller
             ->paginate(50)
             ->withQueryString();
 
+        // Voltar sempre para a última pasta escolhida (ou para os Anos do cliente,
+        // quando a busca foi feita antes de escolher Ano/Mês/Tipo).
+        $urlVoltar = match (true) {
+            $mes !== null => route('cofre-fiscal.index', ['cliente_id' => $clienteId, 'ano' => $ano, 'mes' => $mes]),
+            $ano !== null => route('cofre-fiscal.index', ['cliente_id' => $clienteId, 'ano' => $ano]),
+            default => route('cofre-fiscal.index', ['cliente_id' => $clienteId]),
+        };
+
         return view('cofre-fiscal.index', [
             'nivel' => 'documentos',
             'documentos' => $documentos,
             'maxZip' => self::MAX_ZIP,
             'breadcrumbs' => $breadcrumbs,
-            'urlVoltar' => route('cofre-fiscal.index', ['cliente_id' => $clienteId, 'ano' => $ano, 'mes' => $mes]),
+            'urlVoltar' => $urlVoltar,
         ]);
     }
 
@@ -684,11 +698,17 @@ class CofreFiscalController extends Controller
         }
 
         if ($request->filled('busca')) {
-            $busca = '%' . $request->string('busca') . '%';
-            $query->where(function (Builder $q) use ($busca) {
+            $termo = trim((string) $request->string('busca'));
+            $busca = '%' . $termo . '%';
+            // Aceita valor digitado com vírgula (padrão BR) ou ponto — o LIKE compara
+            // contra a representação string da coluna decimal.
+            $buscaValor = '%' . str_replace(',', '.', $termo) . '%';
+
+            $query->where(function (Builder $q) use ($busca, $buscaValor) {
                 $q->where('chave_acesso', 'like', $busca)
                     ->orWhere('numero', 'like', $busca)
-                    ->orWhere('emitente_nome', 'like', $busca);
+                    ->orWhere('emitente_nome', 'like', $busca)
+                    ->orWhere('valor', 'like', $buscaValor);
             });
         }
 
