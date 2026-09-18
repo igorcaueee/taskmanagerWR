@@ -14,6 +14,11 @@ class CofreFiscalImportacao extends Model
 {
     use HasFactory;
 
+    // Sem isso o Eloquent pluraliza "CofreFiscalImportacao" (regra em inglês) pra
+    // "cofre_fiscal_importacaos" — a migration criou "cofre_fiscal_importacoes" (plural
+    // certo em português), então o Model ficava buscando uma tabela que não existe.
+    protected $table = 'cofre_fiscal_importacoes';
+
     protected $fillable = [
         'cliente_id',
         'usuario_id',
