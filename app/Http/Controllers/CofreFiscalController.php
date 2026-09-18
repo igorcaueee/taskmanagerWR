@@ -11,6 +11,7 @@ use App\Services\NfeXmlParser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use NFePHP\DA\CTe\Dacte;
 use NFePHP\DA\NFe\Danfce;
@@ -442,6 +443,14 @@ class CofreFiscalController extends Controller
         }
 
         $path = $arquivo->store('cofre-fiscal-uploads');
+
+        // O disco `local` cria o diretório com permissão 0700 (só o dono, o usuário do
+        // PHP-FPM/nginx, consegue ler) — mas quem processa o zip é o worker da fila
+        // (`php artisan queue:work`), rodando como outro usuário do SO. Sem abrir a
+        // permissão aqui, o Job falha com "Não foi possível abrir o arquivo .zip."
+        // mesmo com o arquivo salvo corretamente.
+        @chmod(dirname(Storage::disk('local')->path($path)), 0755);
+        @chmod(Storage::disk('local')->path($path), 0644);
 
         $importacao = CofreFiscalImportacao::create([
             'cliente_id' => (int) $validated['cliente_id'],
