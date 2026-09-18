@@ -217,7 +217,7 @@ class ClienteController extends Controller
     {
         abort_if(! auth()->user()?->canEditarClientes(), 403);
 
-        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'importar_notas_fiscais', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'importar_notas_fiscais', 'pode_enviar_documentos', 'recebe_arquivos_portal', 'recebe_arquivos_email', 'recebe_arquivos_whatsapp', 'notificar_email_novo_arquivo', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
         $data['status'] = 'ativo';
 
         if (! auth()->user()?->canVerInfoComercialCliente()) {
@@ -236,6 +236,11 @@ class ClienteController extends Controller
 
         $data['fator_r'] = isset($data['fator_r']);
         $data['importar_notas_fiscais'] = $request->boolean('importar_notas_fiscais');
+        $data['pode_enviar_documentos'] = $request->boolean('pode_enviar_documentos');
+        $data['recebe_arquivos_portal'] = $request->boolean('recebe_arquivos_portal');
+        $data['recebe_arquivos_email'] = $request->boolean('recebe_arquivos_email');
+        $data['recebe_arquivos_whatsapp'] = $request->boolean('recebe_arquivos_whatsapp');
+        $data['notificar_email_novo_arquivo'] = $data['recebe_arquivos_email'] && $request->boolean('notificar_email_novo_arquivo');
         $data += $this->cnaeDoRequest($request);
 
         Cliente::create($data);
@@ -254,7 +259,7 @@ class ClienteController extends Controller
 
         $cliente = Cliente::findOrFail($id);
 
-        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'importar_notas_fiscais', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
+        $data = $request->only(['nome', 'tipo', 'pasta_arquivos', 'segmentacao_id', 'atividade', 'descricao', 'cpfcnpj', 'regime_tributario', 'cidade', 'estado', 'fator_r', 'importar_notas_fiscais', 'pode_enviar_documentos', 'recebe_arquivos_portal', 'recebe_arquivos_email', 'recebe_arquivos_whatsapp', 'notificar_email_novo_arquivo', 'cliente_desde', 'dataabertura', 'vencimento_certificado', 'faturamento', 'servico', 'honorario']);
 
         if (! auth()->user()?->canVerInfoComercialCliente()) {
             unset($data['faturamento'], $data['honorario']);
@@ -272,6 +277,11 @@ class ClienteController extends Controller
 
         $data['fator_r'] = isset($data['fator_r']);
         $data['importar_notas_fiscais'] = $request->boolean('importar_notas_fiscais');
+        $data['pode_enviar_documentos'] = $request->boolean('pode_enviar_documentos');
+        $data['recebe_arquivos_portal'] = $request->boolean('recebe_arquivos_portal');
+        $data['recebe_arquivos_email'] = $request->boolean('recebe_arquivos_email');
+        $data['recebe_arquivos_whatsapp'] = $request->boolean('recebe_arquivos_whatsapp');
+        $data['notificar_email_novo_arquivo'] = $data['recebe_arquivos_email'] && $request->boolean('notificar_email_novo_arquivo');
         $data += $this->cnaeDoRequest($request);
 
         $regimeAnterior = $cliente->regime_tributario;
@@ -402,6 +412,11 @@ class ClienteController extends Controller
             'estado' => ['nullable', 'string', 'size:2', 'alpha'],
             'fator_r' => ['nullable'],
             'importar_notas_fiscais' => ['nullable'],
+            'pode_enviar_documentos' => ['nullable'],
+            'recebe_arquivos_portal' => ['nullable'],
+            'recebe_arquivos_email' => ['nullable'],
+            'recebe_arquivos_whatsapp' => ['nullable'],
+            'notificar_email_novo_arquivo' => ['nullable'],
             'cliente_desde' => ['nullable', 'date'],
             'dataabertura' => ['nullable', 'date', 'before_or_equal:today'],
             'vencimento_certificado' => ['nullable', 'date'],

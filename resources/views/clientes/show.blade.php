@@ -233,6 +233,31 @@
                             </dd>
                         </div>
                         <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Pode Enviar Documentos (Portal)</dt>
+                            <dd class="mt-0.5">
+                                @if($cliente->pode_enviar_documentos)
+                                    <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                                        <i class="fa-solid fa-check"></i> Sim
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">Não</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Recebe Arquivos Por</dt>
+                            <dd class="mt-0.5 text-gray-900 dark:text-slate-100">
+                                {{ collect([
+                                    'Portal',
+                                    $cliente->recebe_arquivos_email ? 'E-mail' : null,
+                                    $cliente->recebe_arquivos_whatsapp ? 'WhatsApp' : null,
+                                ])->filter()->implode(', ') }}
+                                @if($cliente->notificar_email_novo_arquivo)
+                                    <span class="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">Avisa por e-mail a cada novo arquivo</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
                             <dt class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Atividade</dt>
                             <dd class="mt-0.5 text-gray-900 dark:text-slate-100">{{ $cliente->atividade ?? '—' }}</dd>
                         </div>

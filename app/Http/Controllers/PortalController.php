@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\PortalUsuario;
 use App\Models\TarefaUpload;
 use App\Models\TarefaUploadEvento;
+use App\Services\Base44DashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -17,6 +18,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PortalController extends Controller
 {
+    public function __construct(private readonly Base44DashboardService $base44DashboardService)
+    {
+    }
+
     public function dashboard(): View
     {
         /** @var PortalUsuario $portalUsuario */
@@ -63,6 +68,88 @@ class PortalController extends Controller
             ->keyBy('arquivo_nome');
 
         return view('portal.arquivos', compact('cliente', 'arvore', 'portalUsuario', 'uploads'));
+    }
+
+    public function dashboardFiscal(): View
+    {
+        /** @var PortalUsuario $portalUsuario */
+        $portalUsuario = Auth::guard('portal')->user();
+        $cliente = $portalUsuario->cliente;
+
+        $resultado = $cliente->cpfcnpj
+            ? $this->base44DashboardService->buscarDashboardFiscal($cliente->cpfcnpj)
+            : ['ok' => false, 'data' => null, 'error' => 'Cliente sem CNPJ cadastrado.'];
+
+        $dashboard = $resultado['data'] ? $this->base44DashboardService->normalizar($resultado['data']) : null;
+
+        return view('portal.dashboard-fiscal', [
+            'cliente' => $cliente,
+            'portalUsuario' => $portalUsuario,
+            'dashboard' => $dashboard,
+            'erro' => $resultado['error'],
+        ]);
+    }
+
+    public function enviarArquivoCliente(Request $request): JsonResponse
+    {
+        /** @var PortalUsuario $portalUsuario */
+        $portalUsuario = Auth::guard('portal')->user();
+        $cliente = $portalUsuario->cliente;
+
+        abort_unless($cliente->pode_enviar_documentos, 403);
+
+        $validator = validator($request->all(), [
+            'arquivo' => ['required', 'file', 'max:51200'],
+            'pasta_categoria' => ['required', 'string', 'in:Contabilidade,Financeiro,Fiscal,Patrimônio,Pessoal'],
+            'pasta_periodo' => ['required', 'string', 'max:50', 'regex:/^[\w\s\-\.]+$/u'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        if (! $cliente->pasta_arquivos) {
+            return response()->json(['error' => 'Cliente sem pasta de arquivos configurada.'], 422);
+        }
+
+        $arquivo = $request->file('arquivo');
+        $nomeOriginal = $arquivo->getClientOriginalName();
+        $categoria = $request->input('pasta_categoria');
+        $periodo = $request->input('pasta_periodo');
+
+        $sharedRoot = rtrim(Storage::disk('shared')->path(''), '/');
+        $pastaPortal = $sharedRoot.'/'.rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$categoria.'/'.$periodo;
+
+        if (! is_dir($pastaPortal)) {
+            mkdir($pastaPortal, 0775, true);
+        }
+
+        $nomeBase = pathinfo($nomeOriginal, PATHINFO_FILENAME);
+        $extensao = pathinfo($nomeOriginal, PATHINFO_EXTENSION);
+        $nomeArquivo = $nomeOriginal;
+
+        if (file_exists($pastaPortal.'/'.$nomeArquivo)) {
+            $nomeArquivo = $nomeBase.'_'.time().($extensao ? '.'.$extensao : '');
+        }
+
+        $destinoAbsoluto = $pastaPortal.'/'.$nomeArquivo;
+        $arquivo->move($pastaPortal, $nomeArquivo);
+
+        $caminhoDB = rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$categoria.'/'.$periodo.'/'.$nomeArquivo;
+
+        TarefaUpload::create([
+            'cliente_id' => $cliente->id,
+            'origem' => 'cliente',
+            'enviado_por_portal_usuario_id' => $portalUsuario->id,
+            'arquivo_nome' => $nomeArquivo,
+            'arquivo_path' => $caminhoDB,
+            'pasta_categoria' => $categoria,
+            'pasta_periodo' => $periodo,
+            'tamanho' => file_exists($destinoAbsoluto) ? filesize($destinoAbsoluto) : 0,
+            'mime_type' => $arquivo->getClientMimeType(),
+        ]);
+
+        return response()->json(['success' => true, 'nome' => $nomeArquivo]);
     }
 
     public function agenda(Request $request): View

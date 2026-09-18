@@ -34,6 +34,15 @@
             </select>
         </div>
         <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Origem</label>
+            <select name="origem"
+                    class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+                <option value="">Todas</option>
+                <option value="empresa" @selected(request('origem') === 'empresa')>Enviado pela empresa</option>
+                <option value="cliente" @selected(request('origem') === 'cliente')>Enviado pelo cliente</option>
+            </select>
+        </div>
+        <div>
             <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Status de download</label>
             <select name="status"
                     class="border border-gray-300 dark:border-slate-600 rounded px-3 py-1.5 text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
@@ -47,7 +56,7 @@
                 class="px-4 py-1.5 bg-brand text-white rounded text-sm border-0 hover:bg-brand/80">
             <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
         </button>
-        @if(request()->hasAny(['cliente_id', 'status']))
+        @if(request()->hasAny(['cliente_id', 'origem', 'status']))
             <a href="{{ route('tarefas.uploads-portal') }}"
                class="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200 no-underline">
                 <i class="fa-solid fa-xmark mr-1"></i> Limpar
@@ -125,6 +134,11 @@
                                             {{ $upload->arquivo_nome }}
                                         </p>
                                         <p class="text-xs text-gray-400 dark:text-slate-500">{{ $upload->tamanhoFormatado() }}</p>
+                                        @if($upload->foiEnviadoPeloCliente())
+                                            <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+                                                <i class="fa-solid fa-arrow-up text-[9px]"></i> Enviado pelo cliente
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -143,7 +157,7 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-gray-500 dark:text-slate-400 hidden sm:table-cell">
-                                {{ $upload->enviadoPor?->nome ?? '—' }}
+                                {{ $upload->foiEnviadoPeloCliente() ? ($upload->enviadoPorPortalUsuario?->nome ?? 'Cliente') : ($upload->enviadoPor?->nome ?? '—') }}
                             </td>
                             <td class="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs whitespace-nowrap">
                                 {{ $upload->created_at->format('d/m/Y H:i') }}
@@ -169,11 +183,28 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3" onclick="event.stopPropagation()">
-                                <button onclick="excluirUpload({{ $upload->id }}, '{{ addslashes($upload->arquivo_nome) }}')"
-                                        class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/30 bg-transparent border-0 cursor-pointer transition"
-                                        title="Excluir do hist&oacute;rico">
-                                    <i class="fa-solid fa-trash text-xs"></i>
-                                </button>
+                                <div class="flex items-center gap-1 justify-end">
+                                    @if(!$upload->foiEnviadoPeloCliente() && $upload->cliente?->recebe_arquivos_whatsapp)
+                                        @php
+                                            $telefoneWhats = $upload->cliente->contatoClientes->first(fn ($c) => filled($c->telefone))?->telefone;
+                                            $telefoneLimpo = $telefoneWhats ? preg_replace('/\D/', '', $telefoneWhats) : null;
+                                            $mensagemWhats = "Olá! Um novo arquivo (\"{$upload->arquivo_nome}\") foi disponibilizado no seu Portal WR Assessoria: ".route('portal.login');
+                                        @endphp
+                                        @if($telefoneLimpo)
+                                            <a href="https://wa.me/55{{ $telefoneLimpo }}?text={{ urlencode($mensagemWhats) }}"
+                                               target="_blank" rel="noopener"
+                                               class="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-green-50 dark:hover:bg-green-900/30 bg-transparent border-0 transition"
+                                               title="Avisar por WhatsApp">
+                                                <i class="fa-brands fa-whatsapp text-sm"></i>
+                                            </a>
+                                        @endif
+                                    @endif
+                                    <button onclick="excluirUpload({{ $upload->id }}, '{{ addslashes($upload->arquivo_nome) }}')"
+                                            class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/30 bg-transparent border-0 cursor-pointer transition"
+                                            title="Excluir do hist&oacute;rico">
+                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

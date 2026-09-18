@@ -51,4 +51,9 @@ return [
         'api_key' => env('NEXUS_FISCAL_API_KEY'),
     ],
 
+    'base44' => [
+        'dashboard_url' => env('BASE44_DASHBOARD_URL'),
+        'dashboard_token' => env('BASE44_DASHBOARD_TOKEN'),
+    ],
+
 ];

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NovoArquivoPortalMail;
 use App\Models\Ciclo;
 use App\Models\Cliente;
 use App\Models\Departamento;
@@ -18,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -1227,6 +1229,7 @@ class TarefaController extends Controller
         TarefaUpload::create([
             'tarefa_id' => $tarefa->id,
             'cliente_id' => $cliente->id,
+            'origem' => 'empresa',
             'enviado_por' => Auth::id(),
             'arquivo_nome' => $nomeArquivo,
             'arquivo_path' => $caminhoDB,
@@ -1238,6 +1241,19 @@ class TarefaController extends Controller
             'tamanho' => file_exists($destinoAbsoluto) ? filesize($destinoAbsoluto) : 0,
             'mime_type' => $arquivo->getClientMimeType(),
         ]);
+
+        if ($cliente->recebe_arquivos_email && $cliente->notificar_email_novo_arquivo) {
+            $emails = $cliente->contatoClientes()->whereNotNull('gmail')->pluck('gmail');
+
+            if ($emails->isNotEmpty()) {
+                Mail::to($emails->all())->queue(new NovoArquivoPortalMail(
+                    nomeCliente: $cliente->nome,
+                    nomeArquivo: $nomeArquivo,
+                    categoria: $categoria,
+                    linkPortal: route('portal.login'),
+                ));
+            }
+        }
 
         return response()->json(['success' => true, 'nome' => $nomeArquivo, 'arquivo_path' => $caminhoDB]);
     }
@@ -1252,15 +1268,17 @@ class TarefaController extends Controller
 
     public function uploadsHistorico(TarefaUpload $upload): JsonResponse
     {
-        $upload->load(['tarefa', 'cliente', 'enviadoPor', 'eventos.portalUsuario']);
+        $upload->load(['tarefa', 'cliente', 'enviadoPor', 'enviadoPorPortalUsuario', 'eventos.portalUsuario']);
 
         $eventos = [];
 
         $eventos[] = [
             'tipo' => 'enviado',
-            'label' => 'Arquivo enviado ao portal',
+            'label' => $upload->foiEnviadoPeloCliente() ? 'Enviado pelo cliente' : 'Arquivo enviado ao portal',
             'data' => $upload->created_at->format('d/m/Y H:i'),
-            'por' => $upload->enviadoPor?->nome ?? 'Sistema',
+            'por' => $upload->foiEnviadoPeloCliente()
+                ? ($upload->enviadoPorPortalUsuario?->nome ?? 'Cliente')
+                : ($upload->enviadoPor?->nome ?? 'Sistema'),
         ];
 
         foreach ($upload->eventos as $evento) {
@@ -1299,11 +1317,15 @@ class TarefaController extends Controller
         $usuario = Auth::user();
         $podeVerTodas = in_array($usuario->cargo, ['diretor', 'ti', 'supervisor']);
 
-        $query = TarefaUpload::with(['tarefa', 'cliente', 'enviadoPor'])
+        $query = TarefaUpload::with(['tarefa', 'cliente.contatoClientes', 'enviadoPor', 'enviadoPorPortalUsuario'])
             ->orderByDesc('created_at');
 
         if ($request->filled('cliente_id')) {
             $query->where('cliente_id', $request->integer('cliente_id'));
+        }
+
+        if ($request->filled('origem')) {
+            $query->where('origem', $request->input('origem'));
         }
 
         if ($request->filled('status')) {

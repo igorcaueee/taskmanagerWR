@@ -56,11 +56,13 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
     Route::middleware('portal.auth')->group(function () {
         Route::get('/', [PortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard-fiscal', [PortalController::class, 'dashboardFiscal'])->name('dashboard-fiscal');
         Route::get('/blog', [PortalController::class, 'blog'])->name('blog');
         Route::get('/blog/{slug}', [PortalController::class, 'artigoShow'])->name('blog.show');
         Route::get('/arquivos', [PortalController::class, 'arquivos'])->name('arquivos');
         Route::get('/arquivos/download', [PortalController::class, 'downloadArquivo'])->name('arquivos.download');
         Route::get('/arquivos/visualizar', [PortalController::class, 'visualizarArquivo'])->name('arquivos.visualizar');
+        Route::post('/arquivos/enviar', [PortalController::class, 'enviarArquivoCliente'])->name('arquivos.enviar')->middleware('throttle:20,1');
         Route::post('/arquivos/{upload}/marcar-pago', [PortalController::class, 'marcarPago'])->name('arquivos.marcar-pago');
         Route::get('/agenda', [PortalController::class, 'agenda'])->name('agenda');
 

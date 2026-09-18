@@ -263,6 +263,63 @@
             </div>
         </div>
 
+        <div class="border-t border-gray-200 dark:border-slate-700 pt-4">
+            <span class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Recebimento de Arquivos (Portal do Cliente)</span>
+
+            @php
+                $podeEnviarDocumentosAtual = old('pode_enviar_documentos', $isEditing ? $cliente->pode_enviar_documentos : ($prefill['pode_enviar_documentos'] ?? false));
+                $recebePortalAtual = old('recebe_arquivos_portal', $isEditing ? $cliente->recebe_arquivos_portal : true);
+                $recebeEmailAtual = old('recebe_arquivos_email', $isEditing ? $cliente->recebe_arquivos_email : false);
+                $recebeWhatsappAtual = old('recebe_arquivos_whatsapp', $isEditing ? $cliente->recebe_arquivos_whatsapp : false);
+                $notificarEmailAtual = old('notificar_email_novo_arquivo', $isEditing ? $cliente->notificar_email_novo_arquivo : false);
+            @endphp
+
+            <div class="mb-3">
+                <span class="block text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide mb-1">Cliente pode enviar documentos pelo portal?</span>
+                <div class="flex items-center gap-4">
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input name="pode_enviar_documentos" type="radio" value="1" class="border-gray-300"
+                               {{ $podeEnviarDocumentosAtual ? 'checked' : '' }}>
+                        Sim
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input name="pode_enviar_documentos" type="radio" value="0" class="border-gray-300"
+                               {{ ! $podeEnviarDocumentosAtual ? 'checked' : '' }}>
+                        Não
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <span class="block text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide mb-1">Onde o cliente recebe arquivos</span>
+                <div class="flex flex-wrap items-center gap-4">
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input type="hidden" name="recebe_arquivos_portal" value="1">
+                        <input type="checkbox" checked disabled class="rounded border-gray-300 opacity-60">
+                        Portal
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input name="recebe_arquivos_email" type="checkbox" value="1" class="rounded border-gray-300"
+                               {{ $recebeEmailAtual ? 'checked' : '' }}>
+                        E-mail
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input name="recebe_arquivos_whatsapp" type="checkbox" value="1" class="rounded border-gray-300"
+                               {{ $recebeWhatsappAtual ? 'checked' : '' }}>
+                        WhatsApp
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input name="notificar_email_novo_arquivo" type="checkbox" value="1" class="rounded border-gray-300"
+                           {{ $notificarEmailAtual ? 'checked' : '' }}>
+                    Avisar por e-mail quando um arquivo novo for adicionado
+                </label>
+            </div>
+        </div>
+
         @if(isset($produtos) && $produtos->isNotEmpty())
             @php
                 $produtosSelecionados = old('produtos', $isEditing ? $cliente->produtos->pluck('id')->toArray() : ($prefill['produtos'] ?? []));

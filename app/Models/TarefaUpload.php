@@ -15,7 +15,9 @@ class TarefaUpload extends Model
     protected $fillable = [
         'tarefa_id',
         'cliente_id',
+        'origem',
         'enviado_por',
+        'enviado_por_portal_usuario_id',
         'arquivo_nome',
         'arquivo_path',
         'pasta_categoria',
@@ -57,6 +59,11 @@ class TarefaUpload extends Model
         return $this->belongsTo(Usuario::class, 'enviado_por');
     }
 
+    public function enviadoPorPortalUsuario(): BelongsTo
+    {
+        return $this->belongsTo(PortalUsuario::class, 'enviado_por_portal_usuario_id');
+    }
+
     public function visualizadoPor(): BelongsTo
     {
         return $this->belongsTo(PortalUsuario::class, 'visualizado_por');
@@ -80,6 +87,11 @@ class TarefaUpload extends Model
     public function foiBaixado(): bool
     {
         return ! is_null($this->baixado_em);
+    }
+
+    public function foiEnviadoPeloCliente(): bool
+    {
+        return $this->origem === 'cliente';
     }
 
     public function foiVisualizado(): bool

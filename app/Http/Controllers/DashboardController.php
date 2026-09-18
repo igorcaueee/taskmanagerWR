@@ -49,7 +49,7 @@ class DashboardController extends Controller
         $clientesSnAtivos = Cliente::query()
             ->where('regime_tributario', 'Simples Nacional')
             ->where('status', 'ativo')
-            ->get(['id', 'cpfcnpj']);
+            ->get(['id', 'nome', 'cpfcnpj']);
 
         // Agrupa por raiz de CNPJ (matriz + filiais): a transmissão do PGDAS
         // fica registrada só no cliente que é a matriz do grupo, então
@@ -70,13 +70,31 @@ class DashboardController extends Controller
             ->pluck('cliente_id')
             ->flip();
 
-        $totalPgdasEnviados = $gruposSn
-            ->filter(fn ($clientesDoGrupo) => $clientesDoGrupo->contains(
-                fn (Cliente $cliente) => $clienteIdsComPgdasEnviado->has($cliente->id)
-            ))
-            ->count();
+        $grupoEnviouPgdas = fn ($clientesDoGrupo) => $clientesDoGrupo->contains(
+            fn (Cliente $cliente) => $clienteIdsComPgdasEnviado->has($cliente->id)
+        );
 
-        $totalPgdasPendentes = $totalGruposSn - $totalPgdasEnviados;
+        // Nome de exibição do grupo: usa o cliente com o CNPJ mais curto (matriz)
+        // como representante; se houver empate ou for PF, usa o primeiro.
+        $nomeDoGrupo = fn ($clientesDoGrupo) => $clientesDoGrupo
+            ->sortBy(fn (Cliente $c) => strlen(preg_replace('/\D/', '', $c->cpfcnpj ?? '')))
+            ->first()
+            ->nome;
+
+        $nomesPgdasEnviados = $gruposSn
+            ->filter($grupoEnviouPgdas)
+            ->map($nomeDoGrupo)
+            ->sort()
+            ->values();
+
+        $nomesPgdasPendentes = $gruposSn
+            ->reject($grupoEnviouPgdas)
+            ->map($nomeDoGrupo)
+            ->sort()
+            ->values();
+
+        $totalPgdasEnviados = $nomesPgdasEnviados->count();
+        $totalPgdasPendentes = $nomesPgdasPendentes->count();
 
         $aniversariantesHoje = Usuario::query()
             ->whereNotNull('data_nascimento')
@@ -114,6 +132,8 @@ class DashboardController extends Controller
             'totalGruposSn',
             'totalPgdasEnviados',
             'totalPgdasPendentes',
+            'nomesPgdasEnviados',
+            'nomesPgdasPendentes',
         ));
     }
 }

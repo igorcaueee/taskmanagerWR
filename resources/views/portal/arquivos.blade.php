@@ -10,6 +10,43 @@
         <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">Documentos e guias disponibilizados pela WR Assessoria para {{ $cliente->nome }}.</p>
     </div>
 
+    @if ($cliente->pode_enviar_documentos)
+    <div class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl shadow-sm p-5">
+        <h2 class="text-sm font-semibold text-gray-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-upload text-[#0084AA]"></i> Enviar arquivo para a WR Assessoria
+        </h2>
+        <form id="form-enviar-arquivo" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            @csrf
+            <div class="sm:col-span-1">
+                <label class="block text-xs text-gray-500 dark:text-slate-400 mb-1">Categoria</label>
+                <select name="pasta_categoria" required class="w-full text-sm border border-gray-300 dark:border-slate-600 rounded-lg px-2.5 py-2 bg-white dark:bg-[#0f172a] text-gray-800 dark:text-slate-100">
+                    <option value="Contabilidade">Contabilidade</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Fiscal">Fiscal</option>
+                    <option value="Patrimônio">Patrimônio</option>
+                    <option value="Pessoal">Pessoal</option>
+                </select>
+            </div>
+            <div class="sm:col-span-1">
+                <label class="block text-xs text-gray-500 dark:text-slate-400 mb-1">Período</label>
+                <input type="text" name="pasta_periodo" required placeholder="Ex: 2026-09" maxlength="50"
+                       class="w-full text-sm border border-gray-300 dark:border-slate-600 rounded-lg px-2.5 py-2 bg-white dark:bg-[#0f172a] text-gray-800 dark:text-slate-100">
+            </div>
+            <div class="sm:col-span-1">
+                <label class="block text-xs text-gray-500 dark:text-slate-400 mb-1">Arquivo</label>
+                <input type="file" name="arquivo" required
+                       class="w-full text-sm border border-gray-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-[#0f172a] text-gray-800 dark:text-slate-100">
+            </div>
+            <div class="sm:col-span-1">
+                <button type="submit" id="btn-enviar-arquivo"
+                        class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#0084AA] hover:bg-[#006e8e] text-white text-sm font-medium rounded-lg transition border-0 cursor-pointer">
+                    <i class="fa-solid fa-paper-plane text-xs"></i> Enviar
+                </button>
+            </div>
+        </form>
+    </div>
+    @endif
+
     @if (empty($arvore))
         <div class="bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-[#334155] rounded-xl p-10 text-center text-gray-400 dark:text-slate-500 shadow-sm">
             <p class="text-5xl mb-3">📂</p>
@@ -95,6 +132,11 @@
                                                 <span class="font-medium text-gray-800 dark:text-slate-100">{{ $arquivo['nome'] }}</span>
                                                 {{-- Badges de tipo e status --}}
                                                 <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    @if($meta && $meta->foiEnviadoPeloCliente())
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+                                                            <i class="fa-solid fa-arrow-up text-[9px]"></i> Enviado por você
+                                                        </span>
+                                                    @endif
                                                     @if($meta && $meta->tipo_arquivo)
                                                         @php
                                                             $tipoBadge = match($meta->tipo_arquivo) {
@@ -285,6 +327,37 @@ function fecharVisualizador() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { fecharVisualizador(); }
 });
+
+const formEnviarArquivo = document.getElementById('form-enviar-arquivo');
+if (formEnviarArquivo) {
+    formEnviarArquivo.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-enviar-arquivo');
+        const formData = new FormData(formEnviarArquivo);
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('{{ route('portal.arquivos.enviar') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: formData,
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                await Swal.fire({ icon: 'success', title: 'Arquivo enviado!', text: 'Recebemos seu arquivo com sucesso.', timer: 3000, showConfirmButton: false });
+                window.location.reload();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Não foi possível enviar o arquivo.' });
+            }
+        } catch {
+            Swal.fire({ icon: 'error', title: 'Erro de conexão', text: 'Tente novamente.' });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
 
 async function marcarComoPago(uploadId, btn) {
     const result = await Swal.fire({

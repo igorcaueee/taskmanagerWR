@@ -128,7 +128,7 @@
             </div>
 
             {{-- Card PGDAS do Simples Nacional --}}
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 col-span-2 sm:col-span-2 lg:col-span-2 flex flex-col sm:flex-row items-center gap-6">
+            <div id="cardPgdas" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 col-span-2 sm:col-span-2 lg:col-span-2 flex flex-col sm:flex-row items-center gap-6 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors" title="Clique para ver a lista de empresas">
                 <div class="flex-shrink-0 w-40 h-40">
                     <canvas id="chartPgdas"></canvas>
                 </div>
@@ -207,6 +207,62 @@
                 },
             },
         });
+
+        const nomesPgdasEnviados = @json($nomesPgdasEnviados);
+        const nomesPgdasPendentes = @json($nomesPgdasPendentes);
+
+        function abrirListaPgdas(abaInicial = 'pendentes') {
+            const renderLista = (nomes) => nomes.length
+                ? `<ul class="text-left divide-y divide-gray-100 dark:divide-slate-700 max-h-80 overflow-y-auto">${nomes.map(nome => `<li class="py-1.5 px-1 text-sm text-gray-700 dark:text-slate-200">${nome}</li>`).join('')}</ul>`
+                : '<p class="text-sm text-gray-400 dark:text-slate-500 text-center py-6">Nenhuma empresa nesta lista.</p>';
+
+            Swal.fire({
+                title: 'PGDAS — {{ ucfirst(\Carbon\Carbon::createFromFormat('Ym', $periodoPgdas)->translatedFormat('F/Y')) }}',
+                html: `
+                    <div class="flex gap-2 justify-center mb-3">
+                        <button type="button" id="tabPgdasEnviados" class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300">Enviados ({{ $totalPgdasEnviados }})</button>
+                        <button type="button" id="tabPgdasPendentes" class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300">Pendentes ({{ $totalPgdasPendentes }})</button>
+                    </div>
+                    <input type="text" id="filtroPgdas" placeholder="Buscar empresa..." class="w-full mb-3 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                    <div id="listaPgdas"></div>
+                `,
+                width: 480,
+                showConfirmButton: false,
+                showCloseButton: true,
+                didOpen: () => {
+                    const btnEnviados = document.getElementById('tabPgdasEnviados');
+                    const btnPendentes = document.getElementById('tabPgdasPendentes');
+                    const filtro = document.getElementById('filtroPgdas');
+                    const lista = document.getElementById('listaPgdas');
+                    let aba = abaInicial;
+
+                    const aplicarEstiloAba = () => {
+                        const ativo = ['bg-emerald-500', 'text-white', 'border-emerald-500'];
+                        const inativo = ['border-gray-200', 'dark:border-slate-600', 'text-gray-600', 'dark:text-slate-300'];
+                        btnEnviados.classList.remove(...ativo, ...inativo);
+                        btnPendentes.classList.remove(...ativo, ...inativo);
+                        (aba === 'enviados' ? btnEnviados : btnPendentes).classList.add(...ativo);
+                        (aba === 'enviados' ? btnPendentes : btnEnviados).classList.add(...inativo);
+                    };
+
+                    const renderizar = () => {
+                        const fonte = aba === 'enviados' ? nomesPgdasEnviados : nomesPgdasPendentes;
+                        const termo = filtro.value.trim().toLowerCase();
+                        const filtrados = termo ? fonte.filter(n => n.toLowerCase().includes(termo)) : fonte;
+                        lista.innerHTML = renderLista(filtrados);
+                        aplicarEstiloAba();
+                    };
+
+                    btnEnviados.addEventListener('click', () => { aba = 'enviados'; renderizar(); });
+                    btnPendentes.addEventListener('click', () => { aba = 'pendentes'; renderizar(); });
+                    filtro.addEventListener('input', renderizar);
+
+                    renderizar();
+                },
+            });
+        }
+
+        document.getElementById('cardPgdas').addEventListener('click', () => abrirListaPgdas('pendentes'));
 
         const ctxPgdas = document.getElementById('chartPgdas').getContext('2d');
         new Chart(ctxPgdas, {
