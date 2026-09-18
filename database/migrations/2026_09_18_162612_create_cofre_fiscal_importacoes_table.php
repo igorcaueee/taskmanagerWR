@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('cofre_fiscal_importacoes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('cliente_id')->constrained('clientes');
-            $table->foreignId('usuario_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('usuario_id')->nullable()->constrained('usuarios')->nullOnDelete();
             $table->string('arquivo_path');
             $table->string('arquivo_nome_original');
             $table->string('status')->default('pendente'); // pendente|processando|concluido|falhou
