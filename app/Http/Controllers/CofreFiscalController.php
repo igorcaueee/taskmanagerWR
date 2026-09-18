@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Exports\NfeRelatorioExport;
+use App\Jobs\ImportarCofreFiscalZipJob;
 use App\Models\Cliente;
+use App\Models\CofreFiscalImportacao;
 use App\Models\DocumentoFiscal;
 use App\Services\NfeXmlParser;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,10 +31,6 @@ class CofreFiscalController extends Controller
 {
     // Limite de documentos por zip em lote — protege contra memória/tempo em filtros muito amplos.
     const MAX_ZIP = 500;
-
-    // Limite de XMLs por .zip enviado manualmente — mesmo racional do MAX_ZIP, mas pro sentido
-    // inverso (upload em vez de download).
-    const MAX_UPLOAD_XMLS = 2000;
 
     const MESES = [
         1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
@@ -423,21 +421,18 @@ class CofreFiscalController extends Controller
      * contabilidade na migração de um cliente. Só .zip é suportado (sem .rar: o
      * servidor não tem unrar/7z instalado, nem a extensão PHP correspondente).
      *
-     * Cada entrada .xml do zip é lida com NfeXmlParser::extrairMetadados() e gravada
-     * via updateOrCreate por chave_acesso — mesmo padrão de idempotência usado por
-     * NfeService::persistir/CteDistribuicaoDFeService::persistir, então reenviar o
-     * mesmo zip não duplica nada. Documentos cuja chave já pertence a OUTRO cliente
-     * são pulados (não reatribuídos), pra não corromper a pasta de outro cliente por
-     * upload no cliente errado.
+     * Só recebe e guarda o .zip aqui — o processamento em si (extrair, parsear cada
+     * XML, gravar) acontece assíncrono em ImportarCofreFiscalZipJob, na fila `database`
+     * (mesmo esquema de EnviarEmailCampanhaJob/ProcessarDasClienteJob). Zips grandes
+     * (dezenas de milhares de XMLs) faziam esse processamento rodar dentro do próprio
+     * request HTTP, estourando timeout de proxy/PHP-FPM e travando o modal de upload.
+     * O front-end recebe o id da importação e faz polling em uploadZipStatus() pro progresso.
      */
     public function uploadZip(Request $request)
     {
-        @ini_set('memory_limit', '1024M');
-        @set_time_limit(300);
-
         $validated = $request->validate([
             'cliente_id' => 'required|exists:clientes,id',
-            'arquivo' => 'required|file|max:102400', // 100MB
+            'arquivo' => 'required|file|max:512000', // 500MB — confirme se upload_max_filesize/post_max_size (PHP) e client_max_body_size (nginx) do servidor comportam isso
         ]);
 
         $arquivo = $request->file('arquivo');
@@ -446,134 +441,44 @@ class CofreFiscalController extends Controller
             return response()->json(['error' => 'Envie um arquivo .zip. Outros formatos (ex.: .rar) não são suportados — compacte os XMLs em .zip antes de enviar.'], 422);
         }
 
-        $zip = new ZipArchive();
-        $abriu = $zip->open($arquivo->getRealPath());
+        $path = $arquivo->store('cofre-fiscal-uploads');
 
-        if ($abriu !== true) {
-            Log::warning('[Cofre Fiscal] uploadZip: falha ao abrir .zip', ['codigo_zip' => $abriu, 'arquivo_original' => $arquivo->getClientOriginalName()]);
+        $importacao = CofreFiscalImportacao::create([
+            'cliente_id' => (int) $validated['cliente_id'],
+            'usuario_id' => auth()->id(),
+            'arquivo_path' => $path,
+            'arquivo_nome_original' => $arquivo->getClientOriginalName(),
+            'status' => 'pendente',
+        ]);
 
-            return response()->json(['error' => 'Não foi possível abrir o arquivo .zip.'], 422);
-        }
+        Log::info('[Cofre Fiscal] uploadZip: importação enfileirada', [
+            'importacao_id' => $importacao->id,
+            'arquivo_original' => $arquivo->getClientOriginalName(),
+            'tamanho_bytes' => $arquivo->getSize(),
+        ]);
 
-        Log::info('[Cofre Fiscal] uploadZip: zip aberto', ['arquivo_original' => $arquivo->getClientOriginalName(), 'num_files' => $zip->numFiles]);
+        ImportarCofreFiscalZipJob::dispatch($importacao->id);
 
-        // (int) é necessário aqui: o valor chega como string do multipart/form-data, enquanto
-        // $existente->cliente_id vem como int do Eloquent — sem o cast, a comparação abaixo
-        // com !== (estrita) nunca bate, mesmo sendo o mesmo cliente.
-        $clienteId = (int) $validated['cliente_id'];
-        $cnpjCliente = preg_replace('/[.\-\/\s]/', '', Cliente::find($clienteId)?->cpfcnpj ?? '');
-        $importados = 0;
-        $atualizados = 0;
-        $ignoradosInvalidos = 0;
-        $ignoradosOutroCliente = 0;
-        $ignoradosCnpjDivergente = 0;
-        $processados = 0;
+        return response()->json(['importacao_id' => $importacao->id]);
+    }
 
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $nome = $zip->getNameIndex($i);
-
-            if ($nome === false || !str_ends_with(strtolower($nome), '.xml')) {
-                continue;
-            }
-
-            if ($processados >= self::MAX_UPLOAD_XMLS) {
-                $ignoradosInvalidos += $zip->numFiles - $i;
-                break;
-            }
-            $processados++;
-
-            $conteudo = $zip->getFromIndex($i);
-
-            $meta = $conteudo !== false ? NfeXmlParser::extrairMetadados($conteudo) : null;
-
-            if ($meta === null) {
-                $ignoradosInvalidos++;
-                Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (não reconhecido)', [
-                    'nome' => $nome,
-                    'conteudo_leu' => $conteudo !== false,
-                    'tamanho' => $conteudo !== false ? strlen($conteudo) : null,
-                    'amostra' => $conteudo !== false ? substr($conteudo, 0, 300) : null,
-                ]);
-                continue;
-            }
-
-            // O cliente selecionado precisa ser o emitente (nota de saída), o
-            // destinatário (nota de entrada) ou, no caso de CT-e, o tomador do
-            // serviço (quem contratou o frete, que pode não ser nem emitente
-            // nem destinatário da carga) do XML — senão é nota de outra empresa
-            // (upload no cliente errado, ou zip com XMLs de vários clientes misturados).
-            if ($cnpjCliente !== '') {
-                $emitenteDoc = preg_replace('/\D/', '', $meta['emitenteDoc'] ?? '');
-                $destinatarioDoc = preg_replace('/\D/', '', $meta['destinatarioDoc'] ?? '');
-                $tomadorDoc = preg_replace('/\D/', '', $meta['tomadorDoc'] ?? '');
-
-                if ($emitenteDoc !== $cnpjCliente && $destinatarioDoc !== $cnpjCliente && $tomadorDoc !== $cnpjCliente) {
-                    $ignoradosCnpjDivergente++;
-                    Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (CNPJ não pertence ao cliente selecionado)', [
-                        'chave_acesso' => $meta['chaveAcesso'],
-                        'cliente_id_selecionado' => $clienteId,
-                        'cnpj_cliente' => $cnpjCliente,
-                        'emitente_doc' => $emitenteDoc,
-                        'destinatario_doc' => $destinatarioDoc,
-                        'tomador_doc' => $tomadorDoc,
-                    ]);
-                    continue;
-                }
-            }
-
-            $existente = DocumentoFiscal::where('chave_acesso', $meta['chaveAcesso'])->first();
-
-            if ($existente && $existente->cliente_id !== $clienteId) {
-                $ignoradosOutroCliente++;
-                Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (chave já pertence a outro cliente)', [
-                    'chave_acesso' => $meta['chaveAcesso'],
-                    'cliente_id_selecionado' => $clienteId,
-                    'cliente_id_existente' => $existente->cliente_id,
-                ]);
-                continue;
-            }
-
-            DocumentoFiscal::updateOrCreate(
-                ['chave_acesso' => $meta['chaveAcesso']],
-                [
-                    'cliente_id'         => $clienteId,
-                    'tipo'               => $meta['tipo'],
-                    'origem'             => $existente->origem ?? 'manual',
-                    'numero'             => $meta['numero'] ?: null,
-                    'data_emissao'       => !empty($meta['dataEmissao']) ? substr($meta['dataEmissao'], 0, 10) : null,
-                    'data_saida_entrada' => !empty($meta['dataSaidaEntrada']) ? substr($meta['dataSaidaEntrada'], 0, 10) : null,
-                    'emitente_nome'      => $meta['emitenteNome'],
-                    'emitente_doc'       => $meta['emitenteDoc'] ?: null,
-                    'valor'              => $meta['valor'] ?: null,
-                    'situacao'           => $existente?->situacao === 'cancelada' ? 'cancelada' : ($meta['situacao'] ?? null),
-                    'tp_nf'              => $meta['tpNf'] ?? $existente?->tp_nf,
-                    'xml_content'        => $meta['xmlContent'],
-                ]
-            );
-
-            $existente ? $atualizados++ : $importados++;
-        }
-
-        $zip->close();
-
-        if ($importados === 0 && $atualizados === 0) {
-            if ($ignoradosCnpjDivergente > 0 && $ignoradosOutroCliente === 0 && $ignoradosInvalidos === 0) {
-                return response()->json(['error' => "Todos os {$ignoradosCnpjDivergente} XML(s) reconhecidos têm CNPJ de emitente/destinatário diferente do cliente selecionado — nada foi importado. Confira se selecionou a empresa certa."], 422);
-            }
-
-            if ($ignoradosOutroCliente > 0 && $ignoradosInvalidos === 0 && $ignoradosCnpjDivergente === 0) {
-                return response()->json(['error' => "Todos os {$ignoradosOutroCliente} XML(s) reconhecidos já pertencem a OUTRO cliente no Cofre — nada foi importado pra não corromper a pasta dele. Confira se selecionou a empresa certa."], 422);
-            }
-
-            return response()->json(['error' => 'Nenhum XML de NF-e/NFC-e/CT-e válido foi encontrado no .zip.'], 422);
-        }
-
+    /**
+     * Status/progresso de uma importação em andamento — o front-end faz polling aqui
+     * (ver modal em resources/views/cofre-fiscal/index.blade.php) enquanto
+     * ImportarCofreFiscalZipJob roda na fila, em vez de travar esperando 1 request HTTP.
+     */
+    public function uploadZipStatus(CofreFiscalImportacao $importacao)
+    {
         return response()->json([
-            'importados' => $importados,
-            'atualizados' => $atualizados,
-            'ignorados' => $ignoradosInvalidos + $ignoradosOutroCliente + $ignoradosCnpjDivergente,
-            'ignorados_outro_cliente' => $ignoradosOutroCliente,
-            'ignorados_cnpj_divergente' => $ignoradosCnpjDivergente,
+            'status' => $importacao->status,
+            'processados' => $importacao->processados,
+            'importados' => $importacao->importados,
+            'atualizados' => $importacao->atualizados,
+            'ignorados' => $importacao->ignorados_invalidos + $importacao->ignorados_outro_cliente + $importacao->ignorados_cnpj_divergente,
+            'ignorados_outro_cliente' => $importacao->ignorados_outro_cliente,
+            'ignorados_cnpj_divergente' => $importacao->ignorados_cnpj_divergente,
+            'cliente_id' => $importacao->cliente_id,
+            'erro' => $importacao->erro,
         ]);
     }
 

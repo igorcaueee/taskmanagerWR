@@ -389,7 +389,8 @@
             }
 
             Swal.fire({
-                title: 'Enviando e processando XMLs...',
+                title: 'Enviando arquivo...',
+                text: 'Isso pode levar alguns minutos em arquivos grandes.',
                 allowOutsideClick: false,
                 allowEscapeKey: false,
                 didOpen: () => Swal.showLoading(),
@@ -409,26 +410,85 @@
                 const data = await resp.json().catch(() => ({}));
 
                 if (!resp.ok) {
-                    Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao processar o .zip.' });
+                    Swal.fire({ icon: 'error', title: 'Erro', text: data.error ?? 'Falha ao enviar o .zip.' });
                     return;
                 }
 
-                const detalheCnpj = data.ignorados_cnpj_divergente > 0
-                    ? `<br><small>${data.ignorados_cnpj_divergente} ignorado(s) por CNPJ diferente do cliente selecionado</small>`
-                    : '';
-
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Importação concluída',
-                    html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>${detalheCnpj}`,
-                    confirmButtonColor: '#0084aa',
-                });
-
-                window.location.href = '{{ route('cofre-fiscal.index') }}?cliente_id=' + form.clienteId;
+                await acompanharImportacao(data.importacao_id, form.clienteId);
             } catch {
                 Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor.' });
             }
         });
+    }
+
+    /**
+     * Faz polling em uploadZipStatus() até o Job (ImportarCofreFiscalZipJob) terminar,
+     * atualizando o mesmo modal do SweetAlert com o progresso real — o processamento
+     * roda em background, então o upload não trava mais esperando 1 request HTTP.
+     */
+    async function acompanharImportacao(importacaoId, clienteId) {
+        const urlStatus = '{{ url('cofre-fiscal/upload') }}/' + importacaoId + '/status';
+
+        Swal.fire({
+            title: 'Processando XMLs...',
+            html: '<div id="swalProgressoImportacao">Iniciando...</div>',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+        });
+
+        while (true) {
+            let data;
+
+            try {
+                const resp = await fetch(urlStatus, { headers: { 'X-CSRF-TOKEN': CSRF } });
+                data = await resp.json();
+            } catch {
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de comunicação com o servidor ao acompanhar a importação.' });
+                return;
+            }
+
+            if (data.status === 'pendente' || data.status === 'processando') {
+                const el = document.getElementById('swalProgressoImportacao');
+                if (el) {
+                    el.innerHTML = data.status === 'pendente'
+                        ? 'Na fila, aguardando início...'
+                        : `Processados: <b>${data.processados}</b><br>Importados: <b>${data.importados}</b> · Atualizados: <b>${data.atualizados}</b> · Ignorados: <b>${data.ignorados}</b>`;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                continue;
+            }
+
+            if (data.status === 'falhou') {
+                Swal.fire({ icon: 'error', title: 'Falha na importação', text: data.erro ?? 'Falha ao processar o .zip.' });
+                return;
+            }
+
+            // concluido
+            const detalheCnpj = data.ignorados_cnpj_divergente > 0
+                ? `<br><small>${data.ignorados_cnpj_divergente} ignorado(s) por CNPJ diferente do cliente selecionado</small>`
+                : '';
+
+            if (data.importados === 0 && data.atualizados === 0) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Nada foi importado',
+                    html: `Nenhum XML válido para o cliente selecionado foi encontrado.<br>Ignorados: <b>${data.ignorados}</b>${detalheCnpj}`,
+                });
+                return;
+            }
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Importação concluída',
+                html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>${detalheCnpj}`,
+                confirmButtonColor: '#0084aa',
+            });
+
+            window.location.href = '{{ route('cofre-fiscal.index') }}?cliente_id=' + clienteId;
+            return;
+        }
     }
 
     if (btnExportarRelatorioCofre) {
