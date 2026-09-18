@@ -28,7 +28,11 @@ class CertificadoEmissaoController extends Controller
             $query->where(function ($q) use ($busca) {
                 $q->where('cliente_nome', 'like', $busca)
                     ->orWhere('numero_pedido', 'like', $busca)
-                    ->orWhere('cliente_documento', 'like', $busca);
+                    ->orWhere('cliente_documento', 'like', $busca)
+                    ->orWhere('titular_nome', 'like', $busca)
+                    ->orWhere('telefone', 'like', $busca)
+                    ->orWhere('email', 'like', $busca)
+                    ->orWhere('protocolo', 'like', $busca);
             });
         }
         if ($request->filled('modelo')) {
@@ -171,6 +175,9 @@ class CertificadoEmissaoController extends Controller
             'cliente_id'        => ['nullable', 'exists:clientes,id'],
             'cliente_nome'      => ['required', 'string', 'max:255'],
             'cliente_documento' => ['nullable', 'string', 'max:30'],
+            'titular_nome'      => ['nullable', 'string', 'max:255'],
+            'telefone'          => ['nullable', 'string', 'max:30'],
+            'email'             => ['nullable', 'string', 'email', 'max:255'],
             'modelo'            => ['required', 'in:'.implode(',', array_keys(self::MODELOS))],
             'numero_pedido'     => ['nullable', 'string', 'max:60'],
             'forma_emissao'     => ['required', 'in:'.implode(',', array_keys(self::FORMAS))],
@@ -178,6 +185,8 @@ class CertificadoEmissaoController extends Controller
             'pagamento'         => ['nullable', 'string', 'max:40'],
             'situacao'          => ['required', 'string', 'max:40'],
             'certificadora'     => ['required', 'string', 'max:60'],
+            'protocolo'         => ['nullable', 'string', 'max:60'],
+            'status_ar'         => ['nullable', 'string', 'max:60'],
             'vencimento'        => ['nullable', 'date'],
             'observacao'        => ['nullable', 'string', 'max:1000'],
         ]);

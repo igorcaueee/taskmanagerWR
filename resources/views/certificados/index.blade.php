@@ -79,7 +79,7 @@
                 <input type="hidden" name="aba" value="emissoes">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Cliente, pedido, documento..."
+                    <input type="text" name="busca" value="{{ request('busca') }}" placeholder="Cliente, titular, pedido, protocolo, documento..."
                            onchange="this.form.submit()"
                            class="pl-8 pr-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand w-64">
                 </div>
@@ -135,7 +135,7 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
                 <thead class="bg-gray-50 dark:bg-slate-900">
                     <tr>
-                        @foreach(['Data', 'Cliente', 'Cliente WR', 'Modelo', 'Nº Pedido', 'Forma', 'Valor', 'Pagamento', 'Situação', 'Certificadora', 'Vencimento', ''] as $th)
+                        @foreach(['Data', 'Cliente', 'Titular', 'Contato', 'Cliente WR', 'Modelo', 'Nº Pedido', 'Forma', 'Valor', 'Pagamento', 'Situação', 'Certificadora', 'Protocolo', 'Status AR', 'Vencimento', ''] as $th)
                             <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{{ $th }}</th>
                         @endforeach
                     </tr>
@@ -155,6 +155,12 @@
                                     <span class="block text-xs text-gray-400 dark:text-slate-500 whitespace-nowrap">{{ $e->cliente_documento }}</span>
                                 @endif
                             </td>
+                            <td class="px-3 py-3 whitespace-nowrap text-gray-700 dark:text-slate-300">{{ $e->titular_nome ?: '—' }}</td>
+                            <td class="px-3 py-3 whitespace-nowrap text-gray-700 dark:text-slate-300">
+                                @if($e->telefone)<span class="block">{{ $e->telefone }}</span>@endif
+                                @if($e->email)<span class="block text-xs text-gray-400 dark:text-slate-500">{{ $e->email }}</span>@endif
+                                @if(! $e->telefone && ! $e->email)—@endif
+                            </td>
                             <td class="px-3 py-3 whitespace-nowrap">
                                 @if($e->cliente_wr)
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"><i class="fa-solid fa-check"></i> Sim</span>
@@ -171,6 +177,8 @@
                                 <span class="px-2 py-0.5 rounded-full text-xs {{ $situacaoColors[$e->situacao] ?? 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300' }}">{{ $e->situacao }}</span>
                             </td>
                             <td class="px-3 py-3 whitespace-nowrap text-gray-700 dark:text-slate-300">{{ $e->certificadora }}</td>
+                            <td class="px-3 py-3 whitespace-nowrap text-gray-700 dark:text-slate-300">{{ $e->protocolo ?: '—' }}</td>
+                            <td class="px-3 py-3 whitespace-nowrap text-gray-700 dark:text-slate-300">{{ $e->status_ar ?: '—' }}</td>
                             <td class="px-3 py-3 whitespace-nowrap {{ $vencCls }}">{{ $vencTxt }}</td>
                             <td class="px-3 py-3 whitespace-nowrap text-right">
                                 <button type="button" data-modal-url="{{ route('certificados.form.edit', $e->id) }}" data-modal-width="max-w-3xl"
@@ -187,7 +195,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="px-6 py-10 text-center text-sm text-gray-400 dark:text-slate-600">Nenhuma emissão registrada.</td>
+                            <td colspan="16" class="px-6 py-10 text-center text-sm text-gray-400 dark:text-slate-600">Nenhuma emissão registrada.</td>
                         </tr>
                     @endforelse
                 </tbody>

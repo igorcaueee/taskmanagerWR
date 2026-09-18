@@ -18,6 +18,9 @@ class CertificadoEmissao extends Model
         'cliente_id',
         'cliente_nome',
         'cliente_documento',
+        'titular_nome',
+        'telefone',
+        'email',
         'modelo',
         'numero_pedido',
         'forma_emissao',
@@ -25,6 +28,8 @@ class CertificadoEmissao extends Model
         'pagamento',
         'situacao',
         'certificadora',
+        'protocolo',
+        'status_ar',
         'vencimento',
         'observacao',
     ];

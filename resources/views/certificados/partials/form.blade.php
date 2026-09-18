@@ -91,6 +91,28 @@
             </div>
         </div>
 
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do titular</label>
+            <input type="text" name="titular_nome"
+                   value="{{ old('titular_nome', $isEditing ? $emissao->titular_nome : '') }}"
+                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
+                <input type="text" name="telefone"
+                       value="{{ old('telefone', $isEditing ? $emissao->telefone : '') }}"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
+                <input type="email" name="email"
+                       value="{{ old('email', $isEditing ? $emissao->email : '') }}"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+            </div>
+        </div>
+
         <div class="grid grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
@@ -121,11 +143,31 @@
             </div>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Certificadora <span class="text-red-500">*</span></label>
-            <input type="text" name="certificadora"
-                   value="{{ old('certificadora', $isEditing ? $emissao->certificadora : 'SOLUCAOID') }}"
-                   class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+        <div class="grid grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Certificadora <span class="text-red-500">*</span></label>
+                <input type="text" name="certificadora"
+                       value="{{ old('certificadora', $isEditing ? $emissao->certificadora : 'SOLUCAOID') }}"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Protocolo</label>
+                <input type="text" name="protocolo"
+                       value="{{ old('protocolo', $isEditing ? $emissao->protocolo : '') }}"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status AR</label>
+                <input type="text" name="status_ar" list="lista-status-ar"
+                       value="{{ old('status_ar', $isEditing ? $emissao->status_ar : '') }}"
+                       class="mt-1 block w-full border dark:border-slate-600 rounded px-3 py-2 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand">
+                <datalist id="lista-status-ar">
+                    <option value="Não Contatado"></option>
+                    <option value="Emitido"></option>
+                    <option value="Pendente"></option>
+                    <option value="Revogado"></option>
+                </datalist>
+            </div>
         </div>
 
         <div>
