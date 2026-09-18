@@ -497,14 +497,17 @@ class CofreFiscalController extends Controller
                 continue;
             }
 
-            // O cliente selecionado precisa ser o emitente (nota de saída) ou o
-            // destinatário (nota de entrada) do XML — senão é nota de outra empresa
+            // O cliente selecionado precisa ser o emitente (nota de saída), o
+            // destinatário (nota de entrada) ou, no caso de CT-e, o tomador do
+            // serviço (quem contratou o frete, que pode não ser nem emitente
+            // nem destinatário da carga) do XML — senão é nota de outra empresa
             // (upload no cliente errado, ou zip com XMLs de vários clientes misturados).
             if ($cnpjCliente !== '') {
                 $emitenteDoc = preg_replace('/\D/', '', $meta['emitenteDoc'] ?? '');
                 $destinatarioDoc = preg_replace('/\D/', '', $meta['destinatarioDoc'] ?? '');
+                $tomadorDoc = preg_replace('/\D/', '', $meta['tomadorDoc'] ?? '');
 
-                if ($emitenteDoc !== $cnpjCliente && $destinatarioDoc !== $cnpjCliente) {
+                if ($emitenteDoc !== $cnpjCliente && $destinatarioDoc !== $cnpjCliente && $tomadorDoc !== $cnpjCliente) {
                     $ignoradosCnpjDivergente++;
                     Log::warning('[Cofre Fiscal] uploadZip: XML ignorado (CNPJ não pertence ao cliente selecionado)', [
                         'chave_acesso' => $meta['chaveAcesso'],
@@ -512,6 +515,7 @@ class CofreFiscalController extends Controller
                         'cnpj_cliente' => $cnpjCliente,
                         'emitente_doc' => $emitenteDoc,
                         'destinatario_doc' => $destinatarioDoc,
+                        'tomador_doc' => $tomadorDoc,
                     ]);
                     continue;
                 }

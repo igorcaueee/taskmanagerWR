@@ -143,6 +143,35 @@ class NfeXmlParser
             ? (trim((string) ($destNode->xpath(".//*[local-name()='CNPJ']")[0] ?? '')) ?: trim((string) ($destNode->xpath(".//*[local-name()='CPF']")[0] ?? '')))
             : '';
 
+        // No CT-e o tomador do serviço (quem contratou o frete) nem sempre é o
+        // emitente ou o destinatário da carga — pode ser o remetente, o
+        // expedidor ou o recebedor, conforme o código em <ide><toma>, ou um
+        // grupo <toma4> à parte quando o tomador é um terceiro (toma=4). Sem
+        // isso, upload de CT-e onde o cliente é só o tomador é ignorado por
+        // engano no filtro de CNPJ do Cofre Fiscal (mesma lógica usada em
+        // CteIntegracaoRsService::identificarPapelCte).
+        $tomadorDoc = null;
+        if ($isCte) {
+            $docGrupo = function (string $grupo) use ($obj) {
+                $node = $obj->xpath("//*[local-name()='{$grupo}']")[0] ?? null;
+
+                return $node !== null
+                    ? (trim((string) ($node->xpath(".//*[local-name()='CNPJ']")[0] ?? '')) ?: trim((string) ($node->xpath(".//*[local-name()='CPF']")[0] ?? '')))
+                    : '';
+            };
+
+            $tomaCodigo = $get('toma');
+            $tomadorDoc = match ($tomaCodigo) {
+                '0'     => $docGrupo('rem'),
+                '1'     => $docGrupo('exped'),
+                '2'     => $docGrupo('receb'),
+                '3'     => $destinatarioDoc,
+                '4'     => $docGrupo('toma4'),
+                default => null,
+            };
+            $tomadorDoc = $tomadorDoc !== '' ? $tomadorDoc : null;
+        }
+
         return [
             'tipo'             => $tipoDoc,
             'chaveAcesso'      => $chave,
@@ -152,6 +181,7 @@ class NfeXmlParser
             'emitenteNome'     => $emitenteNome !== '' ? $emitenteNome : null,
             'emitenteDoc'      => $getEmit('CNPJ') ?: $getEmit('CPF'),
             'destinatarioDoc'  => $destinatarioDoc ?: null,
+            'tomadorDoc'       => $tomadorDoc,
             'valor'            => $get('vNF') ?: $get('vCT'),
             'situacao'         => $get('cSitDFe') ?: $get('cSitCTe') ?: null,
             'tpNf'             => $tpNfStr !== '' ? (int) $tpNfStr : null,
