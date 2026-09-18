@@ -126,6 +126,32 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Card PGDAS do Simples Nacional --}}
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 col-span-2 sm:col-span-2 lg:col-span-2 flex flex-col sm:flex-row items-center gap-6">
+                <div class="flex-shrink-0 w-40 h-40">
+                    <canvas id="chartPgdas"></canvas>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        PGDAS enviados — {{ ucfirst(\Carbon\Carbon::createFromFormat('Ym', $periodoPgdas)->translatedFormat('F/Y')) }}
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Enviados</span>
+                        <span class="ml-auto text-lg font-bold text-gray-900 dark:text-slate-100">{{ $totalPgdasEnviados }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-amber-400"></span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">Pendentes</span>
+                        <span class="ml-auto text-lg font-bold text-gray-900 dark:text-slate-100">{{ $totalPgdasPendentes }}</span>
+                    </div>
+                    <div class="border-t border-gray-100 dark:border-slate-700 pt-2 flex items-center gap-2">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Total de empresas do SN</span>
+                        <span class="ml-auto text-xl font-bold text-gray-900 dark:text-slate-100">{{ $totalGruposSn }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
@@ -163,6 +189,33 @@
                 datasets: [{
                     data: [{{ $totalClientesPJ }}, {{ $totalClientesPF }}],
                     backgroundColor: ['#3b82f6', '#34d399'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '60%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label}: ${ctx.parsed}`,
+                        },
+                    },
+                },
+            },
+        });
+
+        const ctxPgdas = document.getElementById('chartPgdas').getContext('2d');
+        new Chart(ctxPgdas, {
+            type: 'doughnut',
+            data: {
+                labels: ['Enviados', 'Pendentes'],
+                datasets: [{
+                    data: [{{ $totalPgdasEnviados }}, {{ $totalPgdasPendentes }}],
+                    backgroundColor: ['#22c55e', '#fbbf24'],
                     borderWidth: 2,
                     borderColor: '#ffffff',
                 }],

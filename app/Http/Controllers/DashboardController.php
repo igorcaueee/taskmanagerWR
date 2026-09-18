@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ciclo;
 use App\Models\Cliente;
 use App\Models\DocumentoFiscal;
+use App\Models\SimplesDasProcessamento;
 use App\Models\Tarefa;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,42 @@ class DashboardController extends Controller
             ->whereMonth('created_at', now()->month)
             ->count();
 
+        // PGDAS se refere sempre à receita do mês anterior (mesma convenção
+        // usada em SimplesNacionalController::telaDas()).
+        $periodoPgdas = now()->subMonthNoOverflow()->format('Ym');
+
+        $clientesSnAtivos = Cliente::query()
+            ->where('regime_tributario', 'Simples Nacional')
+            ->where('status', 'ativo')
+            ->get(['id', 'cpfcnpj']);
+
+        // Agrupa por raiz de CNPJ (matriz + filiais): a transmissão do PGDAS
+        // fica registrada só no cliente que é a matriz do grupo, então
+        // contar cliente a cliente faria toda filial aparecer como pendente
+        // mesmo já coberta pela transmissão da matriz. Mesmo critério de
+        // agrupamento usado em PgdasdService::buscarClientesDoGrupoEconomico().
+        $gruposSn = $clientesSnAtivos->groupBy(function (Cliente $cliente) {
+            $digitos = preg_replace('/\D/', '', $cliente->cpfcnpj ?? '');
+
+            return strlen($digitos) === 14 ? substr($digitos, 0, 8) : 'cliente-'.$cliente->id;
+        });
+
+        $totalGruposSn = $gruposSn->count();
+
+        $clienteIdsComPgdasEnviado = SimplesDasProcessamento::query()
+            ->where('periodo_apuracao', $periodoPgdas)
+            ->whereIn('status', ['sucesso', 'ja_transmitido'])
+            ->pluck('cliente_id')
+            ->flip();
+
+        $totalPgdasEnviados = $gruposSn
+            ->filter(fn ($clientesDoGrupo) => $clientesDoGrupo->contains(
+                fn (Cliente $cliente) => $clienteIdsComPgdasEnviado->has($cliente->id)
+            ))
+            ->count();
+
+        $totalPgdasPendentes = $totalGruposSn - $totalPgdasEnviados;
+
         $aniversariantesHoje = Usuario::query()
             ->whereNotNull('data_nascimento')
             ->whereMonth('data_nascimento', now()->month)
@@ -73,6 +110,10 @@ class DashboardController extends Controller
             'totalXmlsBaixadosMes',
             'aniversariantesHoje',
             'aniversariantesEmpresaHoje',
+            'periodoPgdas',
+            'totalGruposSn',
+            'totalPgdasEnviados',
+            'totalPgdasPendentes',
         ));
     }
 }
