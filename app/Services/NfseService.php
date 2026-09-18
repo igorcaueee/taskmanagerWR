@@ -32,6 +32,14 @@ class NfseService
     // reativa. Espaçando as chamadas evitamos boa parte desses 429.
     const INTERVALO_MIN_REQ_US = 300_000; // 0.3s
 
+    // DataHoraGeracao (data de PROCESSAMENTO no ADN) cresce com o NSU só em
+    // média — retificações, reprocessamentos e notas reenviadas aparecem com
+    // NSU alto mas podem furar essa ordem por alguns lotes. Por isso não
+    // paramos a varredura na primeira nota fora do período: só concluímos
+    // depois de LOTES_TOLERANCIA_FIM lotes consecutivos sem nenhuma nota
+    // dentro do intervalo pedido.
+    const LOTES_TOLERANCIA_FIM = 3;
+
     private static ?float $ultimaRequisicaoEm = null;
 
     /**
@@ -73,6 +81,7 @@ class NfseService
             $maxNsuEncontrado = $nsuInicio > 0 ? $nsuInicio - 1 : 0;
             $lotes            = 0;
             $concluido        = false;
+            $lotesSemNotasNoPeriodo = 0;
 
             while ($lotes < self::MAX_LOTES_POR_CHUNK) {
                 $url  = "{$base}/DFe/{$nsuAtual}?lote=true" . ($cnpj ? "&cnpjConsulta={$cnpj}" : '');
@@ -107,7 +116,8 @@ class NfseService
                     break;
                 }
 
-                $passouFim = false;
+                $passouFim     = false;
+                $adicionouNota = false;
 
                 foreach ($lote as $doc) {
                     $nsuDoc = (int) ($doc['NSU'] ?? 0);
@@ -141,12 +151,18 @@ class NfseService
                         continue;
                     }
 
-                    $notas[] = $this->normalizarDoc($doc);
+                    $notas[]       = $this->normalizarDoc($doc);
+                    $adicionouNota = true;
                 }
 
-                if ($passouFim) {
-                    $concluido = true;
-                    break;
+                if ($passouFim && !$adicionouNota) {
+                    $lotesSemNotasNoPeriodo++;
+                    if ($lotesSemNotasNoPeriodo >= self::LOTES_TOLERANCIA_FIM) {
+                        $concluido = true;
+                        break;
+                    }
+                } else {
+                    $lotesSemNotasNoPeriodo = 0;
                 }
 
                 $nsuAtual = $maxNsuEncontrado + 1;
