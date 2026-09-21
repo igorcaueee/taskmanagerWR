@@ -297,8 +297,9 @@
     const filtroTipo   = document.getElementById('filtroTipo');
     const btnRebuscarNfse = document.getElementById('btnRebuscarNfse');
 
-    let notasAtuais      = [];
-    let cnpjClienteAtual = '';
+    let notasAtuais       = [];
+    let cnpjClienteAtual  = '';
+    let ultimoNsuAlcancado = 0;
 
     function formatarCnpjCpf(valor) {
         const digitos = (valor || '').replace(/\D/g, '');
@@ -667,6 +668,7 @@
 
             esconderTodosEstados();
             notasAtuais = notasAcumuladas;
+            ultimoNsuAlcancado = nsuAtual;
 
             if (notasAtuais.length === 0) {
                 estadoVazio.classList.remove('hidden');
@@ -710,10 +712,14 @@
         const clienteId = selectCliente.value;
         if (!clienteId || !dataInicio.value || !dataFim.value) return;
 
+        const dicaNsu = ultimoNsuAlcancado > 0
+            ? `A última busca normal chegou até o NSU <b>${ultimoNsuAlcancado.toLocaleString('pt-BR')}</b> — não faz sentido informar um valor muito acima disso, senão a rebusca não vai achar nada. Deixe 0 pra reprocessar tudo desde o início.`
+            : 'O NSU é por CNPJ (não é um contador nacional gigante) — na dúvida, deixe 0 pra reprocessar tudo desde o início.';
+
         const { value: form } = await Swal.fire({
             icon: 'question',
             title: 'Rebuscar notas faltantes',
-            html: 'Varre o histórico de NSU do certificado sem parar cedo por tolerância — útil quando o total não bate com o Portal Nacional. Pode demorar bastante em empresas com muito volume.',
+            html: `Varre o histórico de NSU do certificado sem parar cedo por tolerância — útil quando o total não bate com o Portal Nacional. Pode demorar bastante em empresas com muito volume.<br><br><span class="text-xs text-gray-400">${dicaNsu}</span>`,
             input: 'number',
             inputLabel: 'A partir de qual NSU começar',
             inputValue: 0,
