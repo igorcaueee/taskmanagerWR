@@ -11,6 +11,7 @@ use App\Services\NfseXmlParser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use ZipArchive;
@@ -558,22 +559,68 @@ class NfseController extends Controller
             $rows[] = $rowData;
         }
 
-        // Planilha de "emitida" tem situação na coluna F (idx 5) e valor na E (idx 4);
-        // "recebida" não tem situação/município — valor cai na coluna D (idx 3).
-        $idxValor     = $tipo === 'emitida' ? 4 : 3;
-        $temSituacao  = $tipo === 'emitida';
+        // O layout de colunas varia bastante entre a planilha do contador e os
+        // exports de sistemas municipais (ex.: Tecnos/Teutônia manda Número na
+        // coluna B, Destinatário na E, Valor na F, Status na K — nada a ver com
+        // o layout "padrão" data/doc-nome/valor/situação assumido antes). Em vez
+        // de índice fixo, detecta cada coluna pelo texto do cabeçalho (linha 0) e
+        // só cai pro índice antigo se não achar — mantém compatibilidade com
+        // planilhas que não tenham cabeçalho reconhecível.
+        $header = array_map(
+            fn ($v) => Str::of((string) $v)->ascii()->lower()->trim()->value(),
+            $rows[0] ?? []
+        );
+
+        $acharColuna = function (array $contemTodos, array $naoContem = []) use ($header): ?int {
+            foreach ($header as $idx => $titulo) {
+                if ($titulo === '') {
+                    continue;
+                }
+                $bate = true;
+                foreach ($contemTodos as $termo) {
+                    if (!str_contains($titulo, $termo)) {
+                        $bate = false;
+                        break;
+                    }
+                }
+                if (!$bate) {
+                    continue;
+                }
+                foreach ($naoContem as $termo) {
+                    if (str_contains($titulo, $termo)) {
+                        $bate = false;
+                        break;
+                    }
+                }
+                if ($bate) {
+                    return $idx;
+                }
+            }
+            return null;
+        };
+
+        $idxData   = $acharColuna(['data']) ?? 0;
+        $idxDocNome = $tipo === 'emitida'
+            ? ($acharColuna(['destinat']) ?? $acharColuna(['tomador']) ?? 1)
+            : ($acharColuna(['prestador']) ?? $acharColuna(['remetente']) ?? $acharColuna(['emitente']) ?? 1);
+        $idxValor  = $acharColuna(['valor'], ['iss', 'retid', 'deduc', 'desconto']) ?? ($tipo === 'emitida' ? 4 : 3);
+        $idxStatus = $acharColuna(['status']) ?? $acharColuna(['situa']);
+        $temSituacao = $idxStatus !== null;
+
+        // Pula a própria linha de cabeçalho ao processar os dados.
+        $linhasDados = $header ? array_slice($rows, 1) : $rows;
 
         $planilha = [];
-        foreach ($rows as $row) {
-            $dataRaw     = $row[0] ?? null;
-            $situacaoRaw = $temSituacao ? trim((string) ($row[5] ?? '')) : '';
+        foreach ($linhasDados as $row) {
+            $dataRaw     = $row[$idxData] ?? null;
+            $situacaoRaw = $temSituacao ? trim((string) ($row[$idxStatus] ?? '')) : '';
 
             // Ignora rodapé de totais e linhas em branco.
             if (!$dataRaw || ($temSituacao && $situacaoRaw === '')) {
                 continue;
             }
 
-            $docNome = (string) ($row[1] ?? '');
+            $docNome = (string) ($row[$idxDocNome] ?? '');
             $partes  = explode(' - ', $docNome, 2);
             $doc     = preg_replace('/\D/', '', $partes[0] ?? '');
             $nome    = trim($partes[1] ?? $docNome);
