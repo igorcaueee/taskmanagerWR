@@ -147,6 +147,25 @@ class NfseService
                         continue;
                     }
 
+                    if ($modoBackfill) {
+                        // Em backfill não dá pra confiar na data de PROCESSAMENTO pra
+                        // decidir se o doc é candidato — RPS enviados em lote podem só
+                        // ser registrados no ADN bem depois da emissão real (é
+                        // justamente esse desalinhamento que faz notas sumirem da
+                        // busca normal). Extrai e filtra pela data de EMISSÃO real do
+                        // XML em vez da DataHoraGeracao do envelope.
+                        $notaNormalizada = $this->normalizarDoc($doc);
+                        $dataEmissaoDoc  = substr($notaNormalizada['dataEmissao'] ?? '', 0, 10);
+
+                        if ($dataEmissaoDoc && ($dataEmissaoDoc < $dataInicio || $dataEmissaoDoc > $dataFim)) {
+                            continue;
+                        }
+
+                        $notas[]       = $notaNormalizada;
+                        $adicionouNota = true;
+                        continue;
+                    }
+
                     $dataGeracao = substr($doc['DataHoraGeracao'] ?? '', 0, 10);
 
                     if ($dataGeracao && $dataGeracao < $dataInicio) {
