@@ -710,15 +710,27 @@
         const clienteId = selectCliente.value;
         if (!clienteId || !dataInicio.value || !dataFim.value) return;
 
-        const confirmacao = await Swal.fire({
+        const { value: form } = await Swal.fire({
             icon: 'question',
-            title: 'Rebuscar notas faltantes?',
-            html: 'Isso varre <b>todo o histórico de NSU</b> do certificado sem parar cedo, então pode demorar bastante mais que a busca normal em empresas com muito volume. Continuar?',
+            title: 'Rebuscar notas faltantes',
+            html: 'Varre o histórico de NSU do certificado sem parar cedo por tolerância — útil quando o total não bate com o Portal Nacional. Pode demorar bastante em empresas com muito volume.',
+            input: 'number',
+            inputLabel: 'A partir de qual NSU começar',
+            inputValue: 0,
+            inputAttributes: { min: 0, step: 1 },
             showCancelButton: true,
             confirmButtonText: 'Rebuscar',
             cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0084aa',
+            inputValidator: (value) => {
+                if (value === '' || isNaN(parseInt(value, 10)) || parseInt(value, 10) < 0) {
+                    return 'Informe um NSU inicial válido (0 ou maior).';
+                }
+            },
         });
-        if (!confirmacao.isConfirmed) return;
+        if (form === undefined) return;
+
+        const nsuInicial = parseInt(form, 10);
 
         btnRebuscarNfse.disabled = true;
         const labelEl = document.getElementById('btnRebuscarNfseLabel');
@@ -727,7 +739,7 @@
         const chavesExistentes = new Set(notasAtuais.map(n => n.chaveAcesso).filter(Boolean));
         let notasNovas    = [];
         const canceledChavesTodas = new Set();
-        let nsuAtual  = 0;
+        let nsuAtual  = nsuInicial;
         let concluido = false;
         let chunks    = 0;
 
