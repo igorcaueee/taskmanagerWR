@@ -309,7 +309,9 @@
         let visíveis = 0, soma = 0;
 
         tabelaNotas.querySelectorAll('tr').forEach(tr => {
-            const mostrar = !tipo || tr.dataset.tipo === tipo;
+            const mostrar = !tipo
+                || tr.dataset.tipo === tipo
+                || (tipo === 'cancelada' && tr.dataset.status === 'CANCELADA');
             tr.style.display = mostrar ? '' : 'none';
             if (mostrar) {
                 visíveis++;
@@ -730,12 +732,16 @@
             const temDanfse   = isTecnos || !!chave;
 
             const isCancelada = nota.status === 'CANCELADA';
-            const tipoKey = isCancelada ? 'cancelada' : isEmitida ? 'emitida' : isRecebida ? 'recebida' : '';
+            // Tipo (emitida/recebida) e status (cancelada) são independentes — uma
+            // nota emitida cancelada continua sendo "emitida" pro filtro, senão ela
+            // some da contagem ao filtrar por Emitida/Recebida (diverge do Portal).
+            const tipoKey = isEmitida ? 'emitida' : isRecebida ? 'recebida' : '';
 
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors';
-            tr.dataset.tipo  = tipoKey;
-            tr.dataset.valor = nota.valorServico ?? 0;
+            tr.dataset.tipo   = tipoKey;
+            tr.dataset.status = nota.status ?? '';
+            tr.dataset.valor  = nota.valorServico ?? 0;
             tr.innerHTML = `
                 <td class="px-4 py-3">
                     <input type="checkbox" class="check-nota rounded text-[#0084aa]" data-nsu="${nsu}" ${!temNsu ? 'disabled' : ''}>
