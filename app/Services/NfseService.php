@@ -182,15 +182,14 @@ class NfseService
                 unset($nota);
             }
 
-            // A varredura acima seleciona os lotes pela data de PROCESSAMENTO no ADN
-            // (único filtro que a API permite via NSU). A data de EMISSÃO real de uma
-            // nota pode cair fora do período pedido (ex.: nota emitida em maio mas só
-            // disponibilizada/processada em junho). Filtra o resultado final pela data
-            // de emissão real para respeitar o período solicitado pelo usuário.
-            $notas = array_values(array_filter($notas, function ($nota) use ($dataInicio, $dataFim) {
-                $dataEmissao = substr($nota['dataEmissao'] ?? '', 0, 10);
-                return !$dataEmissao || ($dataEmissao >= $dataInicio && $dataEmissao <= $dataFim);
-            }));
+            // A varredura acima já seleciona os documentos pela data de PROCESSAMENTO
+            // no ADN (único filtro que a API permite via NSU) — é o mesmo critério que
+            // o Portal Nacional usa na tela "Notas emitidas" (coluna "Geração"). Não
+            // refiltramos pela data de emissão real do XML aqui: ela só serve pra
+            // exibição na tabela — refiltrar por ela descartava notas cuja Geração
+            // estava dentro do período mas a Emissão real caía em outro mês (ex.:
+            // nota emitida em julho e só processada/disponibilizada em agosto),
+            // fazendo o total divergir do Portal.
         } finally {
             foreach ($tempFiles as $f) {
                 @unlink($f);
