@@ -215,6 +215,12 @@
                             <i class="fa-solid fa-file-circle-check"></i>
                             Verificar manual com planilha
                         </button>
+                        <button type="button" id="btnRebuscarNfse"
+                                title="Refaz a busca varrendo todo o histórico de NSU do certificado, sem parar cedo — útil quando o total não bate com o Portal Nacional"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            <span id="btnRebuscarNfseLabel">Rebuscar (notas faltantes)</span>
+                        </button>
                     </div>
                 </div>
 
@@ -289,6 +295,7 @@
     const checkTodos   = document.getElementById('checkTodos');
     const btnDownloadZip = document.getElementById('btnDownloadZip');
     const filtroTipo   = document.getElementById('filtroTipo');
+    const btnRebuscarNfse = document.getElementById('btnRebuscarNfse');
 
     let notasAtuais      = [];
     let cnpjClienteAtual = '';
@@ -544,7 +551,7 @@
      * Busca um chunk de NSUs. Lança Error com mensagem pronta pra exibir em
      * caso de falha (HTTP não-2xx, JSON inválido, ou erro reportado pela API).
      */
-    async function buscarChunkNfse(clienteId, dataInicioVal, dataFimVal, nsuInicio) {
+    async function buscarChunkNfse(clienteId, dataInicioVal, dataFimVal, nsuInicio, modoBackfill = false) {
         const controller = new AbortController();
         // Cada chunk processa poucos lotes — 90s é folga suficiente e fica
         // abaixo do timeout de proxy/CDN (Cloudflare derruba em ~100s com HTTP 524).
@@ -561,10 +568,11 @@
                     'X-CSRF-TOKEN': CSRF,
                 },
                 body: JSON.stringify({
-                    cliente_id:  clienteId,
-                    data_inicio: dataInicioVal,
-                    data_fim:    dataFimVal,
-                    nsu_inicio:  nsuInicio,
+                    cliente_id:    clienteId,
+                    data_inicio:   dataInicioVal,
+                    data_fim:      dataFimVal,
+                    nsu_inicio:    nsuInicio,
+                    modo_backfill: modoBackfill,
                 }),
             });
         } finally {
@@ -681,6 +689,94 @@
             clearInterval(intervalTempo);
             btnBuscar.disabled = false;
             document.getElementById('btnBuscarLabel').textContent = 'Buscar NFS-e';
+        }
+    }
+
+    // Backfill varre até o fim real do histórico de NSU (sem parar cedo por
+    // tolerância) — pode envolver muito mais lotes que a busca normal em
+    // certificados com anos de notas.
+    const NFSE_MAX_CHUNKS_BACKFILL = 3000;
+
+    btnRebuscarNfse.addEventListener('click', rebuscar);
+
+    /**
+     * Refaz a busca do mesmo período (NSU 0 até o fim real do histórico),
+     * sem a otimização de parar cedo, e mescla no resultado já exibido só as
+     * notas que ainda não estavam lá (por chave de acesso). Usada quando o
+     * total não bate com o Portal Nacional — geralmente por notas com
+     * DataHoraGeracao fora de ordem em relação ao NSU.
+     */
+    async function rebuscar() {
+        const clienteId = selectCliente.value;
+        if (!clienteId || !dataInicio.value || !dataFim.value) return;
+
+        const confirmacao = await Swal.fire({
+            icon: 'question',
+            title: 'Rebuscar notas faltantes?',
+            html: 'Isso varre <b>todo o histórico de NSU</b> do certificado sem parar cedo, então pode demorar bastante mais que a busca normal em empresas com muito volume. Continuar?',
+            showCancelButton: true,
+            confirmButtonText: 'Rebuscar',
+            cancelButtonText: 'Cancelar',
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        btnRebuscarNfse.disabled = true;
+        const labelEl = document.getElementById('btnRebuscarNfseLabel');
+        const labelOriginal = labelEl.textContent;
+
+        const chavesExistentes = new Set(notasAtuais.map(n => n.chaveAcesso).filter(Boolean));
+        let notasNovas    = [];
+        const canceledChavesTodas = new Set();
+        let nsuAtual  = 0;
+        let concluido = false;
+        let chunks    = 0;
+
+        try {
+            while (!concluido) {
+                chunks++;
+                if (chunks > NFSE_MAX_CHUNKS_BACKFILL) {
+                    throw new Error('A rebusca excedeu o limite de páginas de segurança.');
+                }
+
+                labelEl.textContent = `Rebuscando... (${chunks} página${chunks > 1 ? 's' : ''}, ${notasNovas.length} nova(s) até agora)`;
+
+                const data = await buscarChunkNfse(clienteId, dataInicio.value, dataFim.value, nsuAtual, true);
+
+                (data.notas ?? []).forEach(nota => {
+                    if (nota.chaveAcesso && chavesExistentes.has(nota.chaveAcesso)) return;
+                    if (nota.chaveAcesso) chavesExistentes.add(nota.chaveAcesso);
+                    notasNovas.push(nota);
+                });
+                (data.canceled_chaves ?? []).forEach(c => canceledChavesTodas.add(c));
+                nsuAtual  = data.proximo_nsu ?? nsuAtual;
+                concluido = !!data.concluido;
+            }
+
+            if (canceledChavesTodas.size > 0) {
+                [...notasAtuais, ...notasNovas].forEach(nota => {
+                    if (nota.chaveAcesso && canceledChavesTodas.has(nota.chaveAcesso)) {
+                        nota.status = 'CANCELADA';
+                    }
+                });
+            }
+
+            if (notasNovas.length > 0) {
+                notasAtuais = notasAtuais.concat(notasNovas);
+                renderizarTabela(notasAtuais, cnpjClienteAtual);
+                estadoResultados.classList.remove('hidden');
+                atualizarResumo();
+            }
+
+            Swal.fire({
+                icon: notasNovas.length > 0 ? 'success' : 'info',
+                title: notasNovas.length > 0 ? `${notasNovas.length} nota(s) nova(s) encontrada(s)!` : 'Nenhuma nota faltante encontrada',
+                text: notasNovas.length > 0 ? 'Elas foram adicionadas à lista.' : 'A rebusca não achou nada além do que já estava na tela.',
+            });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Erro na rebusca', text: e.message });
+        } finally {
+            btnRebuscarNfse.disabled = false;
+            labelEl.textContent = labelOriginal;
         }
     }
 

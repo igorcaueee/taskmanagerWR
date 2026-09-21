@@ -138,13 +138,15 @@ class NfseController extends Controller
     public function buscar(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id'  => 'required|exists:clientes,id',
-            'data_inicio' => 'required|date_format:Y-m-d',
-            'data_fim'    => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
-            'nsu_inicio'  => 'sometimes|integer|min:0',
+            'cliente_id'     => 'required|exists:clientes,id',
+            'data_inicio'    => 'required|date_format:Y-m-d',
+            'data_fim'       => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'nsu_inicio'     => 'sometimes|integer|min:0',
+            'modo_backfill'  => 'sometimes|boolean',
         ]);
 
-        $nsuInicio = (int) ($validated['nsu_inicio'] ?? 0);
+        $nsuInicio    = (int) ($validated['nsu_inicio'] ?? 0);
+        $modoBackfill = (bool) ($validated['modo_backfill'] ?? false);
 
         $cert = ClienteCertificadoNfse::with('cliente')->where('cliente_id', $validated['cliente_id'])->first();
 
@@ -153,15 +155,16 @@ class NfseController extends Controller
         }
 
         Log::debug('[NFS-e] buscar: iniciando chunk', [
-            'cliente_id'  => $validated['cliente_id'],
-            'data_inicio' => $validated['data_inicio'],
-            'data_fim'    => $validated['data_fim'],
-            'nsu_inicio'  => $nsuInicio,
-            'ambiente'    => $cert->ambiente,
+            'cliente_id'    => $validated['cliente_id'],
+            'data_inicio'   => $validated['data_inicio'],
+            'data_fim'      => $validated['data_fim'],
+            'nsu_inicio'    => $nsuInicio,
+            'modo_backfill' => $modoBackfill,
+            'ambiente'      => $cert->ambiente,
         ]);
 
         try {
-            $resultado = $this->nfse->buscarPorPeriodoChunk($cert, $validated['data_inicio'], $validated['data_fim'], $nsuInicio);
+            $resultado = $this->nfse->buscarPorPeriodoChunk($cert, $validated['data_inicio'], $validated['data_fim'], $nsuInicio, $modoBackfill);
 
             Log::debug('[NFS-e] buscar: chunk concluído', [
                 'total'       => count($resultado['notas']),

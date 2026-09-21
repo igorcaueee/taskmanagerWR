@@ -56,9 +56,16 @@ class NfseService
      * chama este método repetidamente, usando 'proximoNsu' da resposta anterior
      * como 'nsuInicio' da próxima, até 'concluido' vir true.
      *
+     * @param bool $modoBackfill Em modo backfill ("Rebuscar") a varredura nunca
+     *   conclui por tolerância de lotes fora do período — só para no fim real
+     *   do histórico de NSU do certificado (NENHUM_DOCUMENTO_LOCALIZADO) ou em
+     *   REJEICAO. Mais lento (varre todo o histórico do certificado), mas
+     *   garante achar documentos cuja DataHoraGeracao veio fora de ordem em
+     *   relação ao NSU (retificações/reprocessamentos), que a busca normal —
+     *   otimizada para parar cedo — pode deixar passar.
      * @return array{notas: array, proximoNsu: int, concluido: bool, canceledChaves: array<string>}
      */
-    public function buscarPorPeriodoChunk(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim, int $nsuInicio = 0): array
+    public function buscarPorPeriodoChunk(ClienteCertificadoNfse $certificado, string $dataInicio, string $dataFim, int $nsuInicio = 0, bool $modoBackfill = false): array
     {
         $certPath = storage_path('app/' . $certificado->arquivo);
         $cnpj     = preg_replace('/\D/', '', $certificado->cliente->cpfcnpj ?? '');
@@ -155,14 +162,16 @@ class NfseService
                     $adicionouNota = true;
                 }
 
-                if ($passouFim && !$adicionouNota) {
-                    $lotesSemNotasNoPeriodo++;
-                    if ($lotesSemNotasNoPeriodo >= self::LOTES_TOLERANCIA_FIM) {
-                        $concluido = true;
-                        break;
+                if (!$modoBackfill) {
+                    if ($passouFim && !$adicionouNota) {
+                        $lotesSemNotasNoPeriodo++;
+                        if ($lotesSemNotasNoPeriodo >= self::LOTES_TOLERANCIA_FIM) {
+                            $concluido = true;
+                            break;
+                        }
+                    } else {
+                        $lotesSemNotasNoPeriodo = 0;
                     }
-                } else {
-                    $lotesSemNotasNoPeriodo = 0;
                 }
 
                 $nsuAtual = $maxNsuEncontrado + 1;
