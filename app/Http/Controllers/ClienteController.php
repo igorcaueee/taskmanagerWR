@@ -1048,6 +1048,7 @@ class ClienteController extends Controller
             'email' => $request->email,
             'telefone' => $request->telefone,
             'password' => Hash::make($request->password),
+            'deve_trocar_senha' => true,
             'ativo' => true,
             'acesso_total' => $acessoTotal,
             'pastas_permitidas' => $acessoTotal ? null : ($request->pastas_permitidas ?? []),
@@ -1089,11 +1090,45 @@ class ClienteController extends Controller
 
         if ($request->filled('password')) {
             $dados['password'] = Hash::make($request->password);
+            $dados['deve_trocar_senha'] = true;
         }
 
         $usuario->update($dados);
 
         return response()->json(['usuario' => $usuario->fresh(), 'mensagem' => 'Usuário atualizado com sucesso.']);
+    }
+
+    /**
+     * Gera uma nova senha aleatória pro usuário do portal — usado quando o cliente
+     * perdeu a senha (ou a mensagem original) e não tem e-mail cadastrado pra usar
+     * o "esqueci minha senha" do próprio portal. Retorna a senha em texto puro (só
+     * aqui, na resposta desta chamada) pra montar a mensagem de reenvio no admin.
+     */
+    public function resetarSenhaUsuarioPortal(int $clienteId, int $usuarioId): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
+
+        $senha = Str::password(12, symbols: false);
+
+        $usuario->update([
+            'password' => Hash::make($senha),
+            'deve_trocar_senha' => true,
+        ]);
+
+        return response()->json(['usuario' => $usuario->fresh(), 'senha' => $senha]);
+    }
+
+    public function acessosUsuarioPortal(int $clienteId, int $usuarioId): JsonResponse
+    {
+        abort_if(! auth()->user()?->canEditarClientes(), 403);
+
+        $usuario = PortalUsuario::where('cliente_id', $clienteId)->findOrFail($usuarioId);
+
+        $acessos = $usuario->acessos()->limit(20)->get(['ip', 'user_agent', 'created_at']);
+
+        return response()->json(['acessos' => $acessos]);
     }
 
     /**

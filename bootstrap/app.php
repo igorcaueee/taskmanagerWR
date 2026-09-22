@@ -7,10 +7,13 @@ use App\Http\Middleware\EnsureColaboradoresEdit;
 use App\Http\Middleware\EnsureDiretor;
 use App\Http\Middleware\EnsureEmailMarketing;
 use App\Http\Middleware\EnsureNetworkAccess;
+use App\Http\Middleware\EnsurePortalCofreAccess;
+use App\Http\Middleware\EnsurePortalDashboardFiscalAccess;
 use App\Http\Middleware\EnsurePrecificacaoAccess;
 use App\Http\Middleware\EnsureReinfAccess;
 use App\Http\Middleware\EnsureTiAccess;
 use App\Http\Middleware\PortalAuth;
+use App\Http\Middleware\PortalForcaTrocaSenha;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -39,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'ti-access' => EnsureTiAccess::class,
             'portal.auth' => PortalAuth::class,
             'portal.precificacao' => EnsurePrecificacaoAccess::class,
+            'portal.dashboard-fiscal' => EnsurePortalDashboardFiscalAccess::class,
+            'portal.cofre' => EnsurePortalCofreAccess::class,
+            'portal.forca-troca-senha' => PortalForcaTrocaSenha::class,
         ]);
     })
     ->withExceptions(function (Exceptions $e): void {

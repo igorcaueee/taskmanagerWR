@@ -515,7 +515,18 @@
                             <td class="py-2.5 pr-4 font-mono text-[#0084AA]">{{ $pu->username }}</td>
                             <td class="py-2.5 pr-4">{{ $pu->email ?? '—' }}</td>
                             <td class="py-2.5 pr-4">{{ $pu->telefone ?? '—' }}</td>
-                            <td class="py-2.5 pr-4">{{ $pu->ultimo_acesso?->format('d/m/Y H:i') ?? 'Nunca' }}</td>
+                            <td class="py-2.5 pr-4">
+                                <button
+                                    onclick="abrirHistoricoAcessos({{ $cliente->id }}, {{ $pu->id }})"
+                                    class="text-gray-600 dark:text-slate-300 hover:text-[#0084AA] transition border-0 bg-transparent cursor-pointer p-0 underline decoration-dotted"
+                                    title="Ver histórico de acessos"
+                                >
+                                    {{ $pu->ultimo_acesso?->format('d/m/Y H:i') ?? 'Nunca' }}
+                                </button>
+                                @if($pu->deve_trocar_senha)
+                                    <span class="block text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Aguardando troca de senha</span>
+                                @endif
+                            </td>
                             <td class="py-2.5 pr-4">
                                 @if($pu->acesso_total)
                                     <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Todas</span>
@@ -537,6 +548,13 @@
                                     title="Editar"
                                 >
                                     <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button
+                                    onclick="resetarSenhaUsuario({{ $cliente->id }}, {{ $pu->id }}, {{ json_encode($pu->nome) }})"
+                                    class="text-gray-400 hover:text-amber-500 transition px-1 border-0 bg-transparent cursor-pointer"
+                                    title="Gerar nova senha"
+                                >
+                                    <i class="fa-solid fa-key"></i>
                                 </button>
                                 <button
                                     onclick="excluirUsuario({{ $cliente->id }}, {{ $pu->id }})"
@@ -597,6 +615,47 @@
         });
     }
 
+    function gerarSenhaAleatoria() {
+        const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        let senha = '';
+        for (let i = 0; i < 12; i++) {
+            senha += alfabeto[Math.floor(Math.random() * alfabeto.length)];
+        }
+        return senha;
+    }
+
+    // Wire dos botões "mostrar/ocultar" e "gerar" do campo de senha do modal de
+    // usuário do portal — em usuário novo já gera e deixa visível, pra o admin
+    // conseguir ler/copiar sem precisar clicar no olho antes.
+    function configurarCampoSenha(gerarAutomatico) {
+        const input = document.getElementById('pu-password');
+        const btnToggle = document.getElementById('pu-btn-toggle-senha');
+        const btnGerar = document.getElementById('pu-btn-gerar-senha');
+        if (!input) { return; }
+
+        const revelar = () => {
+            input.type = 'text';
+            const icone = btnToggle?.querySelector('i');
+            if (icone) { icone.className = 'fa-regular fa-eye-slash text-sm'; }
+        };
+
+        if (gerarAutomatico) {
+            input.value = gerarSenhaAleatoria();
+            revelar();
+        }
+
+        btnToggle?.addEventListener('click', function () {
+            const oculto = input.type === 'password';
+            input.type = oculto ? 'text' : 'password';
+            this.querySelector('i').className = oculto ? 'fa-regular fa-eye-slash text-sm' : 'fa-regular fa-eye text-sm';
+        });
+
+        btnGerar?.addEventListener('click', function () {
+            input.value = gerarSenhaAleatoria();
+            revelar();
+        });
+    }
+
     // Validação no cliente antes de enviar. Retorna mensagem de erro ou null.
     function validarFormUsuarioPortal(exigeSenha) {
         const nome = document.getElementById('pu-nome').value.trim();
@@ -642,8 +701,20 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Senha ${dados.nome ? '(deixe em branco para manter)' : '*'}</label>
-                <input id="pu-password" type="password" placeholder="Mínimo 6 caracteres"
-                    class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0084AA]/30">
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <input id="pu-password" type="password" placeholder="Mínimo 6 caracteres"
+                            class="w-full border border-gray-300 rounded px-3 py-2 pr-9 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0084AA]/30">
+                        <button type="button" id="pu-btn-toggle-senha" title="Mostrar/ocultar senha"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 p-0 leading-none">
+                            <i class="fa-regular fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                    <button type="button" id="pu-btn-gerar-senha" title="Gerar senha aleatória"
+                        class="shrink-0 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs font-semibold border-0 cursor-pointer whitespace-nowrap">
+                        <i class="fa-solid fa-shuffle"></i> Gerar
+                    </button>
+                </div>
             </div>
             ${dados.nome ? `
             <div class="flex items-center gap-2">
@@ -773,6 +844,57 @@
         });
     };
 
+    const PORTAL_LOGIN_URL = @json(route('portal.login'));
+
+    async function copiarTexto(texto, btn) {
+        try {
+            await navigator.clipboard.writeText(texto);
+        } catch {
+            const ta = document.createElement('textarea');
+            ta.value = texto;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+
+        if (btn) {
+            const iconOrig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+            setTimeout(() => { btn.innerHTML = iconOrig; }, 1500);
+        }
+    }
+
+    // Mostra a mensagem pronta com usuário/senha do portal, pra copiar e mandar
+    // pro cliente — a senha só existe em texto puro aqui, no momento da criação
+    // (o backend guarda só o hash), então essa é a única janela pra oferecer isso.
+    function mostrarMensagemAcessoPortal(nome, username, senha) {
+        const mensagem = `Olá, ${nome}!\n\nSeu acesso ao Portal do Cliente da WR Assessoria foi criado:\n\nUsuário: ${username}\nSenha: ${senha}\n\nAcesse em: ${PORTAL_LOGIN_URL}\n\n⚠️ Este acesso é pessoal e intransferível. Não compartilhe esses dados — no primeiro login, você será convidado a criar sua própria senha.`;
+
+        Swal.fire({
+            title: 'Mensagem para o cliente',
+            html: `
+                <div class="text-left">
+                    <p class="text-xs text-gray-500 mb-2">Copie e envie pro cliente (WhatsApp, e-mail etc.):</p>
+                    <textarea id="msg-acesso-portal" readonly rows="7"
+                        class="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0084AA]/30">${mensagem}</textarea>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-regular fa-copy"></i> Copiar mensagem',
+            cancelButtonText: 'Fechar',
+            confirmButtonColor: '#0084AA',
+            preConfirm: () => false, // não fecha o modal ao copiar — só o botão "Fechar"/X encerram
+            didOpen: () => {
+                document.querySelector('.swal2-confirm')?.addEventListener('click', function () {
+                    copiarTexto(mensagem, this);
+                });
+            },
+        }).then(() => window.location.reload());
+    }
+
     window.abrirModalNovoUsuario = async function() {
         const pastas = await buscarPastasPortal();
         Swal.fire({
@@ -785,6 +907,7 @@
             didOpen: () => {
                 document.getElementById('pu-acesso-total')?.addEventListener('change', togglePastasAccess);
                 mascararTelefonePortal();
+                configurarCampoSenha(true);
             },
             preConfirm: async () => {
                 const erro = validarFormUsuarioPortal(true);
@@ -819,12 +942,11 @@
                     return false;
                 }
 
-                return data;
+                return { ...data, senha: body.password };
             },
         }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire({ icon: 'success', title: 'Usuário criado!', timer: 1500, showConfirmButton: false })
-                    .then(() => window.location.reload());
+                mostrarMensagemAcessoPortal(result.value.usuario.nome, result.value.usuario.username, result.value.senha);
             }
         });
     };
@@ -841,6 +963,7 @@
             didOpen: () => {
                 document.getElementById('pu-acesso-total')?.addEventListener('change', togglePastasAccess);
                 mascararTelefonePortal();
+                configurarCampoSenha(false);
             },
             preConfirm: async () => {
                 const erro = validarFormUsuarioPortal(false);
@@ -876,13 +999,20 @@
                     return false;
                 }
 
-                return data;
+                return { ...data, senha: body.password };
             },
         }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ icon: 'success', title: 'Usuário atualizado!', timer: 1500, showConfirmButton: false })
-                    .then(() => window.location.reload());
+            if (!result.isConfirmed) { return; }
+
+            // Só oferece a mensagem pronta quando uma senha nova foi definida —
+            // do contrário o admin não tem o texto puro pra colocar na mensagem.
+            if (result.value.senha) {
+                mostrarMensagemAcessoPortal(result.value.usuario.nome, result.value.usuario.username, result.value.senha);
+                return;
             }
+
+            Swal.fire({ icon: 'success', title: 'Usuário atualizado!', timer: 1500, showConfirmButton: false })
+                .then(() => window.location.reload());
         });
     };
 
@@ -907,6 +1037,78 @@
                 Swal.fire({ icon: 'success', title: 'Usuário removido!', timer: 1200, showConfirmButton: false })
                     .then(() => window.location.reload());
             }
+        });
+    };
+
+    window.resetarSenhaUsuario = function(clienteId, usuarioId, nome) {
+        Swal.fire({
+            title: 'Gerar nova senha?',
+            html: `Uma nova senha aleatória será gerada para <strong>${nome}</strong>, substituindo a atual. O usuário precisará trocá-la no próximo login.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Gerar nova senha',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#d97706',
+        }).then(async (result) => {
+            if (!result.isConfirmed) { return; }
+
+            const resp = await fetch(`/clientes/${clienteId}/portal/usuarios/${usuarioId}/resetar-senha`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            });
+
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível gerar a nova senha.' });
+                return;
+            }
+
+            mostrarMensagemAcessoPortal(data.usuario.nome, data.usuario.username, data.senha);
+        });
+    };
+
+    window.abrirHistoricoAcessos = async function(clienteId, usuarioId) {
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), showConfirmButton: false });
+
+        let acessos = [];
+        try {
+            const resp = await fetch(`/clientes/${clienteId}/portal/usuarios/${usuarioId}/acessos`, {
+                headers: { 'Accept': 'application/json' },
+            });
+            const data = await resp.json();
+            acessos = data.acessos ?? [];
+        } catch {}
+
+        const linhas = acessos.length > 0
+            ? acessos.map(a => `
+                <tr class="border-b border-gray-100">
+                    <td class="py-1.5 pr-3 whitespace-nowrap">${new Date(a.created_at).toLocaleString('pt-BR')}</td>
+                    <td class="py-1.5 pr-3 font-mono text-xs">${a.ip ?? '—'}</td>
+                    <td class="py-1.5 text-xs text-gray-500 max-w-[220px] truncate" title="${a.user_agent ?? ''}">${a.user_agent ?? '—'}</td>
+                </tr>
+            `).join('')
+            : `<tr><td colspan="3" class="py-6 text-center text-gray-400">Nenhum acesso registrado ainda.</td></tr>`;
+
+        Swal.fire({
+            title: 'Histórico de acessos',
+            html: `
+                <div class="text-left text-sm max-h-96 overflow-y-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-xs text-gray-500 uppercase border-b border-gray-200">
+                                <th class="text-left py-1.5 pr-3 font-medium">Data</th>
+                                <th class="text-left py-1.5 pr-3 font-medium">IP</th>
+                                <th class="text-left py-1.5 font-medium">Dispositivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>${linhas}</tbody>
+                    </table>
+                </div>
+            `,
+            confirmButtonText: 'Fechar',
+            confirmButtonColor: '#0084AA',
+            width: 600,
         });
     };
     </script>

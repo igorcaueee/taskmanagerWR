@@ -25,6 +25,12 @@
         <div class="bg-white dark:bg-[#1e293b] rounded-xl shadow-sm border border-gray-200 dark:border-[#334155] p-8">
             <h2 class="text-lg font-semibold text-gray-700 dark:text-slate-200 mb-6">Acesse sua conta</h2>
 
+            @if (session('success'))
+                <div class="mb-5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             @if ($errors->any())
                 <div class="mb-5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-sm text-red-700 dark:text-red-400">
                     @foreach ($errors->all() as $error)
@@ -75,6 +81,12 @@
                     Entrar no Portal
                 </button>
             </form>
+
+            <p class="text-center mt-4">
+                <a href="{{ route('portal.password.request') }}" class="text-xs text-[#0084AA] hover:text-[#006e8e] transition">
+                    Esqueci minha senha
+                </a>
+            </p>
         </div>
 
         <p class="text-center text-xs text-gray-400 dark:text-slate-500 mt-6">

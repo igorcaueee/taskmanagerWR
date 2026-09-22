@@ -34,13 +34,18 @@
 
             <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-slate-300">
                 <a href="{{ route('portal.dashboard') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.dashboard') ? 'text-[#0084AA]' : '' }}">Início</a>
-                <a href="{{ route('portal.dashboard-fiscal') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.dashboard-fiscal') ? 'text-[#0084AA]' : '' }}">Dashboard Fiscal</a>
+                @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Dashboard Fiscal'))
+                    <a href="{{ route('portal.dashboard-fiscal') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.dashboard-fiscal') ? 'text-[#0084AA]' : '' }}">Dashboard Fiscal</a>
+                @endif
                 <a href="{{ route('portal.blog') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.blog*') ? 'text-[#0084AA]' : '' }}">Blog</a>
                 <a href="{{ route('portal.arquivos') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.arquivos*') ? 'text-[#0084AA]' : '' }}">Meus Arquivos</a>
                 <a href="{{ route('portal.agenda') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.agenda') ? 'text-[#0084AA]' : '' }}">Agenda</a>
                 <a href="{{ route('portal.chamados.index') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.chamados*') ? 'text-[#0084AA]' : '' }}">Chamados</a>
                 @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Precificação de Produtos'))
                     <a href="{{ route('portal.precificacao.index') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.precificacao*') ? 'text-[#0084AA]' : '' }}">Precificação</a>
+                @endif
+                @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Cofre Fiscal'))
+                    <a href="{{ route('portal.cofre.index') }}" class="no-underline hover:text-[#0084AA] transition {{ request()->routeIs('portal.cofre*') ? 'text-[#0084AA]' : '' }}">Cofre Fiscal</a>
                 @endif
             </nav>
 
@@ -69,13 +74,18 @@
         {{-- Mobile nav --}}
         <div class="md:hidden border-t border-gray-100 dark:border-[#334155] bg-gray-50 dark:bg-[#1e293b] px-4 py-2 flex gap-4 text-sm font-medium text-gray-600 dark:text-slate-300">
             <a href="{{ route('portal.dashboard') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.dashboard') ? 'text-[#0084AA]' : '' }}">Início</a>
-            <a href="{{ route('portal.dashboard-fiscal') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.dashboard-fiscal') ? 'text-[#0084AA]' : '' }}">Fiscal</a>
+            @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Dashboard Fiscal'))
+                <a href="{{ route('portal.dashboard-fiscal') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.dashboard-fiscal') ? 'text-[#0084AA]' : '' }}">Fiscal</a>
+            @endif
             <a href="{{ route('portal.blog') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.blog*') ? 'text-[#0084AA]' : '' }}">Blog</a>
             <a href="{{ route('portal.arquivos') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.arquivos*') ? 'text-[#0084AA]' : '' }}">Arquivos</a>
             <a href="{{ route('portal.agenda') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.agenda') ? 'text-[#0084AA]' : '' }}">Agenda</a>
             <a href="{{ route('portal.chamados.index') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.chamados*') ? 'text-[#0084AA]' : '' }}">Chamados</a>
             @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Precificação de Produtos'))
                 <a href="{{ route('portal.precificacao.index') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.precificacao*') ? 'text-[#0084AA]' : '' }}">Precificação</a>
+            @endif
+            @if (Auth::guard('portal')->user()?->cliente?->hasProduto('Cofre Fiscal'))
+                <a href="{{ route('portal.cofre.index') }}" class="no-underline hover:text-[#0084AA] {{ request()->routeIs('portal.cofre*') ? 'text-[#0084AA]' : '' }}">Cofre</a>
             @endif
         </div>
     </header>

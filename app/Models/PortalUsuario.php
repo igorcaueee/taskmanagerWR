@@ -19,6 +19,7 @@ class PortalUsuario extends Authenticatable
         'email',
         'telefone',
         'password',
+        'deve_trocar_senha',
         'ativo',
         'ultimo_acesso',
         'acesso_total',
@@ -32,6 +33,7 @@ class PortalUsuario extends Authenticatable
 
     protected $casts = [
         'ativo' => 'boolean',
+        'deve_trocar_senha' => 'boolean',
         'acesso_total' => 'boolean',
         'pastas_permitidas' => 'array',
         'ultimo_acesso' => 'datetime',
@@ -49,5 +51,10 @@ class PortalUsuario extends Authenticatable
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function acessos(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PortalUsuarioAcesso::class)->orderByDesc('created_at');
     }
 }

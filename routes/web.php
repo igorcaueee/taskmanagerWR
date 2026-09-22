@@ -26,6 +26,7 @@ use App\Http\Controllers\ReinfController;
 use App\Http\Controllers\NotaEmitenteController;
 use App\Http\Controllers\NotaEmitidaController;
 use App\Http\Controllers\NotificacaoController;
+use App\Http\Controllers\Portal\PortalCofreFiscalController;
 use App\Http\Controllers\Portal\PortalPrecificacaoController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalChamadoController;
@@ -54,41 +55,60 @@ Route::prefix('portal')->name('portal.')->group(function () {
     Route::post('/login', [PortalAuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
     Route::post('/logout', [PortalAuthController::class, 'logout'])->name('logout');
 
+    Route::get('/esqueci-senha', [PortalAuthController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/esqueci-senha', [PortalAuthController::class, 'sendResetLink'])->name('password.email')->middleware('throttle:5,1');
+    Route::get('/redefinir-senha/{token}', [PortalAuthController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/redefinir-senha', [PortalAuthController::class, 'resetPassword'])->name('password.update')->middleware('throttle:5,1');
+
     Route::middleware('portal.auth')->group(function () {
-        Route::get('/', [PortalController::class, 'dashboard'])->name('dashboard');
-        Route::get('/dashboard-fiscal', [PortalController::class, 'dashboardFiscal'])->name('dashboard-fiscal');
-        Route::get('/blog', [PortalController::class, 'blog'])->name('blog');
-        Route::get('/blog/{slug}', [PortalController::class, 'artigoShow'])->name('blog.show');
-        Route::get('/arquivos', [PortalController::class, 'arquivos'])->name('arquivos');
-        Route::get('/arquivos/download', [PortalController::class, 'downloadArquivo'])->name('arquivos.download');
-        Route::get('/arquivos/visualizar', [PortalController::class, 'visualizarArquivo'])->name('arquivos.visualizar');
-        Route::post('/arquivos/enviar', [PortalController::class, 'enviarArquivoCliente'])->name('arquivos.enviar')->middleware('throttle:20,1');
-        Route::post('/arquivos/{upload}/marcar-pago', [PortalController::class, 'marcarPago'])->name('arquivos.marcar-pago');
-        Route::get('/agenda', [PortalController::class, 'agenda'])->name('agenda');
+        Route::get('/trocar-senha', [PortalAuthController::class, 'showTrocarSenha'])->name('trocar-senha');
+        Route::post('/trocar-senha', [PortalAuthController::class, 'trocarSenha'])->name('trocar-senha.post');
 
-        Route::get('/chamados', [PortalChamadoController::class, 'index'])->name('chamados.index');
-        Route::get('/chamados/novo/{tipo}', [PortalChamadoController::class, 'create'])->name('chamados.create');
-        Route::post('/chamados', [PortalChamadoController::class, 'store'])->name('chamados.store')->middleware('throttle:10,1');
+        Route::middleware('portal.forca-troca-senha')->group(function () {
+            Route::get('/', [PortalController::class, 'dashboard'])->name('dashboard');
+            Route::middleware('portal.dashboard-fiscal')->get('/dashboard-fiscal', [PortalController::class, 'dashboardFiscal'])->name('dashboard-fiscal');
+            Route::get('/blog', [PortalController::class, 'blog'])->name('blog');
+            Route::get('/blog/{slug}', [PortalController::class, 'artigoShow'])->name('blog.show');
+            Route::get('/arquivos', [PortalController::class, 'arquivos'])->name('arquivos');
+            Route::get('/arquivos/download', [PortalController::class, 'downloadArquivo'])->name('arquivos.download');
+            Route::get('/arquivos/visualizar', [PortalController::class, 'visualizarArquivo'])->name('arquivos.visualizar');
+            Route::post('/arquivos/enviar', [PortalController::class, 'enviarArquivoCliente'])->name('arquivos.enviar')->middleware('throttle:20,1');
+            Route::post('/arquivos/{upload}/marcar-pago', [PortalController::class, 'marcarPago'])->name('arquivos.marcar-pago');
+            Route::get('/agenda', [PortalController::class, 'agenda'])->name('agenda');
 
-        Route::middleware('portal.precificacao')->prefix('precificacao')->name('precificacao.')->group(function () {
-            Route::get('/', [PortalPrecificacaoController::class, 'index'])->name('index');
-            Route::get('/relatorio', [PortalPrecificacaoController::class, 'exportCenarios'])->name('relatorio');
-            Route::get('/produtos/form', [PortalPrecificacaoController::class, 'formCreateProduto'])->name('produtos.form.create');
-            Route::get('/produtos/import/form', [PortalPrecificacaoController::class, 'formImportProdutos'])->name('produtos.import.form');
-            Route::get('/produtos/import/template', [PortalPrecificacaoController::class, 'templateProdutos'])->name('produtos.import.template');
-            Route::post('/produtos/import', [PortalPrecificacaoController::class, 'importProdutos'])->name('produtos.import');
-            Route::post('/produtos/save', [PortalPrecificacaoController::class, 'saveProduto'])->name('produtos.save');
-            Route::get('/produtos/{id}/form', [PortalPrecificacaoController::class, 'formEditProduto'])->name('produtos.form.edit');
-            Route::put('/produtos/{id}', [PortalPrecificacaoController::class, 'updateProduto'])->name('produtos.update');
-            Route::delete('/produtos/{id}', [PortalPrecificacaoController::class, 'deleteProduto'])->name('produtos.delete');
-            Route::get('/produtos/{id}', [PortalPrecificacaoController::class, 'show'])->name('show');
+            Route::get('/chamados', [PortalChamadoController::class, 'index'])->name('chamados.index');
+            Route::get('/chamados/novo/{tipo}', [PortalChamadoController::class, 'create'])->name('chamados.create');
+            Route::post('/chamados', [PortalChamadoController::class, 'store'])->name('chamados.store')->middleware('throttle:10,1');
 
-            Route::get('/produtos/{produtoId}/cenarios/form', [PortalPrecificacaoController::class, 'formCreateCenario'])->name('cenarios.form.create');
-            Route::get('/produtos/{produtoId}/cenarios/{id}/form', [PortalPrecificacaoController::class, 'formEditCenario'])->name('cenarios.form.edit');
-            Route::post('/produtos/{produtoId}/cenarios/save', [PortalPrecificacaoController::class, 'saveCenario'])->name('cenarios.save');
-            Route::put('/produtos/{produtoId}/cenarios/{id}', [PortalPrecificacaoController::class, 'updateCenario'])->name('cenarios.update');
-            Route::delete('/produtos/{produtoId}/cenarios/{id}', [PortalPrecificacaoController::class, 'deleteCenario'])->name('cenarios.delete');
-            Route::post('/produtos/{produtoId}/cenarios/preview', [PortalPrecificacaoController::class, 'calcularPreview'])->name('cenarios.preview');
+            Route::middleware('portal.precificacao')->prefix('precificacao')->name('precificacao.')->group(function () {
+                Route::get('/', [PortalPrecificacaoController::class, 'index'])->name('index');
+                Route::get('/relatorio', [PortalPrecificacaoController::class, 'exportCenarios'])->name('relatorio');
+                Route::get('/produtos/form', [PortalPrecificacaoController::class, 'formCreateProduto'])->name('produtos.form.create');
+                Route::get('/produtos/import/form', [PortalPrecificacaoController::class, 'formImportProdutos'])->name('produtos.import.form');
+                Route::get('/produtos/import/template', [PortalPrecificacaoController::class, 'templateProdutos'])->name('produtos.import.template');
+                Route::post('/produtos/import', [PortalPrecificacaoController::class, 'importProdutos'])->name('produtos.import');
+                Route::post('/produtos/save', [PortalPrecificacaoController::class, 'saveProduto'])->name('produtos.save');
+                Route::get('/produtos/{id}/form', [PortalPrecificacaoController::class, 'formEditProduto'])->name('produtos.form.edit');
+                Route::put('/produtos/{id}', [PortalPrecificacaoController::class, 'updateProduto'])->name('produtos.update');
+                Route::delete('/produtos/{id}', [PortalPrecificacaoController::class, 'deleteProduto'])->name('produtos.delete');
+                Route::get('/produtos/{id}', [PortalPrecificacaoController::class, 'show'])->name('show');
+
+                Route::get('/produtos/{produtoId}/cenarios/form', [PortalPrecificacaoController::class, 'formCreateCenario'])->name('cenarios.form.create');
+                Route::get('/produtos/{produtoId}/cenarios/{id}/form', [PortalPrecificacaoController::class, 'formEditCenario'])->name('cenarios.form.edit');
+                Route::post('/produtos/{produtoId}/cenarios/save', [PortalPrecificacaoController::class, 'saveCenario'])->name('cenarios.save');
+                Route::put('/produtos/{produtoId}/cenarios/{id}', [PortalPrecificacaoController::class, 'updateCenario'])->name('cenarios.update');
+                Route::delete('/produtos/{produtoId}/cenarios/{id}', [PortalPrecificacaoController::class, 'deleteCenario'])->name('cenarios.delete');
+                Route::post('/produtos/{produtoId}/cenarios/preview', [PortalPrecificacaoController::class, 'calcularPreview'])->name('cenarios.preview');
+            });
+
+            Route::middleware('portal.cofre')->prefix('cofre')->name('cofre.')->group(function () {
+                Route::get('/', [PortalCofreFiscalController::class, 'index'])->name('index');
+                Route::get('/xml/{chaveAcesso}', [PortalCofreFiscalController::class, 'downloadXml'])->name('xml');
+                Route::get('/zip', [PortalCofreFiscalController::class, 'downloadZip'])->name('zip');
+                Route::get('/zip-pdfs', [PortalCofreFiscalController::class, 'downloadZipPdfs'])->name('zip-pdfs');
+                Route::get('/danfe', [PortalCofreFiscalController::class, 'danfe'])->name('danfe');
+                Route::post('/relatorio', [PortalCofreFiscalController::class, 'exportarRelatorio'])->name('relatorio');
+            });
         });
     });
 });
@@ -182,6 +202,8 @@ Route::get('/clientes/{id}/portal/pastas', [ClienteController::class, 'pastasPor
 Route::post('/clientes/{id}/portal/usuarios', [ClienteController::class, 'storeUsuarioPortal'])->name('clientes.portal.usuarios.store')->middleware('auth');
 Route::put('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'updateUsuarioPortal'])->name('clientes.portal.usuarios.update')->middleware('auth');
 Route::delete('/clientes/{clienteId}/portal/usuarios/{usuarioId}', [ClienteController::class, 'destroyUsuarioPortal'])->name('clientes.portal.usuarios.destroy')->middleware('auth');
+Route::post('/clientes/{clienteId}/portal/usuarios/{usuarioId}/resetar-senha', [ClienteController::class, 'resetarSenhaUsuarioPortal'])->name('clientes.portal.usuarios.resetar-senha')->middleware('auth');
+Route::get('/clientes/{clienteId}/portal/usuarios/{usuarioId}/acessos', [ClienteController::class, 'acessosUsuarioPortal'])->name('clientes.portal.usuarios.acessos')->middleware('auth');
 // Contador de Notas routes
 Route::get('/notas-emitidas', [NotaEmitidaController::class, 'index'])->name('notas-emitidas.index')->middleware('auth');
 Route::post('/notas-emitidas', [NotaEmitidaController::class, 'store'])->name('notas-emitidas.store')->middleware('auth');
