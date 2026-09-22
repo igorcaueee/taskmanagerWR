@@ -429,6 +429,9 @@
     async function acompanharImportacao(importacaoId, clienteId) {
         const urlStatus = '{{ url('cofre-fiscal/upload') }}/' + importacaoId + '/status';
 
+        const tooltipIgnorados = '<span class="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 text-[10px] leading-none text-gray-500 cursor-help align-middle ml-1" '
+            + 'title="Um XML é ignorado quando: (1) é inválido, não é NF-e/CT-e ou a chave de acesso está incorreta; (2) já existe uma nota com a mesma chave cadastrada para outro cliente; ou (3) o CNPJ do cliente selecionado não aparece no XML (nem como emitente, destinatário ou tomador).">?</span>';
+
         Swal.fire({
             title: 'Processando XMLs...',
             html: '<div id="swalProgressoImportacao">Iniciando...</div>',
@@ -453,7 +456,7 @@
                 if (el) {
                     el.innerHTML = data.status === 'pendente'
                         ? 'Na fila, aguardando início...'
-                        : `Processados: <b>${data.processados}</b><br>Importados: <b>${data.importados}</b> · Atualizados: <b>${data.atualizados}</b> · Ignorados: <b>${data.ignorados}</b>`;
+                        : `Processados: <b>${data.processados}</b><br>Importados: <b>${data.importados}</b> · Atualizados: <b>${data.atualizados}</b> · Ignorados: <b>${data.ignorados}</b>${tooltipIgnorados}`;
                 }
 
                 await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -474,7 +477,7 @@
                 await Swal.fire({
                     icon: 'warning',
                     title: 'Nada foi importado',
-                    html: `Nenhum XML válido para o cliente selecionado foi encontrado.<br>Ignorados: <b>${data.ignorados}</b>${detalheCnpj}`,
+                    html: `Nenhum XML válido para o cliente selecionado foi encontrado.<br>Ignorados: <b>${data.ignorados}</b>${tooltipIgnorados}${detalheCnpj}`,
                 });
                 return;
             }
@@ -482,7 +485,7 @@
             await Swal.fire({
                 icon: 'success',
                 title: 'Importação concluída',
-                html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>${detalheCnpj}`,
+                html: `Importados: <b>${data.importados}</b><br>Atualizados: <b>${data.atualizados}</b><br>Ignorados: <b>${data.ignorados}</b>${tooltipIgnorados}${detalheCnpj}`,
                 confirmButtonColor: '#0084aa',
             });
 
