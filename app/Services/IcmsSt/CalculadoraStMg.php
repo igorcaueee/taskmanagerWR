@@ -32,7 +32,15 @@ class CalculadoraStMg extends AbstractCalculadoraSt
 
     protected function notaResponsavel(StRegraCest $regra, string $ufOrigem): string
     {
-        return 'destinatário (antecipação -- item sem ICMS-ST destacado na origem, regra definida '
-            . 'por Igor Caue em 22/09/2026)';
+        $responsavel = 'destinatário (antecipação -- item sem ICMS-ST destacado na origem, regra '
+            . 'definida por Igor Caue em 22/09/2026)';
+
+        if (in_array($ufOrigem, $regra->nao_aplica_uf_origem ?? [], true)) {
+            $responsavel .= "; UF de origem ({$ufOrigem}) não é parte do acordo/protocolo deste CEST -- "
+                . 'remetente não destaca ST por falta de convênio, mas a mercadoria é ST em MG, então '
+                . 'cabe antecipação pelo destinatário.';
+        }
+
+        return $responsavel;
     }
 }

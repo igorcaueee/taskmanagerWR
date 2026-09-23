@@ -192,7 +192,7 @@ class StRegrasCestSeeder extends Seeder
      */
     private function regrasMg(): array
     {
-        return $this->autopecasMg() + $this->limpezaMg() + $this->perfumariaMg();
+        return $this->autopecasMg() + $this->limpezaMg() + $this->perfumariaMg() + $this->ferramentasMg();
     }
 
     /**
@@ -405,6 +405,97 @@ class StRegrasCestSeeder extends Seeder
         $regras = [];
         foreach ($itens as $cest => [$mva, $descricao]) {
             $regras[$cest] = $base + ['mva_pct' => $mva, 'descricao' => $descricao];
+        }
+
+        return $regras;
+    }
+
+    /**
+     * RICMS/MG Anexo VII Parte 2, Segmento 8 (Ferramentas) -- Âmbito 8.1
+     * (interno + Alagoas, Paraná, Rio de Janeiro e São Paulo, Protocolo
+     * ICMS 193/09 e 27/09). MVA uniforme 45% em todos os 24 CEST (23 itens
+     * numerados + o subitem 19.1).
+     * Alíquota interna: geral 18% (Anexo I Parte 1, item 7.1) -- ferramentas
+     * não constam nos itens de alíquota diferenciada nem no Decreto do FEM
+     * (48.736/2023), então sem adicional. Fonte: "Anexo VII - ST em MG.pdf",
+     * lido integralmente em 23/09/2026.
+     *
+     * Alguns itens têm nota "(Exceção: SP)" na tabela oficial -- o âmbito
+     * 8.1 (que cobre a operação INTERNA em MG, o caso deste motor) não é
+     * afetado; a exceção só derruba SP como UF de origem interestadual
+     * para aqueles itens específicos, registrado em nao_aplica_uf_origem.
+     */
+    private function ferramentasMg(): array
+    {
+        $segmento = 'Segmento 8 - Ferramentas (RICMS/MG Anexo VII)';
+        $mva = 45.00;
+        // cest => [descricao, nao_aplica_uf_origem|null]
+        $itens = [
+            '0800100' => ['Ferramentas de borracha vulcanizada não endurecida (nº1)', null],
+            '0800200' => ['Ferramentas, armações e cabos de ferramentas, de madeira (nº2)', null],
+            '0800300' => ['Mós e artefatos semelhantes, sem armação, para moer, triturar, amolar, polir, '
+                . 'retificar ou cortar; pedras para amolar ou para polir, manualmente, e suas partes, de '
+                . 'pedras naturais, de abrasivos naturais ou artificiais aglomerados ou de cerâmica, mesmo '
+                . 'com partes de outras matérias (nº3)', null],
+            '0800400' => ['Pás, alviões, picaretas, enxadas, sachos, forcados e forquilhas, ancinhos e '
+                . 'raspadeiras; machados, podões e ferramentas semelhantes com gume; tesouras de podar de '
+                . 'todos os tipos; foices e foicinhas, facas para feno ou para palha, tesouras para sebes, '
+                . 'cunhas e outras ferramentas manuais para agricultura, horticultura ou silvicultura (nº4)', null],
+            '0800500' => ['Folhas de serras de fita (nº5)', ['SP']],
+            '0800600' => ['Lâminas de serras máquinas (nº6)', ['SP']],
+            '0800700' => ['Serras manuais e outras folhas de serras (incluídas as fresas-serras e as folhas '
+                . 'não dentadas para serrar), exceto as classificadas nos CEST 08.005.00 e 08.006.00 (nº7)', null],
+            '0800800' => ['Limas, grosas, alicates (mesmo cortantes), tenazes, pinças, cisalhas para metais, '
+                . 'corta-tubos, corta-pinos, saca-bocados e ferramentas semelhantes, manuais, exceto as '
+                . 'pinças para sobrancelhas classificadas na posição 8203.20.90 (nº8)', null],
+            '0800900' => ['Chaves de porcas, manuais (incluídas as chaves dinamométricas); chaves de caixa '
+                . 'intercambiáveis, mesmo com cabos (nº9)', null],
+            '0801000' => ['Ferramentas manuais (incluídos os diamantes de vidraceiro) não especificadas nem '
+                . 'compreendidas em outras posições, lamparinas ou lâmpadas de soldar (maçaricos) e '
+                . 'semelhantes; tornos de apertar, sargentos e semelhantes, exceto os acessórios ou partes '
+                . 'de máquinas-ferramentas; bigornas; forjas-portáteis; mós com armação, manuais ou de '
+                . 'pedal (nº10)', null],
+            '0801100' => ['Ferramentas de pelo menos duas das posições 8202 a 8205, acondicionadas em '
+                . 'sortidos para venda a retalho (nº11)', null],
+            '0801200' => ['Ferramentas de roscar interior ou exteriormente; de mandrilar ou de fresar (nº12)', ['SP']],
+            '0801300' => ['Outras ferramentas intercambiáveis para ferramentas manuais, mesmo mecânicas, ou '
+                . 'para máquinas-ferramentas (por exemplo, de embutir, estampar, puncionar, furar, tornear, '
+                . 'aparafusar), incluídas as fieiras de estiragem ou de extrusão, para metais, e as '
+                . 'ferramentas de perfuração ou de sondagem, exceto forma ou gabarito de produtos em '
+                . 'epoxy, exceto as classificadas no CEST 08.012.00 (nº13)', null],
+            '0801400' => ['Facas e lâminas cortantes, para máquinas ou para aparelhos mecânicos (nº14)', null],
+            '0801500' => ['Plaquetas ou pastilhas intercambiáveis (nº15)', ['SP']],
+            '0801600' => ['Outras plaquetas, varetas, pontas e objetos semelhantes para ferramentas, não '
+                . 'montados, de ceramais ("cermets"), exceto as classificadas no CEST 08.015.00 (nº16)', null],
+            '0801700' => ['Facas de lâmina cortante ou serrilhada, incluídas as podadeiras de lâmina móvel, '
+                . 'e suas lâminas, exceto as de uso doméstico (nº17)', null],
+            '0801800' => ['Tesouras e suas lâminas (nº18)', null],
+            '0801900' => ['Ferramentas pneumáticas, hidráulicas ou com motor (elétrico ou não elétrico) '
+                . 'incorporado, de uso manual, exceto o descrito no CEST 08.019.01 (nº19)', ['SP']],
+            '0801901' => ['Moto-serras portáteis de corrente, com motor incorporado, não elétrico, de uso '
+                . 'agrícola (nº19.1)', ['SP']],
+            '0802000' => ['Instrumentos e aparelhos de geodésia, topografia, agrimensura, nivelamento, '
+                . 'fotogrametria, hidrografia, oceanografia, hidrologia, meteorologia ou de geofísica, '
+                . 'exceto bússolas; telêmetros (nº20)', null],
+            '0802100' => ['Instrumentos de desenho, de traçado ou de cálculo; metros, micrômetros, '
+                . 'paquímetros, calibres e semelhantes; partes e acessórios (nº21)', null],
+            '0802200' => ['Termômetros, suas partes e acessórios (nº22)', null],
+            '0802300' => ['Pirômetros, suas partes e acessórios (nº23)', null],
+        ];
+
+        $regras = [];
+        foreach ($itens as $cest => [$descricao, $naoAplicaUfOrigem]) {
+            $regras[$cest] = [
+                'segmento' => $segmento,
+                'descricao' => $descricao,
+                'mva_pct' => $mva,
+                'aliquota_interna_pct' => 18.00,
+                'adicional_tipo' => 'nenhum',
+                'adicional_confirmado' => true,
+                'aliquota_confirmada' => true,
+                'nao_aplica_uf_origem' => $naoAplicaUfOrigem,
+                'fonte_legal' => 'RICMS/MG Anexo VII Parte 2, Segmento 8 (Ferramentas) -- Âmbito 8.1',
+            ];
         }
 
         return $regras;
