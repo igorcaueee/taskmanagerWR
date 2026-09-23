@@ -93,11 +93,35 @@
                 </div>
             @endif
 
-            <div class="flex justify-end mb-3">
-                <a href="{{ route('icms-st.exportar', ['cliente_id' => $clienteId, 'data_inicio' => $dataInicio, 'data_fim' => $dataFim]) }}" class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors no-underline">
+            <form method="GET" action="{{ route('icms-st.index') }}" autocomplete="off" class="flex flex-wrap items-end justify-between gap-3 mb-3">
+                <div class="flex flex-wrap items-end gap-3">
+                    <input type="hidden" name="cliente_id" value="{{ $clienteId }}">
+                    <input type="hidden" name="data_inicio" value="{{ $dataInicio }}">
+                    <input type="hidden" name="data_fim" value="{{ $dataFim }}">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Buscar NF-e</label>
+                        <input type="text" name="busca" value="{{ $busca }}" placeholder="Número da nota" autocomplete="off" class="w-40 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Status</label>
+                        <select name="status_filtro" autocomplete="off" class="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                            <option value="" @selected(! $statusFiltro)>Todas</option>
+                            <option value="pendentes" @selected($statusFiltro === 'pendentes')>Com pendências</option>
+                            <option value="sem_pendentes" @selected($statusFiltro === 'sem_pendentes')>Sem pendências</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="py-2 px-4 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-sm font-semibold rounded-lg transition-colors">
+                        <i class="fa-solid fa-filter"></i> Filtrar
+                    </button>
+                    @if ($busca || $statusFiltro)
+                        <a href="{{ route('icms-st.index', ['cliente_id' => $clienteId, 'data_inicio' => $dataInicio, 'data_fim' => $dataFim]) }}" class="text-xs text-gray-500 dark:text-slate-400 no-underline hover:text-gray-700 dark:hover:text-slate-200">Limpar</a>
+                    @endif
+                </div>
+                <a href="{{ route('icms-st.exportar', ['cliente_id' => $clienteId, 'data_inicio' => $dataInicio, 'data_fim' => $dataFim, 'busca' => $busca, 'status_filtro' => $statusFiltro]) }}" class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors no-underline">
                     <i class="fa-solid fa-file-excel"></i> Exportar Excel
                 </a>
-            </div>
+            </form>
+            <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">A exportação Excel segue exatamente o filtro acima — só as NF-e exibidas na tabela abaixo.</p>
 
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">

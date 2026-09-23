@@ -34,6 +34,8 @@ class IcmsStController extends Controller
         $clienteId = $request->integer('cliente_id') ?: null;
         $dataInicio = $request->string('data_inicio')->toString() ?: null;
         $dataFim = $request->string('data_fim')->toString() ?: null;
+        $busca = trim($request->string('busca')->toString()) ?: null;
+        $statusFiltro = $request->string('status_filtro')->toString() ?: null;
 
         // Sem filtro de data na URL (primeira visita, ou alguém limpou o campo) --
         // default pro mês passado inteiro, em vez de deixar os campos em branco.
@@ -55,7 +57,7 @@ class IcmsStController extends Controller
 
         if ($clienteId && $dataInicio && $dataFim) {
             $clienteSelecionado = Cliente::find($clienteId);
-            $notas = $this->listarNotasDoPeriodo((int) $clienteId, $dataInicio, $dataFim);
+            $notas = $this->listarNotasDoPeriodo((int) $clienteId, $dataInicio, $dataFim, $busca, $statusFiltro);
             $totais = [
                 'icms_st' => $notas->sum('icms_st'),
                 'adicional' => $notas->sum('adicional'),
@@ -64,7 +66,7 @@ class IcmsStController extends Controller
             ];
         }
 
-        return view('icms-st.index', compact('clientes', 'notas', 'totais', 'clienteId', 'dataInicio', 'dataFim', 'clienteSelecionado'));
+        return view('icms-st.index', compact('clientes', 'notas', 'totais', 'clienteId', 'dataInicio', 'dataFim', 'busca', 'statusFiltro', 'clienteSelecionado'));
     }
 
     public function calcular(Request $request): RedirectResponse
@@ -130,53 +132,73 @@ class IcmsStController extends Controller
             'cliente_id' => 'required|exists:clientes,id',
             'data_inicio' => 'required|date_format:Y-m-d',
             'data_fim' => 'required|date_format:Y-m-d|after_or_equal:data_inicio',
+            'busca' => 'nullable|string|max:50',
+            'status_filtro' => 'nullable|in:pendentes,sem_pendentes',
         ]);
 
         @ini_set('memory_limit', '512M');
         @set_time_limit(300);
 
         $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $busca = $validated['busca'] ?? null;
+        $statusFiltro = $validated['status_filtro'] ?? null;
+
+        // Exportar sempre as MESMAS notas que estão sendo exibidas na tela --
+        // reaproveita a mesma listagem/filtro usada em listarNotasDoPeriodo()
+        // em vez de reimplementar a busca/filtro de novo aqui.
+        $chavesFiltradas = ($busca || $statusFiltro)
+            ? $this->listarNotasDoPeriodo($cliente->id, $validated['data_inicio'], $validated['data_fim'], $busca, $statusFiltro)
+                ->pluck('chave_acesso')
+            : null;
 
         $linhas = DB::table('st_calculos')
             ->join('documentos_fiscais', 'documentos_fiscais.chave_acesso', '=', 'st_calculos.chave_acesso')
             ->where('st_calculos.cliente_id', $cliente->id)
             ->whereBetween('documentos_fiscais.data_emissao', [$validated['data_inicio'], $validated['data_fim']])
+            ->when($chavesFiltradas !== null, fn ($q) => $q->whereIn('st_calculos.chave_acesso', $chavesFiltradas))
             ->orderBy('documentos_fiscais.data_emissao')
             ->orderBy('st_calculos.chave_acesso')
             ->orderByRaw('CAST(st_calculos.nfe_item AS UNSIGNED)')
             ->select('st_calculos.*', 'documentos_fiscais.data_emissao as nfe_data_emissao')
             ->cursor()
-            ->map(fn ($linha) => [
-                'NF-e' => $linha->nfe_numero,
-                'Item' => $linha->nfe_item,
-                'Chave_Acesso' => $linha->chave_acesso,
-                'Data_Emissao' => $linha->nfe_data_emissao,
-                'Produto' => $linha->produto,
-                'NCM' => $linha->ncm,
-                'CEST_XML' => $linha->cest_xml,
-                'CEST_Usado' => $linha->cest_usado,
-                'CEST_Origem' => $linha->cest_origem,
-                'Segmento' => $linha->segmento,
-                'CFOP' => $linha->cfop,
-                'UF_Origem' => $linha->uf_origem,
-                'UF_Destino' => $linha->uf_destino,
-                'V_Prod' => $linha->vprod,
-                'V_BC_Origem' => $linha->vbc_origem,
-                'Base_Operacao_Usada' => $linha->base_operacao_usada,
-                'V_IPI' => $linha->vipi,
-                'Aliq_Interestadual' => $linha->aliq_interestadual_pct,
-                'MVA_Aplicada' => $linha->mva_aplicada_pct,
-                'Base_ST_Calculada' => $linha->base_st_calculada,
-                'Aliquota_Interna' => $linha->aliquota_interna_pct,
-                'ICMS_Proprio' => $linha->icms_proprio,
-                'ICMS_ST_Devido' => $linha->icms_st_devido,
-                'Adicional_Tipo' => $linha->adicional_tipo,
-                'Adicional_Valor' => $linha->adicional_valor,
-                'Total_a_Recolher' => $linha->total_a_recolher,
-                'Responsavel' => $linha->responsavel,
-                'Status' => $linha->status,
-                'Status_Detalhe' => $linha->status_detalhe,
-            ]);
+            ->map(function ($linha) {
+                // PDO devolve coluna DECIMAL como string -- sem o cast pra float aqui,
+                // o OpenSpout grava a célula como TEXTO no xlsx (Excel/LibreOffice não
+                // consegue somar, mostra "Contagem" em vez de "Soma" na barra de status).
+                $num = fn ($v) => $v === null ? null : (float) $v;
+
+                return [
+                    'NF-e' => $linha->nfe_numero,
+                    'Item' => $linha->nfe_item,
+                    'Chave_Acesso' => $linha->chave_acesso,
+                    'Data_Emissao' => $linha->nfe_data_emissao,
+                    'Produto' => $linha->produto,
+                    'NCM' => $linha->ncm,
+                    'CEST_XML' => $linha->cest_xml,
+                    'CEST_Usado' => $linha->cest_usado,
+                    'CEST_Origem' => $linha->cest_origem,
+                    'Segmento' => $linha->segmento,
+                    'CFOP' => $linha->cfop,
+                    'UF_Origem' => $linha->uf_origem,
+                    'UF_Destino' => $linha->uf_destino,
+                    'V_Prod' => $num($linha->vprod),
+                    'V_BC_Origem' => $num($linha->vbc_origem),
+                    'Base_Operacao_Usada' => $num($linha->base_operacao_usada),
+                    'V_IPI' => $num($linha->vipi),
+                    'Aliq_Interestadual' => $num($linha->aliq_interestadual_pct),
+                    'MVA_Aplicada' => $num($linha->mva_aplicada_pct),
+                    'Base_ST_Calculada' => $num($linha->base_st_calculada),
+                    'Aliquota_Interna' => $num($linha->aliquota_interna_pct),
+                    'ICMS_Proprio' => $num($linha->icms_proprio),
+                    'ICMS_ST_Devido' => $num($linha->icms_st_devido),
+                    'Adicional_Tipo' => $linha->adicional_tipo,
+                    'Adicional_Valor' => $num($linha->adicional_valor),
+                    'Total_a_Recolher' => $num($linha->total_a_recolher),
+                    'Responsavel' => $linha->responsavel,
+                    'Status' => $linha->status,
+                    'Status_Detalhe' => $linha->status_detalhe,
+                ];
+            });
 
         $filename = 'icms-st_'.\Illuminate\Support\Str::slug($cliente->nome).'_'.$validated['data_inicio'].'_'.$validated['data_fim'].'.xlsx';
 
@@ -305,14 +327,23 @@ class IcmsStController extends Controller
     }
 
     /**
+     * @param  ?string  $busca  filtra por número da NF-e (LIKE parcial)
+     * @param  ?string  $statusFiltro  'pendentes' (só notas com >=1 item pendente) ou
+     *                                 'sem_pendentes' (nenhum item pendente); null = todas
      * @return \Illuminate\Support\Collection<int, object>
      */
-    private function listarNotasDoPeriodo(int $clienteId, string $dataInicio, string $dataFim)
-    {
+    private function listarNotasDoPeriodo(
+        int $clienteId,
+        string $dataInicio,
+        string $dataFim,
+        ?string $busca = null,
+        ?string $statusFiltro = null,
+    ) {
         return DB::table('st_calculos')
             ->join('documentos_fiscais', 'documentos_fiscais.chave_acesso', '=', 'st_calculos.chave_acesso')
             ->where('st_calculos.cliente_id', $clienteId)
             ->whereBetween('documentos_fiscais.data_emissao', [$dataInicio, $dataFim])
+            ->when($busca, fn ($q) => $q->where('st_calculos.nfe_numero', 'like', '%'.$busca.'%'))
             ->groupBy('st_calculos.chave_acesso', 'st_calculos.nfe_numero')
             ->orderBy('documentos_fiscais.data_emissao')
             ->select([
@@ -325,6 +356,8 @@ class IcmsStController extends Controller
                 DB::raw("SUM(CASE WHEN st_calculos.status NOT IN ('calculado','st_ja_destacada_no_xml','nao_sujeito_st') THEN 1 ELSE 0 END) as pendentes"),
                 DB::raw("SUM(CASE WHEN st_calculos.status = 'uf_nao_suportada' THEN 1 ELSE 0 END) as uf_nao_suportada"),
             ])
+            ->when($statusFiltro === 'pendentes', fn ($q) => $q->havingRaw('pendentes > 0'))
+            ->when($statusFiltro === 'sem_pendentes', fn ($q) => $q->havingRaw('pendentes = 0'))
             ->get();
     }
 }
