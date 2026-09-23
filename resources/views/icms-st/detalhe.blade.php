@@ -97,42 +97,52 @@
                                 @endif
                             </td>
                         </tr>
-                        @if (in_array($item->status, \App\Models\StCalculo::STATUS_PENDENTES, true) && $item->status !== 'uf_nao_suportada')
-                            <tr id="override-{{ $item->nfe_item }}" class="hidden bg-gray-50 dark:bg-slate-900/40">
-                                <td colspan="12" class="px-4 py-4">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <form method="POST" action="{{ route('icms-st.overrides.cest') }}" class="space-y-2">
-                                            @csrf
-                                            <input type="hidden" name="chave_acesso" value="{{ $chaveAcesso }}">
-                                            <input type="hidden" name="nfe_item" value="{{ $item->nfe_item }}">
-                                            <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Atribuir/corrigir CEST</p>
-                                            @if ($item->cest_xml)
-                                                <p class="text-xs text-gray-500 dark:text-slate-400">CEST do XML: <strong>{{ $item->cest_xml }}</strong> → CEST corrigido:</p>
-                                            @endif
-                                            <input type="text" name="cest_atribuido" maxlength="9" value="{{ $ov->cest_atribuido ?? '' }}" placeholder="Ex.: 2001300" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
-                                            <textarea name="fundamento" required placeholder="Fundamento (obrigatório) -- ex.: match de NCM com a tabela oficial, item X" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm" rows="2">{{ $ov->fundamento ?? '' }}</textarea>
-                                            <textarea name="observacao" placeholder="Observação (opcional)" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm" rows="2">{{ $ov->observacao ?? '' }}</textarea>
-                                            <button type="submit" class="py-2 px-4 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors">Salvar e recalcular</button>
-                                        </form>
-
-                                        @if ($item->status === 'pendente_reducao_base')
-                                            <form method="POST" action="{{ route('icms-st.overrides.base') }}" class="space-y-2">
-                                                @csrf
-                                                <input type="hidden" name="chave_acesso" value="{{ $chaveAcesso }}">
-                                                <input type="hidden" name="nfe_item" value="{{ $item->nfe_item }}">
-                                                <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Percentual de redução de base do ST no destino ("0" se não houver)</p>
-                                                <input type="number" step="0.01" min="0" max="100" name="percentual_reducao_pct" value="{{ $ovBase->percentual_reducao_pct ?? '' }}" required class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
-                                                <textarea name="observacao" placeholder="Observação (opcional)" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm" rows="2">{{ $ovBase->observacao ?? '' }}</textarea>
-                                                <button type="submit" class="py-2 px-4 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors">Salvar e recalcular</button>
-                                            </form>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @endif
                     @endforeach
                 </tbody>
             </table>
         </div>
+
+        {{-- Painéis de correção ficam FORA da tabela (que tem overflow-x-auto +
+             whitespace-nowrap para as colunas numéricas) -- colocar o formulário
+             dentro de uma <tr>/<td colspan> herdava esse nowrap e a largura ficava
+             espremida/cortada pelo scroll horizontal da tabela. Aqui usam a largura
+             normal da página. --}}
+        @foreach ($itens as $item)
+            @continue(! (in_array($item->status, \App\Models\StCalculo::STATUS_PENDENTES, true) && $item->status !== 'uf_nao_suportada'))
+            @php
+                $ov = $overridesCest->get($item->nfe_item);
+                $ovBase = $overridesBase->get($item->nfe_item);
+            @endphp
+            <div id="override-{{ $item->nfe_item }}" class="hidden mt-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+                <p class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Item {{ $item->nfe_item }} — {{ $item->produto }}</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form method="POST" action="{{ route('icms-st.overrides.cest') }}" class="space-y-2">
+                        @csrf
+                        <input type="hidden" name="chave_acesso" value="{{ $chaveAcesso }}">
+                        <input type="hidden" name="nfe_item" value="{{ $item->nfe_item }}">
+                        <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Atribuir/corrigir CEST</p>
+                        @if ($item->cest_xml)
+                            <p class="text-xs text-gray-500 dark:text-slate-400">CEST do XML: <strong>{{ $item->cest_xml }}</strong> → CEST corrigido:</p>
+                        @endif
+                        <input type="text" name="cest_atribuido" maxlength="9" value="{{ $ov->cest_atribuido ?? '' }}" placeholder="Ex.: 2001300" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                        <textarea name="fundamento" required placeholder="Fundamento (obrigatório) -- ex.: match de NCM com a tabela oficial, item X" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm" rows="2">{{ $ov->fundamento ?? '' }}</textarea>
+                        <textarea name="observacao" placeholder="Observação (opcional)" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm" rows="2">{{ $ov->observacao ?? '' }}</textarea>
+                        <button type="submit" class="py-2 px-4 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors">Salvar e recalcular</button>
+                    </form>
+
+                    @if ($item->status === 'pendente_reducao_base')
+                        <form method="POST" action="{{ route('icms-st.overrides.base') }}" class="space-y-2">
+                            @csrf
+                            <input type="hidden" name="chave_acesso" value="{{ $chaveAcesso }}">
+                            <input type="hidden" name="nfe_item" value="{{ $item->nfe_item }}">
+                            <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Percentual de redução de base do ST no destino ("0" se não houver)</p>
+                            <input type="number" step="0.01" min="0" max="100" name="percentual_reducao_pct" value="{{ $ovBase->percentual_reducao_pct ?? '' }}" required class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                            <textarea name="observacao" placeholder="Observação (opcional)" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm" rows="2">{{ $ovBase->observacao ?? '' }}</textarea>
+                            <button type="submit" class="py-2 px-4 bg-[#0084aa] hover:bg-[#006e8e] text-white text-sm font-semibold rounded-lg transition-colors">Salvar e recalcular</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @endforeach
     </div>
 @endsection
