@@ -47,7 +47,7 @@
                                     <td class="px-4 py-3 text-gray-800 dark:text-slate-200">{{ $item->nfe_item }} — {{ $item->produto }}</td>
                                     <td class="px-4 py-3 text-gray-500 dark:text-slate-400 max-w-md whitespace-normal text-xs">{{ $item->status_detalhe }}</td>
                                     <td class="px-4 py-3 text-right">
-                                        <a href="{{ route('icms-st.detalhe', $item->chave_acesso) }}" class="text-[#0084aa] hover:text-[#006e8e] text-xs font-semibold no-underline">Resolver <i class="fa-solid fa-arrow-right"></i></a>
+                                        <a href="{{ route('icms-st.detalhe', [$item->chave_acesso, 'voltar' => route('icms-st.pendencias')]) }}" class="text-[#0084aa] hover:text-[#006e8e] text-xs font-semibold no-underline">Resolver <i class="fa-solid fa-arrow-right"></i></a>
                                     </td>
                                 </tr>
                             @endforeach

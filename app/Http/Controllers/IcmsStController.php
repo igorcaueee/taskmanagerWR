@@ -205,7 +205,7 @@ class IcmsStController extends Controller
         return (new IcmsStRelatorioExport($linhas))->download($filename);
     }
 
-    public function detalhe(string $chaveAcesso)
+    public function detalhe(Request $request, string $chaveAcesso)
     {
         $itens = StCalculo::where('chave_acesso', $chaveAcesso)
             ->orderByRaw('CAST(nfe_item AS UNSIGNED)')
@@ -222,7 +222,27 @@ class IcmsStController extends Controller
             'overridesCest' => $overridesCest,
             'overridesBase' => $overridesBase,
             'cliente' => $itens->first()->cliente,
+            'voltarUrl' => $this->urlVoltarSegura($request),
         ]);
+    }
+
+    /**
+     * "Voltar" explícito via ?voltar=, em vez de url()->previous(): depois de
+     * qualquer POST (ex.: salvar override), a sessão do Laravel marca a
+     * própria rota de POST como "anterior", então url()->previous() levava
+     * pra uma rota que só aceita POST em vez de para a tela de onde o
+     * usuário realmente veio. Só aceita URL do próprio módulo (mesma
+     * origem), nunca redireciona pra fora.
+     */
+    private function urlVoltarSegura(Request $request): string
+    {
+        $voltar = $request->query('voltar');
+
+        if ($voltar && str_starts_with($voltar, url('/icms-st'))) {
+            return $voltar;
+        }
+
+        return route('icms-st.index');
     }
 
     /**
@@ -264,8 +284,21 @@ class IcmsStController extends Controller
 
         $this->recalcularItem($validated['chave_acesso']);
 
-        return redirect()->route('icms-st.detalhe', $validated['chave_acesso'])
+        return redirect()->route('icms-st.detalhe', $this->paramsDetalheComVoltar($request, $validated['chave_acesso']))
             ->with('status', 'CEST atualizado e item recalculado.');
+    }
+
+    /** Repassa o ?voltar= (se veio no form) pro redirect de volta ao detalhe. */
+    private function paramsDetalheComVoltar(Request $request, string $chaveAcesso): array
+    {
+        $params = ['chaveAcesso' => $chaveAcesso];
+        $voltar = $request->input('voltar');
+
+        if ($voltar && str_starts_with($voltar, url('/icms-st'))) {
+            $params['voltar'] = $voltar;
+        }
+
+        return $params;
     }
 
     public function salvarOverrideBase(Request $request): RedirectResponse
@@ -289,7 +322,7 @@ class IcmsStController extends Controller
 
         $this->recalcularItem($validated['chave_acesso']);
 
-        return redirect()->route('icms-st.detalhe', $validated['chave_acesso'])
+        return redirect()->route('icms-st.detalhe', $this->paramsDetalheComVoltar($request, $validated['chave_acesso']))
             ->with('status', 'Redução de base registrada e item recalculado.');
     }
 

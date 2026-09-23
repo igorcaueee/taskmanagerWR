@@ -171,7 +171,7 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <a href="{{ route('icms-st.detalhe', $nota->chave_acesso) }}" class="text-[#0084aa] hover:text-[#006e8e] text-xs font-semibold no-underline">Detalhe <i class="fa-solid fa-arrow-right"></i></a>
+                                    <a href="{{ route('icms-st.detalhe', [$nota->chave_acesso, 'voltar' => request()->fullUrl()]) }}" class="text-[#0084aa] hover:text-[#006e8e] text-xs font-semibold no-underline">Detalhe <i class="fa-solid fa-arrow-right"></i></a>
                                 </td>
                             </tr>
                         @empty
