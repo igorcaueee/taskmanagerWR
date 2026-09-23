@@ -91,7 +91,7 @@
                             </td>
                             <td class="px-3 py-3">
                                 @if (in_array($item->status, \App\Models\StCalculo::STATUS_PENDENTES, true) && $item->status !== 'uf_nao_suportada')
-                                    <button type="button" onclick="document.getElementById('override-{{ $item->nfe_item }}').classList.toggle('hidden')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors appearance-none">
+                                    <button type="button" onclick="abrirCorrecaoCest('{{ $item->nfe_item }}')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors appearance-none">
                                         <i class="fa-solid fa-pen"></i> Corrigir
                                     </button>
                                 @endif
@@ -102,20 +102,17 @@
             </table>
         </div>
 
-        {{-- Painéis de correção ficam FORA da tabela (que tem overflow-x-auto +
-             whitespace-nowrap para as colunas numéricas) -- colocar o formulário
-             dentro de uma <tr>/<td colspan> herdava esse nowrap e a largura ficava
-             espremida/cortada pelo scroll horizontal da tabela. Aqui usam a largura
-             normal da página. --}}
+        {{-- <template> fica inerte (não renderiza, não afeta layout/scroll da tabela) --
+             o conteúdo só é clonado e exibido dentro de um modal SweetAlert2 quando o
+             usuário clica em "Corrigir" (ver abrirCorrecaoCest() abaixo). --}}
         @foreach ($itens as $item)
             @continue(! (in_array($item->status, \App\Models\StCalculo::STATUS_PENDENTES, true) && $item->status !== 'uf_nao_suportada'))
             @php
                 $ov = $overridesCest->get($item->nfe_item);
                 $ovBase = $overridesBase->get($item->nfe_item);
             @endphp
-            <div id="override-{{ $item->nfe_item }}" class="hidden mt-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
-                <p class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Item {{ $item->nfe_item }} — {{ $item->produto }}</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <template id="override-{{ $item->nfe_item }}">
+                <div class="text-left space-y-6">
                     <form method="POST" action="{{ route('icms-st.overrides.cest') }}" class="space-y-2">
                         @csrf
                         <input type="hidden" name="chave_acesso" value="{{ $chaveAcesso }}">
@@ -142,7 +139,25 @@
                         </form>
                     @endif
                 </div>
-            </div>
+            </template>
         @endforeach
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function abrirCorrecaoCest(nfeItem) {
+        const template = document.getElementById('override-' + nfeItem);
+        const wrapper = document.createElement('div');
+        wrapper.appendChild(template.content.cloneNode(true));
+
+        Swal.fire({
+            title: 'Corrigir item ' + nfeItem,
+            html: wrapper,
+            showConfirmButton: false,
+            showCloseButton: true,
+            width: '40rem',
+        });
+    }
+</script>
+@endpush

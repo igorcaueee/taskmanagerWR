@@ -63,7 +63,7 @@
                     </button>
                 </form>
                 @if ($clienteId && $dataInicio && $dataFim)
-                    <form method="POST" action="{{ route('icms-st.calcular') }}" class="contents">
+                    <form method="POST" action="{{ route('icms-st.calcular') }}" id="form-calcular-icms-st" class="contents">
                         @csrf
                         <input type="hidden" name="cliente_id" value="{{ $clienteId }}">
                         <input type="hidden" name="data_inicio" value="{{ $dataInicio }}">
@@ -185,3 +185,18 @@
         @endif
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.getElementById('form-calcular-icms-st')?.addEventListener('submit', function () {
+        Swal.fire({
+            title: 'Calculando ICMS-ST do período...',
+            text: 'Isso pode levar alguns segundos dependendo da quantidade de NF-e no cofre.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading(),
+        });
+    });
+</script>
+@endpush
