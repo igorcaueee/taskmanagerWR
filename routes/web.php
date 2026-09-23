@@ -17,6 +17,9 @@ use App\Http\Controllers\EmailCampanhaController;
 use App\Http\Controllers\FileExplorerController;
 use App\Http\Controllers\FunilController;
 use App\Http\Controllers\GoogleCalendarController;
+use App\Http\Controllers\IcmsStController;
+use App\Http\Controllers\IcmsStGuiaController;
+use App\Http\Controllers\IcmsStRegraController;
 use App\Http\Controllers\IdeiaController;
 use App\Http\Controllers\LeadCapturaController;
 use App\Http\Controllers\NfeController;
@@ -545,6 +548,30 @@ Route::middleware('auth')->prefix('nfe')->name('nfe.')->group(function () {
     Route::post('/rs/cte/buscar-por-chave', [NfeController::class, 'buscarCtePorChave'])->name('rs.cte.buscar-por-chave');
     Route::post('/rs/cte/buscar-por-chave-lote', [NfeController::class, 'buscarCtePorChaveLote'])->name('rs.cte.buscar-por-chave-lote');
     Route::post('/rs/buscar-por-chave', [NfeController::class, 'buscarNfePorChave'])->name('rs.buscar-por-chave');
+});
+
+// ICMS-ST — antecipação tributária pelo destinatário (RS/MG), a partir do cofre de XMLs
+Route::middleware('auth')->prefix('icms-st')->name('icms-st.')->group(function () {
+    Route::get('/', [IcmsStController::class, 'index'])->name('index');
+    Route::post('/calcular', [IcmsStController::class, 'calcular'])->name('calcular');
+    Route::get('/pendencias', [IcmsStController::class, 'pendencias'])->name('pendencias');
+    Route::get('/nfe/{chaveAcesso}', [IcmsStController::class, 'detalhe'])->name('detalhe');
+    Route::post('/overrides/cest', [IcmsStController::class, 'salvarOverrideCest'])->name('overrides.cest');
+    Route::post('/overrides/base', [IcmsStController::class, 'salvarOverrideBase'])->name('overrides.base');
+    Route::get('/exportar', [IcmsStController::class, 'exportarExcel'])->name('exportar');
+
+    // Fase 2 — guia GNRE/DAE e upload de PDF
+    Route::get('/guias', [IcmsStGuiaController::class, 'index'])->name('guias.index');
+    Route::get('/nfe/{chaveAcesso}/guia', [IcmsStGuiaController::class, 'form'])->name('guias.form');
+    Route::post('/nfe/{chaveAcesso}/guia', [IcmsStGuiaController::class, 'salvar'])->name('guias.salvar');
+    Route::post('/guias/{guia}/upload-pdf', [IcmsStGuiaController::class, 'uploadPdfGuia'])->name('guias.upload-pdf');
+    Route::post('/guias/{guia}/upload-comprovante', [IcmsStGuiaController::class, 'uploadComprovante'])->name('guias.upload-comprovante');
+    Route::get('/guias/{guia}/download/{tipo}', [IcmsStGuiaController::class, 'download'])->name('guias.download');
+
+    // Fase 2 — regras cadastradas (visualizar/editar)
+    Route::get('/regras', [IcmsStRegraController::class, 'index'])->name('regras.index');
+    Route::get('/regras/{regra}/editar', [IcmsStRegraController::class, 'editar'])->name('regras.editar');
+    Route::put('/regras/{regra}', [IcmsStRegraController::class, 'atualizar'])->name('regras.atualizar');
 });
 
 Route::middleware('auth')->prefix('cofre-fiscal')->name('cofre-fiscal.')->group(function () {

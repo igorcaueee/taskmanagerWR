@@ -44,6 +44,16 @@
                 </div>
             </a>
 
+            <a href="{{ route('icms-st.index') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
+                <div class="flex items-center gap-4">
+                    <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-truck-fast"></i></div>
+                    <div>
+                        <h2 class="font-semibold text-gray-800 dark:text-slate-100">ICMS-ST Antecipação</h2>
+                        <p class="text-sm text-gray-500 dark:text-slate-400">Cálculo de ICMS-ST devido pelo destinatário (RS/MG)</p>
+                    </div>
+                </div>
+            </a>
+
             <a href="{{ route('simples-nacional.das.tela') }}" class="no-underline bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 shadow-sm hover:border-brand hover:shadow-md transition group">
                 <div class="flex items-center gap-4">
                     <div class="bg-brand/10 text-brand rounded-lg p-3 text-2xl group-hover:bg-brand/20 transition"><i class="fa-solid fa-file-invoice-dollar"></i></div>
