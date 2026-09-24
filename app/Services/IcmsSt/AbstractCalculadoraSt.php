@@ -189,8 +189,6 @@ abstract class AbstractCalculadoraSt
 
         $override = StOverrideCest::where('chave_acesso', $chave)->where('nfe_item', $nItem)->first();
 
-        [$cest, $cestOrigem, $cestPendenteDetalhe] = $this->resolverCest($cestXml, $override);
-
         $base = [
             'cliente_id' => $documento->cliente_id,
             'nfe_numero' => $numero,
@@ -202,6 +200,22 @@ abstract class AbstractCalculadoraSt
             'uf_destino' => $ufDestino,
             'vprod' => $vProd,
         ];
+
+        // Decisão manual do contador de que este item genuinamente não é
+        // sujeito a ST (produto fora de qualquer segmento) -- diferente do
+        // "nao_sujeito_st" automático por regra revogada mais abaixo; aqui é
+        // sempre uma decisão humana, registrada com fundamento e autoria.
+        if ($override && $override->nao_sujeito_st) {
+            StCalculo::updateOrCreate(['chave_acesso' => $chave, 'nfe_item' => $nItem], $base + [
+                'status' => 'nao_sujeito_st',
+                'status_detalhe' => "Marcado manualmente como não sujeito a ST por {$override->decidido_por} "
+                    . "em {$override->decidido_em?->format('d/m/Y')}: {$override->fundamento}",
+            ]);
+
+            return;
+        }
+
+        [$cest, $cestOrigem, $cestPendenteDetalhe] = $this->resolverCest($cestXml, $override);
 
         if ($cest === null) {
             $pendentes++;

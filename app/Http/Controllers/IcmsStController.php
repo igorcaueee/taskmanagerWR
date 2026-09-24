@@ -267,14 +267,20 @@ class IcmsStController extends Controller
             'chave_acesso' => 'required|string|size:44',
             'nfe_item' => 'required|string',
             'cest_atribuido' => 'nullable|string|max:9',
+            'nao_sujeito_st' => 'nullable|boolean',
             'fundamento' => 'required|string',
             'observacao' => 'nullable|string',
         ]);
 
+        $naoSujeitoSt = $request->boolean('nao_sujeito_st');
+
         StOverrideCest::updateOrCreate(
             ['chave_acesso' => $validated['chave_acesso'], 'nfe_item' => $validated['nfe_item']],
             [
-                'cest_atribuido' => $validated['cest_atribuido'] ?: null,
+                // Marcado como "não sujeito a ST" limpa qualquer CEST atribuído antes --
+                // as duas coisas são mutuamente exclusivas, nunca guardadas juntas.
+                'cest_atribuido' => $naoSujeitoSt ? null : ($validated['cest_atribuido'] ?: null),
+                'nao_sujeito_st' => $naoSujeitoSt,
                 'fundamento' => $validated['fundamento'],
                 'observacao' => $validated['observacao'] ?? null,
                 'decidido_por' => auth()->user()?->name,

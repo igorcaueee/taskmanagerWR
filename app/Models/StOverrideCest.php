@@ -20,6 +20,7 @@ class StOverrideCest extends Model
         'produto',
         'cest_sugerido',
         'cest_atribuido',
+        'nao_sujeito_st',
         'fundamento',
         'observacao',
         'decidido_por',
@@ -27,6 +28,7 @@ class StOverrideCest extends Model
     ];
 
     protected $casts = [
+        'nao_sujeito_st' => 'boolean',
         'decidido_em' => 'datetime',
     ];
 }
