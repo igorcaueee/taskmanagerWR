@@ -17,10 +17,13 @@ use Illuminate\Support\Facades\Log;
  * inegociáveis (nunca inventar dado tributário, sempre bloquear na incerteza,
  * CFOP nunca exclui item do cálculo).
  *
- * O que realmente diverge entre RS e MG é só a seleção da MVA (RS tem 2
- * colunas por alíquota interestadual, MG tem 1 coluna única) — por isso só
- * esse passo é abstrato; extração de item, resolução de overrides, fórmula e
- * persistência são idênticos e ficam aqui.
+ * O que realmente diverge entre RS e MG é só a seleção da MVA ORIGINAL (RS
+ * tem 2 colunas por alíquota interestadual, MG tem 1 coluna única) — por
+ * isso só esse passo é abstrato; extração de item, resolução de overrides,
+ * ajuste de MVA (Convênio 142/18), fórmula e persistência são idênticos e
+ * ficam aqui. resolverMva() das subclasses NUNCA retorna a MVA pronta pra
+ * aplicar -- retorna a MVA original da tabela, e ajustarMva() (nesta classe)
+ * sempre a ajusta antes de calcular a base ST.
  */
 abstract class AbstractCalculadoraSt
 {
@@ -30,7 +33,9 @@ abstract class AbstractCalculadoraSt
     abstract protected function ufSuportada(): string;
 
     /**
-     * Resolve a MVA a aplicar para a regra/alíquota interestadual do item.
+     * Resolve a MVA ORIGINAL (nacional, da tabela) para a regra/alíquota
+     * interestadual do item -- NUNCA a MVA ajustada (isso é feito depois,
+     * de forma centralizada, por ajustarMva()).
      *
      * @return array{mva: ?float, status: ?string, detalhe: ?string} status/detalhe
      *         preenchidos quando o item deve ficar pendente em vez de calculado.
@@ -41,6 +46,21 @@ abstract class AbstractCalculadoraSt
     protected function notaResponsavel(StRegraCest $regra, string $ufOrigem): string
     {
         return 'destinatário (antecipação -- item sem ICMS-ST destacado na origem)';
+    }
+
+    /**
+     * MVA ajustada -- Convênio ICMS 142/18, cláusula segunda: a MVA
+     * ORIGINAL (nacional, cadastrada em st_regras_cest) nunca é aplicada
+     * direto na base de cálculo -- sempre é ajustada pela diferença entre
+     * a alíquota interestadual efetivamente praticada na operação e a
+     * alíquota interna do Estado de destino para aquela mercadoria.
+     * Decisão de Igor Caue, 24/09/2026, válida para os dois motores.
+     */
+    private function ajustarMva(float $mvaOriginal, float $aliquotaInterna, float $aliquotaInterestadual): float
+    {
+        $fator = (1 + $mvaOriginal / 100) * (1 - $aliquotaInterestadual / 100) / (1 - $aliquotaInterna / 100) - 1;
+
+        return round($fator * 100, 2);
     }
 
     /**
@@ -312,8 +332,28 @@ abstract class AbstractCalculadoraSt
             return;
         }
 
-        $mva = $resolvidoMva['mva'];
+        $mvaOriginal = $resolvidoMva['mva'];
         $aliquotaInterna = (float) $regra->aliquota_interna_pct;
+
+        // MVA ajustada (Convênio ICMS 142/18, cláusula segunda): as MVA
+        // cadastradas em st_regras_cest são a MVA ORIGINAL (nacional) --
+        // nunca aplicada direto na base, sempre ajustada pela alíquota
+        // interestadual real da operação (pICMS do XML) x alíquota interna
+        // do destino. Vale para os dois motores (RS e MG), decisão de Igor
+        // Caue em 24/09/2026 -- reverte o entendimento anterior de que as
+        // colunas 12%/4% do RS e a coluna única do MG já viriam prontas.
+        if ($pICMS === null) {
+            $pendentes++;
+            StCalculo::updateOrCreate(['chave_acesso' => $chave, 'nfe_item' => $nItem], $base + [
+                'status' => 'pendente_aliquota',
+                'status_detalhe' => 'Alíquota interestadual (pICMS) não informada no XML -- necessária '
+                    . 'para calcular a MVA ajustada (Convênio ICMS 142/18, cláusula segunda).',
+            ]);
+
+            return;
+        }
+
+        $mva = $this->ajustarMva($mvaOriginal, $aliquotaInterna, $pICMS);
 
         $baseSt = round(($baseOperacao + $vIPI) * (1 + $mva / 100), 2);
         $icmsStDevido = round($baseSt * $aliquotaInterna / 100 - $vICMSProprio, 2);
@@ -327,7 +367,9 @@ abstract class AbstractCalculadoraSt
             'base_st_calculada' => $baseSt,
             'aliquota_interna_pct' => $aliquotaInterna,
             'icms_st_devido' => $icmsStDevido,
-            'responsavel' => $this->notaResponsavel($regra, (string) $ufOrigem),
+            'responsavel' => $this->notaResponsavel($regra, (string) $ufOrigem)
+                . " MVA original {$mvaOriginal}% ajustada para {$mva}% (Convênio ICMS 142/18 -- alíq. "
+                . "interna {$aliquotaInterna}% x interestadual {$pICMS}%).",
         ];
 
         if ($regra->adicional_tipo !== 'nenhum' && ! $regra->adicional_confirmado) {
