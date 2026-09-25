@@ -28,13 +28,18 @@
             </div>
 
             @if ($regra->uf === 'RS')
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">MVA original (coluna "operação interna")</label>
+                    <input type="number" step="0.01" name="mva_pct" value="{{ old('mva_pct', $regra->mva_pct) }}" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">É a MVA usada no cálculo, ajustada pela alíquota interestadual da nota. As colunas 12%/4% abaixo são só referência da tabela.</p>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">MVA interestadual 12%</label>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">MVA 12% (referência da tabela)</label>
                         <input type="number" step="0.01" name="mva_12_pct" value="{{ old('mva_12_pct', $regra->mva_12_pct) }}" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">MVA interestadual 4%</label>
+                        <label class="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">MVA 4% (referência da tabela)</label>
                         <input type="number" step="0.01" name="mva_4_pct" value="{{ old('mva_4_pct', $regra->mva_4_pct) }}" class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 text-sm">
                     </div>
                 </div>

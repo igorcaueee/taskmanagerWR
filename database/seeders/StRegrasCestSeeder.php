@@ -20,7 +20,7 @@ class StRegrasCestSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach ($this->regrasRs() + $this->autopecasRevogadasRs() as $cest => $r) {
+        foreach ($this->regrasRs() + $this->materiaisConstrucaoRs() + $this->autopecasRevogadasRs() as $cest => $r) {
             StRegraCest::updateOrCreate(
                 ['uf' => 'RS', 'cest' => $cest],
                 $r + ['uf' => 'RS', 'cest' => $cest]
@@ -39,6 +39,8 @@ class StRegrasCestSeeder extends Seeder
      * RICMS/RS Apêndice II Seção III — Item XXVI (Materiais de Construção),
      * Item XXII (Perfumaria/Cosméticos, 25% + 2% AMPARA/RS) e Item XIX
      * (Rações Pet). Fonte: calcular_antecipacao_st_rs.py::REGRAS_CEST.
+     * mva_pct (coluna "operação interna") acrescentado em 25/09/2026 a
+     * partir do PDF da Seção III -- é a MVA original que o motor ajusta.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -70,49 +72,49 @@ class StRegrasCestSeeder extends Seeder
         return [
             '1006500' => $baseConstrucao + [
                 'descricao' => 'Acessórios de cobre p/ tubos, uso na construção (nº61)',
-                'mva_12_pct' => 62.21, 'mva_4_pct' => 76.96,
+                'mva_pct' => 53.00, 'mva_12_pct' => 62.21, 'mva_4_pct' => 76.96,
             ],
             '1000600' => $baseConstrucao + [
                 'descricao' => 'Tubos e acessórios de plástico, uso na construção (nº6)',
-                'mva_12_pct' => 94.02, 'mva_4_pct' => 111.66,
+                'mva_pct' => 83.00, 'mva_12_pct' => 94.02, 'mva_4_pct' => 111.66,
             ],
             '1007900' => $baseConstrucao + [
                 'descricao' => 'Torneiras/válvulas p/ canalizações (nº74)',
-                'mva_12_pct' => 81.30, 'mva_4_pct' => 97.78,
+                'mva_pct' => 71.00, 'mva_12_pct' => 81.30, 'mva_4_pct' => 97.78,
             ],
             '2001600' => $basePerfumaria + [
                 'descricao' => 'Preparações solares e antissolares (nº16) -- NÃO SE APLICA A OPERAÇÕES ORIGINÁRIAS DO RJ',
-                'mva_12_pct' => 62.76, 'mva_4_pct' => 77.56,
+                'mva_pct' => 62.76, 'mva_12_pct' => 62.76, 'mva_4_pct' => 77.56,
                 'nao_aplica_uf_origem' => ['RJ'],
             ],
             '2001100' => $basePerfumaria + [
                 'descricao' => 'Outros produtos de maquilagem para os olhos (nº11)',
-                'mva_12_pct' => 96.13, 'mva_4_pct' => 113.96,
+                'mva_pct' => 96.13, 'mva_12_pct' => 96.13, 'mva_4_pct' => 113.96,
             ],
             '2001300' => $basePerfumaria + [
                 'descricao' => 'Pós, incluídos os compactos (nº13)',
-                'mva_12_pct' => 88.17, 'mva_4_pct' => 105.28,
+                'mva_pct' => 88.17, 'mva_12_pct' => 88.17, 'mva_4_pct' => 105.28,
             ],
             '2001500' => $basePerfumaria + [
                 'descricao' => 'Outros produtos de beleza/maquilagem, exceto solares (nº15)',
-                'mva_12_pct' => 62.76, 'mva_4_pct' => 77.56,
+                'mva_pct' => 62.76, 'mva_12_pct' => 62.76, 'mva_4_pct' => 77.56,
             ],
             '2000900' => $basePerfumaria + [
                 'descricao' => 'Produtos de maquilagem para os lábios (nº9)',
-                'mva_12_pct' => 77.14, 'mva_4_pct' => 93.24,
+                'mva_pct' => 77.14, 'mva_12_pct' => 77.14, 'mva_4_pct' => 93.24,
             ],
             '2001000' => $basePerfumaria + [
                 'descricao' => 'Sombra, delineador, lápis p/ sobrancelhas e rímel (nº10)',
-                'mva_12_pct' => 83.33, 'mva_4_pct' => 100.00,
+                'mva_pct' => 83.33, 'mva_12_pct' => 83.33, 'mva_4_pct' => 100.00,
             ],
             '2001400' => $basePerfumaria + [
                 'descricao' => 'Cremes de beleza, cremes nutritivos e loções tônicas (nº14)',
-                'mva_12_pct' => 75.80, 'mva_4_pct' => 91.78,
+                'mva_pct' => 75.80, 'mva_12_pct' => 75.80, 'mva_4_pct' => 91.78,
             ],
             '2200100' => [
                 'segmento' => $racoesPet,
                 'descricao' => 'Rações tipo "pet" para animais domésticos (nº1)',
-                'mva_12_pct' => 82.65, 'mva_4_pct' => 99.26,
+                'mva_pct' => 72.28, 'mva_12_pct' => 82.65, 'mva_4_pct' => 99.26,
                 'aliquota_interna_pct' => 17.00,
                 'adicional_tipo' => 'nenhum',
                 'adicional_confirmado' => true,
@@ -120,6 +122,161 @@ class StRegrasCestSeeder extends Seeder
                 'fonte_legal' => 'Art. 27, X, Livro I, RICMS/RS ("demais mercadorias") -- não consta no Apêndice I Seção I nem no § único do art. 27',
             ],
         ];
+    }
+
+    /**
+     * Restante do Item XXVI (Materiais de Construção e Congêneres) da Seção
+     * III do Apêndice II do RICMS/RS -- os nº6, nº61 e nº74 já vêm de
+     * regrasRs() (motor Python). Fonte: "Seção III Merc ST RS.pdf", lido
+     * integralmente em 25/09/2026. mva_pct = coluna "operação interna"
+     * (MVA original, a que o motor usa); mva_12_pct/mva_4_pct = colunas
+     * 12%/4% da tabela, só referência (já vêm ajustadas -- ver
+     * CalculadoraStRs::resolverMva()). Conferido: ajustar mva_pct pela
+     * Nota 04 reproduz as duas colunas em todos os itens.
+     *
+     * - Itens com MVA por carga tributária interna (12% ou 17%): usada a
+     *   coluna de 17%, que é a alíquota interna cadastrada ("demais
+     *   mercadorias", art. 27, X).
+     * - Itens com "a) frete incluído / b) frete não incluído na base de
+     *   cálculo" (nº21, nº24, nº25): cadastrada a MVA de frete INCLUÍDO; a
+     *   de frete não incluído fica registrada na descrição pra edição
+     *   manual pela tela de regras se for o caso do cliente.
+     * - nº1 (Cal): a tabela só traz MVA "se a carga tributária interna for
+     *   12%" -- cadastrada com alíquota 12% e aliquota_confirmada = false
+     *   (bloqueia o cálculo até alguém confirmar a carga interna real).
+     * - "Este número não se aplica às operações originárias do Estado de
+     *   X" vai em nao_aplica_uf_origem, igual ao nº16 da perfumaria.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function materiaisConstrucaoRs(): array
+    {
+        // cest => [descricao, mva_interna (original), mva_12, mva_4, nao_aplica_uf_origem|null]
+        $itens = [
+            '1000100' => ['Cal (nº1) -- MVA prevista só p/ carga tributária interna de 12%', 72.00, 72.00, 87.63, ['MG']],
+            '1000200' => ['Argamassas (nº2)', 58.00, 67.51, 82.74, null],
+            '1000300' => ['Outras argamassas (nº3)', 58.00, 67.51, 82.74, null],
+            '1000400' => ['Silicones em formas primárias, para uso na construção (nº4)', 80.00, 90.84, 108.19, ['MG']],
+            '1000500' => ['Revestimentos de PVC e outros plásticos; forro, sancas e afins de PVC, para uso na construção (nº5)', 91.00, 102.50, 120.91, null],
+            '1000700' => ['Revestimento de pavimento de PVC e outros plásticos (nº7)', 65.00, 74.93, 90.84, null],
+            '1000800' => ['Chapas, folhas, tiras, películas e outras formas planas, autoadesivas, de plásticos, '
+                . 'mesmo em rolos, para uso na construção (nº8)', 69.00, 79.18, 95.46, null],
+            '1000900' => ['Veda rosca, lona plástica para uso na construção, fitas isolantes e afins (nº9)', 54.00, 63.27, 78.12, null],
+            '1001000' => ['Telha de plástico, mesmo reforçada com fibra de vidro (nº10)', 103.00, 115.22, 134.79, null],
+            '1001200' => ['Chapas, laminados plásticos em bobina, para uso na construção, exceto os descritos nos '
+                . 'CEST 10.010.00 e 10.011.00 (nº11)', 103.00, 115.22, 134.79, null],
+            '1001300' => ['Banheiras, boxes, pias, lavatórios, bidês, sanitários, caixas de descarga e artigos '
+                . 'semelhantes para usos sanitários ou higiênicos, de plásticos (nº12)', 69.00, 79.18, 95.46, null],
+            '1001400' => ['Artefatos de higiene/toucador de plástico, para uso na construção (nº13)', 103.00, 115.22, 134.79, null],
+            '1001500' => ['Caixa d\'água, inclusive sua tampa, de plástico, mesmo reforçadas com fibra de vidro (nº14)', 61.00, 70.69, 86.21, null],
+            '1001600' => ['Outras telhas, cumeeira e caixa d\'água, inclusive sua tampa, de plástico, mesmo '
+                . 'reforçadas com fibra de vidro (nº15)', 61.00, 70.69, 86.21, null],
+            '1001800' => ['Portas, janelas e seus caixilhos, alizares e soleiras, de plástico (nº16)', 60.00, 69.63, 85.06, null],
+            '1001900' => ['Postigos, estores (incluídas as venezianas) e artefatos semelhantes e suas partes (nº17)', 107.00, 119.46, 139.42, ['SP']],
+            '1002000' => ['Outras obras de plástico, para uso na construção (nº18)', 69.00, 79.18, 95.46, null],
+            '1002100' => ['Papel de parede e revestimentos de parede semelhantes; papel para vitrais (nº19)', 103.00, 115.22, 134.79, null],
+            '1002200' => ['Telhas de concreto (nº20)', 54.00, 63.27, 78.12, null],
+            '1002400' => ['Caixas d\'água, tanques, reservatórios, telhas, calhas, cumeeiras e afins, de '
+                . 'fibrocimento, cimento-celulose ou semelhantes (nº21) -- frete INCLUÍDO na BC; se frete NÃO '
+                . 'incluído: 83,42% (12%) / 100,09% (4%)', 68.00, 78.12, 94.31, null],
+            '1002500' => ['Tijolos, placas (lajes), ladrilhos e outras peças cerâmicas de farinhas siliciosas '
+                . 'fósseis ou de terras siliciosas semelhantes (nº22)', 103.00, 115.22, 134.79, ['SP']],
+            '1002600' => ['Tijolos, placas (lajes), ladrilhos e peças cerâmicas semelhantes, para uso na '
+                . 'construção, refratários (nº23)', 103.00, 115.22, 134.79, ['SP']],
+            '1002700' => ['Tijolos para construção, tijoleiras, tapa-vigas e produtos semelhantes, de cerâmica '
+                . '(nº24) -- frete INCLUÍDO na BC; se frete NÃO incluído: 90,84% (12%) / 108,19% (4%)', 54.00, 63.27, 78.12, ['MG', 'SP']],
+            '1002800' => ['Telhas, elementos de chaminés, condutores de fumaça, ornamentos arquitetônicos, de '
+                . 'cerâmica, e outros produtos cerâmicos para uso na construção (nº25) -- frete INCLUÍDO na BC; '
+                . 'se frete NÃO incluído: 115,22% (12%) / 134,79% (4%)', 62.00, 71.75, 87.37, ['SP']],
+            '1002900' => ['Tubos, calhas ou algerozes e acessórios para canalizações, de cerâmica (nº26)', 103.00, 115.22, 134.79, null],
+            '1003000' => ['Ladrilhos e placas de cerâmica, exclusivamente para pavimentação ou revestimento (nº27)', 44.00, 52.67, 66.55, null],
+            '1003100' => ['Pias, lavatórios, colunas para lavatórios, banheiras, bidês, sanitários, caixas de '
+                . 'descarga, mictórios e aparelhos fixos semelhantes para usos sanitários, de cerâmica (nº28)', 33.00, 41.01, 53.83, ['MG']],
+            '1003200' => ['Artefatos de higiene/toucador de cerâmica (nº29)', 103.00, 115.22, 134.79, null],
+            '1003300' => ['Vidro vazado ou laminado, em chapas, folhas ou perfis, sem qualquer outro trabalho (nº30)', 43.00, 51.61, 65.39, ['SP']],
+            '1003400' => ['Vidro estirado ou soprado, em folhas, sem qualquer outro trabalho (nº31)', 103.00, 115.22, 134.79, ['SP']],
+            '1003500' => ['Vidro flotado e vidro desbastado ou polido, em chapas ou em folhas, sem qualquer outro trabalho (nº32)', 52.00, 61.15, 75.80, ['SP']],
+            '1003600' => ['Vidros temperados (nº33)', 36.00, 44.19, 57.30, ['SP']],
+            '1003700' => ['Vidros laminados (nº34)', 36.00, 44.19, 57.30, ['SP']],
+            '1003800' => ['Vidros isolantes de paredes múltiplas (nº35)', 62.00, 71.75, 87.37, ['SP']],
+            '1003900' => ['Blocos, placas, tijolos, ladrilhos, telhas e outros artefatos, de vidro prensado ou '
+                . 'moldado, para uso na construção; cubos, pastilhas e semelhantes (nº36)', 61.20, 70.91, 86.44, ['SP', 'RJ']],
+            '1004000' => ['Barras próprias para construções, exceto vergalhões (nº37)', 103.00, 115.22, 134.79, null],
+            '1004100' => ['Outras barras próprias para construções, exceto vergalhões (nº38)', 103.00, 115.22, 134.79, null],
+            '1004101' => ['Outros vergalhões (nº77)', 92.00, 103.56, 122.07, null],
+            '1004200' => ['Vergalhões (nº39)', 40.00, 48.43, 61.92, null],
+            '1004300' => ['Outros vergalhões (nº40)', 92.00, 103.56, 122.07, null],
+            '1004400' => ['Fios de ferro ou aço não ligados, não revestidos; cordas, cabos, tranças, lingas e '
+                . 'artefatos semelhantes, de ferro ou aço, não isolados para usos elétricos (nº41)', 64.00, 73.87, 89.68, null],
+            '1004501' => ['Outros fios de ferro ou aço, não ligados, galvanizados (nº42)', 74.00, 84.48, 101.25, null],
+            '1004600' => ['Acessórios para tubos (uniões, cotovelos, luvas ou mangas), de ferro fundido, ferro ou aço (nº43)', 73.00, 83.42, 100.09, null],
+            '1004700' => ['Portas e janelas, e seus caixilhos, alizares e soleiras de ferro fundido, ferro ou aço (nº44)', 62.00, 71.75, 87.37, null],
+            '1004800' => ['Material para andaimes, armações (cofragens) e escoramentos, eletrocalhas e perfilados '
+                . 'de ferro fundido, ferro ou aço, próprios para construção, exceto treliças de aço (nº45)', 31.00, 38.89, 51.51, null],
+            '1004900' => ['Treliças de aço (nº46)', 31.00, 38.89, 51.51, null],
+            '1005100' => ['Caixas diversas (correio, entrada de água, energia, instalação) de ferro fundido, '
+                . 'ferro ou aço, próprias para a construção (nº47)', 103.00, 115.22, 134.79, null],
+            '1005200' => ['Arame farpado, arames ou tiras retorcidos, de ferro ou aço, dos tipos utilizados em cercas (nº48)', 41.00, 49.49, 63.08, null],
+            '1005300' => ['Telas metálicas, grades e redes, de fios de ferro ou aço (nº49)', 48.00, 56.91, 71.18, null],
+            '1005400' => ['Correntes de rolos, de ferro fundido, ferro ou aço (nº50)', 103.00, 115.22, 134.79, null],
+            '1005500' => ['Outras correntes de elos articulados, de ferro fundido, ferro ou aço (nº51)', 103.00, 115.22, 134.79, null],
+            '1005600' => ['Correntes de elos soldados, de ferro fundido, de ferro ou aço (nº52)', 103.00, 115.22, 134.79, null],
+            '1005700' => ['Tachas, pregos, percevejos, escápulas, grampos e artefatos semelhantes, de ferro '
+                . 'fundido, ferro ou aço, exceto cobre (nº53)', 66.00, 76.00, 92.00, null],
+            '1005800' => ['Parafusos, pinos ou pernos, porcas, tira-fundos, ganchos, rebites, chavetas, '
+                . 'contrapinos, arruelas e artigos semelhantes, de ferro fundido, ferro ou aço (nº54)', 69.00, 79.18, 95.46, ['SP']],
+            '1005900' => ['Palha de ferro ou aço, exceto de uso doméstico classificados na posição NCM 7323.10.00 (nº55)', 103.00, 115.22, 134.79, null],
+            '1005901' => ['Esponjas, esfregões, luvas e artefatos semelhantes para limpeza, de ferro ou aço, '
+                . 'exceto de uso doméstico (nº76)', 103.00, 115.22, 134.79, null],
+            '1006000' => ['Artefatos de higiene ou de toucador, e suas partes, de ferro fundido, ferro ou aço, '
+                . 'para uso na construção (nº56)', 103.00, 115.22, 134.79, null],
+            '1006100' => ['Outras obras moldadas, de ferro fundido, ferro ou aço, para uso na construção (nº57)', 103.00, 115.22, 134.79, null],
+            '1006200' => ['Abraçadeiras (nº58)', 103.00, 115.22, 134.79, null],
+            '1006300' => ['Barras de cobre (nº59)', 38.00, 46.31, 59.61, ['SP']],
+            '1006400' => ['Tubos de cobre e suas ligas, para instalações de água quente e gás, para uso na construção (nº60)', 47.00, 55.85, 70.02, ['SP']],
+            '1006600' => ['Tachas, pregos, percevejos, escápulas e artefatos semelhantes, de cobre (nº62)', 103.00, 115.22, 134.79, null],
+            '1006700' => ['Artefatos de higiene/toucador de cobre, para uso na construção (nº63)', 57.00, 66.45, 81.59, null],
+            '1006800' => ['Manta de subcobertura aluminizada (nº64)', 103.00, 115.22, 134.79, null],
+            '1007000' => ['Acessórios para tubos (uniões, cotovelos, luvas ou mangas), de alumínio, para uso na construção (nº65)', 80.00, 90.84, 108.19, null],
+            '1007100' => ['Construções e suas partes, de alumínio (portas, janelas, estruturas, chapas, barras, '
+                . 'perfis, tubos), próprios para construções (nº66)', 44.00, 52.67, 66.55, null],
+            '1007200' => ['Artefatos de higiene/toucador de alumínio, para uso na construção (nº67)', 103.00, 115.22, 134.79, null],
+            '1007300' => ['Outras obras de alumínio, próprias para construções, incluídas as persianas (nº68)', 81.00, 91.90, 109.34, ['SP']],
+            '1007400' => ['Outras guarnições, ferragens e artigos semelhantes de metais comuns, para '
+                . 'construções, inclusive puxadores (nº69)', 81.00, 91.90, 109.34, null],
+            '1007500' => ['Fechaduras e ferrolhos, de metais comuns, incluídas as suas partes, fechos e '
+                . 'armações com fecho; chaves para estes artigos; exceto os de uso automotivo (nº70)', 95.00, 106.74, 125.54, null],
+            '1007600' => ['Dobradiças de metais comuns, de qualquer tipo (nº71)', 108.00, 120.53, 140.57, null],
+            '1007700' => ['Tubos flexíveis de metais comuns, mesmo com acessórios, para uso na construção (nº72)', 103.00, 115.22, 134.79, null],
+            '1007800' => ['Fios, varetas, tubos, chapas, eletrodos e artefatos semelhantes, de metais comuns ou '
+                . 'de carbonetos metálicos, para soldagem ou metalização (nº73)', 49.00, 57.97, 72.33, null],
+            '1008000' => ['Espelhos de vidro, mesmo emoldurados, exceto os de uso automotivo (nº75)', 53.00, 62.21, 76.96, ['SP']],
+        ];
+
+        $regras = [];
+        foreach ($itens as $cest => [$descricao, $mvaInterna, $mva12, $mva4, $naoAplicaUfOrigem]) {
+            $regras[$cest] = [
+                'segmento' => 'Item XXVI - Materiais de Construção e Congêneres',
+                'descricao' => $descricao,
+                'mva_pct' => $mvaInterna,
+                'mva_12_pct' => $mva12,
+                'mva_4_pct' => $mva4,
+                'aliquota_interna_pct' => 17.00,
+                'adicional_tipo' => 'nenhum',
+                'adicional_confirmado' => true,
+                'aliquota_confirmada' => true,
+                'nao_aplica_uf_origem' => $naoAplicaUfOrigem,
+                'fonte_legal' => 'RICMS/RS Apêndice II Seção III, Item XXVI; alíquota: Art. 27, X, Livro I ("demais mercadorias")',
+            ];
+        }
+
+        // Cal: tabela só prevê MVA p/ carga tributária interna de 12% -- bloqueia até confirmar.
+        $regras['1000100']['aliquota_interna_pct'] = 12.00;
+        $regras['1000100']['aliquota_confirmada'] = false;
+        $regras['1000100']['fonte_legal'] = 'RICMS/RS Apêndice II Seção III, Item XXVI, nº1 -- MVA 72,00%/87,63% '
+            . 'só para carga tributária interna de 12%; carga interna efetiva da cal no RS não confirmada.';
+
+        return $regras;
     }
 
     /**

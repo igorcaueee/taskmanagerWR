@@ -16,23 +16,37 @@ class CalculadoraStRs extends AbstractCalculadoraSt
         return 'RS';
     }
 
+    /**
+     * As colunas "sujeita à alíquota de 12%/4%" do Apêndice II Seção III
+     * (mva_12_pct/mva_4_pct) JÁ SÃO MVA ajustadas -- pré-calculadas pela
+     * fórmula da Nota 04 supondo alíquota interna de 17% (ou 12% no item
+     * XXII). Reajustá-las no motor aplicava o Convênio 142/18 duas vezes.
+     * Por isso o RS usa a coluna "operação interna" (mva_pct, a MVA ST
+     * original) e deixa ajustarMva() aplicar a fórmula com a alíquota
+     * interna real da regra; as colunas 12%/4% ficam só de referência.
+     */
     protected function resolverMva(StRegraCest $regra, ?float $pIcmsInterestadual): array
     {
-        if ($pIcmsInterestadual === 4.0) {
-            return ['mva' => $regra->mva_4_pct !== null ? (float) $regra->mva_4_pct : null, 'status' => null, 'detalhe' => null];
+        if ($pIcmsInterestadual !== 4.0 && $pIcmsInterestadual !== 12.0) {
+            return [
+                'mva' => null,
+                'status' => 'pendente_aliquota',
+                'detalhe' => 'Alíquota interestadual (pICMS = '
+                    . ($pIcmsInterestadual !== null ? number_format($pIcmsInterestadual, 2) : 'ausente')
+                    . '%) fora do previsto no Apêndice II RICMS/RS (12% ou 4%) -- validação manual.',
+            ];
         }
 
-        if ($pIcmsInterestadual === 12.0) {
-            return ['mva' => $regra->mva_12_pct !== null ? (float) $regra->mva_12_pct : null, 'status' => null, 'detalhe' => null];
+        if ($regra->mva_pct === null) {
+            return [
+                'mva' => null,
+                'status' => 'pendente_aliquota',
+                'detalhe' => "MVA original (coluna \"operação interna\") não cadastrada para o CEST {$regra->cest} "
+                    . 'no RS -- necessária para calcular a MVA ajustada.',
+            ];
         }
 
-        return [
-            'mva' => null,
-            'status' => 'pendente_aliquota',
-            'detalhe' => 'Alíquota interestadual (pICMS = '
-                . ($pIcmsInterestadual !== null ? number_format($pIcmsInterestadual, 2) : 'ausente')
-                . '%) fora do previsto no Apêndice II RICMS/RS (12% ou 4%) -- validação manual.',
-        ];
+        return ['mva' => (float) $regra->mva_pct, 'status' => null, 'detalhe' => null];
     }
 
     protected function notaResponsavel(StRegraCest $regra, string $ufOrigem): string

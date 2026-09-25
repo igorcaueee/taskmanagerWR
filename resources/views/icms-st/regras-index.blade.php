@@ -55,6 +55,9 @@
                                     <td class="px-3 py-3 text-gray-600 dark:text-slate-400 max-w-sm whitespace-normal text-xs">{{ $regra->descricao }}</td>
                                     <td class="px-3 py-3 text-right text-gray-800 dark:text-slate-200">
                                         {{ $regra->mva_pct !== null ? number_format($regra->mva_pct, 2, ',', '.').'%' : (($regra->mva_12_pct !== null || $regra->mva_4_pct !== null) ? number_format($regra->mva_12_pct, 2, ',', '.').'% / '.number_format($regra->mva_4_pct, 2, ',', '.').'%' : '—') }}
+                                        @if ($regra->mva_pct !== null && ($regra->mva_12_pct !== null || $regra->mva_4_pct !== null))
+                                            <div class="text-[10px] text-gray-500 dark:text-slate-400">12%: {{ number_format($regra->mva_12_pct, 2, ',', '.') }}% · 4%: {{ number_format($regra->mva_4_pct, 2, ',', '.') }}%</div>
+                                        @endif
                                     </td>
                                     <td class="px-3 py-3 text-right text-gray-800 dark:text-slate-200">{{ $regra->aliquota_interna_pct !== null ? number_format($regra->aliquota_interna_pct, 2, ',', '.').'%' : '—' }}</td>
                                     <td class="px-3 py-3 text-gray-600 dark:text-slate-400">

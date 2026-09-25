@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\Log;
  * CFOP nunca exclui item do cálculo).
  *
  * O que realmente diverge entre RS e MG é só a seleção da MVA ORIGINAL (RS
- * tem 2 colunas por alíquota interestadual, MG tem 1 coluna única) — por
+ * usa a coluna "operação interna" e valida a alíquota interestadual, MG tem
+ * 1 coluna única) — por
  * isso só esse passo é abstrato; extração de item, resolução de overrides,
  * ajuste de MVA (Convênio 142/18), fórmula e persistência são idênticos e
  * ficam aqui. resolverMva() das subclasses NUNCA retorna a MVA pronta pra
@@ -354,8 +355,10 @@ abstract class AbstractCalculadoraSt
         // nunca aplicada direto na base, sempre ajustada pela alíquota
         // interestadual real da operação (pICMS do XML) x alíquota interna
         // do destino. Vale para os dois motores (RS e MG), decisão de Igor
-        // Caue em 24/09/2026 -- reverte o entendimento anterior de que as
-        // colunas 12%/4% do RS e a coluna única do MG já viriam prontas.
+        // Caue em 24/09/2026. No RS a MVA original é a coluna "operação
+        // interna" (mva_pct) -- as colunas 12%/4% já vêm ajustadas na
+        // tabela e não podem entrar aqui (ajuste em dobro, corrigido em
+        // 25/09/2026).
         if ($pICMS === null) {
             $pendentes++;
             StCalculo::updateOrCreate(['chave_acesso' => $chave, 'nfe_item' => $nItem], $base + [
