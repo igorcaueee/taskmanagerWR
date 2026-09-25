@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
@@ -1242,17 +1243,19 @@ class TarefaController extends Controller
             'mime_type' => $arquivo->getClientMimeType(),
         ]);
 
-        if ($cliente->recebe_arquivos_email && $cliente->notificar_email_novo_arquivo) {
-            $emails = $cliente->contatoClientes()->whereNotNull('gmail')->pluck('gmail');
+        // Aviso de arquivo novo vai sempre; o link de download direto só quando o cliente recebe arquivos por e-mail
+        $emails = $cliente->contatoClientes()->whereNotNull('gmail')->pluck('gmail');
 
-            if ($emails->isNotEmpty()) {
-                Mail::to($emails->all())->queue(new NovoArquivoPortalMail(
-                    nomeCliente: $cliente->nome,
-                    nomeArquivo: $nomeArquivo,
-                    categoria: $categoria,
-                    linkPortal: route('portal.login'),
-                ));
-            }
+        if ($emails->isNotEmpty()) {
+            Mail::to($emails->all())->queue(new NovoArquivoPortalMail(
+                nomeCliente: $cliente->nome,
+                nomeArquivo: $nomeArquivo,
+                categoria: $categoria,
+                linkPortal: route('portal.login'),
+                linkDownload: $cliente->recebe_arquivos_email
+                    ? URL::temporarySignedRoute('arquivos.downloadPublico', now()->addDays(7), ['path' => $caminhoDB])
+                    : null,
+            ));
         }
 
         return response()->json(['success' => true, 'nome' => $nomeArquivo, 'arquivo_path' => $caminhoDB]);

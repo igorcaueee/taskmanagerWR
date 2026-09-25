@@ -252,9 +252,6 @@
                                     $cliente->recebe_arquivos_email ? 'E-mail' : null,
                                     $cliente->recebe_arquivos_whatsapp ? 'WhatsApp' : null,
                                 ])->filter()->implode(', ') }}
-                                @if($cliente->notificar_email_novo_arquivo)
-                                    <span class="block text-xs text-gray-400 dark:text-gray-500 mt-0.5">Avisa por e-mail a cada novo arquivo</span>
-                                @endif
                             </dd>
                         </div>
                         <div>

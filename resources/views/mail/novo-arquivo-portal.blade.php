@@ -19,6 +19,8 @@
         .file-name { font-size: 14px; font-weight: 600; color: #0369a1; word-break: break-all; }
         .file-categoria { font-size: 12px; color: #64748b; margin-top: 2px; }
         .btn { display: inline-block; margin-top: 20px; padding: 12px 28px; background-color: #0084AA; color: #fff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; }
+        .btn-outline { background-color: #fff; color: #0084AA !important; border: 1px solid #0084AA; margin-left: 8px; }
+        .note { font-size: 12px; color: #9ca3af; margin-top: 12px; }
         .footer { background-color: #f9fafb; padding: 20px 32px; text-align: center; border-top: 1px solid #e5e7eb; }
         .footer p { font-size: 12px; color: #9ca3af; }
     </style>
@@ -41,7 +43,12 @@
                 </div>
             </div>
 
-            <a href="{{ $linkPortal }}" class="btn">🔐 Acessar o Portal</a>
+            <a href="{{ $linkPortal }}" class="btn" style="color: #fff;">🔐 Acessar o Portal</a>
+            @if($linkDownload)
+                <a href="{{ $linkDownload }}" class="btn btn-outline">📥 Baixar Arquivo</a>
+
+                <p class="note">O link de download é válido por 7 dias. Depois disso, o arquivo continua disponível no Portal.</p>
+            @endif
         </div>
         <div class="footer">
             <p>WR Assessoria &mdash; Este é um e-mail automático.</p>

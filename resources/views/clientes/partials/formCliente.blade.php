@@ -271,7 +271,6 @@
                 $recebePortalAtual = old('recebe_arquivos_portal', $isEditing ? $cliente->recebe_arquivos_portal : true);
                 $recebeEmailAtual = old('recebe_arquivos_email', $isEditing ? $cliente->recebe_arquivos_email : false);
                 $recebeWhatsappAtual = old('recebe_arquivos_whatsapp', $isEditing ? $cliente->recebe_arquivos_whatsapp : false);
-                $notificarEmailAtual = old('notificar_email_novo_arquivo', $isEditing ? $cliente->notificar_email_novo_arquivo : false);
             @endphp
 
             <div class="mb-3">
@@ -311,13 +310,9 @@
                 </div>
             </div>
 
-            <div>
-                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input name="notificar_email_novo_arquivo" type="checkbox" value="1" class="rounded border-gray-300"
-                           {{ $notificarEmailAtual ? 'checked' : '' }}>
-                    Avisar por e-mail quando um arquivo novo for adicionado
-                </label>
-            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                O cliente sempre recebe um e-mail avisando de arquivo novo no portal. Com "E-mail" marcado, o aviso também traz o link de download.
+            </p>
         </div>
 
         @if(isset($produtos) && $produtos->isNotEmpty())

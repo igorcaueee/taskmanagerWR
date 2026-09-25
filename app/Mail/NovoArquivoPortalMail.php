@@ -17,6 +17,7 @@ class NovoArquivoPortalMail extends Mailable
         public string $nomeArquivo,
         public string $categoria,
         public string $linkPortal,
+        public ?string $linkDownload = null,
     ) {}
 
     public function envelope(): Envelope
