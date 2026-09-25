@@ -1182,6 +1182,25 @@ class TarefaController extends Controller
     {
         $tarefa = Tarefa::with('cliente')->findOrFail($id);
 
+        return $this->enviarArquivoPortal($request, $tarefa->cliente, $tarefa);
+    }
+
+    /**
+     * Upload avulso feito direto pela tela "Uploads do Portal", sem vínculo com tarefa.
+     */
+    public function uploadAvulso(Request $request): JsonResponse
+    {
+        $cliente = $request->filled('cliente_id') ? Cliente::find($request->integer('cliente_id')) : null;
+
+        if (! $cliente) {
+            return response()->json(['error' => 'Selecione o cliente.'], 422);
+        }
+
+        return $this->enviarArquivoPortal($request, $cliente, null);
+    }
+
+    private function enviarArquivoPortal(Request $request, ?Cliente $cliente, ?Tarefa $tarefa): JsonResponse
+    {
         $validator = Validator::make($request->all(), [
             'arquivo' => ['required', 'file', 'max:51200'], // 50 MB
             'pasta_categoria' => ['required', 'string', 'in:Contabilidade,Financeiro,Fiscal,Patrimônio,Pessoal'],
@@ -1194,8 +1213,6 @@ class TarefaController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 422);
         }
-
-        $cliente = $tarefa->cliente;
 
         if (! $cliente || ! $cliente->pasta_arquivos) {
             return response()->json(['error' => 'Este cliente não possui pasta configurada.'], 422);
@@ -1228,7 +1245,7 @@ class TarefaController extends Controller
         $caminhoDB = rtrim($cliente->pasta_arquivos, '/').'/Portal/'.$categoria.'/'.$periodo.'/'.$nomeArquivo;
 
         TarefaUpload::create([
-            'tarefa_id' => $tarefa->id,
+            'tarefa_id' => $tarefa?->id,
             'cliente_id' => $cliente->id,
             'origem' => 'empresa',
             'enviado_por' => Auth::id(),

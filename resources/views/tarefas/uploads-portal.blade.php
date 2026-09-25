@@ -12,13 +12,19 @@
                 <i class="fa-solid fa-file-arrow-up mr-2 text-brand"></i>Uploads do Portal
             </h1>
             <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                Histórico de arquivos enviados para clientes via tarefas.
+                Histórico de arquivos enviados para clientes pelo portal.
             </p>
         </div>
-        <a href="{{ route('tarefas.list') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded border border-gray-300 dark:border-slate-600 text-sm hover:bg-gray-200 dark:hover:bg-slate-600 no-underline">
-            <i class="fa-solid fa-arrow-left"></i> Voltar ao Pipeline
-        </a>
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="abrirUploadAvulso()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded border-0 text-sm hover:bg-brand/80 cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Enviar arquivo
+            </button>
+            <a href="{{ route('tarefas.list') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded border border-gray-300 dark:border-slate-600 text-sm hover:bg-gray-200 dark:hover:bg-slate-600 no-underline">
+                <i class="fa-solid fa-arrow-left"></i> Voltar ao Pipeline
+            </a>
+        </div>
     </div>
 
     {{-- Filtros --}}
@@ -95,7 +101,7 @@
         <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-12 text-center text-gray-400 dark:text-slate-500 shadow-sm">
             <i class="fa-regular fa-folder-open text-5xl mb-3 block"></i>
             <p class="font-medium text-sm">Nenhum upload encontrado.</p>
-            <p class="text-xs mt-1">Os arquivos enviados ao portal via tarefas aparecerão aqui.</p>
+            <p class="text-xs mt-1">Os arquivos enviados ao portal (por tarefa ou pelo botão "Enviar arquivo") aparecerão aqui.</p>
         </div>
     @else
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -341,6 +347,179 @@ function excluirUpload(id, nome) {
                 Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível excluir o registro.' });
             }
         });
+    });
+}
+
+// ── Upload avulso (sem tarefa) ───────────────────────────────────────────────
+@php
+    $clientesUpload = $clientes->map(fn ($c) => ['id' => $c->id, 'nome' => $c->nome, 'temPasta' => filled($c->pasta_arquivos)])->values();
+    $clienteFiltroUpload = request('cliente_id') ? (int) request('cliente_id') : null;
+@endphp
+const clientesUpload = @json($clientesUpload);
+
+function gerarPeriodoPadrao() {
+    const now = new Date();
+    const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return `${String(now.getMonth() + 1).padStart(2, '0')} - ${nomesMeses[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
+
+function onTipoArquivoChange() {
+    const tipo = document.getElementById('swal-tipo-arquivo')?.value;
+    document.getElementById('swal-pagamento-fields')?.classList.toggle('hidden', tipo !== 'pagamento');
+}
+
+function onArquivoSelecionado(input) {
+    const nameEl = document.getElementById('file-selected-name');
+    if (input.files.length && nameEl) {
+        nameEl.textContent = '📎 ' + input.files[0].name;
+        nameEl.classList.remove('hidden');
+        document.getElementById('upload-area').classList.add('border-blue-400', 'bg-blue-50');
+    }
+}
+
+function onArquivoDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('upload-area')?.classList.remove('border-blue-400', 'bg-blue-50');
+    const files = event.dataTransfer.files;
+    if (!files.length) { return; }
+    const input = document.getElementById('swal-file-input');
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    input.files = dt.files;
+    onArquivoSelecionado(input);
+}
+
+function abrirUploadAvulso() {
+    const clienteFiltro = @json($clienteFiltroUpload);
+    const inputClass = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400';
+    const opcoesClientes = clientesUpload.map(c =>
+        `<option value="${c.id}" ${c.temPasta ? '' : 'disabled'} ${c.id === clienteFiltro && c.temPasta ? 'selected' : ''}>${escHtml(c.nome)}${c.temPasta ? '' : ' (sem pasta configurada)'}</option>`
+    ).join('');
+
+    Swal.fire({
+        title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-arrow-up mr-2 text-blue-500"></i>Enviar arquivo ao portal do cliente</span>',
+        width: 560,
+        html: `
+            <div class="mb-3 text-left">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Cliente <span class="text-red-500">*</span></label>
+                <select id="swal-cliente" class="${inputClass}">
+                    <option value="">Selecione o cliente...</option>
+                    ${opcoesClientes}
+                </select>
+            </div>
+
+            <div class="mb-3 text-left">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de arquivo <span class="text-red-500">*</span></label>
+                <select id="swal-tipo-arquivo" onchange="onTipoArquivoChange()" class="${inputClass}">
+                    <option value="">Selecione o tipo...</option>
+                    <option value="pagamento">💳 Arquivo de Pagamento</option>
+                    <option value="contrato_social">📜 Contrato Social</option>
+                    <option value="informacao">ℹ️ Informação</option>
+                </select>
+            </div>
+
+            <div id="swal-pagamento-fields" class="mb-3 hidden">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="text-left">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Data de vencimento</label>
+                        <input type="date" id="swal-data-vencimento" class="${inputClass}">
+                    </div>
+                    <div class="text-left">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Valor (R$)</label>
+                        <input type="number" id="swal-valor" step="0.01" min="0" placeholder="0,00" class="${inputClass}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3 text-left">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Pasta / Categoria <span class="text-red-500">*</span></label>
+                <select id="swal-pasta-categoria" class="${inputClass}">
+                    <option value="">Selecione a pasta...</option>
+                    <option value="Contabilidade">📂 Contabilidade</option>
+                    <option value="Financeiro">📂 Financeiro</option>
+                    <option value="Fiscal">📂 Fiscal</option>
+                    <option value="Patrimônio">📂 Patrimônio</option>
+                    <option value="Pessoal">📂 Pessoal</option>
+                </select>
+            </div>
+
+            <div class="mb-4 text-left">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Período <span class="text-red-500">*</span></label>
+                <input type="text" id="swal-pasta-periodo" value="${gerarPeriodoPadrao()}" placeholder="Ex: 05 - Maio 2026" class="${inputClass}">
+                <p class="text-xs text-gray-400 mt-1">A subpasta de período será criada automaticamente se não existir.</p>
+            </div>
+
+            <div id="upload-area"
+                 class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
+                 onclick="document.getElementById('swal-file-input').click()"
+                 ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
+                 ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
+                 ondrop="onArquivoDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2 block"></i>
+                <p class="text-sm text-gray-600 font-medium">Clique para selecionar ou arraste o arquivo aqui</p>
+                <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
+            </div>
+            <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
+            <p class="text-xs text-gray-400 mt-3 text-left">Os contatos do cliente com e-mail cadastrado são avisados automaticamente.</p>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa-solid fa-paper-plane mr-1"></i> Enviar arquivo',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0084AA',
+        preConfirm: async () => {
+            const clienteId = document.getElementById('swal-cliente').value;
+            const tipoArquivo = document.getElementById('swal-tipo-arquivo').value;
+            const categoria = document.getElementById('swal-pasta-categoria').value;
+            const periodo = document.getElementById('swal-pasta-periodo').value.trim();
+            const dataVencimento = document.getElementById('swal-data-vencimento').value;
+            const valor = document.getElementById('swal-valor').value;
+            const fileInput = document.getElementById('swal-file-input');
+
+            if (!clienteId) { Swal.showValidationMessage('Selecione o cliente.'); return false; }
+            if (!tipoArquivo) { Swal.showValidationMessage('Selecione o tipo de arquivo.'); return false; }
+            if (!categoria) { Swal.showValidationMessage('Selecione a pasta / categoria.'); return false; }
+            if (!periodo) { Swal.showValidationMessage('Informe o período.'); return false; }
+            if (!fileInput.files.length) { Swal.showValidationMessage('Selecione um arquivo para enviar.'); return false; }
+
+            const formData = new FormData();
+            formData.append('cliente_id', clienteId);
+            formData.append('arquivo', fileInput.files[0]);
+            formData.append('tipo_arquivo', tipoArquivo);
+            formData.append('pasta_categoria', categoria);
+            formData.append('pasta_periodo', periodo);
+            if (tipoArquivo === 'pagamento' && dataVencimento) formData.append('data_vencimento', dataVencimento);
+            if (tipoArquivo === 'pagamento' && valor) formData.append('valor', valor);
+
+            Swal.showLoading();
+
+            try {
+                const res = await fetch('{{ route('tarefas.uploads-portal.store') }}', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: formData,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    Swal.showValidationMessage(data.error ?? (res.status === 413 ? 'Arquivo muito grande.' : 'Erro ao enviar o arquivo.'));
+                    return false;
+                }
+                return data;
+            } catch {
+                Swal.showValidationMessage('Erro de conexão ao enviar o arquivo.');
+                return false;
+            }
+        },
+    }).then(result => {
+        if (!result.isConfirmed || !result.value) { return; }
+        Swal.fire({ icon: 'success', title: 'Arquivo enviado!', text: `"${result.value.nome}" já está no portal do cliente.`, timer: 2000, showConfirmButton: false })
+            .then(() => window.location.reload());
     });
 }
 
