@@ -116,6 +116,8 @@
                                     $foiPago       = $meta && $meta->foiPago();
                                     $estaVencido   = $meta && $meta->estaVencido();
                                     $venceHoje     = $meta && $meta->venceHoje();
+                                    // Sem registro no banco (arquivo posto direto na pasta), vale só a regra dos 2 dias
+                                    $ehNovo        = $meta ? $meta->ehNovo() : $arquivo['modificado_em'] >= now()->subDays(2)->timestamp;
                                 @endphp
                                 <tr class="hover:bg-gray-50 dark:hover:bg-[#334155]/50 transition {{ $estaVencido ? 'bg-red-50/50 dark:bg-red-900/10' : '' }}" data-upload-id="{{ $meta?->id }}">
                                     <td class="px-5 py-3 pl-14">
@@ -130,8 +132,16 @@
                                             } }}</span>
                                             <div>
                                                 <span class="font-medium text-gray-800 dark:text-slate-100">{{ $arquivo['nome'] }}</span>
+                                                @if($meta && $meta->descricao_documento)
+                                                    <p class="text-xs text-gray-500 dark:text-slate-400">{{ $meta->descricao_documento }}</p>
+                                                @endif
                                                 {{-- Badges de tipo e status --}}
                                                 <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    @if($ehNovo)
+                                                        <span class="badge-novo inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#0084AA] text-white">
+                                                            <i class="fa-solid fa-star text-[9px]"></i> Novo
+                                                        </span>
+                                                    @endif
                                                     @if($meta && $meta->foiEnviadoPeloCliente())
                                                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
                                                             <i class="fa-solid fa-arrow-up text-[9px]"></i> Enviado por você
@@ -191,6 +201,7 @@
                                             @endif
                                             @if($podeAbrirOlho)
                                             <button
+                                                data-abre-arquivo
                                                 onclick="abrirVisualizador('{{ $urlVisualizar }}', '{{ $urlDownload }}', '{{ addslashes($arquivo['nome']) }}', '{{ $tipoViewer }}')"
                                                 class="inline-flex items-center gap-1 text-[#0084AA] hover:text-[#006e8e] font-medium text-xs transition border-0 bg-transparent cursor-pointer"
                                                 title="Visualizar"
@@ -199,6 +210,7 @@
                                             </button>
                                             @endif
                                             <a
+                                                data-abre-arquivo
                                                 href="{{ $urlDownload }}"
                                                 class="inline-flex items-center gap-1 text-gray-400 hover:text-[#0084AA] font-medium text-xs transition"
                                                 title="Baixar"
@@ -259,6 +271,12 @@ function togglePeriodo(id) {
         chevrons.forEach(c => c.style.transform = el.classList.contains('hidden') ? 'rotate(-90deg)' : '');
     }
 }
+
+// Abrir ou baixar já conta como visto (o servidor grava visualizado_em/baixado_em): tira a tag "Novo" na hora
+document.addEventListener('click', (event) => {
+    const botao = event.target.closest('[data-abre-arquivo]');
+    botao?.closest('tr')?.querySelector('.badge-novo')?.remove();
+});
 
 function abrirVisualizador(urlVisualizar, urlDownload, nome, tipo) {
     const overlay = document.getElementById('viewer-overlay');

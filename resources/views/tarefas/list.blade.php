@@ -613,7 +613,7 @@
             }
 
             if (result.requer_envio_arquivo) {
-                await mostrarUploadArquivo(tarefaId, result.cliente_id);
+                await mostrarUploadArquivo(tarefaId, result.cliente_id, result.cliente_recebe_arquivos_email);
             }
 
             if (result.ultima_recorrencia) {
@@ -768,12 +768,27 @@
         return `${mes} - ${nomeMes} ${ano}`;
     }
 
-    async function mostrarUploadArquivo(tarefaId, clienteId) {
+    async function mostrarUploadArquivo(tarefaId, clienteId, recebeArquivosEmail = false) {
         const periodoPadrao = gerarPeriodoPadrao();
+        configurarAnaliseDocumento({ clienteId });
         await Swal.fire({
             title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-arrow-up mr-2 text-blue-500"></i>Enviar arquivo ao portal do cliente</span>',
             html: `
                 <p class="text-sm text-gray-500 mb-4">Esta tarefa requer o envio de um arquivo para o portal do cliente.</p>
+
+                <div id="upload-area"
+                     class="mb-3 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
+                     onclick="document.getElementById('swal-file-input').click()"
+                     ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
+                     ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
+                     ondrop="onArquivoDrop(event)">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2 block"></i>
+                    <p class="text-sm text-gray-600 font-medium">Clique para selecionar ou arraste o arquivo aqui</p>
+                    <p class="text-xs text-gray-400 mt-1">A IA identifica a guia, confere o CNPJ e preenche os campos abaixo</p>
+                    <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
+                </div>
+                <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
+                <div id="swal-analise-ia" class="hidden mb-3 text-left"></div>
 
                 <div class="mb-3 text-left">
                     <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de arquivo <span class="text-red-500">*</span></label>
@@ -820,32 +835,14 @@
                     <p class="text-xs text-gray-400 mt-1">A subpasta de período será criada automaticamente se não existir.</p>
                 </div>
 
-                <div id="upload-area"
-                     class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
-                     onclick="document.getElementById('swal-file-input').click()"
-                     ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
-                     ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
-                     ondrop="onArquivoDrop(event)">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2 block"></i>
-                    <p class="text-sm text-gray-600 font-medium">Clique para selecionar ou arraste o arquivo aqui</p>
-                    <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
-                </div>
-                <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
-
                 <div class="mt-5 border-t border-gray-200 pt-4 text-left">
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notificar também via</p>
-                    <div class="flex items-center gap-4 mb-3">
-                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                            <input type="checkbox" id="swal-share-email" onchange="toggleShareUsuario()" class="w-4 h-4 rounded accent-indigo-600">
-                            <i class="fa-solid fa-envelope text-indigo-500"></i> E-mail
-                        </label>
-                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                            <input type="checkbox" id="swal-share-whatsapp" onchange="toggleShareUsuario()" class="w-4 h-4 rounded accent-green-600">
-                            <i class="fa-brands fa-whatsapp text-green-500"></i> WhatsApp
-                        </label>
-                    </div>
-                    <div id="swal-share-usuario-wrap" class="hidden">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Destinatário</label>
+                    ${htmlOpcoesEmailPortal(recebeArquivosEmail)}
+                    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none mt-3">
+                        <input type="checkbox" id="swal-share-whatsapp" onchange="toggleShareUsuario()" class="w-4 h-4 rounded accent-green-600">
+                        <i class="fa-brands fa-whatsapp text-green-500"></i> Enviar link pelo WhatsApp
+                    </label>
+                    <div id="swal-share-usuario-wrap" class="hidden mt-2">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Destinatário do WhatsApp</label>
                         <select id="swal-share-usuario" onchange="atualizarShareInfo()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                             <option value="">Carregando...</option>
                         </select>
@@ -871,6 +868,13 @@
                 } catch {}
             },
             preConfirm: async () => {
+                // Espera a IA terminar de preencher antes de ler os campos
+                const bloqueioAnalise = await validarAnaliseDocumento();
+                if (bloqueioAnalise) {
+                    Swal.showValidationMessage(bloqueioAnalise);
+                    return false;
+                }
+
                 const fileInput = document.getElementById('swal-file-input');
                 const tipoArquivo = document.getElementById('swal-tipo-arquivo').value.trim();
                 const categoria = document.getElementById('swal-pasta-categoria').value.trim();
@@ -895,13 +899,12 @@
                     return false;
                 }
 
-                const enviarEmail = document.getElementById('swal-share-email').checked;
                 const enviarWhatsapp = document.getElementById('swal-share-whatsapp').checked;
                 const usuarioId = document.getElementById('swal-share-usuario').value;
                 const usuarioOpt = document.getElementById('swal-share-usuario').options[document.getElementById('swal-share-usuario').selectedIndex];
 
-                if ((enviarEmail || enviarWhatsapp) && !usuarioId) {
-                    Swal.showValidationMessage('Selecione um destinatário para notificar.');
+                if (enviarWhatsapp && !usuarioId) {
+                    Swal.showValidationMessage('Selecione o destinatário do WhatsApp.');
                     return false;
                 }
 
@@ -909,6 +912,8 @@
                 formData.append('arquivo', fileInput.files[0]);
                 formData.append('pasta_categoria', categoria);
                 formData.append('pasta_periodo', periodo);
+                formData.append('descricao_documento', descricaoAnaliseDocumento());
+                formData.append('enviar_link_email', document.getElementById('swal-enviar-link-email').checked ? '1' : '0');
                 if (tipoArquivo) formData.append('tipo_arquivo', tipoArquivo);
                 if (tipoArquivo === 'pagamento' && dataVencimento) formData.append('data_vencimento', dataVencimento);
                 if (tipoArquivo === 'pagamento' && valor) formData.append('valor', valor);
@@ -927,20 +932,6 @@
                         return false;
                     }
 
-                    // Enviar por e-mail se marcado
-                    if (enviarEmail && usuarioId) {
-                        const emailRes = await fetch('{{ route("arquivos.enviarEmail") }}', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                            body: JSON.stringify({ path: data.arquivo_path, portal_usuario_id: usuarioId }),
-                        });
-                        if (!emailRes.ok) {
-                            const emailData = await emailRes.json();
-                            Swal.showValidationMessage('Arquivo enviado, mas falha no e-mail: ' + (emailData.error ?? 'erro desconhecido'));
-                            return false;
-                        }
-                    }
-
                     return { ...data, enviarWhatsapp, usuarioId, telefoneDest: usuarioOpt?.dataset?.telefone ?? '' };
                 } catch {
                     Swal.showValidationMessage('Erro de conexão ao enviar o arquivo.');
@@ -951,7 +942,7 @@
             if (result.isConfirmed && result.value) {
                 const { nome, arquivo_path, enviarWhatsapp, usuarioId, telefoneDest } = result.value;
 
-                showToast(`Arquivo "${nome}" enviado ao portal!`, 'green');
+                showToast(`Arquivo "${nome}" enviado ao portal! ${mensagemAvisoEmail(result.value)}`, result.value.aviso_email === 'enviado' ? 'green' : 'amber');
 
                 // Abrir WhatsApp se marcado
                 if (enviarWhatsapp && usuarioId && telefoneDest) {
@@ -977,11 +968,10 @@
     }
 
     function toggleShareUsuario() {
-        const emailChecked = document.getElementById('swal-share-email').checked;
         const waChecked = document.getElementById('swal-share-whatsapp').checked;
         const wrap = document.getElementById('swal-share-usuario-wrap');
-        wrap.classList.toggle('hidden', !emailChecked && !waChecked);
-        if (!emailChecked && !waChecked) {
+        wrap.classList.toggle('hidden', !waChecked);
+        if (!waChecked) {
             document.getElementById('swal-share-info').textContent = '';
         }
     }
@@ -1003,8 +993,11 @@
             nameEl.textContent = '📎 ' + input.files[0].name;
             nameEl.classList.remove('hidden');
             document.getElementById('upload-area').classList.add('border-blue-400', 'bg-blue-50');
+            iniciarAnaliseDocumento(input.files[0]);
         }
     }
+
+    @include('tarefas.partials.analise-documento-js')
 
     function onArquivoDrop(event) {
         event.preventDefault();

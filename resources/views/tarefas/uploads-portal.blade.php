@@ -139,6 +139,9 @@
                                         <p class="font-medium text-gray-800 dark:text-slate-200 text-sm truncate max-w-[200px]" title="{{ $upload->arquivo_nome }}">
                                             {{ $upload->arquivo_nome }}
                                         </p>
+                                        @if($upload->descricao_documento)
+                                            <p class="text-xs text-gray-600 dark:text-slate-300 truncate max-w-[200px]" title="{{ $upload->descricao_documento }}">{{ $upload->descricao_documento }}</p>
+                                        @endif
                                         <p class="text-xs text-gray-400 dark:text-slate-500">{{ $upload->tamanhoFormatado() }}</p>
                                         @if($upload->foiEnviadoPeloCliente())
                                             <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
@@ -352,7 +355,7 @@ function excluirUpload(id, nome) {
 
 // ── Upload avulso (sem tarefa) ───────────────────────────────────────────────
 @php
-    $clientesUpload = $clientes->map(fn ($c) => ['id' => $c->id, 'nome' => $c->nome, 'temPasta' => filled($c->pasta_arquivos)])->values();
+    $clientesUpload = $clientes->map(fn ($c) => ['id' => $c->id, 'nome' => $c->nome, 'temPasta' => filled($c->pasta_arquivos), 'doc' => preg_replace('/\D/', '', $c->cpfcnpj ?? ''), 'recebeEmail' => (bool) $c->recebe_arquivos_email])->values();
     $clienteFiltroUpload = request('cliente_id') ? (int) request('cliente_id') : null;
 @endphp
 const clientesUpload = @json($clientesUpload);
@@ -380,8 +383,11 @@ function onArquivoSelecionado(input) {
         nameEl.textContent = '📎 ' + input.files[0].name;
         nameEl.classList.remove('hidden');
         document.getElementById('upload-area').classList.add('border-blue-400', 'bg-blue-50');
+        iniciarAnaliseDocumento(input.files[0]);
     }
 }
+
+@include('tarefas.partials.analise-documento-js')
 
 function onArquivoDrop(event) {
     event.preventDefault();
@@ -396,6 +402,13 @@ function onArquivoDrop(event) {
     onArquivoSelecionado(input);
 }
 
+function onClienteUploadChange() {
+    const cliente = clientesUpload.find(c => String(c.id) === document.getElementById('swal-cliente')?.value);
+    const linkEmail = document.getElementById('swal-enviar-link-email');
+    if (linkEmail) { linkEmail.checked = !!cliente?.recebeEmail; }
+    renderAnaliseDocumento();
+}
+
 function abrirUploadAvulso() {
     const clienteFiltro = @json($clienteFiltroUpload);
     const inputClass = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400';
@@ -403,13 +416,34 @@ function abrirUploadAvulso() {
         `<option value="${c.id}" ${c.temPasta ? '' : 'disabled'} ${c.id === clienteFiltro && c.temPasta ? 'selected' : ''}>${escHtml(c.nome)}${c.temPasta ? '' : ' (sem pasta configurada)'}</option>`
     ).join('');
 
+    const clienteInicial = clientesUpload.find(c => c.id === clienteFiltro && c.temPasta) ?? null;
+
+    configurarAnaliseDocumento({
+        obterCliente: () => clientesUpload.find(c => String(c.id) === document.getElementById('swal-cliente')?.value) ?? null,
+        selecionarCliente: id => { document.getElementById('swal-cliente').value = id; onClienteUploadChange(); },
+    });
+
     Swal.fire({
         title: '<span style="font-size:1rem;font-weight:600"><i class="fa-solid fa-file-arrow-up mr-2 text-blue-500"></i>Enviar arquivo ao portal do cliente</span>',
         width: 560,
         html: `
+            <div id="upload-area"
+                 class="mb-3 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
+                 onclick="document.getElementById('swal-file-input').click()"
+                 ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
+                 ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
+                 ondrop="onArquivoDrop(event)">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2 block"></i>
+                <p class="text-sm text-gray-600 font-medium">Clique para selecionar ou arraste o arquivo aqui</p>
+                <p class="text-xs text-gray-400 mt-1">A IA identifica a guia, o cliente e preenche os campos abaixo</p>
+                <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
+            </div>
+            <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
+            <div id="swal-analise-ia" class="hidden mb-3 text-left"></div>
+
             <div class="mb-3 text-left">
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Cliente <span class="text-red-500">*</span></label>
-                <select id="swal-cliente" class="${inputClass}">
+                <select id="swal-cliente" onchange="onClienteUploadChange()" class="${inputClass}">
                     <option value="">Selecione o cliente...</option>
                     ${opcoesClientes}
                 </select>
@@ -456,24 +490,17 @@ function abrirUploadAvulso() {
                 <p class="text-xs text-gray-400 mt-1">A subpasta de período será criada automaticamente se não existir.</p>
             </div>
 
-            <div id="upload-area"
-                 class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
-                 onclick="document.getElementById('swal-file-input').click()"
-                 ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
-                 ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
-                 ondrop="onArquivoDrop(event)">
-                <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2 block"></i>
-                <p class="text-sm text-gray-600 font-medium">Clique para selecionar ou arraste o arquivo aqui</p>
-                <p id="file-selected-name" class="text-xs text-blue-600 font-semibold mt-2 hidden"></p>
-            </div>
-            <input type="file" id="swal-file-input" class="hidden" onchange="onArquivoSelecionado(this)">
-            <p class="text-xs text-gray-400 mt-3 text-left">Os contatos do cliente com e-mail cadastrado são avisados automaticamente.</p>
+            <div class="mt-4 border-t border-gray-200 pt-4">${htmlOpcoesEmailPortal(clienteInicial?.recebeEmail)}</div>
         `,
         showCancelButton: true,
         confirmButtonText: '<i class="fa-solid fa-paper-plane mr-1"></i> Enviar arquivo',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#0084AA',
         preConfirm: async () => {
+            // Espera a IA terminar de preencher antes de ler os campos
+            const bloqueioAnalise = await validarAnaliseDocumento();
+            if (bloqueioAnalise) { Swal.showValidationMessage(bloqueioAnalise); return false; }
+
             const clienteId = document.getElementById('swal-cliente').value;
             const tipoArquivo = document.getElementById('swal-tipo-arquivo').value;
             const categoria = document.getElementById('swal-pasta-categoria').value;
@@ -490,6 +517,8 @@ function abrirUploadAvulso() {
 
             const formData = new FormData();
             formData.append('cliente_id', clienteId);
+            formData.append('descricao_documento', descricaoAnaliseDocumento());
+            formData.append('enviar_link_email', document.getElementById('swal-enviar-link-email').checked ? '1' : '0');
             formData.append('arquivo', fileInput.files[0]);
             formData.append('tipo_arquivo', tipoArquivo);
             formData.append('pasta_categoria', categoria);
@@ -518,8 +547,13 @@ function abrirUploadAvulso() {
         },
     }).then(result => {
         if (!result.isConfirmed || !result.value) { return; }
-        Swal.fire({ icon: 'success', title: 'Arquivo enviado!', text: `"${result.value.nome}" já está no portal do cliente.`, timer: 2000, showConfirmButton: false })
-            .then(() => window.location.reload());
+        const avisoOk = result.value.aviso_email === 'enviado';
+        Swal.fire({
+            icon: avisoOk ? 'success' : 'warning',
+            title: 'Arquivo enviado!',
+            text: `"${result.value.nome}" já está no portal do cliente. ${mensagemAvisoEmail(result.value)}`,
+            confirmButtonColor: '#0084AA',
+        }).then(() => window.location.reload());
     });
 }
 

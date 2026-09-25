@@ -307,6 +307,7 @@ Route::post('/tarefas/transferir-responsavel', [TarefaController::class, 'bulkTr
 Route::post('/tarefas/{id}/upload', [TarefaController::class, 'uploadArquivo'])->name('tarefas.upload')->middleware('auth');
 Route::get('/tarefas/uploads-portal', [TarefaController::class, 'uploadsPortal'])->name('tarefas.uploads-portal')->middleware('auth');
 Route::post('/tarefas/uploads-portal', [TarefaController::class, 'uploadAvulso'])->name('tarefas.uploads-portal.store')->middleware('auth');
+Route::post('/tarefas/uploads-portal/analisar', [TarefaController::class, 'analisarArquivoPortal'])->name('tarefas.uploads-portal.analisar')->middleware(['auth', 'throttle:30,1']);
 Route::get('/tarefas/uploads-portal/{upload}/historico', [TarefaController::class, 'uploadsHistorico'])->name('tarefas.uploads-portal.historico')->middleware('auth');
 Route::delete('/tarefas/uploads-portal/{upload}', [TarefaController::class, 'destroyUpload'])->name('tarefas.uploads-portal.destroy')->middleware('auth');
 // Colaboradores routes (diretor, TI, supervisor)

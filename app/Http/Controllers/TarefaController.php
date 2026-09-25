@@ -13,6 +13,7 @@ use App\Models\Tarefa;
 use App\Models\TarefaUpload;
 use App\Models\TipoTarefa;
 use App\Models\Usuario;
+use App\Services\AnalisadorDocumentoService;
 use App\Services\TarefaRecorrenciaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
+use Laravel\Ai\Exceptions\RateLimitedException;
 
 class TarefaController extends Controller
 {
@@ -989,6 +991,7 @@ class TarefaController extends Controller
             'requer_envio_arquivo' => $isFinalizado && $tarefa->requer_envio_arquivo,
             'renovacao_certificado' => $isRenovacaoCertificado,
             'cliente_id' => $tarefa->cliente_id,
+            'cliente_recebe_arquivos_email' => (bool) $tarefa->cliente?->recebe_arquivos_email,
             'ultima_recorrencia' => $ultimaRecorrencia,
             'tarefa_id' => $tarefa->id,
         ]);
@@ -1199,6 +1202,37 @@ class TarefaController extends Controller
         return $this->enviarArquivoPortal($request, $cliente, null);
     }
 
+    /**
+     * Lê o arquivo com IA antes do envio: detecta tipo, código de receita, vencimento, valor
+     * e confere o CNPJ/CPF do documento com o cliente selecionado (ou o da tarefa).
+     */
+    public function analisarArquivoPortal(Request $request, AnalisadorDocumentoService $analisador): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'arquivo' => ['required', 'file', 'max:20480'], // 20 MB
+            'cliente_id' => ['nullable', 'integer'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        try {
+            $analise = $analisador->analisar($request->file('arquivo'));
+        } catch (RateLimitedException) {
+            return response()->json(['error' => 'Serviço de IA sobrecarregado. Confira os dados manualmente.'], 429);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['error' => 'Não foi possível analisar o arquivo. Confira os dados manualmente.'], 500);
+        }
+
+        $cliente = $request->filled('cliente_id') ? Cliente::find($request->integer('cliente_id')) : null;
+        $analise['conferencia'] = $cliente ? $analisador->conferirCliente($analise['cnpj_cpf'], $cliente) : null;
+
+        return response()->json($analise);
+    }
+
     private function enviarArquivoPortal(Request $request, ?Cliente $cliente, ?Tarefa $tarefa): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -1206,6 +1240,8 @@ class TarefaController extends Controller
             'pasta_categoria' => ['required', 'string', 'in:Contabilidade,Financeiro,Fiscal,Patrimônio,Pessoal'],
             'pasta_periodo' => ['required', 'string', 'max:50', 'regex:/^[\w\s\-\.]+$/u'],
             'tipo_arquivo' => ['nullable', 'string', 'in:pagamento,contrato_social,informacao'],
+            'descricao_documento' => ['nullable', 'string', 'max:255'],
+            'enviar_link_email' => ['nullable', 'boolean'],
             'data_vencimento' => ['nullable', 'date'],
             'valor' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -1254,28 +1290,53 @@ class TarefaController extends Controller
             'pasta_categoria' => $categoria,
             'pasta_periodo' => $periodo,
             'tipo_arquivo' => $request->input('tipo_arquivo'),
+            'descricao_documento' => $request->input('descricao_documento'),
             'data_vencimento' => $request->input('data_vencimento'),
             'valor' => $request->input('valor'),
             'tamanho' => file_exists($destinoAbsoluto) ? filesize($destinoAbsoluto) : 0,
             'mime_type' => $arquivo->getClientMimeType(),
         ]);
 
-        // Aviso de arquivo novo vai sempre; o link de download direto só quando o cliente recebe arquivos por e-mail
-        $emails = $cliente->contatoClientes()->whereNotNull('gmail')->pluck('gmail');
+        // Aviso de arquivo novo vai sempre (contatos do cliente + usuários ativos do portal);
+        // com "Enviar também por e-mail" marcado, o mesmo e-mail leva o link de download direto
+        $emails = $cliente->contatoClientes()->pluck('gmail')
+            ->merge($cliente->portalUsuarios()->where('ativo', true)->pluck('email'))
+            ->map(fn ($email) => mb_strtolower(trim((string) $email)))
+            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        $avisoEmail = 'sem_destinatario';
+        $comLink = $request->boolean('enviar_link_email');
 
         if ($emails->isNotEmpty()) {
-            Mail::to($emails->all())->queue(new NovoArquivoPortalMail(
-                nomeCliente: $cliente->nome,
-                nomeArquivo: $nomeArquivo,
-                categoria: $categoria,
-                linkPortal: route('portal.login'),
-                linkDownload: $cliente->recebe_arquivos_email
-                    ? URL::temporarySignedRoute('arquivos.downloadPublico', now()->addDays(7), ['path' => $caminhoDB])
-                    : null,
-            ));
+            // Envio direto (sem fila), como os demais e-mails do sistema: com ->queue() o aviso
+            // ficava parado na tabela jobs quando não havia worker rodando
+            try {
+                Mail::to($emails->all())->send(new NovoArquivoPortalMail(
+                    nomeCliente: $cliente->nome,
+                    nomeArquivo: $nomeArquivo,
+                    categoria: $categoria,
+                    linkPortal: route('portal.login'),
+                    linkDownload: $comLink
+                        ? URL::temporarySignedRoute('arquivos.downloadPublico', now()->addDays(7), ['path' => $caminhoDB])
+                        : null,
+                ));
+                $avisoEmail = 'enviado';
+            } catch (\Throwable $e) {
+                report($e);
+                $avisoEmail = 'falhou';
+            }
         }
 
-        return response()->json(['success' => true, 'nome' => $nomeArquivo, 'arquivo_path' => $caminhoDB]);
+        return response()->json([
+            'success' => true,
+            'nome' => $nomeArquivo,
+            'arquivo_path' => $caminhoDB,
+            'aviso_email' => $avisoEmail,
+            'emails_notificados' => $avisoEmail === 'enviado' ? $emails->all() : [],
+            'email_com_link' => $comLink,
+        ]);
     }
 
     public function destroyUpload(TarefaUpload $upload): JsonResponse

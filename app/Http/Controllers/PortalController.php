@@ -359,26 +359,33 @@ class PortalController extends Controller
                         'nome' => $arquivo->getFilename(),
                         'tamanho' => $this->formatarTamanho($arquivo->getSize()),
                         'modificado' => date('d/m/Y H:i', $arquivo->getMTime()),
+                        'modificado_em' => $arquivo->getMTime(),
                         'extensao' => strtolower($arquivo->getExtension()),
                         'path' => $categoria.'/'.$periodo.'/'.$arquivo->getFilename(),
                     ];
                 }
 
                 if (! empty($arquivos)) {
-                    usort($arquivos, fn ($a, $b) => strcmp($a['nome'], $b['nome']));
+                    // Mais recente primeiro
+                    usort($arquivos, fn ($a, $b) => $b['modificado_em'] <=> $a['modificado_em'] ?: strcmp($a['nome'], $b['nome']));
                     $arvore[$categoria][$periodo] = $arquivos;
                 }
             }
 
-            // Ordenar períodos (mais recente primeiro usando nome do diretório)
+            // Períodos mais recentes primeiro ("08 - Agosto 2026" vira 202608; pelo nome, dezembro/2025 ficaria acima de agosto/2026)
             if (! empty($arvore[$categoria])) {
-                krsort($arvore[$categoria]);
+                uksort($arvore[$categoria], fn ($a, $b) => $this->chavePeriodo($b) <=> $this->chavePeriodo($a) ?: strcmp($b, $a));
             } else {
                 unset($arvore[$categoria]);
             }
         }
 
         return $arvore;
+    }
+
+    private function chavePeriodo(string $periodo): int
+    {
+        return preg_match('/^(\d{1,2})\D.*?(\d{4})/', $periodo, $m) ? (int) ($m[2].str_pad($m[1], 2, '0', STR_PAD_LEFT)) : 0;
     }
 
     private function resolverCaminhoArquivo(Cliente $cliente, ?string $filename): ?string

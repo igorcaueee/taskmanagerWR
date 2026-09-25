@@ -23,6 +23,7 @@ class TarefaUpload extends Model
         'pasta_categoria',
         'pasta_periodo',
         'tipo_arquivo',
+        'descricao_documento',
         'data_vencimento',
         'valor',
         'pago_em',
@@ -106,12 +107,24 @@ class TarefaUpload extends Model
 
     public function estaVencido(): bool
     {
-        return $this->data_vencimento && ! $this->foiPago() && $this->data_vencimento->isPast();
+        // Vence hoje ainda não é vencido: isPast() comparava com a meia-noite e marcava o dia do vencimento como atrasado
+        return $this->data_vencimento && ! $this->foiPago() && $this->data_vencimento->lt(today());
     }
 
     public function venceHoje(): bool
     {
         return $this->data_vencimento && ! $this->foiPago() && $this->data_vencimento->isToday();
+    }
+
+    /**
+     * Tag "Novo" no portal: enviado pela WR nos últimos 2 dias e ainda não aberto nem baixado pelo cliente.
+     */
+    public function ehNovo(): bool
+    {
+        return ! $this->foiEnviadoPeloCliente()
+            && ! $this->foiVisualizado()
+            && ! $this->foiBaixado()
+            && $this->created_at?->gte(now()->subDays(2));
     }
 
     public function labelTipoArquivo(): string
